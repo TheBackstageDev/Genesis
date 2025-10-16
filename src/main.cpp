@@ -1,19 +1,17 @@
-#include <SFML/Graphics.hpp>
+#include "core/window.hpp"
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode({200, 200}), "SFML works!");
-    sf::CircleShape shape(100.f);
+    core::window_t window(500, 500, "Genesis Engine");
+
+    sf::CircleShape shape(0.5f);
     shape.setFillColor(sf::Color::Green);
+    shape.setPosition({5.0f, 5.0f});
 
     while (window.isOpen())
     {
-        while (const std::optional event = window.pollEvent())
-        {
-            if (event->is<sf::Event::Closed>())
-                window.close();
-        }
-
+        window.pollEvents();
+    
         window.clear();
         window.draw(shape);
         window.display();
