@@ -49,7 +49,16 @@ namespace core
                     view.setViewport(rect);
                 }
 
+                float boxSizeAspect = simAspect * boxSize;
+                view.setCenter(sf::Vector2f(boxSizeAspect / 2.0f, boxSizeAspect / 2.0f));
+                view.setSize(sf::Vector2f(boxSizeAspect, boxSizeAspect));
                 window.setView(view);
+            }
+            if (event->is<sf::Event::KeyPressed>())
+            {
+                const auto& key = event->getIf<sf::Event::KeyPressed>()->code;
+                if (key == sf::Keyboard::Key::Space)
+                    paused = !paused;
             }
         }
         return true;

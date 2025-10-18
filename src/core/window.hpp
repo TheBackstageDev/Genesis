@@ -7,40 +7,33 @@ namespace core
     class window_t
     {
     public:
-        window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize = 10.f, uint32_t framerate = 60);
+        window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize = 20.f, uint32_t framerate = 60);
         ~window_t();
 
         bool pollEvents(); 
 
-        bool isOpen() const
-        {
-            return window.isOpen();
-        }
+        bool isOpen() const { return window.isOpen(); }
+        bool isPaused() const { return paused; }
 
-        void draw(sf::Drawable& drawable)
+        void refresh()
         {
             window.setView(view);
-            window.draw(drawable);
         }
 
-        void clear(sf::Color color = sf::Color::Black)
-        {
-            window.clear(sf::Color::Black); 
-        }
+        void draw(sf::Drawable& drawable) { window.draw(drawable); }
 
-        void display()
-        {
-            window.display();
-        }
+        void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); }
+        void display() { window.display(); }
 
         sf::RenderWindow& getWindow() { return window; }
 
     private:
         uint32_t height; uint32_t width;
+        float boxSize;
         
         sf::RenderWindow window;
         sf::View view;
 
-        float boxSize;
+        bool paused = false;
     };
 } // namespace core
