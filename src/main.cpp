@@ -6,14 +6,15 @@
 int main()
 {
     core::window_t window(500, 500, "Genesis Engine");
-    sim::fun::universe universe(20.f);
+    sim::fun::universe universe(60.f);
 
     std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> posDist(2.0f, 15.0f); // Å
+    std::uniform_real_distribution<float> posDist(1.0f, 59.0f); // Å
+    std::uniform_real_distribution<float> velDist(-0.f, 0.f);
 
     std::vector<sf::Vector2f> positions;
     const int maxAttempts = 100;
-    while (positions.size() < 20)
+    while (positions.size() < 50)
     {
         sf::Vector2f pos(posDist(rng), posDist(rng));
         bool tooClose = false;
@@ -21,7 +22,7 @@ int main()
         {
             sf::Vector2f r_vec = pos - existingPos;
             float r = std::sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
-            if (r < 2.f)
+            if (r < 5.f)
             {
                 tooClose = true;
                 break;
@@ -30,7 +31,7 @@ int main()
         if (!tooClose)
         {
             positions.push_back(pos);
-            universe.createAtom(pos, {0.f, 0.f});
+            universe.createAtom(pos, {velDist(rng), velDist(rng)});
         }
     }
 
@@ -39,7 +40,8 @@ int main()
         window.pollEvents();
         window.refresh();
 
-        universe.update();
+        if (!window.isPaused())
+            universe.update();
 
         window.clear();
         universe.drawDebug(window);

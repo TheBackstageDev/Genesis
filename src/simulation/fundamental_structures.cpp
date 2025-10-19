@@ -13,7 +13,7 @@ namespace sim
             cloud.setFillColor(sf::Color(50, 50, 255, 80));
             window.draw(cloud);
 
-            float nucleusRadius = 0.1f; // Å
+            float nucleusRadius = 0.01f; // Å
             sf::CircleShape nucleus(nucleusRadius);
             nucleus.setPosition({position.x - nucleusRadius, position.y - nucleusRadius});
             nucleus.setFillColor(sf::Color::Red);
@@ -53,7 +53,7 @@ namespace sim
             atom newAtom{};
             newAtom.position = p;
             newAtom.velocity = v;
-            newAtom.radius = H_RADIUS;
+            newAtom.radius = LJ_SIGMA;
             newAtom.mass = MASS_PROTON + MASS_ELECTRON;
 
             atoms.emplace_back(std::move(newAtom));
@@ -61,8 +61,27 @@ namespace sim
 
         void universe::boundCheck(atom& a)
         {
-            a.position.x = std::fmod(a.position.x + boxSize, boxSize);
-            a.position.y = std::fmod(a.position.y + boxSize, boxSize);
+            if (a.position.x < 0.f)
+            {
+                a.position.x = 0.f;
+                a.velocity.x = -a.velocity.x;
+            }
+            else if (a.position.x > boxSize)
+            {
+                a.position.x = boxSize;
+                a.velocity.x = -a.velocity.x;
+            }
+
+            if (a.position.y < 0.f)
+            {
+                a.position.y = 0.f;
+                a.velocity.y = -a.velocity.y;
+            }
+            else if (a.position.y > boxSize)
+            {
+                a.position.y = boxSize;
+                a.velocity.y = -a.velocity.y;
+            }
         }
 
         float universe::ljPot(float i, float epsilon, float sigma)
@@ -125,10 +144,21 @@ namespace sim
                 sf::Vector2f new_acc = forces[i] / a.mass;
                 a.velocity += 0.5f * (acc + new_acc) * DT;
 
-                float mass_kg = 1.66054e-27f * a.mass;
                 float v_squared = a.velocity.lengthSquared();
-                kinetic_energy += 0.5f * mass_kg * v_squared;
+                kinetic_energy += 0.5f * a.mass * v_squared;
             }
+
+            float avg_KE = kinetic_energy / atoms.size();
+            float current_temp = (2.f/3.f) * avg_KE * KB; 
+            float lambda = sqrtf(TARGET_TEMP/current_temp);
+            lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
+
+            for (auto& atom : atoms)
+            {
+                atom.velocity *= lambda;
+            }
+ 
+            std::cout << "Temperature: " << current_temp << " Kelvin \n";
 
             ++timeStep;
         }

@@ -4,8 +4,8 @@
 
 namespace core
 {
-    window_t::window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize, uint32_t framerate)
-        : width(width), height(height), boxSize(boxSize), window(sf::VideoMode({width, height}), title)
+    window_t::window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize, uint32_t framerate, float pixelsPerAngstrom)
+        : width(width), height(height), boxSize(boxSize), window(sf::VideoMode({width, height}), title), pixelsPerAngstrom(pixelsPerAngstrom)
     {
         window.setFramerateLimit(framerate);
         view.setCenter(sf::Vector2f(boxSize / 2.0f, boxSize / 2.0f));
@@ -60,7 +60,45 @@ namespace core
                 if (key == sf::Keyboard::Key::Space)
                     paused = !paused;
             }
+            if (event->is<sf::Event::MouseWheelScrolled>())
+            {
+                float zoomFactor = 1.0f - event->getIf<sf::Event::MouseWheelScrolled>()->delta * ZOOM_SPEED;
+                sf::Vector2f currentSize = view.getSize();
+                sf::Vector2f newSize = currentSize * zoomFactor;
+    
+                float minSize = MIN_ZOOM * window.getSize().x;
+                float maxSize = MAX_ZOOM * window.getSize().x;
+                if (newSize.x >= minSize && newSize.x <= maxSize)
+                {
+                    view.zoom(zoomFactor);
+                    window.setView(view);
+                }
+            }
         }
+        
+        handleCameraInput();
+
         return true;
     }
+
+    void window_t::handleCameraInput()
+    {
+        sf::Vector2f pan(0.f, 0.f);
+
+        float zoom = view.getSize().length();
+        float zoom_speed = zoom / 100.f;
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
+            pan.y -= PAN_SPEED * zoom_speed; // Move up
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
+            pan.y += PAN_SPEED * zoom_speed; // Move down
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+            pan.x -= PAN_SPEED * zoom_speed; // Move left
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+            pan.x += PAN_SPEED * zoom_speed; // Move right
+
+        view.move(pan);
+        window.setView(view);
+    }
+
 } // namespace core

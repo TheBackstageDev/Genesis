@@ -11,19 +11,22 @@ namespace sim
 {
     namespace constants
     {
-        #define MASS_PROTON 1
-        #define MASS_ELECTRON 1/1337
-        #define DT 0.01f 
+        #define MASS_PROTON 1 // Daltons
+        #define MASS_ELECTRON 1/1337 // Daltons
         #define EPSILON 0.1f 
-        #define H_RADIUS 0.31f
+        #define DT 0.001f // ps
+        #define ANGSTROM 1e20f
+        #define PICOSECOND 1e24f
 
-        #define LJ_EPSILON 1.0f 
-        #define LJ_SIGMA 1.2f 
+        #define LJ_EPSILON 318.f 
+        #define LJ_SIGMA 2.5f 
 
         #define CUTOFF 15.0f // A
 
-        #define KB 1.380649e-23f // Boltzman Constant
-        #define TARG_TEMP 100 // K
+        #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
+        #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
+        #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
+        #define TARGET_TEMP 15 // K
     };
 
     namespace fun
@@ -34,6 +37,9 @@ namespace sim
             sf::Vector2f velocity; 
             float mass;            
             float radius;
+
+            float epsilon; // LJ 
+            float sigma; // LJ
 
             void draw(core::window_t &window);
         };
