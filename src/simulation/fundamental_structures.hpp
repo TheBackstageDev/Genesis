@@ -26,8 +26,9 @@ namespace sim
         #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
         #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
         #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
+        #define THERMOSTAT_INTERVAL 10
 
-        #define BOND_K 1000.0f // Harmonic force constant (kJ/mol/Å²)
+        #define BOND_K 16.0f // Harmonic force constant (kJ/mol/Å²)
         #define BOND_LENGTH_FACTOR 0.8f
 
         inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
@@ -58,8 +59,8 @@ namespace sim
             default:
                 constants = {LJ_SIGMA_H, LJ_EPSILON_H};
             }
-            constants.first *= 2.f;
-            constants.second *= 2.f;
+            constants.first *= 5.f;
+            constants.second *= 5.f;
             return constants;
         }
 
@@ -89,6 +90,15 @@ namespace sim
     {
         enum class BondType { SINGLE, DOUBLE, TRIPLE };
 
+        struct bond {
+            uint32_t atom1; 
+            uint32_t atom2; // bonded to
+            
+            double equilibriumLength = 0.f;
+            double forceConstant = 0.f;
+            BondType type;
+        };
+
         struct atom
         {
             sf::Vector2f position; 
@@ -111,6 +121,7 @@ namespace sim
             ~universe() = default;
 
             void createAtom(sf::Vector2f p, sf::Vector2f v, uint32_t ZIndex = 1);
+            void createBond(uint32_t idx1, uint32_t idx2, BondType type = BondType::SINGLE);
 
             void update(float targetTemperature = 1.0f);
             void draw(core::window_t &window, bool letter = false);
@@ -125,12 +136,12 @@ namespace sim
             float ljPot(size_t i, float epsilon, float sigma);
             sf::Vector2f ljGrad(size_t i, float epsilon, float sigma);
 
-            
+            void calcBondForces(bond& bond);
 
             float boxSize = 10.f;
             std::vector<atom> atoms;
             std::vector<sf::Vector2f> forces;
-            std::vector<std::pair<size_t, size_t>> bonds;
+            std::vector<bond> bonds;
 
             float temp = 0;
             size_t timeStep = 0;

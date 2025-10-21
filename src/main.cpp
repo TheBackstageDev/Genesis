@@ -42,44 +42,18 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    sim::fun::universe universe(201.f);
+    sim::fun::universe universe(251.f);
     
     setupUI(window);
     
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> posDist(1.0f, 200.0f); // Å
-    std::uniform_real_distribution<float> velDist(-1.f, 1.f);
+    universe.createAtom({50.0f, 50.0f}, {0.0f, 0.0f}, 8); 
+    universe.createAtom({50.0f + LJ_SIGMA_H * 7.f, 50.0f}, {0.0f, 0.0f}, 1); 
+    universe.createAtom({50.0f, 50.0f + LJ_SIGMA_H * 7.f}, {0.0f, 0.0f}, 1); 
 
-    std::vector<sf::Vector2f> positions;
-    const int maxAttempts = 100;
-    while (positions.size() < 200)
-    {
-        sf::Vector2f pos(posDist(rng), posDist(rng));
-        bool tooClose = false;
-        for (const auto &existingPos : positions)
-        {
-            sf::Vector2f r_vec = pos - existingPos;
-            float r = std::sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
-            if (r < 5.f)
-            {
-                tooClose = true;
-                break;
-            }
-        }
-        if (!tooClose)
-        {
-            positions.push_back(pos);
-            universe.createAtom(pos, {velDist(rng), velDist(rng)});
-        }
-    }
+    universe.createBond(0, 1);
+    universe.createBond(0, 2); 
 
-    for (uint32_t Z = 1; Z <= 1; ++Z)
-    {
-        sf::Vector2f pos(posDist(rng), posDist(rng));
-        universe.createAtom(pos, {velDist(rng), velDist(rng)}, 8);
-    }
-
-    // universe.createAtom({posDist(rng), posDist(rng)}, {0.f, 0.f}, 2);
+    float targetTemp = 14.f;
 
     while (window.isOpen())
     {
@@ -87,7 +61,7 @@ int main()
         window.refresh();
 
         if (!window.isPaused())
-            universe.update(0.1f);
+            universe.update(targetTemp);
 
         window.clear();
         universe.drawDebug(window);

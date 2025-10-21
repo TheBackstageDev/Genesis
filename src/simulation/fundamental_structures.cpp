@@ -45,15 +45,15 @@ namespace sim
 
         void universe::draw(core::window_t& window, bool letter)
         {
-            for (auto& bond : bonds)
+            /* for (auto& bond : bonds)
             {
                 std::array<sf::Vertex, 2> line = {
-                    sf::Vertex(atoms[bond.first].position, sf::Color::White),
-                    sf::Vertex(atoms[bond.second].position, sf::Color::White)
+                    sf::Vertex(atoms[bond.atom1].position + sf::Vector2f(atoms[bond.atom1].radius, atoms[bond.atom1].radius), sf::Color::White),
+                    sf::Vertex(atoms[bond.atom2].position, sf::Color::White)
                 };
 
                 window.getWindow().draw(line.data(), line.size(), sf::PrimitiveType::Lines);
-            }
+            } */
 
             for (auto& atom : atoms)
             {
@@ -112,6 +112,24 @@ namespace sim
             forces.resize(atoms.size());
         }
 
+        void universe::createBond(uint32_t idx1, uint32_t idx2, BondType type)
+        {
+            if (idx1 >= atoms.size() || idx2 >= atoms.size() || idx1 == idx2)
+                return;
+
+            // NOTE: Handle bond type transition
+            if (std::find_if(bonds.begin(), bonds.end(), [&](bond& a){
+                return a.atom1 == idx1 && a.atom2 == idx2;
+            }) != bonds.end()) return; // bond alreadly exists within the two atoms
+
+            bond nBond{};
+            nBond.atom1 = idx1;
+            nBond.atom2 = idx2;
+            nBond.type = type;
+
+            bonds.emplace_back(std::move(nBond));
+        }
+
         void universe::boundCheck(atom& a)
         {
             if (a.position.x < 0.f)
@@ -137,7 +155,7 @@ namespace sim
             }
         }
 
-        float universe::ljPot(size_t i, float epsilon, float sigma_i)
+        float universe::ljPot(size_t i, float epsilon_i, float sigma_i)
         {
             float potential = 0.f;
 
@@ -152,6 +170,7 @@ namespace sim
 
                 if (dr < sigma * CUTOFF && dr > EPSILON)
                 {
+                    float epsilon = sqrtf(epsilon_i * epsilon_j);
                     float r6 = powf((sigma / dr), 6); 
                     float r12 = r6 * r6; 
                     potential += 4.0f * epsilon * (r12-r6);
@@ -161,7 +180,7 @@ namespace sim
             return potential;
         }
 
-        sf::Vector2f universe::ljGrad(size_t i, float epsilon, float sigma_i)
+        sf::Vector2f universe::ljGrad(size_t i, float epsilon_i, float sigma_i)
         {
             sf::Vector2f gradient({0.f, 0.f});
 
@@ -174,13 +193,16 @@ namespace sim
 
                 auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[j].ZIndex);
                 float sigma = (sigma_i + sigma_j) / 2.0f;
-
+                
                 if (dr < sigma * CUTOFF && dr > EPSILON)
                 {
+                    float sigma6 = powf(sigma, 6);
+                    float sigma12 = sigma6 * sigma6;
 
-                    float r8 = powf(sigma, 6) / powf((dr), 8);
-                    float r14 = 2.f * powf(sigma, 12) / powf((dr), 14);
-                    float du_dr = 24.0f * epsilon * (r14 - r8) / dr;
+                    float epsilon = sqrtf(epsilon_i * epsilon_j);
+                    float r8 = sigma6 / powf(dr, 8);
+                    float r14 = 2.f * sigma12 / powf(dr, 14);
+                    float du_dr = 24.0f * epsilon * (r14 - r8);
                     sf::Vector2f force = (du_dr / dr) * dr_vec;
                     gradient += force;
 
@@ -192,16 +214,41 @@ namespace sim
             return gradient;
         }
 
+        void universe::calcBondForces(bond& bond)
+        {
+            size_t idx1 = bond.atom1;
+            size_t idx2 = bond.atom2;
+            sf::Vector2f r_vec = atoms[idx2].position - atoms[idx1].position;
+            float dr = std::sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
+            if (dr <= EPSILON) return;
+
+            float sigma_avg = (atoms[idx1].sigma + atoms[idx2].sigma) / 2.0f;
+
+            if (bond.equilibriumLength == 0.f)
+                bond.equilibriumLength = std::pow(2.0f, 1.0f/6.0f) * sigma_avg * BOND_LENGTH_FACTOR;
+
+            float delta_r = dr - bond.equilibriumLength;
+            float force_magnitude = BOND_K * delta_r;
+
+            sf::Vector2f force_dir = r_vec / dr;
+            sf::Vector2f force = force_magnitude * force_dir;
+
+            forces[idx1] += force;
+            forces[idx2] -= force;
+        }
+
         void universe::update(float targetTemperature)
         {
-            bonds.clear();
-
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 forces[i] = ljGrad(i, atoms[i].sigma, atoms[i].epsilon);
             }
 
-            float kinetic_energy = 0.0f;
+            for (size_t i = 0; i < bonds.size(); ++i)
+            {
+                calcBondForces(bonds[i]);
+            }
+
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 atom& a = atoms[i];
@@ -211,19 +258,23 @@ namespace sim
                 boundCheck(a);
                 sf::Vector2f new_acc = forces[i] / a.mass;
                 a.velocity += 0.5f * (acc + new_acc) * DT;
-
-                float v_squared = a.velocity.lengthSquared();
-                kinetic_energy += 0.5f * a.mass * v_squared;
             }
 
-            float avg_KE = kinetic_energy / atoms.size();
-            temp = (2.f/3.f) * avg_KE * KB; 
-            float lambda = sqrtf(targetTemperature/temp);
-            lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
+            if (timeStep % THERMOSTAT_INTERVAL == 0) {
+                float kinetic_energy = 0.0f;
+                for (const auto& a : atoms) {
+                    float v_squared = a.velocity.lengthSquared();
+                    kinetic_energy += 0.5f * a.mass * v_squared;
+                }
 
-            for (auto& atom : atoms)
-            {
-                atom.velocity *= lambda;
+                float avg_KE = kinetic_energy / atoms.size();
+                temp = (2.f / 3.f) * avg_KE * KB;
+                float lambda = sqrtf(targetTemperature / temp);
+                lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
+
+                for (auto& atom : atoms) {
+                    atom.velocity *= lambda;
+                }
             }
  
             ++timeStep;
