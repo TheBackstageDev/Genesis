@@ -2,15 +2,27 @@
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
 
+#include <ostream>
+#include <iostream>
+
 namespace core
 {
-    window_t::window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize, uint32_t framerate, float pixelsPerAngstrom)
-        : width(width), height(height), boxSize(boxSize), window(sf::VideoMode({width, height}), title), pixelsPerAngstrom(pixelsPerAngstrom)
+    window_t::window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize, uint32_t framerate)
+        : width(width), height(height), boxSize(boxSize), window(sf::VideoMode({width, height}), title)
     {
         window.setFramerateLimit(framerate);
         view.setCenter(sf::Vector2f(boxSize / 2.0f, boxSize / 2.0f));
         view.setSize(sf::Vector2f(boxSize, boxSize));
         window.setView(view);
+
+        uiView.setSize({static_cast<float>(width), static_cast<float>(height)});
+        uiView.setCenter({width / 2.0f, height / 2.0f});
+        uiView.setViewport(sf::FloatRect({0.f, 0.f}, {1.f, 1.f}));
+
+        if (!arial.openFromFile("src/resource/ARIAL.ttf"))
+        {
+            std::cerr << "Failed to load font. UI and letter mode may not display correctly.\n";
+        }
     }
 
     window_t::~window_t()
@@ -100,5 +112,4 @@ namespace core
         view.move(pan);
         window.setView(view);
     }
-
 } // namespace core

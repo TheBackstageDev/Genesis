@@ -6,8 +6,26 @@ namespace sim
 {
     namespace fun
     {
-        void atom::draw(core::window_t& window)
+        void atom::draw(core::window_t& window, bool letter)
         {
+            if (letter)
+            {
+                auto& font = window.getFont();
+
+                std::string name = constants::getAtomLetter(ZIndex);
+
+                sf::Text name_text;
+                name_text.setFont(window.getFont());
+                name_text.setString(name);
+                name_text.setCharacterSize(20.f);
+                name_text.setScale({0.1f * radius, 0.1f * radius});
+                name_text.setPosition(position);
+
+                window.draw(name_text);
+
+                return;
+            }
+
             sf::CircleShape cloud(radius);
             cloud.setPosition({position.x - radius, position.y - radius});
             cloud.setFillColor(sf::Color(50, 50, 255, 80));
@@ -25,7 +43,7 @@ namespace sim
         {
         }
 
-        void universe::draw(core::window_t& window)
+        void universe::draw(core::window_t& window, bool letter)
         {
             for (auto& bond : bonds)
             {
@@ -39,8 +57,35 @@ namespace sim
 
             for (auto& atom : atoms)
             {
-                atom.draw(window);
+                atom.draw(window, letter);
             }
+
+            // Universe Edges
+
+            std::array<sf::Vertex, 2> down = {
+                sf::Vertex({boxSize, boxSize}, sf::Color::White),
+                sf::Vertex({0.f, boxSize}, sf::Color::White)
+            };
+
+            std::array<sf::Vertex, 2> up = {
+                sf::Vertex({boxSize, 0.f}, sf::Color::White),
+                sf::Vertex({0.f, 0.f}, sf::Color::White)
+            };
+
+            std::array<sf::Vertex, 2> left = {
+                sf::Vertex({0.f, boxSize}, sf::Color::White),
+                sf::Vertex({0.f, 0.f}, sf::Color::White)
+            };
+
+            std::array<sf::Vertex, 2> right = {
+                sf::Vertex({boxSize, 0.f}, sf::Color::White),
+                sf::Vertex({boxSize, boxSize}, sf::Color::White)
+            };
+
+            window.getWindow().draw(up.data(), up.size(), sf::PrimitiveType::Lines);
+            window.getWindow().draw(down.data(), down.size(), sf::PrimitiveType::Lines);
+            window.getWindow().draw(left.data(), left.size(), sf::PrimitiveType::Lines);
+            window.getWindow().draw(right.data(), right.size(), sf::PrimitiveType::Lines);
         }
 
         void universe::drawDebug(core::window_t& window)
@@ -48,15 +93,23 @@ namespace sim
 
         }
 
-        void universe::createAtom(sf::Vector2f p, sf::Vector2f v)
+        void universe::createAtom(sf::Vector2f p, sf::Vector2f v, uint32_t ZIndex)
         {
             atom newAtom{};
+            newAtom.ZIndex = ZIndex;
             newAtom.position = p;
             newAtom.velocity = v;
-            newAtom.radius = LJ_SIGMA;
-            newAtom.mass = MASS_PROTON + MASS_ELECTRON;
+
+            std::pair<float, float> constants = constants::getAtomConstants(ZIndex);
+            
+            newAtom.sigma = constants.first;
+            newAtom.epsilon = constants.second;
+            newAtom.radius = constants.first / 2.f;
+            newAtom.mass = ZIndex * MASS_PROTON;
 
             atoms.emplace_back(std::move(newAtom));
+
+            forces.resize(atoms.size());
         }
 
         void universe::boundCheck(atom& a)
@@ -84,25 +137,31 @@ namespace sim
             }
         }
 
-        float universe::ljPot(float i, float epsilon, float sigma)
+        float universe::ljPot(size_t i, float epsilon, float sigma_i)
         {
             float potential = 0.f;
 
             for (size_t j = 0; j < atoms.size(); ++j)
             {
                 if (j == i) continue;
-
+                
                 float dr = (atoms[i].position - atoms[j].position).length();
-                float r6 = powf((sigma / dr), 6); 
-                float r12 = r6 * r6; 
 
-                potential += 4.0f * epsilon * (r12-r6);
+                auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[j].ZIndex);
+                float sigma = (sigma_i + sigma_j) / 2.0f;
+
+                if (dr < sigma * CUTOFF && dr > EPSILON)
+                {
+                    float r6 = powf((sigma / dr), 6); 
+                    float r12 = r6 * r6; 
+                    potential += 4.0f * epsilon * (r12-r6);
+                }
             }
 
             return potential;
         }
 
-        sf::Vector2f universe::ljGrad(float i, float epsilon, float sigma)
+        sf::Vector2f universe::ljGrad(size_t i, float epsilon, float sigma_i)
         {
             sf::Vector2f gradient({0.f, 0.f});
 
@@ -112,25 +171,34 @@ namespace sim
 
                 sf::Vector2f dr_vec = atoms[i].position - atoms[j].position;
                 float dr = dr_vec.length();
-                float r8 = powf(sigma, 6) / powf((dr), 8);
-                float r14 = 2.f * powf(sigma, 12) / powf((dr), 14);
-                float du_dr = 24.0f * epsilon * (r14 - r8) / dr;
 
-                gradient += (du_dr / dr) * dr_vec;
+                auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[j].ZIndex);
+                float sigma = (sigma_i + sigma_j) / 2.0f;
+
+                if (dr < sigma * CUTOFF && dr > EPSILON)
+                {
+
+                    float r8 = powf(sigma, 6) / powf((dr), 8);
+                    float r14 = 2.f * powf(sigma, 12) / powf((dr), 14);
+                    float du_dr = 24.0f * epsilon * (r14 - r8) / dr;
+                    sf::Vector2f force = (du_dr / dr) * dr_vec;
+                    gradient += force;
+
+                    if (j < forces.size()) // Every action creates an Equal and opposite reaction - Sir Isaac Newton
+                        forces[j] -= force;
+                }
             }
 
             return gradient;
         }
 
-        void universe::update()
+        void universe::update(float targetTemperature)
         {
             bonds.clear();
-            std::vector<sf::Vector2f> forces(atoms.size(), {0.0f, 0.0f});
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                sf::Vector2f grad = ljGrad(i, LJ_EPSILON, LJ_SIGMA);
-                forces[i] += grad;
+                forces[i] = ljGrad(i, atoms[i].sigma, atoms[i].epsilon);
             }
 
             float kinetic_energy = 0.0f;
@@ -149,8 +217,8 @@ namespace sim
             }
 
             float avg_KE = kinetic_energy / atoms.size();
-            float current_temp = (2.f/3.f) * avg_KE * KB; 
-            float lambda = sqrtf(TARGET_TEMP/current_temp);
+            temp = (2.f/3.f) * avg_KE * KB; 
+            float lambda = sqrtf(targetTemperature/temp);
             lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
 
             for (auto& atom : atoms)
@@ -158,8 +226,6 @@ namespace sim
                 atom.velocity *= lambda;
             }
  
-            std::cout << "Temperature: " << current_temp << " Kelvin \n";
-
             ++timeStep;
         }
     } // namespace fun 
