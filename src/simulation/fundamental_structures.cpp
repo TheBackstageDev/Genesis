@@ -4,6 +4,8 @@
 
 namespace sim
 {
+    constexpr float pixel_per_A = 1.0f; // 50 pixels/Å
+
     namespace fun
     {
         void atom::draw(core::window_t& window, bool letter)
@@ -15,11 +17,15 @@ namespace sim
                 std::string name = constants::getAtomLetter(ZIndex);
 
                 sf::Text name_text;
-                name_text.setFont(window.getFont());
+                name_text.setFont(font);
                 name_text.setString(name);
                 name_text.setCharacterSize(20.f);
                 name_text.setScale({0.1f * radius, 0.1f * radius});
-                name_text.setPosition(position);
+
+                sf::FloatRect bounds = name_text.getLocalBounds();
+                name_text.setOrigin(bounds.size / 2.0f);
+
+                name_text.setPosition(position * pixel_per_A);
 
                 window.draw(name_text);
 
@@ -104,7 +110,7 @@ namespace sim
             
             newAtom.sigma = constants.first;
             newAtom.epsilon = constants.second;
-            newAtom.radius = constants.first / 2.f;
+            newAtom.radius = constants.first;
             newAtom.mass = ZIndex * MASS_PROTON;
 
             atoms.emplace_back(std::move(newAtom));
@@ -153,6 +159,8 @@ namespace sim
                 a.position.y = boxSize;
                 a.velocity.y = -a.velocity.y;
             }
+            /* a.position.x = std::fmod(a.position.x + boxSize, boxSize);
+            a.position.y = std::fmod(a.position.y + boxSize, boxSize); */
         }
 
         float universe::ljPot(size_t i, float epsilon_i, float sigma_i)
@@ -204,10 +212,9 @@ namespace sim
                     float r14 = 2.f * sigma12 / powf(dr, 14);
                     float du_dr = 24.0f * epsilon * (r14 - r8);
                     sf::Vector2f force = (du_dr / dr) * dr_vec;
+                    
                     gradient += force;
-
-                    if (j < forces.size()) // Every action creates an Equal and opposite reaction - Sir Isaac Newton
-                        forces[j] -= force;
+                    forces[j] -= force;  // Every action creates an Equal and opposite reaction - Sir Isaac Newton
                 }
             }
 
@@ -219,7 +226,7 @@ namespace sim
             size_t idx1 = bond.atom1;
             size_t idx2 = bond.atom2;
             sf::Vector2f r_vec = atoms[idx2].position - atoms[idx1].position;
-            float dr = std::sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
+            float dr = r_vec.length();
             if (dr <= EPSILON) return;
 
             float sigma_avg = (atoms[idx1].sigma + atoms[idx2].sigma) / 2.0f;
@@ -270,7 +277,7 @@ namespace sim
                 float avg_KE = kinetic_energy / atoms.size();
                 temp = (2.f / 3.f) * avg_KE * KB;
                 float lambda = sqrtf(targetTemperature / temp);
-                lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
+                // lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
 
                 for (auto& atom : atoms) {
                     atom.velocity *= lambda;

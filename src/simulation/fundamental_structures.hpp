@@ -26,7 +26,7 @@ namespace sim
         #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
         #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
         #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
-        #define THERMOSTAT_INTERVAL 10
+        #define THERMOSTAT_INTERVAL 5
 
         #define BOND_K 16.0f // Harmonic force constant (kJ/mol/Å²)
         #define BOND_LENGTH_FACTOR 0.8f
@@ -127,6 +127,8 @@ namespace sim
             void draw(core::window_t &window, bool letter = false);
             void drawDebug(core::window_t& window);
 
+            size_t numAtoms() { return atoms.size(); }
+
             float temperature() { return temp; };
             float timestep() { return timeStep; }
 
@@ -140,8 +142,10 @@ namespace sim
 
             float boxSize = 10.f;
             std::vector<atom> atoms;
-            std::vector<sf::Vector2f> forces;
             std::vector<bond> bonds;
+
+            std::vector<sf::Vector2f> forces;
+            std::vector<sf::Vector2f> prev_positions;
 
             float temp = 0;
             size_t timeStep = 0;
