@@ -9,6 +9,8 @@
 
 namespace sim
 {
+    namespace fun { enum class BondType { SINGLE, DOUBLE, TRIPLE }; };
+
     namespace constants
     {
         #define MASS_PROTON 1 // Daltons
@@ -28,8 +30,16 @@ namespace sim
         #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
         #define THERMOSTAT_INTERVAL 5
 
-        #define BOND_K 16.0f // Harmonic force constant (kJ/mol/Å²)
-        #define BOND_LENGTH_FACTOR 0.8f
+        #define ANGLE_K 150.0f // kJ/mol/rad² for angular potential
+        #define COULOMB_K (138.935455f / ANGSTROM) // kJ·mol⁻¹·Å·e⁻² (1/(4πε₀) in Å units)
+
+        #define BOND_K 100.f // Harmonic force constant 
+        #define BOND_LENGTH_FACTOR 1.0f
+
+        #define M_PI 3.1415926535897932
+        #define RADIAN M_PI / 180
+
+        #define MULT_FACTOR 5.f
 
         inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
         {
@@ -59,9 +69,83 @@ namespace sim
             default:
                 constants = {LJ_SIGMA_H, LJ_EPSILON_H};
             }
-            constants.first *= 5.f;
-            constants.second *= 5.f;
+            constants.first *= MULT_FACTOR;
+            constants.second *= MULT_FACTOR;
             return constants;
+        }
+
+        // Temporary
+        inline uint8_t getValenceElectrons(uint8_t ZIndex)
+        {
+            switch (ZIndex)
+            {
+                case 1: return 1;  // H
+                case 2: return 2;  // He
+                case 3: return 1;  // Li
+                case 4: return 2;  // Be
+                case 5: return 3;  // B
+                case 6: return 4;  // C
+                case 7: return 5;  // N
+                case 8: return 6;  // O
+                case 9: return 7;  // F
+                case 10: return 8; // Ne
+                default: return 0; 
+            }
+        }
+
+        inline float getBondLength(uint8_t ZIndex1, uint8_t ZIndex2, fun::BondType type)
+        {
+            float base = (getAtomConstants(ZIndex1).first + getAtomConstants(ZIndex2).first) / 2.0f * BOND_LENGTH_FACTOR;
+
+            switch (type)
+            {
+            case fun::BondType::SINGLE:
+                if ((ZIndex1 == 6 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 6)) base = 1.09f; // C-H
+                if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8)) base = 0.96f; // O-H
+                if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.54f; // C-C
+                break; 
+            case fun::BondType::DOUBLE:
+                base *= 0.8;
+                if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.34f; // C=C
+                if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 1.21f; // C=O
+                break;
+            case fun::BondType::TRIPLE:
+                base * 0.7f; // Approximate 
+                if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.20f; // C≡C
+                break;
+            default:
+                break;
+            }
+
+            return base * MULT_FACTOR;
+        }
+
+        inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t>& neighborZs, const std::vector<fun::BondType>& types)
+        {
+            size_t bond_count = neighborZs.size();
+            if (bond_count < 2) return 0.0f; // No angle if fewer than 2 neighbors
+
+            uint8_t valence = getValenceElectrons(centralZIndex);
+            uint8_t bonding_electrons = bond_count * 2; // Assuming single bonds
+            uint8_t lone_pairs = (valence - bonding_electrons) / 2;
+            uint8_t total_pairs = bond_count + lone_pairs;
+
+            float ideal_angle = 0.0f;
+
+            switch (total_pairs)
+            {
+                case 2: ideal_angle = 180.0f * RADIAN; break; // Linear
+                case 3: ideal_angle = 120.0f * RADIAN; break; // Trigonal planar
+                case 4:
+                    ideal_angle = 109.5f * RADIAN; // Tetrahedral base
+                    if (lone_pairs == 1 && bond_count == 3) ideal_angle = 107.0f * RADIAN; 
+                    if (lone_pairs == 2 && bond_count == 2) ideal_angle = 104.5f * RADIAN; 
+                    break;
+                case 5: ideal_angle = 120.0f * RADIAN; break; // Trigonal bipyramidal (equatorial)
+                case 6: ideal_angle = 90.0f * RADIAN; break; // Octahedral
+            }
+
+            return ideal_angle;
         }
 
         inline std::string getAtomLetter(uint32_t ZIndex)
@@ -88,8 +172,6 @@ namespace sim
 
     namespace fun
     {
-        enum class BondType { SINGLE, DOUBLE, TRIPLE };
-
         struct bond {
             uint32_t atom1; 
             uint32_t atom2; // bonded to
@@ -97,6 +179,16 @@ namespace sim
             double equilibriumLength = 0.f;
             double forceConstant = 0.f;
             BondType type;
+        };
+
+        struct subset
+        {
+            size_t mainAtomIdx;              
+            std::vector<size_t> connectedIdx; // connected to the main atom
+            float idealAngle;                // In radians
+            size_t connectedSubsetIdx;       // Index of the next subset (optional, max(size_t) if none)
+            subset(size_t mainIdx, const std::vector<size_t>& connIdx, float angle, size_t connSubset = -1)
+                : mainAtomIdx(mainIdx), connectedIdx(connIdx), idealAngle(angle), connectedSubsetIdx(connSubset) {}
         };
 
         struct atom
@@ -109,7 +201,11 @@ namespace sim
             float epsilon; // LJ 
             float sigma; // LJ
 
-            uint32_t ZIndex;
+            int8_t charge;
+            int8_t electrons;
+
+            uint8_t ZIndex;
+            int8_t bondCount;
 
             void draw(core::window_t &window, bool letterMode);
         };
@@ -120,8 +216,8 @@ namespace sim
             universe(float universeSize = 10.f);
             ~universe() = default;
 
-            void createAtom(sf::Vector2f p, sf::Vector2f v, uint32_t ZIndex = 1);
-            void createBond(uint32_t idx1, uint32_t idx2, BondType type = BondType::SINGLE);
+            void createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex = 1, uint8_t numElectron = 1);
+            void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
 
             void update(float targetTemperature = 1.0f);
             void draw(core::window_t &window, bool letter = false);
@@ -129,16 +225,19 @@ namespace sim
 
             size_t numAtoms() { return atoms.size(); }
 
-            float temperature() { return temp; };
+            float temperature() { return temp; }
             float timestep() { return timeStep; }
 
         private:
             void boundCheck(atom &a);
 
             float ljPot(size_t i, float epsilon, float sigma);
-            sf::Vector2f ljGrad(size_t i, float epsilon, float sigma);
+            sf::Vector2f ljGrad(size_t i);
+            sf::Vector2f ljForce(size_t i, size_t j);
 
-            void calcBondForces(bond& bond);
+            void calcBondForces();
+            void calcAngleForces();
+            void calcLjForces();
 
             float boxSize = 10.f;
             std::vector<atom> atoms;
