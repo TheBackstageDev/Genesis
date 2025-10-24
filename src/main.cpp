@@ -42,7 +42,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 250.f;
+    size_t universeSize = 300.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -53,9 +53,6 @@ int main()
 
     std::uniform_real_distribution<> dis(10.0f, universeSize - 10.f); 
     std::uniform_real_distribution<> vel(-5.f, 5.f); 
-
-    float start_x = 100.f;
-    float start_y = universeSize / 2.f;
     
     std::vector<sf::Vector2f> oxygen_positions;
     
@@ -75,7 +72,7 @@ int main()
                 float dx = ox - pos.x;
                 float dy = oy - pos.y;
                 float distance = std::sqrt(dx * dx + dy * dy);
-                if (distance < 16.0f) 
+                if (distance < 15.0f) 
                 {
                     valid_position = false;
                     break;
@@ -86,7 +83,7 @@ int main()
         oxygen_positions.push_back({ox, oy});
     
         size_t o_idx = universe.numAtoms();
-        universe.createAtom({ox, oy}, {0.f, 0.f}, 8, 8);
+        universe.createAtom({ox, oy}, {0.f, 0.f}, 8, 8, 8);
     
         float angle = -45.0f * RADIAN; 
         float bond_length = 8.0f;
@@ -101,7 +98,9 @@ int main()
         universe.createBond(o_idx, h2_idx);
     }
 
-    float targetTemp = 1.0f;
+    //universe.balanceMolecularCharges();
+
+    float targetTemp = 300.0f;
     
     while (window.isOpen())
     {

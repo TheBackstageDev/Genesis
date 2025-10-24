@@ -31,6 +31,26 @@ namespace sim
                 window.draw(name_text);
             }
 
+            if (charge != 0.f && std::abs(charge) > 1.3f)
+            {
+                bool cation = charge > 0.f;
+
+                sf::Text ion_text;
+                auto& font = window.getFont(); 
+
+                
+                ion_text.setFont(font);
+                ion_text.setString(cation ? "+" : "-");
+                ion_text.setCharacterSize(16.f); 
+                ion_text.setScale({0.02f * radius, 0.02f * radius});
+
+                sf::FloatRect bounds = ion_text.getLocalBounds();
+                ion_text.setOrigin(bounds.size / 2.0f); 
+                ion_text.setPosition(position * pixel_per_A + sf::Vector2f(0.f, -radius / 2.f));
+
+                window.draw(ion_text);
+            }
+
             sf::CircleShape cloud(radius / 1.2);
             cloud.setPosition({position.x - radius, position.y - radius});
             cloud.setFillColor(sf::Color(50, 50, 255, 80));
@@ -82,7 +102,7 @@ namespace sim
 
         }
 
-        void universe::createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex, uint8_t numElectron)
+        size_t universe::createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron)
         {
             atom newAtom{};
             newAtom.ZIndex = ZIndex;
@@ -95,8 +115,9 @@ namespace sim
             newAtom.epsilon = constants.second;
             newAtom.radius = constants.first;
             newAtom.electrons = numElectron;
+            newAtom.NCount = numNeutrons;
             newAtom.charge = ZIndex - numElectron;
-            newAtom.mass = ZIndex * MASS_PROTON + numElectron * MASS_ELECTRON;
+            newAtom.mass = ZIndex * MASS_PROTON + numNeutrons * MASS_NEUTRON + numElectron * MASS_ELECTRON;
             newAtom.bondCount = 0;
 
             atoms.emplace_back(std::move(newAtom));
@@ -104,6 +125,8 @@ namespace sim
             prev_positions.reserve(atoms.size());
             prev_positions.emplace_back(p);
             forces.resize(atoms.size());
+
+            return atoms.size() - 1;
         }
 
         void universe::createBond(size_t idx1, size_t idx2, BondType type)
@@ -122,35 +145,63 @@ namespace sim
             nBond.type = type;
             nBond.equilibriumLength = constants::getBondLength(atoms[idx1].ZIndex, atoms[idx2].ZIndex, type);
 
+            float EN1 = constants::electronegativity.at(atoms[idx1].ZIndex);
+            float EN2 = constants::electronegativity.at(atoms[idx2].ZIndex);
+            float deltaEN = std::abs(EN1 - EN2);
+
+            if (deltaEN > 0.2f) // Significant electronegativity difference
+            {
+                float charge = deltaEN * 0.5f; 
+
+                if (EN1 > EN2) 
+                {
+                    atoms[idx1].charge -= charge; 
+                    atoms[idx2].charge += charge; 
+                }
+                else 
+                {
+                    atoms[idx2].charge -= charge ;
+                    atoms[idx1].charge += charge;
+                }
+            }
+
             ++atoms[idx1].bondCount;
             ++atoms[idx2].bondCount;
 
             bonds.emplace_back(std::move(nBond));
         }
 
+        void universe::balanceMolecularCharges()
+        {
+            for (size_t i = 0; i < atoms.size(); ++i)
+            {
+                if (atoms[i].bondCount == 0) continue;
+                std::vector<size_t> neighbors;
+                for (const auto& bond : bonds)
+                {
+                    if (bond.atom1 == i) neighbors.push_back(bond.atom2);
+                    else if (bond.atom2 == i) neighbors.push_back(bond.atom1);
+                }
+
+                if (neighbors.size() > 0)
+                {
+                    float total_charge = atoms[i].charge;
+                    for (size_t j : neighbors)
+                        total_charge += atoms[j].charge;
+
+                    if (std::abs(total_charge) > 1e-6f) 
+                    {
+                        float adjustment = -total_charge / (neighbors.size() + 1); 
+                        atoms[i].charge += adjustment;
+                        for (size_t j : neighbors)
+                            atoms[j].charge += adjustment;
+                    }
+                }
+            }
+        }
+
         void universe::boundCheck(atom& a)
         {
-            /* if (a.position.x < 0.f)
-            {
-                a.position.x = 0.f;
-                a.velocity.x = -a.velocity.x;
-            }
-            else if (a.position.x > boxSize)
-            {
-                a.position.x = boxSize;
-                a.velocity.x = -a.velocity.x;
-            }
-
-            if (a.position.y < 0.f)
-            {
-                a.position.y = 0.f;
-                a.velocity.y = -a.velocity.y;
-            }
-            else if (a.position.y > boxSize)
-            {
-                a.position.y = boxSize;
-                a.velocity.y = -a.velocity.y;
-            } */
             a.position.x = std::fmod(a.position.x + boxSize, boxSize);
             a.position.y = std::fmod(a.position.y + boxSize, boxSize);
         }
@@ -163,7 +214,7 @@ namespace sim
             {
                 if (j == i) continue;
                 
-                float dr = (atoms[i].position - atoms[j].position).length();
+                float dr = minImageVec((atoms[i].position - atoms[j].position)).length();
 
                 auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[j].ZIndex);
                 float sigma = (sigma_i + sigma_j) / 2.0f;
@@ -231,13 +282,14 @@ namespace sim
 
             float dr = dr_vec.length();
 
-            if (dr < EPSILON || dr > COULOMB_CUTOFF)
+            if (dr < EPSILON * EPSILON || dr > COULOMB_CUTOFF * COULOMB_CUTOFF)
                 return {0.f, 0.f};
 
-            int8_t qq = a1.charge * a2.charge;
+            float qq = a1.charge * a2.charge;
             if (qq == 0.f) return {0.f, 0.f};
 
-            return COULOMB_K * (qq / (dr * dr)) * dr_vec; 
+            float forceMag = COULOMB_K * a1.charge * a2.charge / dr;
+            return -forceMag * dr_vec / dr; 
         }
 
         void universe::calcBondForces()
