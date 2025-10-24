@@ -24,6 +24,8 @@ namespace sim
         #define LJ_SIGMA_H 0.74f 
 
         #define CUTOFF 2.5f
+        #define COULOMB_CUTOFF 15.f
+        #define ELECTROSTATIC_CUTOFF 10.0f
 
         #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
         #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
@@ -31,10 +33,9 @@ namespace sim
         #define THERMOSTAT_INTERVAL 5
 
         #define COULOMB_K (138.935455f / ANGSTROM) // kJ·mol⁻¹·Å·e⁻² (1/(4πε₀) in Å units)
-        #define ELECTROSTATIC_CUTOFF = 12.0f
         
-        #define BOND_K 1300.f // Harmonic force constant 
-        #define ANGLE_K 11000.0f // kJ/mol/rad² for angular potential
+        #define BOND_K 3000.f // Harmonic force constant 
+        #define ANGLE_K 13000.0f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
         #define M_PI 3.1415926535897932
@@ -111,7 +112,7 @@ namespace sim
                 if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 1.21f; // C=O
                 break;
             case fun::BondType::TRIPLE:
-                base * 0.7f; // Approximate 
+                base *= 0.7f; 
                 if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.20f; // C≡C
                 break;
             default:
@@ -178,7 +179,6 @@ namespace sim
             uint32_t atom2; // bonded to
             
             double equilibriumLength = 0.f;
-            double forceConstant = 0.f;
             BondType type;
         };
 
@@ -235,10 +235,12 @@ namespace sim
             float ljPot(size_t i, float epsilon, float sigma);
             sf::Vector2f ljGrad(size_t i);
             sf::Vector2f ljForce(size_t i, size_t j);
+            sf::Vector2f coulombForce(size_t i, size_t j, sf::Vector2f& dr_vec);
 
             void calcBondForces();
             void calcAngleForces();
             void calcLjForces();
+            void calcElectrostaticForces();
 
             float boxSize = 10.f;
             std::vector<atom> atoms;
@@ -249,6 +251,14 @@ namespace sim
 
             float temp = 0;
             size_t timeStep = 0;
+
+            // Helper Funcs
+            sf::Vector2f minImageVec(sf::Vector2f dr)
+            {
+                dr.x -= boxSize * std::round(dr.x / boxSize);
+                dr.y -= boxSize * std::round(dr.y / boxSize);
+                return dr;
+            }
         };
     } // namespace fun
 } // namespace sim

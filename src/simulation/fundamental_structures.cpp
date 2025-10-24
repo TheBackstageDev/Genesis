@@ -130,7 +130,7 @@ namespace sim
 
         void universe::boundCheck(atom& a)
         {
-            if (a.position.x < 0.f)
+            /* if (a.position.x < 0.f)
             {
                 a.position.x = 0.f;
                 a.velocity.x = -a.velocity.x;
@@ -150,9 +150,9 @@ namespace sim
             {
                 a.position.y = boxSize;
                 a.velocity.y = -a.velocity.y;
-            }
-            /* a.position.x = std::fmod(a.position.x + boxSize, boxSize);
-            a.position.y = std::fmod(a.position.y + boxSize, boxSize); */
+            } */
+            a.position.x = std::fmod(a.position.x + boxSize, boxSize);
+            a.position.y = std::fmod(a.position.y + boxSize, boxSize);
         }
 
         float universe::ljPot(size_t i, float epsilon_i, float sigma_i)
@@ -190,7 +190,7 @@ namespace sim
             const float epsilon_i = a1.epsilon;
             const float epsilon_j = a2.epsilon;
 
-            sf::Vector2f dr_vec = a1.position - a2.position;
+            sf::Vector2f dr_vec = minImageVec(a1.position - a2.position);
             float dr = dr_vec.length();
 
             const float sigma = (sigma_i + sigma_j) / 2.0f;
@@ -224,6 +224,22 @@ namespace sim
             return gradient;
         }
 
+        sf::Vector2f universe::coulombForce(size_t i, size_t j, sf::Vector2f& dr_vec)
+        {
+            const atom& a1 = atoms[i];
+            const atom& a2 = atoms[j];
+
+            float dr = dr_vec.length();
+
+            if (dr < EPSILON || dr > COULOMB_CUTOFF)
+                return {0.f, 0.f};
+
+            int8_t qq = a1.charge * a2.charge;
+            if (qq == 0.f) return {0.f, 0.f};
+
+            return COULOMB_K * (qq / (dr * dr)) * dr_vec; 
+        }
+
         void universe::calcBondForces()
         {
             for (size_t i = 0; i < bonds.size(); ++i)
@@ -232,7 +248,7 @@ namespace sim
 
                 size_t idx1 = bond.atom1;
                 size_t idx2 = bond.atom2;
-                sf::Vector2f r_vec = atoms[idx2].position - atoms[idx1].position;
+                sf::Vector2f r_vec = minImageVec(atoms[idx2].position - atoms[idx1].position);
                 float dr = r_vec.length();
                 if (dr <= EPSILON) return;
 
@@ -276,8 +292,8 @@ namespace sim
                         size_t idx_i = connectedIdxs[i];
                         size_t idx_k = connectedIdxs[k];
 
-                        sf::Vector2f r_ji = atoms[idx_i].position - atoms[j].position;
-                        sf::Vector2f r_jk = atoms[idx_k].position - atoms[j].position;
+                        sf::Vector2f r_ji = minImageVec(atoms[idx_i].position - atoms[j].position);
+                        sf::Vector2f r_jk = minImageVec(atoms[idx_k].position - atoms[j].position);
                         float r_ji_len = r_ji.length();
                         float r_jk_len = r_jk.length();
                         if (r_ji_len <= EPSILON || r_jk_len <= EPSILON) continue;
@@ -318,12 +334,32 @@ namespace sim
             }
         }
 
+        void universe::calcElectrostaticForces()
+        {
+            float cutoff2 = ELECTROSTATIC_CUTOFF * ELECTROSTATIC_CUTOFF;
+            for (size_t i = 0; i < atoms.size(); ++i)
+            {
+                for (size_t j = i + 1; j < atoms.size(); ++j)
+                {
+                    sf::Vector2f dr = minImageVec(atoms[j].position - atoms[i].position);
+                    float dr2 = dr.lengthSquared();
+
+                    if (dr2 > cutoff2 || dr2 < EPSILON * EPSILON) continue;
+
+                    sf::Vector2f force = coulombForce(i, j, dr);
+                    forces[i] += force;      
+                    forces[j] -= force;      
+                }
+            }
+        }
+
         void universe::update(float targetTemperature)
         {
             std::fill(forces.begin(), forces.end(), sf::Vector2f{0.f, 0.f});
             calcLjForces();    
             calcBondForces();
             calcAngleForces();
+            calcElectrostaticForces();
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
@@ -344,6 +380,7 @@ namespace sim
             calcLjForces();    
             calcBondForces();
             calcAngleForces();
+            calcElectrostaticForces();
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {

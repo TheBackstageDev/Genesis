@@ -42,7 +42,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 200.f;
+    size_t universeSize = 250.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -59,7 +59,7 @@ int main()
     
     std::vector<sf::Vector2f> oxygen_positions;
     
-    for (int i = 0; i < 30; ++i)
+    for (int i = 0; i < 100; ++i)
     {
         bool valid_position = false;
         float ox, oy;
@@ -75,7 +75,7 @@ int main()
                 float dx = ox - pos.x;
                 float dy = oy - pos.y;
                 float distance = std::sqrt(dx * dx + dy * dy);
-                if (distance < 20.0f) 
+                if (distance < 16.0f) 
                 {
                     valid_position = false;
                     break;
@@ -86,29 +86,22 @@ int main()
         oxygen_positions.push_back({ox, oy});
     
         size_t o_idx = universe.numAtoms();
-        universe.createAtom({ox, oy}, {static_cast<float>(vel(gen)), static_cast<float>(vel(gen))}, 8, 8);
+        universe.createAtom({ox, oy}, {0.f, 0.f}, 8, 8);
     
         float angle = -45.0f * RADIAN; 
         float bond_length = 8.0f;
     
         size_t h1_idx = universe.numAtoms();
-        universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle)}, {static_cast<float>(vel(gen)), static_cast<float>(vel(gen))}, 1);
+        universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle)}, {0.f, 0.f}, 1);
     
         size_t h2_idx = universe.numAtoms();
-        universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle)}, {static_cast<float>(vel(gen)), static_cast<float>(vel(gen))}, 1);
+        universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle)}, {0.f, 0.f}, 1);
     
         universe.createBond(o_idx, h1_idx);
         universe.createBond(o_idx, h2_idx);
     }
 
-    size_t carbonIndex = universe.numAtoms();
-    universe.createAtom({20.f, 100.f}, {1.f, 2.f}, 6, 6);
-    universe.createAtom({10.f, 100.f}, {0.f, 3.f}, 8, 8);
-    universe.createAtom({30.f, 100.f}, {0.f, -1.f}, 8, 8);
-    universe.createBond(universe.numAtoms() - 1, carbonIndex, sim::fun::BondType::DOUBLE);
-    universe.createBond(universe.numAtoms() - 2, carbonIndex, sim::fun::BondType::DOUBLE);
-
-    float targetTemp = 100.0f;
+    float targetTemp = 1.0f;
     
     while (window.isOpen())
     {
