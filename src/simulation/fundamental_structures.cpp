@@ -24,26 +24,17 @@ namespace sim
                 name_text.setScale({0.02f * radius, 0.02f * radius});
 
                 sf::FloatRect bounds = name_text.getLocalBounds();
-                name_text.setOrigin(bounds.size / 2.0f);
+                name_text.setOrigin(bounds.size);
 
                 name_text.setPosition(position * pixel_per_A);
 
                 window.draw(name_text);
-
-                return;
             }
 
             sf::CircleShape cloud(radius / 1.2);
             cloud.setPosition({position.x - radius, position.y - radius});
             cloud.setFillColor(sf::Color(50, 50, 255, 80));
             window.draw(cloud);
-
-            float nucleusRadius = 0.01f;
-            sf::CircleShape nucleus(nucleusRadius);
-            nucleus.setPosition(position);
-            nucleus.setFillColor(sf::Color::Red);
-
-            window.draw(nucleus);
         }
 
         universe::universe(float universeSize)
@@ -110,7 +101,8 @@ namespace sim
 
             atoms.emplace_back(std::move(newAtom));
 
-            prev_positions.resize(atoms.size());
+            prev_positions.reserve(atoms.size());
+            prev_positions.emplace_back(p);
             forces.resize(atoms.size());
         }
 
@@ -302,7 +294,7 @@ namespace sim
 
                         sf::Vector2f f_i = (force_magnitude / (r_ji_len * r_jk_len)) * (r_jk - cos_theta * r_ji);
                         sf::Vector2f f_k = (force_magnitude / (r_ji_len * r_jk_len)) * (r_ji - cos_theta * r_jk);
-                        sf::Vector2f f_j = -f_i - f_k;
+                        sf::Vector2f f_j = f_i - f_k;
 
                         forces[idx_i] += f_i;
                         forces[j] += f_j;
@@ -318,19 +310,6 @@ namespace sim
             {
                 for (size_t j = i + 1; j < atoms.size(); ++j)
                 {
-                    bool stopCalc{false};
-
-                    for (const bond& bond : bonds)
-                    {
-                        if ((bond.atom1 == j && bond.atom2 == i) || (bond.atom1 == i && bond.atom2 == j))
-                        {
-                            stopCalc = true;
-                        }
-                    }
-
-                    if (stopCalc)
-                        continue;
-
                     sf::Vector2f force = ljForce(i, j);
 
                     forces[i] += force;
@@ -348,15 +327,31 @@ namespace sim
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
+                prev_positions[i] = atoms[i].position;
+            }
+
+            for (size_t i = 0; i < atoms.size(); ++i)
+            {
                 atom& a = atoms[i];
                 if (a.mass <= 0) continue;
                 sf::Vector2f acc = forces[i] / a.mass;
-                a.position += a.velocity * DT + acc * DT;
-                boundCheck(a);
-                sf::Vector2f new_acc = forces[i] / a.mass;
-                a.velocity += 0.5f * DT * (acc + new_acc);
 
-                prev_positions[i] = a.position;
+                a.position = prev_positions[i] + a.velocity * DT + 0.5f * acc * DT * DT;
+                boundCheck(a);
+            }
+
+            std::fill(forces.begin(), forces.end(), sf::Vector2f{0.f, 0.f});
+            calcLjForces();    
+            calcBondForces();
+            calcAngleForces();
+
+            for (size_t i = 0; i < atoms.size(); ++i)
+            {
+                atom& a = atoms[i];
+                if (a.mass <= 0) continue;
+                sf::Vector2f acc = forces[i] / a.mass;
+
+                a.velocity += 0.5f * (acc + forces[i] / a.mass) * DT; 
             }
 
             if (timeStep % THERMOSTAT_INTERVAL == 0) {

@@ -30,10 +30,11 @@ namespace sim
         #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
         #define THERMOSTAT_INTERVAL 5
 
-        #define ANGLE_K 150.0f // kJ/mol/rad² for angular potential
         #define COULOMB_K (138.935455f / ANGSTROM) // kJ·mol⁻¹·Å·e⁻² (1/(4πε₀) in Å units)
-
-        #define BOND_K 100.f // Harmonic force constant 
+        #define ELECTROSTATIC_CUTOFF = 12.0f
+        
+        #define BOND_K 1300.f // Harmonic force constant 
+        #define ANGLE_K 11000.0f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
         #define M_PI 3.1415926535897932
