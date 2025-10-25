@@ -11,6 +11,8 @@ namespace sim
     {
         void atom::draw(core::window_t& window, bool letter)
         {
+            sf::Vector2f posVec{position.x + radius, position.y + radius};
+
             if (letter)
             {
                 auto& font = window.getFont();
@@ -24,20 +26,19 @@ namespace sim
                 name_text.setScale({0.02f * radius, 0.02f * radius});
 
                 sf::FloatRect bounds = name_text.getLocalBounds();
-                name_text.setOrigin(bounds.size);
+                name_text.setOrigin(bounds.size * 2.0f);
 
-                name_text.setPosition(position * pixel_per_A);
+                name_text.setPosition(posVec);
 
                 window.draw(name_text);
             }
 
-            if (charge != 0.f && std::abs(charge) > 1.3f)
+            if (charge != 0.f && std::abs(charge) > 0.5f)
             {
                 bool cation = charge > 0.f;
 
                 sf::Text ion_text;
                 auto& font = window.getFont(); 
-
                 
                 ion_text.setFont(font);
                 ion_text.setString(cation ? "+" : "-");
@@ -45,14 +46,14 @@ namespace sim
                 ion_text.setScale({0.02f * radius, 0.02f * radius});
 
                 sf::FloatRect bounds = ion_text.getLocalBounds();
-                ion_text.setOrigin(bounds.size / 2.0f); 
-                ion_text.setPosition(position * pixel_per_A + sf::Vector2f(0.f, -radius / 2.f));
+                ion_text.setOrigin(bounds.size); 
+                ion_text.setPosition(posVec * pixel_per_A + sf::Vector2f(0.f, -radius / 1.5f ));
 
                 window.draw(ion_text);
             }
 
-            sf::CircleShape cloud(radius / 1.2);
-            cloud.setPosition({position.x - radius, position.y - radius});
+            sf::CircleShape cloud(radius / 2.0f);
+            cloud.setPosition({position.x, position.y});
             cloud.setFillColor(sf::Color(50, 50, 255, 80));
             window.draw(cloud);
         }
@@ -98,6 +99,11 @@ namespace sim
         }
 
         void universe::drawDebug(core::window_t& window)
+        {
+
+        }
+
+        void universe::log(size_t step)
         {
 
         }
@@ -149,9 +155,9 @@ namespace sim
             float EN2 = constants::electronegativity.at(atoms[idx2].ZIndex);
             float deltaEN = std::abs(EN1 - EN2);
 
-            if (deltaEN > 0.2f) // Significant electronegativity difference
+            if (deltaEN > 0.4f) // Significant electronegativity difference
             {
-                float charge = deltaEN * 0.5f; 
+                float charge = deltaEN; 
 
                 if (EN1 > EN2) 
                 {
@@ -160,7 +166,7 @@ namespace sim
                 }
                 else 
                 {
-                    atoms[idx2].charge -= charge ;
+                    atoms[idx2].charge -= charge;
                     atoms[idx1].charge += charge;
                 }
             }
@@ -169,6 +175,35 @@ namespace sim
             ++atoms[idx2].bondCount;
 
             bonds.emplace_back(std::move(nBond));
+        }
+
+        size_t universe::createSubset(const size_t central, const size_t subsetNext, const std::vector<std::pair<size_t, size_t>>& bonds, const std::vector<fun::BondType>& bondTypes)
+        {
+            subset nSubset{};
+            nSubset.mainAtomIdx = central;
+            nSubset.connectedSubsetIdx = subsetNext;
+            
+            std::vector<size_t> connected;
+            std::vector<uint8_t> neighbourZs;
+            connected.reserve(bonds.size());
+            neighbourZs.reserve(bonds.size());
+
+            for (size_t i = 0; i < bonds.size(); ++i)
+            {
+                const auto& pair = bonds[i];
+                fun::BondType type = bondTypes[i];
+
+                createBond(pair.first, pair.second, type);
+                connected.emplace_back(pair.first); // first = connecting, second = connected to
+                neighbourZs.emplace_back(atoms[pair.first].ZIndex);
+            }   
+
+            nSubset.connectedIdx = std::move(connected);
+            nSubset.idealAngle = constants::getAngles(central, neighbourZs, bondTypes);
+
+            subsets.emplace_back(std::move(nSubset));
+
+            return subsets.size() - 1; // Index
         }
 
         void universe::balanceMolecularCharges()
@@ -378,6 +413,10 @@ namespace sim
             {
                 for (size_t j = i + 1; j < atoms.size(); ++j)
                 {
+                    const float sigma = (atoms[i].sigma + atoms[j].sigma) / 2.0f;
+                    sf::Vector2f r = minImageVec(atoms[i].position - atoms[j].position);
+                    if (areBonded(i, j) && r.length() < CUTOFF * sigma) continue;
+
                     sf::Vector2f force = ljForce(i, j);
 
                     forces[i] += force;
@@ -393,6 +432,8 @@ namespace sim
             {
                 for (size_t j = i + 1; j < atoms.size(); ++j)
                 {
+                    if (areBonded(i, j)) continue; // Skip electrostatics for bonded atoms
+
                     sf::Vector2f dr = minImageVec(atoms[j].position - atoms[i].position);
                     float dr2 = dr.lengthSquared();
 

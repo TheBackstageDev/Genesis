@@ -17,26 +17,23 @@ namespace sim
         #define MASS_PROTON 1.007 // Daltons
         #define MASS_NEUTRON 1.008 // Daltons
         #define MASS_ELECTRON 1/1337 // Daltons
+
         #define EPSILON 0.1f 
-        #define DT 0.005f // ps
+        #define DT 0.01f // ps
+        #define MULT_FACTOR 5.f
         #define ANGSTROM 1e20f
         #define PICOSECOND 1e24f
-
-        #define LJ_EPSILON_H 4.36f
-        #define LJ_SIGMA_H 0.74f 
-
-        #define MULT_FACTOR 5.f
         
         #define CUTOFF 2.5f
-        #define COULOMB_CUTOFF 15.f * MULT_FACTOR
-        #define ELECTROSTATIC_CUTOFF 10.0f * MULT_FACTOR
+        #define COULOMB_CUTOFF 10.f * MULT_FACTOR
+        #define ELECTROSTATIC_CUTOFF 5.0f * MULT_FACTOR
 
         #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
         #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
         #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
-        #define THERMOSTAT_INTERVAL 5
+        #define THERMOSTAT_INTERVAL 1
 
-        #define COULOMB_K 1389.3546f // kJ·mol⁻¹·Å·e⁻²
+        #define COULOMB_K 1389.3546f * MULT_FACTOR // kJ·mol⁻¹· Å * 1/5 ·e⁻²
         
         #define BOND_K 2000.f // Harmonic force constant 
         #define ANGLE_K 12000.0f // kJ/mol/rad² for angular potential
@@ -45,48 +42,47 @@ namespace sim
         #define M_PI 3.1415926535897932
         #define RADIAN M_PI / 180
 
-
         inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
         {
             std::pair<float, float> constants; // Sigma (Å), Epsilon (kJ/mol)
             switch (ZIndex)
             {
                 case 1:  // H
-                    constants = {LJ_SIGMA_H, LJ_EPSILON_H}; break;
+                    constants = {2.50f, 0.1255f}; break;
                 case 2:  // He
-                    constants = {0.80f, 1.20f}; break;
+                    constants = {2.58f, 0.0870f}; break;
                 case 3:  // Li
-                    constants = {1.20f, 6.02f}; break;
+                    constants = {1.82f, 0.1100f}; break;
                 case 4:  // Be
-                    constants = {1.10f, 4.82f}; break;
+                    constants = {2.75f, 0.2510f}; break;
                 case 5:  // B
-                    constants = {1.50f, 3.61f}; break;
+                    constants = {3.64f, 0.3347f}; break;
                 case 6:  // C
-                    constants = {1.70f, 3.01f}; break;
+                    constants = {3.55f, 0.2929f}; break;
                 case 7:  // N
-                    constants = {1.60f, 2.71f}; break;
+                    constants = {3.25f, 0.7113f}; break;
                 case 8:  // O
-                    constants = {1.50f, 2.89f}; break;
+                    constants = {3.03f, 0.7113f}; break;
                 case 9:  // F
-                    constants = {1.40f, 3.13f}; break;
+                    constants = {2.95f, 0.6276f}; break;
                 case 10: // Ne
-                    constants = {0.90f, 1.81f}; break;
+                    constants = {2.78f, 0.1632f}; break;
                 case 11: // Na
-                    constants = {2.00f, 0.52f}; break;
+                    constants = {2.43f, 0.4184f}; break;
                 case 12: // Mg
-                    constants = {1.80f, 1.10f}; break;
+                    constants = {3.43f, 0.4184f}; break;
                 case 13: // Al
-                    constants = {2.10f, 2.45f}; break;
+                    constants = {4.01f, 0.5021f}; break;
                 case 14: // Si
-                    constants = {2.10f, 2.49f}; break;
+                    constants = {3.83f, 0.8368f}; break;
                 case 15: // P
-                    constants = {1.80f, 2.10f}; break;
+                    constants = {3.74f, 0.8368f}; break;
                 case 16: // S
-                    constants = {1.80f, 2.08f}; break;
+                    constants = {3.56f, 1.0460f}; break;
                 case 17: // Cl
-                    constants = {1.75f, 2.50f}; break;
+                    constants = {3.47f, 1.2552f}; break;
                 default:
-                    constants = {LJ_SIGMA_H, LJ_EPSILON_H}; // Default to H
+                    constants = {2.50f, 0.1255f}; // Default to H
             }
             constants.first *= MULT_FACTOR;
             constants.second *= MULT_FACTOR;
@@ -147,40 +143,31 @@ namespace sim
             switch (type)
             {
                 case fun::BondType::SINGLE:
-                    if ((ZIndex1 == 6 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 6)) base = 1.09f; // C-H
-                    if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8)) base = 0.96f; // O-H
-                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.54f; // C-C
-                    if ((ZIndex1 == 7 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 7)) base = 1.01f; // N-H
-                    if ((ZIndex1 == 16 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 16)) base = 1.34f; // S-H
-                    if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17)) base = 1.27f; // Cl-H
-                    if ((ZIndex1 == 17 && ZIndex2 == 11) || (ZIndex1 == 11 && ZIndex2 == 17)) base = 2.82f; // Na-Cl
+                    if ((ZIndex1 == 6 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 6)) base = 5.45f; // C-H
+                    if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8)) base = 4.80f; // O-H
+                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 7.70f; // C-C
+                    if ((ZIndex1 == 7 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 7)) base = 5.05f; // N-H
+                    if ((ZIndex1 == 16 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 16)) base = 6.70f; // S-H
+                    if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17)) base = 6.35f; // Cl-H
+                    if ((ZIndex1 == 17 && ZIndex2 == 11) || (ZIndex1 == 11 && ZIndex2 == 17)) base = 14.10f; // Na-Cl
                     break;
                 case fun::BondType::DOUBLE:
                     base *= 0.8f;
-                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.34f; // C=C
-                    if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 1.21f; // C=O
-                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 1.20f; // N=N
-                    if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 2.05f; // S=S
+                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 6.70f; // C=C
+                    if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 6.05f; // C=O
+                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 6.00f; // N=N
+                    if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 10.25f; // S=S
                     break;
                 case fun::BondType::TRIPLE:
                     base *= 0.7f;
-                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.20f; // C≡C
-                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 1.10f; // N≡N
+                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 6.00f; // C≡C
+                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 5.50f; // N≡N
                     break;
                 default:
                     break;
             }
 
-            return base * MULT_FACTOR;
-        }
-
-        inline std::pair<float, float> getPartialCharges(uint8_t Z1, uint8_t Z2, fun::BondType type)
-        {
-            if ((Z1 == 8 && Z2 == 1) || (Z1 == 1 && Z2 == 8)) // O-H bond
-            {
-                return (type == fun::BondType::SINGLE) ? std::make_pair(-1.2f, 0.6f) : std::make_pair(0.0f, 0.0f); // O: -1.2e, H: +0.6e
-            }
-            return std::make_pair(0.0f, 0.0f);
+            return base;
         }
 
         inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t>& neighborZs, const std::vector<fun::BondType>& types)
@@ -255,12 +242,15 @@ namespace sim
         struct subset
         {
             size_t mainAtomIdx;              
+            size_t connectedSubsetIdx = -1;       // Index of the next subset (optional, max(size_t) if none)
             std::vector<size_t> connectedIdx; // connected to the main atom
             float idealAngle;                // In radians
-            size_t connectedSubsetIdx;       // Index of the next subset (optional, max(size_t) if none)
-            subset(size_t mainIdx, const std::vector<size_t>& connIdx, float angle, size_t connSubset = -1)
-                : mainAtomIdx(mainIdx), connectedIdx(connIdx), idealAngle(angle), connectedSubsetIdx(connSubset) {}
         };
+
+        /* struct molecule
+        {
+            std::vector<subset> subsets;
+        }; */
 
         struct atom
         {
@@ -289,8 +279,10 @@ namespace sim
             ~universe() = default;
 
             size_t createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
-            void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
+            size_t createSubset(const size_t central, const size_t subsetNext, const std::vector<std::pair<size_t, size_t>>& bonds, const std::vector<fun::BondType>& bondTypes);
+            //size_t createMolecule(std::vector<subset> subsets);
 
+            void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges();
 
             void update(float targetTemperature = 1.0f);
@@ -301,6 +293,8 @@ namespace sim
 
             float temperature() { return temp; }
             float timestep() { return timeStep; }
+
+            void log(size_t step = 100);
 
         private:
             void boundCheck(atom &a);
@@ -315,8 +309,24 @@ namespace sim
             void calcLjForces();
             void calcElectrostaticForces();
 
+            bool areBonded(size_t i, size_t j) 
+            {
+                for (const auto& bond : bonds)
+                {
+                    if ((bond.atom1 == i && bond.atom2 == j) || (bond.atom1 == j && bond.atom2 == i))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             float boxSize = 10.f;
             std::vector<atom> atoms;
+            std::vector<subset> subsets;
+            //std::vector<molecule> molecules;
+
             std::vector<bond> bonds;
 
             std::vector<sf::Vector2f> forces;
