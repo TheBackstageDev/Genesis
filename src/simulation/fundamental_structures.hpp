@@ -5,7 +5,9 @@
 #include "core/window.hpp"
 #include <vector>
 #include <map>
+#include <set>
 
+#include <chrono>
 #include <algorithm>
 
 namespace sim
@@ -24,23 +26,24 @@ namespace sim
         #define ANGSTROM 1e20f
         #define PICOSECOND 1e24f
         
+        #define VERLET_SKIN 2.f
         #define CUTOFF 2.5f
         #define COULOMB_CUTOFF 10.f * MULT_FACTOR
-        #define ELECTROSTATIC_CUTOFF 5.0f * MULT_FACTOR
+        #define ELECTROSTATIC_CUTOFF 10.f * MULT_FACTOR
 
         #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
         #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
         #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
-        #define THERMOSTAT_INTERVAL 1
+        #define THERMOSTAT_INTERVAL 5
 
-        #define COULOMB_K 1389.3546f * MULT_FACTOR // kJ·mol⁻¹· Å * 1/5 ·e⁻²
-        
-        #define BOND_K 2000.f // Harmonic force constant 
-        #define ANGLE_K 12000.0f // kJ/mol/rad² for angular potential
+        #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å * 1/5 ·e⁻²
+        #define BOND_K 1500.f // Harmonic force constant 
+        #define ANGLE_K 10000.f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
-        #define M_PI 3.1415926535897932
+        #define M_PI 3.141592653589
         #define RADIAN M_PI / 180
+        #define DEGREE 180 / M_PI
 
         inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
         {
@@ -139,32 +142,45 @@ namespace sim
         inline float getBondLength(uint8_t ZIndex1, uint8_t ZIndex2, fun::BondType type)
         {
             float base = (getAtomConstants(ZIndex1).first + getAtomConstants(ZIndex2).first) / 2.0f * BOND_LENGTH_FACTOR;
+            const float baseBase = base;
 
             switch (type)
             {
                 case fun::BondType::SINGLE:
-                    if ((ZIndex1 == 6 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 6)) base = 5.45f; // C-H
-                    if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8)) base = 4.80f; // O-H
-                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 7.70f; // C-C
-                    if ((ZIndex1 == 7 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 7)) base = 5.05f; // N-H
-                    if ((ZIndex1 == 16 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 16)) base = 6.70f; // S-H
-                    if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17)) base = 6.35f; // Cl-H
-                    if ((ZIndex1 == 17 && ZIndex2 == 11) || (ZIndex1 == 11 && ZIndex2 == 17)) base = 14.10f; // Na-Cl
+                    if ((ZIndex1 == 6 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 6)) base = 1.29f; // C-H 
+                    if ((ZIndex1 == 8 && ZIndex2 == 6) || (ZIndex1 == 6 && ZIndex2 == 8)) base = 1.12f; // C-O 
+                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.74f; // C-C 
+                    if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6)) base = 1.47f; // C-N 
+                    if ((ZIndex1 == 6 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 6)) base = 1.81f; // C-S
+                    if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8)) base = 0.96f; // O-H 
+                    if ((ZIndex1 == 16 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 16)) base = 1.34f; // S-H 
+                    if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17)) base = 1.27f; // Cl-H 
+                    if ((ZIndex1 == 7 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 7)) base = 1.01f; // N-H 
+                    if ((ZIndex1 == 7 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 7)) base = 1.40f; // N-O 
+                    if ((ZIndex1 == 9 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 9)) base = 0.93f; // F-H
                     break;
                 case fun::BondType::DOUBLE:
                     base *= 0.8f;
-                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 6.70f; // C=C
-                    if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 6.05f; // C=O
-                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 6.00f; // N=N
-                    if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 10.25f; // S=S
+                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.34f; // C=C 
+                    if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 1.21f; // C=O
+                    if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6)) base = 1.38f; // C=N
+                    if ((ZIndex1 == 6 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 6)) base = 1.71f; // C=S
+                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 1.20f; // N=N 
+                    if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 2.05f; // S=S 
                     break;
                 case fun::BondType::TRIPLE:
                     base *= 0.7f;
-                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 6.00f; // C≡C
-                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 5.50f; // N≡N
+                    if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.20f; // C≡C 
+                    if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6)) base = 1.16f; // C≡N 
+                    if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 1.10f; // N≡N
                     break;
                 default:
                     break;
+            }
+
+            if (baseBase != base) // Has passed through one of the IF's
+            {
+                base *= MULT_FACTOR;
             }
 
             return base;
@@ -175,19 +191,19 @@ namespace sim
             size_t bond_count = neighborZs.size();
             if (bond_count < 2) return 0.0f; // No angle if fewer than 2 neighbors
 
-            uint8_t valence = getValenceElectrons(centralZIndex);
-            uint8_t bonding_electrons = 0;
+            uint32_t valence = getValenceElectrons(centralZIndex);
+            uint32_t bonding_electrons = 0;
             for (const auto& type : types)
             {
                 bonding_electrons += (type == fun::BondType::SINGLE ? 2 : (type == fun::BondType::DOUBLE ? 4 : 6));
             }
-            uint8_t lone_pairs = (valence - (bonding_electrons / 2)) / 2; // Approximate lone pairs
-            uint8_t total_pairs = bond_count + lone_pairs;
+            uint32_t lone_pairs = (valence - (bonding_electrons / 2)) / 2; // Approximate lone pairs
+            uint32_t total_pairs = bond_count + lone_pairs;
             float ideal_angle = 0.0f;
 
             switch (total_pairs)
             {
-                case 2: ideal_angle = 180.0f * RADIAN; break; // Linear
+                case 2: ideal_angle = M_PI; break; // Linear
                 case 3: ideal_angle = 120.0f * RADIAN; break; // Trigonal planar
                 case 4:
                     ideal_angle = 109.5f * RADIAN; // Tetrahedral base
@@ -232,8 +248,8 @@ namespace sim
     namespace fun
     {
         struct bond {
-            uint32_t atom1; 
-            uint32_t atom2; // bonded to
+            uint32_t bondedAtom; 
+            uint32_t centralAtom; 
             
             double equilibriumLength = 0.f;
             BondType type;
@@ -242,20 +258,15 @@ namespace sim
         struct subset
         {
             size_t mainAtomIdx;              
-            size_t connectedSubsetIdx = -1;       // Index of the next subset (optional, max(size_t) if none)
+            size_t bondedSubsetIdx = SIZE_MAX;       // Index of the last subset (optional, max(size_t) if none)
+            size_t bondingSubsetIdx = SIZE_MAX;      // Index of the next subset (optional, max(size_t) if none)
             std::vector<size_t> connectedIdx; // connected to the main atom
+            std::vector<BondType> bondTypes;
             float idealAngle;                // In radians
         };
 
-        /* struct molecule
-        {
-            std::vector<subset> subsets;
-        }; */
-
         struct atom
         {
-            sf::Vector2f position; 
-            sf::Vector2f velocity; 
             float mass;            
             float radius;
 
@@ -269,7 +280,36 @@ namespace sim
             uint8_t NCount; // neutrons
             int8_t bondCount;
 
-            void draw(core::window_t &window, bool letterMode);
+            void draw(sf::Vector2f& pos, core::window_t &window, bool letterMode);
+        };
+
+        // Molecule-Structure related
+
+        struct def_atom
+        {
+            uint8_t ZIndex;
+            uint8_t NIndex;
+            int8_t charge = 0; // non-Zero for ions 
+        };
+
+        struct def_bond {
+            size_t bondingAtomIdx;   
+            size_t centralAtomIdx;  
+        };
+
+        struct def_subset {
+            size_t mainAtomIdx;      
+            size_t bondedSubset;
+            size_t bondingSubset;
+            std::vector<size_t> connectedIdx; 
+        };
+
+        struct molecule_structure 
+        {
+            std::vector<def_atom> atoms;
+            std::vector<def_subset> subsets;
+            std::vector<def_bond> bonds;
+            std::vector<BondType> bondTypes;
         };
 
         class universe
@@ -279,25 +319,27 @@ namespace sim
             ~universe() = default;
 
             size_t createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
-            size_t createSubset(const size_t central, const size_t subsetNext, const std::vector<std::pair<size_t, size_t>>& bonds, const std::vector<fun::BondType>& bondTypes);
-            //size_t createMolecule(std::vector<subset> subsets);
+            size_t createSubset(const size_t central, const size_t subsetNext, const size_t subsetLast, const std::vector<size_t>& bonds, const std::vector<fun::BondType>& bondTypes);
+            void createMolecule(const molecule_structure& structure, sf::Vector2f pos);
 
             void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
-            void balanceMolecularCharges();
+            void balanceMolecularCharges(subset& mol);
+
+            void linkSubset(size_t subset, size_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
             void update(float targetTemperature = 1.0f);
             void draw(core::window_t &window, bool letter = false);
             void drawDebug(core::window_t& window);
 
             size_t numAtoms() { return atoms.size(); }
+            const subset& getSubset(size_t index) { return subsets[index]; }
 
             float temperature() { return temp; }
             float timestep() { return timeStep; }
 
             void log(size_t step = 100);
-
         private:
-            void boundCheck(atom &a);
+            void boundCheck(size_t i);
 
             float ljPot(size_t i, float epsilon, float sigma);
             sf::Vector2f ljGrad(size_t i);
@@ -308,12 +350,16 @@ namespace sim
             void calcAngleForces();
             void calcLjForces();
             void calcElectrostaticForces();
+            
+            // Molecule Creation
+            void organizeMolecule(const molecule_structure& structure, const sf::Vector2f& initPos);
+            void positionMolecule(size_t firstSubsetIndex);
 
             bool areBonded(size_t i, size_t j) 
             {
                 for (const auto& bond : bonds)
                 {
-                    if ((bond.atom1 == i && bond.atom2 == j) || (bond.atom1 == j && bond.atom2 == i))
+                    if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
                     {
                         return true;
                     }
@@ -322,14 +368,31 @@ namespace sim
                 return false;
             }
 
+            bool areOnSameSubset(size_t i, size_t j)
+            {
+                for (const auto& subset : subsets)
+                {
+                    bool i_onSub = std::find(subset.connectedIdx.begin(), subset.connectedIdx.end(), i) != subset.connectedIdx.end();
+                    bool j_onSub = std::find(subset.connectedIdx.begin(), subset.connectedIdx.end(), j) != subset.connectedIdx.end();
+                    if (i_onSub && j_onSub)
+                        return true;
+
+                    if (i_onSub && subset.mainAtomIdx == j || j_onSub && subset.mainAtomIdx == i)
+                        return true;
+                }
+
+                return false;
+            }
+
             float boxSize = 10.f;
             std::vector<atom> atoms;
             std::vector<subset> subsets;
-            //std::vector<molecule> molecules;
 
             std::vector<bond> bonds;
 
             std::vector<sf::Vector2f> forces;
+            std::vector<sf::Vector2f> positions;
+            std::vector<sf::Vector2f> velocities;
             std::vector<sf::Vector2f> prev_positions;
 
             float temp = 0;
