@@ -43,7 +43,7 @@ namespace sim
 
                 sf::FloatRect bounds = ion_text.getLocalBounds();
                 ion_text.setOrigin(bounds.getCenter());
-                ion_text.setPosition(pos + sf::Vector2f(0.f, -radius * 0.6f));
+                ion_text.setPosition(pos + sf::Vector2f(0.f, -radius * 0.3f));
                 window.draw(ion_text);
             }
 
@@ -127,8 +127,6 @@ namespace sim
 
             atoms.emplace_back(std::move(newAtom));
 
-            prev_positions.reserve(atoms.size());
-            prev_positions.emplace_back(p);
             forces.resize(atoms.size());
 
             return atoms.size() - 1;
@@ -192,7 +190,10 @@ namespace sim
             {
                 if (subsetLast != SIZE_MAX && bonds[i] == subsetLast) createBond(bonds[i], central, bondTypes[i]);
                 else createBond(bonds[i], central, bondTypes[i]);
+
+                if (bonds[i] != subsetLast && bonds[i] != subsetNext)
                 connected.emplace_back(bonds[i]); // first = connecting, second = connected to
+
                 neighbourZs.emplace_back(atoms[bonds[i]].ZIndex);
             }   
             
@@ -264,21 +265,15 @@ namespace sim
         {
             const float mult_factor = MULT_FACTOR;
             sf::Vector2f lastSubsetPos{positions[subsets[firstSubsetIndex].mainAtomIdx]};
-
-            std::vector<size_t> mainAtoms{};
-            for (size_t s = firstSubsetIndex; s < subsets.size(); ++s)
-            {
-                mainAtoms.emplace_back(subsets[s].mainAtomIdx);
-            }
             
             for (size_t s = firstSubsetIndex; s < subsets.size(); ++s)
             {
                 const subset& sub = subsets[s];
                 size_t mainAtomIdx = sub.mainAtomIdx;
                 
-                sf::Vector2f mainAtomPos{positions[mainAtomIdx].x, positions[mainAtomIdx].y}; 
+                sf::Vector2f mainAtomPos{positions[mainAtomIdx].x + 0.01f, positions[mainAtomIdx].y}; 
                 sf::Vector2f direction = (s > firstSubsetIndex) ? (mainAtomPos - lastSubsetPos).normalized() : sf::Vector2f(1.0f, 0.0f);
-                sf::Vector2f perpendicular = sf::Vector2f(-direction.y, direction.x);
+                sf::Vector2f perpendicular = -direction.perpendicular();
                 
                 positions[mainAtomIdx] = mainAtomPos;
 
@@ -286,12 +281,9 @@ namespace sim
                 for (size_t n = 0; n < sub.connectedIdx.size(); ++n)
                 {
                     size_t neighbour = sub.connectedIdx[n];
-                    if (neighbour == sub.bondingSubsetIdx || neighbour == sub.bondedSubsetIdx)
-                    {
-                        sf::Vector2f neighborDir = (direction * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
-                        positions[neighbour] = mainAtomPos + neighborDir;
-                        angleOffset += sub.idealAngle; 
-                    }
+                    sf::Vector2f neighborDir = (direction * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
+                    positions[neighbour] = mainAtomPos + neighborDir;
+                    angleOffset += sub.idealAngle; 
                 }
                 
                 if (sub.bondedSubsetIdx != SIZE_MAX)
@@ -320,12 +312,7 @@ namespace sim
                         for (size_t n = 0; n < nextSub.connectedIdx.size(); ++n)
                         {
                             size_t neighbour = nextSub.connectedIdx[n];
-                            if (neighbour != nextSub.bondingSubsetIdx && neighbour != nextSub.bondedSubsetIdx)
-                            {
-                                sf::Vector2f newPos = positions[nextMainAtomIdx] + perpendicular * 1.2f;
-
-                                positions[neighbour] = newPos;
-                            }
+                            positions[neighbour] = positions[nextMainAtomIdx] + perpendicular * 1.2f;;
                         }
 
                         nextIdx = nextSub.bondedSubsetIdx;
@@ -573,12 +560,12 @@ namespace sim
 
         void universe::calcElectrostaticForces()
         {
-            float cutoff2 = ELECTROSTATIC_CUTOFF * ELECTROSTATIC_CUTOFF;
+            float cutoff2 = COULOMB_CUTOFF * COULOMB_CUTOFF;
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 for (size_t j = i + 1; j < atoms.size(); ++j)
                 {
-                    if (areOnSameSubset(i, j)) continue; // Skip electrostatics for bonded atoms
+                    if (areBonded(i, j)) continue; // Skip electrostatics for bonded atoms
 
                     sf::Vector2f dr = minImageVec(positions[j] - positions[i]);
                     float dr2 = dr.lengthSquared();
@@ -602,16 +589,11 @@ namespace sim
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                prev_positions[i] = positions[i];
-            }
-
-            for (size_t i = 0; i < atoms.size(); ++i)
-            {
                 atom& a = atoms[i];
                 if (a.mass <= 0) continue;
                 sf::Vector2f acc = forces[i] / a.mass;
 
-                positions[i] = prev_positions[i] + velocities[i] * DT + 0.5f * acc * DT * DT;
+                positions[i] += velocities[i] * DT + 0.5f * acc * DT * DT;
                 boundCheck(i);
             }
 

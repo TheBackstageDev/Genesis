@@ -44,7 +44,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 400.f;
+    size_t universeSize = 300.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -58,43 +58,6 @@ int main()
     
     std::vector<sf::Vector2f> oxygen_positions;
 
-    for (int i = 0; i < 0; ++i)
-    {
-        bool valid_position = false;
-        float ox, oy;
-    
-        while (!valid_position)
-        {
-            ox = dis(gen);
-            oy = dis(gen);
-            valid_position = true;
-    
-            for (const auto& pos : oxygen_positions)
-            {
-                float dx = ox - pos.x;
-                float dy = oy - pos.y;
-                float distance = std::sqrt(dx * dx + dy * dy);
-                if (distance < 25.0f) 
-                {
-                    valid_position = false;
-                    break;
-                }
-            }
-        }
-    
-        oxygen_positions.push_back({ox, oy});
-    
-        size_t o_idx = universe.createAtom({ox, oy}, {0.f, 0.f}, 8, 8, 8);
-    
-        float angle = -45.0f * RADIAN; 
-        float bond_length = 8.0f;
-    
-        size_t h1_idx = universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle)}, {1.f, 0.f}, 1);
-        size_t h2_idx = universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle)}, {0.f, 1.f}, 1);
-    
-        universe.createSubset(o_idx, -1, -1, {h1_idx, h2_idx}, {sim::fun::BondType::SINGLE, sim::fun::BondType::SINGLE});
-    }
-    
     sim::fun::molecule_structure benzene{};
     benzene.atoms = {
         {6, 6, 0}, // C1
@@ -151,7 +114,44 @@ int main()
         {5, 0, 4, {11}}  // C6 subset
     };
 
-    universe.createMolecule(benzene, {200.5f, 20.5f});
+    //universe.createMolecule(benzene, {50.5f, 60.5f});
+
+    for (int i = 0; i < 100; ++i)
+    {
+        bool valid_position = false;
+        float ox, oy;
+    
+        while (!valid_position)
+        {
+            ox = dis(gen);
+            oy = dis(gen);
+            valid_position = true;
+    
+            for (const auto& pos : oxygen_positions)
+            {
+                float dx = ox - pos.x;
+                float dy = oy - pos.y;
+                float distance = std::sqrt(dx * dx + dy * dy);
+                if (distance < 18.0f) 
+                {
+                    valid_position = false;
+                    break;
+                }
+            }
+        }
+    
+        oxygen_positions.push_back({ox, oy});
+    
+        size_t o_idx = universe.createAtom({ox, oy}, {0.f, 0.f}, 8, 8, 8);
+    
+        float angle = -45.0f * RADIAN; 
+        float bond_length = 8.0f;
+    
+        size_t h1_idx = universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle)}, {1.f, 0.f}, 1);
+        size_t h2_idx = universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle)}, {0.f, 1.f}, 1);
+    
+        universe.createSubset(o_idx, -1, -1, {h1_idx, h2_idx}, {sim::fun::BondType::SINGLE, sim::fun::BondType::SINGLE});
+    }
 
     float targetTemp = 100.0f;
 
@@ -168,7 +168,7 @@ int main()
             auto end_time = std::chrono::steady_clock::now();
             auto duration = end_time - start_time;
             double delta_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            //std::cout << delta_time_ms << "ms" << std::endl;
+            std::cout << delta_time_ms << "ms" << std::endl;
         }
         else
         {

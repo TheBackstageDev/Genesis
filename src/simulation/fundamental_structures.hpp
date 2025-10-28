@@ -29,7 +29,6 @@ namespace sim
         #define VERLET_SKIN 2.f
         #define CUTOFF 2.5f
         #define COULOMB_CUTOFF 10.f * MULT_FACTOR
-        #define ELECTROSTATIC_CUTOFF 10.f * MULT_FACTOR
 
         #define AVOGADRO 6.02214076e26f // conversion from Daltons to Kg
         #define BOLTZMAN_CONSTANT 1.380649e-23f // Boltzman Constant m^2 kg s^-2 K^-1
@@ -38,10 +37,10 @@ namespace sim
 
         #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å * 1/5 ·e⁻²
         #define BOND_K 1500.f // Harmonic force constant 
-        #define ANGLE_K 10000.f // kJ/mol/rad² for angular potential
+        #define ANGLE_K 15000.f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
-        #define M_PI 3.141592653589
+        #define M_PI 3.1415926535
         #define RADIAN M_PI / 180
         #define DEGREE 180 / M_PI
 
@@ -393,7 +392,6 @@ namespace sim
             std::vector<sf::Vector2f> forces;
             std::vector<sf::Vector2f> positions;
             std::vector<sf::Vector2f> velocities;
-            std::vector<sf::Vector2f> prev_positions;
 
             float temp = 0;
             size_t timeStep = 0;
