@@ -66,43 +66,27 @@ int main()
         {6, 6, 0}, // C4
         {6, 6, 0}, // C5
         {6, 6, 0}, // C6
-        {1, 1, 0}, // H1
-        {1, 1, 0}, // H2
-        {1, 1, 0}, // H3
-        {1, 1, 0}, // H4
-        {1, 1, 0}, // H5
-        {1, 1, 0}  // H6
+        {1, 0, 0}, // H1
+        {1, 0, 0}, // H2
+        {1, 0, 0}, // H3
+        {1, 0, 0}, // H4
+        {1, 0, 0}, // H5
+        {1, 0, 0}  // H6
     };
     benzene.bonds = {
-        {6, 0},  // H1 to C1
-        {7, 1},  // H2 to C2
-        {8, 2},  // H3 to C3
-        {9, 3},  // H4 to C4
-        {10, 4}, // H5 to C5
-        {11, 5}, // H6 to C6
+        {6, 0, sim::fun::BondType::SINGLE},  // H1 to C1
+        {7, 1, sim::fun::BondType::SINGLE},  // H2 to C2
+        {8, 2, sim::fun::BondType::SINGLE},  // H3 to C3
+        {9, 3, sim::fun::BondType::SINGLE},  // H4 to C4
+        {10, 4, sim::fun::BondType::SINGLE}, // H5 to C5
+        {11, 5, sim::fun::BondType::SINGLE}, // H6 to C6
         // C-C bonds (adjacent carbons)
-        {1, 0},  // C2 to C1
-        {2, 1},  // C3 to C2
-        {3, 2},  // C4 to C3
-        {4, 3},  // C5 to C4
-        {5, 4},  // C6 to C5
-        {0, 5}   // C1 to C6 (closes the ring)
-    };
-    benzene.bondTypes = 
-    {
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::SINGLE,
-        
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::DOUBLE,
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::DOUBLE,
-        sim::fun::BondType::SINGLE,
-        sim::fun::BondType::DOUBLE,
+        {1, 0, sim::fun::BondType::DOUBLE},  // C2 to C1
+        {2, 1, sim::fun::BondType::SINGLE},  // C3 to C2
+        {3, 2, sim::fun::BondType::DOUBLE},  // C4 to C3
+        {4, 3, sim::fun::BondType::SINGLE},  // C5 to C4
+        {5, 4, sim::fun::BondType::DOUBLE},  // C6 to C5
+        {0, 5, sim::fun::BondType::SINGLE}   // C1 to C6 (closes the ring)
     };
     benzene.subsets = 
     {
@@ -114,9 +98,9 @@ int main()
         {5, 0, 4, {11}}  // C6 subset
     };
 
-    //universe.createMolecule(benzene, {50.5f, 60.5f});
+    universe.createMolecule(benzene, {100.0f, 100.0f});
 
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 0; ++i)
     {
         bool valid_position = false;
         float ox, oy;
@@ -150,7 +134,7 @@ int main()
         size_t h1_idx = universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle)}, {1.f, 0.f}, 1);
         size_t h2_idx = universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle)}, {0.f, 1.f}, 1);
     
-        universe.createSubset(o_idx, -1, -1, {h1_idx, h2_idx}, {sim::fun::BondType::SINGLE, sim::fun::BondType::SINGLE});
+        universe.createSubset(o_idx, SIZE_MAX, SIZE_MAX, SIZE_MAX, SIZE_MAX, {h1_idx, h2_idx}, {sim::fun::BondType::SINGLE, sim::fun::BondType::SINGLE});
     }
 
     float targetTemp = 100.0f;

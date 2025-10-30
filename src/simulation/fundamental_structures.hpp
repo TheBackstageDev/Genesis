@@ -16,8 +16,8 @@ namespace sim
 
     namespace constants
     {
-        #define MASS_PROTON 1.007 // Daltons
-        #define MASS_NEUTRON 1.008 // Daltons
+        #define MASS_PROTON 1.0007 // Daltons
+        #define MASS_NEUTRON 1.0008 // Daltons
         #define MASS_ELECTRON 1/1337 // Daltons
 
         #define EPSILON 0.1f 
@@ -36,7 +36,7 @@ namespace sim
         #define THERMOSTAT_INTERVAL 5
 
         #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å * 1/5 ·e⁻²
-        #define BOND_K 1500.f // Harmonic force constant 
+        #define BOND_K 2000.f // Harmonic force constant 
         #define ANGLE_K 15000.f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
@@ -294,6 +294,7 @@ namespace sim
         struct def_bond {
             size_t bondingAtomIdx;   
             size_t centralAtomIdx;  
+            BondType type;
         };
 
         struct def_subset {
@@ -318,7 +319,8 @@ namespace sim
             ~universe() = default;
 
             size_t createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
-            size_t createSubset(const size_t central, const size_t subsetNext, const size_t subsetLast, const std::vector<size_t>& bonds, const std::vector<fun::BondType>& bondTypes);
+            size_t createSubset(const size_t central, const size_t subsetNext, const size_t subsetLast, 
+                const size_t mainNext, const size_t mainLast, const std::vector<size_t>& bonds, const std::vector<fun::BondType>& bondTypes);
             void createMolecule(const molecule_structure& structure, sf::Vector2f pos);
 
             void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);

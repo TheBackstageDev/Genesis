@@ -25,7 +25,7 @@ namespace sim
                 name_text.setScale({0.02f * radius, 0.02f * radius});
 
                 sf::FloatRect bounds = name_text.getLocalBounds();
-                name_text.setOrigin(bounds.getCenter());   // centre
+                name_text.setOrigin(bounds.getCenter());  
                 name_text.setPosition(pos);
                 window.draw(name_text);
             }
@@ -66,6 +66,45 @@ namespace sim
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 atoms[i].draw(positions[i], window, letter);
+            }
+
+            for (size_t b = 0; b < bonds.size(); ++b)
+            {
+                const bond& bond = bonds[b];
+                const sf::Vector2f& pA = positions[bond.bondedAtom];   
+                const sf::Vector2f& pB = positions[bond.centralAtom]; 
+
+                if ((pA - pB).length() > 5.f * MULT_FACTOR) continue;
+
+                sf::Vector2f dir  = (pA - pB).normalized();
+                sf::Vector2f perp = -dir.perpendicular();       
+
+                int8_t lines = 1;
+                switch (bond.type)
+                {
+                    case BondType::DOUBLE: lines = 2; break;
+                    case BondType::TRIPLE: lines = 3; break;
+                    default:               lines = 1; break;
+                }
+                const float shrink = 0.5f * MULT_FACTOR;   
+
+                std::vector<sf::Vertex> vertices;
+                vertices.reserve(lines * 2);
+
+                const float offsetStep = 0.2f * MULT_FACTOR;               
+                for (int8_t i = 0; i < lines; ++i)
+                {
+                    float signedOffset = offsetStep * (i - (lines - 1) * 0.5f);
+                    sf::Vector2f offset = perp * signedOffset;
+
+                    sf::Vector2f start = pB + dir * shrink + offset;
+                    sf::Vector2f end   = pA - dir * shrink + offset;
+
+                    vertices.emplace_back(start);
+                    vertices.emplace_back(end);
+                }
+
+                window.getWindow().draw(vertices.data(), vertices.size(), sf::PrimitiveType::Lines);
             }
 
             // Universe Edges
@@ -137,10 +176,9 @@ namespace sim
             if (idx1 >= atoms.size() || idx2 >= atoms.size() || idx1 == idx2)
                 return;
 
-            // NOTE: Handle bond type transition
             if (std::find_if(bonds.begin(), bonds.end(), [&](bond& a){
-                return a.bondedAtom == idx1 && a.centralAtom == idx2;
-            }) != bonds.end()) return; // bond alreadly exists within the two atoms
+                return a.bondedAtom == idx1 && a.centralAtom == idx2 || a.bondedAtom == idx2 && a.centralAtom == idx1;
+            }) != bonds.end()) return; 
 
             bond nBond{};
             nBond.bondedAtom = idx1;
@@ -148,6 +186,14 @@ namespace sim
             nBond.type = type;
             nBond.equilibriumLength = constants::getBondLength(atoms[idx1].ZIndex, atoms[idx2].ZIndex, type);
 
+            int8_t bondCount = static_cast<int8_t>(type) + 1;
+
+            atoms[idx1].charge = 0.f;
+            atoms[idx2].charge = 0.f;
+
+            atoms[idx1].bondCount += bondCount;
+            atoms[idx2].bondCount += bondCount;
+            
             float EN1 = constants::electronegativity.at(atoms[idx1].ZIndex);
             float EN2 = constants::electronegativity.at(atoms[idx2].ZIndex);
             float deltaEN = std::abs(EN1 - EN2);
@@ -168,13 +214,17 @@ namespace sim
                 }
             }
 
-            ++atoms[idx1].bondCount;
-            ++atoms[idx2].bondCount;
+            uint8_t valence1 = constants::getValenceElectrons(atoms[idx1].ZIndex);
+            uint8_t valence2 = constants::getValenceElectrons(atoms[idx2].ZIndex);
+
+            atoms[idx1].charge += valence1 - atoms[idx1].bondCount;
+            atoms[idx2].charge += valence2 - atoms[idx2].bondCount;
 
             bonds.emplace_back(std::move(nBond));
         }
 
-        size_t universe::createSubset(const size_t central, const size_t subsetNext, const size_t subsetLast, const std::vector<size_t>& bonds, const std::vector<fun::BondType>& bondTypes)
+        size_t universe::createSubset(const size_t central, const size_t subsetNext, const size_t subsetLast, const size_t mainNext, const size_t mainLast, 
+            const std::vector<size_t>& bonds, const std::vector<fun::BondType>& bondTypes)
         {
             subset nSubset{};
             nSubset.mainAtomIdx = central;
@@ -183,20 +233,22 @@ namespace sim
             
             std::vector<size_t> connected;
             std::vector<uint8_t> neighbourZs;
-            connected.reserve(bonds.size() + 1);
-            neighbourZs.reserve(bonds.size() + 1);
-            
+            connected.reserve(bonds.size());
+            neighbourZs.reserve(bonds.size() + 2);
+
             for (size_t i = 0; i < bonds.size(); ++i)
             {
-                if (subsetLast != SIZE_MAX && bonds[i] == subsetLast) createBond(bonds[i], central, bondTypes[i]);
-                else createBond(bonds[i], central, bondTypes[i]);
+                const size_t bondedAtom = bonds[i];
 
-                if (bonds[i] != subsetLast && bonds[i] != subsetNext)
-                connected.emplace_back(bonds[i]); // first = connecting, second = connected to
+                if (bondedAtom == mainLast) createBond(bondedAtom, central, bondTypes[i - 2]);
+                else createBond(bondedAtom, central, bondTypes[i]);
 
-                neighbourZs.emplace_back(atoms[bonds[i]].ZIndex);
-            }   
-            
+                if (bondedAtom != mainNext && bondedAtom != mainLast)
+                    connected.emplace_back(bondedAtom);
+
+                neighbourZs.emplace_back(atoms[bondedAtom].ZIndex);
+            }
+
             nSubset.connectedIdx = std::move(connected);
             nSubset.idealAngle = constants::getAngles(atoms[central].ZIndex, neighbourZs, bondTypes);
             nSubset.bondTypes = std::move(bondTypes);
@@ -215,7 +267,6 @@ namespace sim
             for (const def_atom& a : structure.atoms)
             {
                 createAtom(current_pos, {1.f, -1.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
-                current_pos += sf::Vector2f{1.0f, 1.0f};
             }
 
             std::map<size_t, std::vector<BondType>> bondOrder{};
@@ -224,10 +275,9 @@ namespace sim
             {
                 const def_bond& db = structure.bonds[b];
 
-                size_t globalIdx1 = baseAtomIndex + db.bondingAtomIdx;
-                size_t globalIdx2 = baseAtomIndex + db.centralAtomIdx;
-                bondOrder[globalIdx2].emplace_back(structure.bondTypes[b]);
-                bondOrder[globalIdx1].emplace_back(structure.bondTypes[b]);
+                size_t globalIdx1 = db.bondingAtomIdx;
+                size_t globalIdx2 = db.centralAtomIdx;
+                bondOrder[globalIdx2].emplace_back(db.type);
             }
 
             size_t baseSubset = subsets.size();
@@ -242,11 +292,12 @@ namespace sim
                 }
 
                 if (s.bondedSubset != SIZE_MAX)
-                    mainAtomBonds.emplace_back(s.bondedSubset + baseSubset);
+                    mainAtomBonds.emplace_back(structure.subsets[s.bondedSubset].mainAtomIdx + baseAtomIndex);
                 if (s.bondingSubset != SIZE_MAX)
-                    mainAtomBonds.emplace_back(s.bondingSubset + baseSubset);
+                    mainAtomBonds.emplace_back(structure.subsets[s.bondingSubset].mainAtomIdx + baseAtomIndex);
 
-                createSubset(s.mainAtomIdx + baseAtomIndex, s.bondedSubset + baseSubset, s.bondingSubset + baseSubset, mainAtomBonds, bondOrder[s.mainAtomIdx + baseAtomIndex]);
+                createSubset(s.mainAtomIdx + baseAtomIndex, s.bondedSubset + baseSubset, s.bondingSubset + baseSubset, structure.subsets[s.bondedSubset].mainAtomIdx, 
+                    structure.subsets[s.bondingSubset].mainAtomIdx, mainAtomBonds, bondOrder[s.mainAtomIdx]);
             }
             
             if (structure.subsets.empty())
@@ -271,19 +322,26 @@ namespace sim
                 const subset& sub = subsets[s];
                 size_t mainAtomIdx = sub.mainAtomIdx;
                 
-                sf::Vector2f mainAtomPos{positions[mainAtomIdx].x + 0.01f, positions[mainAtomIdx].y}; 
-                sf::Vector2f direction = (s > firstSubsetIndex) ? (mainAtomPos - lastSubsetPos).normalized() : sf::Vector2f(1.0f, 0.0f);
+                sf::Vector2f mainAtomPos{positions[mainAtomIdx].x + 0.001f, positions[mainAtomIdx].y}; 
+                sf::Vector2f direction = (mainAtomPos - lastSubsetPos).normalized();
                 sf::Vector2f perpendicular = -direction.perpendicular();
                 
                 positions[mainAtomIdx] = mainAtomPos;
 
+                std::vector<size_t> neighbours = sub.connectedIdx;
+                neighbours.emplace_back(sub.bondedSubsetIdx);
+                neighbours.emplace_back(sub.bondingSubsetIdx);
+
                 float angleOffset = 0.0f;
-                for (size_t n = 0; n < sub.connectedIdx.size(); ++n)
+                for (size_t n = 0; n < neighbours.size(); ++n)
                 {
-                    size_t neighbour = sub.connectedIdx[n];
+                    size_t neighbour = neighbours[n];
+                    if (neighbour == SIZE_MAX) continue;
+                    
+                    angleOffset += sub.idealAngle;
+
                     sf::Vector2f neighborDir = (direction * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
                     positions[neighbour] = mainAtomPos + neighborDir;
-                    angleOffset += sub.idealAngle; 
                 }
                 
                 if (sub.bondedSubsetIdx != SIZE_MAX)
@@ -309,10 +367,15 @@ namespace sim
                         positions[nextMainAtomIdx] = mainAtomPos + directionToNext * 1.5f;
 
                         sf::Vector2f perpendicular = -directionToNext.perpendicular();
+
+                        angleOffset = 0.f;
                         for (size_t n = 0; n < nextSub.connectedIdx.size(); ++n)
                         {
                             size_t neighbour = nextSub.connectedIdx[n];
-                            positions[neighbour] = positions[nextMainAtomIdx] + perpendicular * 1.2f;;
+                            angleOffset += nextSub.idealAngle;
+
+                            sf::Vector2f neighborDir = (directionToNext * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
+                            positions[neighbour] = positions[nextMainAtomIdx] + neighborDir + perpendicular * 1.2f;;
                         }
 
                         nextIdx = nextSub.bondedSubsetIdx;
@@ -373,8 +436,11 @@ namespace sim
 
                 if (std::abs(total_charge) > 1e-6f)
                 {
+                    uint8_t valence1 = constants::getValenceElectrons(atoms[idx].ZIndex);
+
                     float adjustment = -total_charge / (neighbors.size() + 1);
-                    atoms[idx].charge += adjustment;
+                    atoms[idx].charge += adjustment - atoms[idx].bondCount + valence1;
+                    
                     for (size_t j : neighbors)
                         atoms[j].charge += adjustment;
                 }
