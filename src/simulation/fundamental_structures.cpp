@@ -240,9 +240,6 @@ namespace sim
             {
                 const size_t bondedAtom = bonds[i];
 
-                if (bondedAtom == mainLast) createBond(bondedAtom, central, bondTypes[i - 2]);
-                else createBond(bondedAtom, central, bondTypes[i]);
-
                 if (bondedAtom != mainNext && bondedAtom != mainLast)
                     connected.emplace_back(bondedAtom);
 
@@ -251,7 +248,6 @@ namespace sim
 
             nSubset.connectedIdx = std::move(connected);
             nSubset.idealAngle = constants::getAngles(atoms[central].ZIndex, neighbourZs, bondTypes);
-            nSubset.bondTypes = std::move(bondTypes);
             
             subsets.emplace_back(std::move(nSubset));
 
@@ -274,10 +270,11 @@ namespace sim
             for (size_t b = 0; b < structure.bonds.size(); ++b)
             {
                 const def_bond& db = structure.bonds[b];
+                size_t central = baseAtomIndex + db.centralAtomIdx; 
+                size_t bonded  = baseAtomIndex + db.bondingAtomIdx;
+                bondOrder[central].emplace_back(db.type);
 
-                size_t globalIdx1 = db.bondingAtomIdx;
-                size_t globalIdx2 = db.centralAtomIdx;
-                bondOrder[globalIdx2].emplace_back(db.type);
+                createBond(bonded, central, db.type);
             }
 
             size_t baseSubset = subsets.size();
@@ -678,24 +675,34 @@ namespace sim
                 velocities[i] += 0.5f * (acc + forces[i] / a.mass) * DT; 
             }
 
-            if (timeStep % THERMOSTAT_INTERVAL == 0) {
-                float kinetic_energy = 0.0f;
-                for (size_t i = 0; i < atoms.size(); ++i) {
-                    float v_squared = velocities[i].lengthSquared();
-                    kinetic_energy += 0.5f * atoms[i].mass * v_squared;
-                }
-
-                float avg_KE = kinetic_energy / atoms.size();
-                temp = (2.f / 3.f) * avg_KE * KB;
-                float lambda = sqrtf(targetTemperature / temp);
-                // lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
-
-                for (size_t i = 0; i < velocities.size(); ++i) {
-                    velocities[i] *= lambda;
-                }
-            }
+            setTemperature(targetTemperature);
  
             ++timeStep;
+        }
+
+        void universe::setTemperature(float kelvin)
+        {
+            if (timeStep % THERMOSTAT_INTERVAL == 0) 
+            {
+                float avg_KE = calculateKineticEnergy() / atoms.size();
+                temp = 2.f / 3.f * avg_KE * KB * kelvin;
+                float lambda = sqrtf(kelvin / temp);
+                // lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
+
+                for (size_t i = 0; i < velocities.size(); ++i) 
+                    velocities[i] *= lambda;
+            }
+        }
+
+        float universe::calculateKineticEnergy()
+        {
+            float kinetic_energy = 0.0f;
+            for (size_t i = 0; i < atoms.size(); ++i) 
+            {
+                float v_squared = velocities[i].lengthSquared();
+                kinetic_energy += 0.5f * atoms[i].mass * v_squared;
+            }
+            return kinetic_energy;
         }
     } // namespace fun 
 } // namespace sim

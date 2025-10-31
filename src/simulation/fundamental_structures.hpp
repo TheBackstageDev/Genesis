@@ -10,6 +10,8 @@
 #include <chrono>
 #include <algorithm>
 
+#include "smiles_parser.hpp"
+
 namespace sim
 {
     namespace fun { enum class BondType { SINGLE, DOUBLE, TRIPLE }; };
@@ -36,7 +38,7 @@ namespace sim
         #define THERMOSTAT_INTERVAL 5
 
         #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å * 1/5 ·e⁻²
-        #define BOND_K 2000.f // Harmonic force constant 
+        #define BOND_K 1000.f // Harmonic force constant 
         #define ANGLE_K 15000.f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
@@ -140,7 +142,7 @@ namespace sim
 
         inline float getBondLength(uint8_t ZIndex1, uint8_t ZIndex2, fun::BondType type)
         {
-            float base = (getAtomConstants(ZIndex1).first + getAtomConstants(ZIndex2).first) / 2.0f * BOND_LENGTH_FACTOR;
+            float base = (getAtomConstants(ZIndex1).first / MULT_FACTOR + getAtomConstants(ZIndex2).first / MULT_FACTOR) / 2.0f * BOND_LENGTH_FACTOR;
             const float baseBase = base;
 
             switch (type)
@@ -159,7 +161,7 @@ namespace sim
                     if ((ZIndex1 == 9 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 9)) base = 0.93f; // F-H
                     break;
                 case fun::BondType::DOUBLE:
-                    base *= 0.8f;
+                    base *= 0.7f;
                     if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.34f; // C=C 
                     if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 1.21f; // C=O
                     if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6)) base = 1.38f; // C=N
@@ -168,7 +170,7 @@ namespace sim
                     if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 2.05f; // S=S 
                     break;
                 case fun::BondType::TRIPLE:
-                    base *= 0.7f;
+                    base *= 0.6f;
                     if ((ZIndex1 == 6 && ZIndex2 == 6)) base = 1.20f; // C≡C 
                     if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6)) base = 1.16f; // C≡N 
                     if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 1.10f; // N≡N
@@ -260,7 +262,6 @@ namespace sim
             size_t bondedSubsetIdx = SIZE_MAX;       // Index of the last subset (optional, max(size_t) if none)
             size_t bondingSubsetIdx = SIZE_MAX;      // Index of the next subset (optional, max(size_t) if none)
             std::vector<size_t> connectedIdx; // connected to the main atom
-            std::vector<BondType> bondTypes;
             float idealAngle;                // In radians
         };
 
@@ -280,36 +281,6 @@ namespace sim
             int8_t bondCount;
 
             void draw(sf::Vector2f& pos, core::window_t &window, bool letterMode);
-        };
-
-        // Molecule-Structure related
-
-        struct def_atom
-        {
-            uint8_t ZIndex;
-            uint8_t NIndex;
-            int8_t charge = 0; // non-Zero for ions 
-        };
-
-        struct def_bond {
-            size_t bondingAtomIdx;   
-            size_t centralAtomIdx;  
-            BondType type;
-        };
-
-        struct def_subset {
-            size_t mainAtomIdx;      
-            size_t bondedSubset;
-            size_t bondingSubset;
-            std::vector<size_t> connectedIdx; 
-        };
-
-        struct molecule_structure 
-        {
-            std::vector<def_atom> atoms;
-            std::vector<def_subset> subsets;
-            std::vector<def_bond> bonds;
-            std::vector<BondType> bondTypes;
         };
 
         class universe
@@ -351,6 +322,8 @@ namespace sim
             void calcAngleForces();
             void calcLjForces();
             void calcElectrostaticForces();
+
+            void setTemperature(float kelvin = 0.f);
             
             // Molecule Creation
             void organizeMolecule(const molecule_structure& structure, const sf::Vector2f& initPos);
@@ -369,21 +342,13 @@ namespace sim
                 return false;
             }
 
-            bool areOnSameSubset(size_t i, size_t j)
-            {
-                for (const auto& subset : subsets)
-                {
-                    bool i_onSub = std::find(subset.connectedIdx.begin(), subset.connectedIdx.end(), i) != subset.connectedIdx.end();
-                    bool j_onSub = std::find(subset.connectedIdx.begin(), subset.connectedIdx.end(), j) != subset.connectedIdx.end();
-                    if (i_onSub && j_onSub)
-                        return true;
+            // Others
 
-                    if (i_onSub && subset.mainAtomIdx == j || j_onSub && subset.mainAtomIdx == i)
-                        return true;
-                }
+            float calculateKineticEnergy();
 
-                return false;
-            }
+            // Reactions
+
+            void handleReactions();
 
             float boxSize = 10.f;
             std::vector<atom> atoms;
