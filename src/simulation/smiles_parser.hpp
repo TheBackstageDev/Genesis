@@ -1,10 +1,21 @@
 #pragma once
 
 #include <vector>
+#include <map>
+#include <string>
+
+#include <SFML/Graphics.hpp>
 
 namespace sim
 {
     namespace fun { enum class BondType { SINGLE, DOUBLE, TRIPLE }; };
+
+    inline std::map<std::string, uint8_t> AtomZTable = 
+    {
+        {"H",1}, {"He",2}, {"Li",3}, {"B",5}, {"C",6}, {"N",7}, {"O",8},
+        {"F",9}, {"Ne",10}, {"Na",11}, {"Mg",12}, {"Al",13}, {"Si",14},
+        {"P",15}, {"S",16}, {"Cl",17}, {"K",19}, {"Ca",20}, {"Fe",26}
+    };
 
     struct def_atom
     {
@@ -33,12 +44,5 @@ namespace sim
         std::vector<def_bond> bonds;
     };
 
-    class smiles_parser
-    {
-    public:
-        smiles_parser();
-        ~smiles_parser();
-
-    private:
-    };
+    molecule_structure parseSMILES(const std::string& molecule);
 } // namespace sim

@@ -1,5 +1,6 @@
 #include "core/window.hpp"
 #include "simulation/fundamental_structures.hpp"
+#include "simulation/smiles_parser.hpp"
 
 #include <iostream>
 #include <random>
@@ -58,7 +59,7 @@ int main()
     
     std::vector<sf::Vector2f> oxygen_positions;
 
-    sim::fun::molecule_structure benzene{};
+    sim::molecule_structure benzene{};
     benzene.atoms = {
         {6, 6, 0}, // C1
         {6, 6, 0}, // C2
@@ -86,7 +87,7 @@ int main()
         {3, 2, sim::fun::BondType::DOUBLE},  // C4 to C3
         {4, 3, sim::fun::BondType::SINGLE},  // C5 to C4
         {5, 4, sim::fun::BondType::DOUBLE},  // C6 to C5
-        {0, 5, sim::fun::BondType::SINGLE}   // C1 to C6 (closes the ring)
+        {0, 5, sim::fun::BondType::SINGLE}   // C1 to C6 
     };
     benzene.subsets = 
     {
@@ -98,7 +99,7 @@ int main()
         {5, 0, 4, {11}}  // C6 subset
     };
 
-    universe.createMolecule(benzene, {100.0f, 100.0f});
+    universe.createMolecule(benzene, {100.0f, 100.0f, 0.f});
 
     for (int i = 0; i < 0; ++i)
     {
@@ -126,13 +127,13 @@ int main()
     
         oxygen_positions.push_back({ox, oy});
     
-        size_t o_idx = universe.createAtom({ox, oy}, {0.f, 0.f}, 8, 8, 8);
+        size_t o_idx = universe.createAtom({ox, oy, 0.f}, {0.f, 0.f, 0.f}, 8, 8, 8);
     
         float angle = -45.0f * RADIAN; 
         float bond_length = 8.0f;
     
-        size_t h1_idx = universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle)}, {1.f, 0.f}, 1);
-        size_t h2_idx = universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle)}, {0.f, 1.f}, 1);
+        size_t h1_idx = universe.createAtom({ox + bond_length * cos(angle), oy + bond_length * sin(angle), 0.f}, {1.f, 0.f, 0.f}, 1);
+        size_t h2_idx = universe.createAtom({ox + bond_length * cos(-angle), oy + bond_length * sin(-angle), 0.f}, {0.f, 1.f, 0.f}, 1);
     
         universe.createSubset(o_idx, SIZE_MAX, SIZE_MAX, SIZE_MAX, SIZE_MAX, {h1_idx, h2_idx}, {sim::fun::BondType::SINGLE, sim::fun::BondType::SINGLE});
     }

@@ -10,7 +10,7 @@ namespace sim
 
     namespace fun
     {
-        void atom::draw(sf::Vector2f& pos, core::window_t& window, bool letter)
+        void atom::draw(sf::Vector3f& pos, core::window_t& window, bool letter)
         {
             sf::Vector2f posVec{pos.x, pos.y};
 
@@ -26,7 +26,7 @@ namespace sim
 
                 sf::FloatRect bounds = name_text.getLocalBounds();
                 name_text.setOrigin(bounds.getCenter());  
-                name_text.setPosition(pos);
+                name_text.setPosition(posVec);
                 window.draw(name_text);
             }
 
@@ -43,7 +43,7 @@ namespace sim
 
                 sf::FloatRect bounds = ion_text.getLocalBounds();
                 ion_text.setOrigin(bounds.getCenter());
-                ion_text.setPosition(pos + sf::Vector2f(0.f, -radius * 0.3f));
+                ion_text.setPosition(posVec + sf::Vector2f(0.f, -radius * 0.3f));
                 window.draw(ion_text);
             }
 
@@ -51,7 +51,7 @@ namespace sim
 
             sf::CircleShape cloud(cloudRadius);
             cloud.setOrigin({cloudRadius, cloudRadius});             
-            cloud.setPosition(pos);
+            cloud.setPosition(posVec);
             cloud.setFillColor(sf::Color(50, 50, 255, 80));
             window.draw(cloud);
         }
@@ -71,13 +71,13 @@ namespace sim
             for (size_t b = 0; b < bonds.size(); ++b)
             {
                 const bond& bond = bonds[b];
-                const sf::Vector2f& pA = positions[bond.bondedAtom];   
-                const sf::Vector2f& pB = positions[bond.centralAtom]; 
+                const sf::Vector3f& pA = positions[bond.bondedAtom];   
+                const sf::Vector3f& pB = positions[bond.centralAtom]; 
 
                 if ((pA - pB).length() > 5.f * MULT_FACTOR) continue;
 
-                sf::Vector2f dir  = (pA - pB).normalized();
-                sf::Vector2f perp = -dir.perpendicular();       
+                sf::Vector3f dir  = (pA - pB).normalized();
+                sf::Vector2f perp{-dir.y, dir.x};       
 
                 int8_t lines = 1;
                 switch (bond.type)
@@ -97,11 +97,11 @@ namespace sim
                     float signedOffset = offsetStep * (i - (lines - 1) * 0.5f);
                     sf::Vector2f offset = perp * signedOffset;
 
-                    sf::Vector2f start = pB + dir * shrink + offset;
-                    sf::Vector2f end   = pA - dir * shrink + offset;
+                    sf::Vector2f start = sf::Vector2f{pB.x, pB.y} + sf::Vector2f{dir.x, dir.y} * shrink + offset;
+                    sf::Vector2f end   = sf::Vector2f{pA.x, pA.y} - sf::Vector2f{dir.x, dir.y} * shrink + offset;
 
-                    vertices.emplace_back(start);
-                    vertices.emplace_back(end);
+                    vertices.emplace_back(sf::Vector2f{start.x, start.y});
+                    vertices.emplace_back(sf::Vector2f{end.x, end.y});
                 }
 
                 window.getWindow().draw(vertices.data(), vertices.size(), sf::PrimitiveType::Lines);
@@ -145,7 +145,7 @@ namespace sim
 
         }
 
-        size_t universe::createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron)
+        size_t universe::createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron)
         {
             atom newAtom{};
             newAtom.ZIndex = ZIndex;
@@ -255,14 +255,14 @@ namespace sim
         }
 
         // TO DO: Support ionic-molecules 
-        void universe::createMolecule(const molecule_structure& structure, sf::Vector2f pos)
+        void universe::createMolecule(const molecule_structure& structure, sf::Vector3f pos)
         {
             size_t baseAtomIndex = atoms.size();
             
-            sf::Vector2f current_pos = pos;
+            sf::Vector3f current_pos = pos;
             for (const def_atom& a : structure.atoms)
             {
-                createAtom(current_pos, {1.f, -1.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
+                createAtom(current_pos, {1.f, -1.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
             }
 
             std::map<size_t, std::vector<BondType>> bondOrder{};
@@ -304,7 +304,7 @@ namespace sim
             balanceMolecularCharges(subsets[baseSubset]);
         }
 
-        void universe::organizeMolecule(const molecule_structure& structure, const sf::Vector2f& initPos)
+        void universe::organizeMolecule(const molecule_structure& structure, const sf::Vector3f& initPos)
         {
             
         }
@@ -312,16 +312,16 @@ namespace sim
         void universe::positionMolecule(size_t firstSubsetIndex)
         {
             const float mult_factor = MULT_FACTOR;
-            sf::Vector2f lastSubsetPos{positions[subsets[firstSubsetIndex].mainAtomIdx]};
+            sf::Vector3f lastSubsetPos{positions[subsets[firstSubsetIndex].mainAtomIdx]};
             
             for (size_t s = firstSubsetIndex; s < subsets.size(); ++s)
             {
                 const subset& sub = subsets[s];
                 size_t mainAtomIdx = sub.mainAtomIdx;
                 
-                sf::Vector2f mainAtomPos{positions[mainAtomIdx].x + 0.001f, positions[mainAtomIdx].y}; 
-                sf::Vector2f direction = (mainAtomPos - lastSubsetPos).normalized();
-                sf::Vector2f perpendicular = -direction.perpendicular();
+                sf::Vector3f mainAtomPos{positions[mainAtomIdx].x + 0.001f, positions[mainAtomIdx].y, 0.f}; 
+                sf::Vector3f direction = (mainAtomPos - lastSubsetPos).normalized();
+                sf::Vector3f perpendicular{-direction.y, direction.x, 0.f};
                 
                 positions[mainAtomIdx] = mainAtomPos;
 
@@ -337,7 +337,7 @@ namespace sim
                     
                     angleOffset += sub.idealAngle;
 
-                    sf::Vector2f neighborDir = (direction * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
+                    sf::Vector3f neighborDir = (direction * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
                     positions[neighbour] = mainAtomPos + neighborDir;
                 }
                 
@@ -346,8 +346,8 @@ namespace sim
                     size_t nextIdx = sub.bondedSubsetIdx;
                     const size_t start = nextIdx;
                     
-                    sf::Vector2f prevPos = lastSubsetPos;
-                    sf::Vector2f currentToPrev = (positions[subsets[nextIdx].mainAtomIdx] - mainAtomPos);
+                    sf::Vector3f prevPos = lastSubsetPos;
+                    sf::Vector3f currentToPrev = (positions[subsets[nextIdx].mainAtomIdx] - mainAtomPos);
                     
                     lastSubsetPos = mainAtomPos;
                     float angle = sub.idealAngle;
@@ -357,13 +357,13 @@ namespace sim
                         const subset& nextSub = subsets[nextIdx];
                         size_t nextMainAtomIdx = nextSub.mainAtomIdx;
 
-                        sf::Vector2f directionToNext = sf::Vector2f(
+                        sf::Vector3f directionToNext = sf::Vector3f(
                             cos(angle) * currentToPrev.x - sin(angle) * currentToPrev.y,
-                            sin(angle) * currentToPrev.x + cos(angle) * currentToPrev.y
+                            sin(angle) * currentToPrev.x + cos(angle) * currentToPrev.y, 0.f
                         ).normalized() * mult_factor;
                         positions[nextMainAtomIdx] = mainAtomPos + directionToNext * 1.5f;
 
-                        sf::Vector2f perpendicular = -directionToNext.perpendicular();
+                        sf::Vector3f perpendicular = directionToNext.cross({0.f, 0.f, 1.0f});
 
                         angleOffset = 0.f;
                         for (size_t n = 0; n < nextSub.connectedIdx.size(); ++n)
@@ -371,7 +371,7 @@ namespace sim
                             size_t neighbour = nextSub.connectedIdx[n];
                             angleOffset += nextSub.idealAngle;
 
-                            sf::Vector2f neighborDir = (directionToNext * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
+                            sf::Vector3f neighborDir = (directionToNext * cos(angleOffset) + perpendicular * sin(angleOffset)).normalized() * mult_factor;
                             positions[neighbour] = positions[nextMainAtomIdx] + neighborDir + perpendicular * 1.2f;;
                         }
 
@@ -475,7 +475,7 @@ namespace sim
             return potential;
         }
 
-        sf::Vector2f universe::ljForce(size_t i, size_t j)
+        sf::Vector3f universe::ljForce(size_t i, size_t j)
         {
             const atom& a1 = atoms[i];
             const atom& a2 = atoms[j];
@@ -485,7 +485,7 @@ namespace sim
             const float epsilon_i = a1.epsilon;
             const float epsilon_j = a2.epsilon;
 
-            sf::Vector2f dr_vec = minImageVec(positions[i] - positions[j]);
+            sf::Vector3f dr_vec = minImageVec(positions[i] - positions[j]);
             float dr = dr_vec.length();
 
             const float sigma = (sigma_i + sigma_j) / 2.0f;
@@ -502,12 +502,12 @@ namespace sim
                 return (du_dr / dr) * dr_vec;
             }
 
-            return sf::Vector2f{0.f, 0.f};
+            return sf::Vector3f{0.f, 0.f, 0.f};
         }
 
-        sf::Vector2f universe::ljGrad(size_t i)
+        sf::Vector3f universe::ljGrad(size_t i)
         {
-            sf::Vector2f gradient({0.f, 0.f});
+            sf::Vector3f gradient({0.f, 0.f, 0.f});
 
             for (size_t j = 0; j < atoms.size(); ++j)
             {
@@ -519,7 +519,7 @@ namespace sim
             return gradient;
         }
 
-        sf::Vector2f universe::coulombForce(size_t i, size_t j, sf::Vector2f& dr_vec)
+        sf::Vector3f universe::coulombForce(size_t i, size_t j, sf::Vector3f& dr_vec)
         {
             const atom& a1 = atoms[i];
             const atom& a2 = atoms[j];
@@ -527,10 +527,10 @@ namespace sim
             float dr = dr_vec.length();
 
             if (dr < EPSILON * EPSILON || dr > COULOMB_CUTOFF * COULOMB_CUTOFF)
-                return {0.f, 0.f};
+                return {0.f, 0.f, 0.f};
 
             float qq = a1.charge * a2.charge;
-            if (qq == 0.f) return {0.f, 0.f};
+            if (qq == 0.f) return {0.f, 0.f, 0.f};
 
             float forceMag = COULOMB_K * a1.charge * a2.charge / dr;
             return -forceMag * dr_vec / dr; 
@@ -544,15 +544,15 @@ namespace sim
 
                 size_t idx1 = bond.bondedAtom;
                 size_t idx2 = bond.centralAtom;
-                sf::Vector2f r_vec = minImageVec(positions[idx2] - positions[idx1]);
+                sf::Vector3f r_vec = minImageVec(positions[idx2] - positions[idx1]);
                 float dr = r_vec.length();
                 if (dr <= EPSILON) return;
 
                 float delta_r = dr - bond.equilibriumLength;
                 float force_magnitude = BOND_K * delta_r;
 
-                sf::Vector2f force_dir = r_vec / dr;
-                sf::Vector2f force = force_magnitude * force_dir;
+                sf::Vector3f force_dir = r_vec / dr;
+                sf::Vector3f force = force_magnitude * force_dir;
 
                 forces[idx1] += force;
                 forces[idx2] -= force;
@@ -577,8 +577,8 @@ namespace sim
                         size_t idx_i = neighbours[i];
                         size_t idx_k = neighbours[k];
 
-                        sf::Vector2f r_ji = minImageVec(positions[idx_i] - positions[mainAtom]);
-                        sf::Vector2f r_jk = minImageVec(positions[idx_k] - positions[mainAtom]);
+                        sf::Vector3f r_ji = minImageVec(positions[idx_i] - positions[mainAtom]);
+                        sf::Vector3f r_jk = minImageVec(positions[idx_k] - positions[mainAtom]);
                         float r_ji_len = r_ji.length();
                         float r_jk_len = r_jk.length();
                         if (r_ji_len <= EPSILON || r_jk_len <= EPSILON) continue;
@@ -591,9 +591,9 @@ namespace sim
                         float delta_theta = theta - ideal_theta;
                         float force_magnitude = ANGLE_K * delta_theta;
 
-                        sf::Vector2f f_i = (force_magnitude / inv_denominator) * (r_jk - cos_theta * r_ji);
-                        sf::Vector2f f_k = (force_magnitude / inv_denominator) * (r_ji - cos_theta * r_jk);
-                        sf::Vector2f f_j = f_i - f_k;
+                        sf::Vector3f f_i = (force_magnitude / inv_denominator) * (r_jk - cos_theta * r_ji);
+                        sf::Vector3f f_k = (force_magnitude / inv_denominator) * (r_ji - cos_theta * r_jk);
+                        sf::Vector3f f_j = f_i - f_k;
 
                         forces[idx_i] += f_i;
                         forces[mainAtom] += f_j;
@@ -610,10 +610,10 @@ namespace sim
                 for (size_t j = i + 1; j < atoms.size(); ++j)
                 {
                     const float sigma = (atoms[i].sigma + atoms[j].sigma) / 2.0f;
-                    sf::Vector2f r = minImageVec(positions[i] - positions[j]);
+                    sf::Vector3f r = minImageVec(positions[i] - positions[j]);
                     if (areBonded(i, j)) continue;
 
-                    sf::Vector2f force = ljForce(i, j);
+                    sf::Vector3f force = ljForce(i, j);
 
                     forces[i] += force;
                     forces[j] -= force; // Every action creates an Equal and opposite reaction - Sir Isaac Newton
@@ -630,12 +630,12 @@ namespace sim
                 {
                     if (areBonded(i, j)) continue; // Skip electrostatics for bonded atoms
 
-                    sf::Vector2f dr = minImageVec(positions[j] - positions[i]);
+                    sf::Vector3f dr = minImageVec(positions[j] - positions[i]);
                     float dr2 = dr.lengthSquared();
 
                     if (dr2 > cutoff2 || dr2 < EPSILON * EPSILON) continue;
 
-                    sf::Vector2f force = coulombForce(i, j, dr);
+                    sf::Vector3f force = coulombForce(i, j, dr);
                     forces[i] += force;      
                     forces[j] -= force;      
                 }
@@ -644,7 +644,7 @@ namespace sim
 
         void universe::update(float targetTemperature)
         {
-            std::fill(forces.begin(), forces.end(), sf::Vector2f{0.f, 0.f});
+            std::fill(forces.begin(), forces.end(), sf::Vector3f{0.f, 0.f, 0.f});
             calcLjForces();    
             calcBondForces();
             calcAngleForces();
@@ -654,13 +654,13 @@ namespace sim
             {
                 atom& a = atoms[i];
                 if (a.mass <= 0) continue;
-                sf::Vector2f acc = forces[i] / a.mass;
+                sf::Vector3f acc = forces[i] / a.mass;
 
                 positions[i] += velocities[i] * DT + 0.5f * acc * DT * DT;
                 boundCheck(i);
             }
 
-            std::fill(forces.begin(), forces.end(), sf::Vector2f{0.f, 0.f});
+            std::fill(forces.begin(), forces.end(), sf::Vector3f{0.f, 0.f, 0.f});
             calcLjForces();    
             calcBondForces();
             calcAngleForces();
@@ -670,7 +670,7 @@ namespace sim
             {
                 atom& a = atoms[i];
                 if (a.mass <= 0) continue;
-                sf::Vector2f acc = forces[i] / a.mass;
+                sf::Vector3f acc = forces[i] / a.mass;
 
                 velocities[i] += 0.5f * (acc + forces[i] / a.mass) * DT; 
             }

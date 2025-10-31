@@ -14,8 +14,6 @@
 
 namespace sim
 {
-    namespace fun { enum class BondType { SINGLE, DOUBLE, TRIPLE }; };
-
     namespace constants
     {
         #define MASS_PROTON 1.0007 // Daltons
@@ -48,73 +46,73 @@ namespace sim
 
         inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
         {
-            std::pair<float, float> constants; // Sigma (Å), Epsilon (kJ/mol)
+            std::pair<float, float> constants; // {sigma (Å), epsilon (kJ/mol)}
             switch (ZIndex)
             {
-                case 1:  // H
-                    constants = {2.50f, 0.1255f}; break;
-                case 2:  // He
-                    constants = {2.58f, 0.0870f}; break;
-                case 3:  // Li
-                    constants = {1.82f, 0.1100f}; break;
-                case 4:  // Be
-                    constants = {2.75f, 0.2510f}; break;
-                case 5:  // B
-                    constants = {3.64f, 0.3347f}; break;
-                case 6:  // C
-                    constants = {3.55f, 0.2929f}; break;
-                case 7:  // N
-                    constants = {3.25f, 0.7113f}; break;
-                case 8:  // O
-                    constants = {3.03f, 0.7113f}; break;
-                case 9:  // F
-                    constants = {2.95f, 0.6276f}; break;
-                case 10: // Ne
-                    constants = {2.78f, 0.1632f}; break;
-                case 11: // Na
-                    constants = {2.43f, 0.4184f}; break;
-                case 12: // Mg
-                    constants = {3.43f, 0.4184f}; break;
-                case 13: // Al
-                    constants = {4.01f, 0.5021f}; break;
-                case 14: // Si
-                    constants = {3.83f, 0.8368f}; break;
-                case 15: // P
-                    constants = {3.74f, 0.8368f}; break;
-                case 16: // S
-                    constants = {3.56f, 1.0460f}; break;
-                case 17: // Cl
-                    constants = {3.47f, 1.2552f}; break;
-                default:
-                    constants = {2.50f, 0.1255f}; // Default to H
+                case 1:  constants = {2.50f, 0.1255f}; break; // H
+                case 2:  constants = {2.58f, 0.0870f}; break; // He
+                case 3:  constants = {1.82f, 0.1100f}; break; // Li
+                case 4:  constants = {2.75f, 0.2510f}; break; // Be
+                case 5:  constants = {3.64f, 0.3347f}; break; // B
+                case 6:  constants = {3.55f, 0.2929f}; break; // C
+                case 7:  constants = {3.25f, 0.7113f}; break; // N
+                case 8:  constants = {3.03f, 0.7113f}; break; // O
+                case 9:  constants = {2.95f, 0.6276f}; break; // F
+                case 10: constants = {2.78f, 0.1632f}; break; // Ne
+                case 11: constants = {2.43f, 0.4184f}; break; // Na
+                case 12: constants = {3.43f, 0.4184f}; break; // Mg
+                case 13: constants = {4.01f, 0.5021f}; break; // Al
+                case 14: constants = {3.83f, 0.8368f}; break; // Si
+                case 15: constants = {3.74f, 0.8368f}; break; // P
+                case 16: constants = {3.56f, 1.0460f}; break; // S
+                case 17: constants = {3.47f, 1.2552f}; break; // Cl
+                case 18: constants = {3.30f, 0.4184f}; break; // Ar
+                case 19: constants = {2.75f, 0.4184f}; break; // K
+                case 20: constants = {3.50f, 0.5021f}; break; // Ca
+                case 21: constants = {3.80f, 0.7113f}; break; // Sc
+                case 22: constants = {3.75f, 0.8368f}; break; // Ti
+                case 23: constants = {3.70f, 0.9205f}; break; // V
+                case 24: constants = {3.65f, 1.0460f}; break; // Cr
+                case 25: constants = {3.60f, 1.1715f}; break; // Mn
+                case 26: constants = {3.55f, 1.2970f}; break; // Fe
+                default: constants = {2.50f, 0.1255f}; break; // H fallback
             }
-            constants.first *= MULT_FACTOR;
-            constants.second *= MULT_FACTOR;
+
+            constants.first  *= MULT_FACTOR;  
+            constants.second *= MULT_FACTOR; 
             return constants;
         }
 
-        inline const std::map<uint8_t, float> electronegativity = 
+        inline const std::map<uint8_t, float> electronegativity =
         {
-            {1, 2.2f},  // H
-            {2, 0.0f},  // He (not typically used, set to 0)
-            {3, 1.0f},  // Li
-            {4, 1.5f},  // Be
-            {5, 2.0f},  // B
-            {6, 2.5f},  // C
-            {7, 3.0f},  // N
-            {8, 3.5f},  // O
-            {9, 4.0f},  // F
-            {10, 0.0f}, // Ne (not typically used, set to 0)
-            {11, 0.9f}, // Na
-            {12, 1.2f}, // Mg
-            {13, 1.5f}, // Al
-            {14, 1.8f}, // Si
-            {15, 2.1f}, // P
-            {16, 2.5f}, // S
-            {17, 3.0f}  // Cl
+            {1,  2.20f}, // H
+            {2,  0.00f}, // He
+            {3,  0.98f}, // Li
+            {4,  1.57f}, // Be
+            {5,  2.04f}, // B
+            {6,  2.55f}, // C
+            {7,  3.04f}, // N
+            {8,  3.44f}, // O
+            {9,  3.98f}, // F
+            {10, 0.00f}, // Ne
+            {11, 0.93f}, // Na
+            {12, 1.31f}, // Mg
+            {13, 1.61f}, // Al
+            {14, 1.90f}, // Si
+            {15, 2.19f}, // P
+            {16, 2.58f}, // S
+            {17, 3.16f}, // Cl
+            {18, 0.00f}, // Ar
+            {19, 0.82f}, // K
+            {20, 1.00f}, // Ca
+            {21, 1.36f}, // Sc
+            {22, 1.54f}, // Ti
+            {23, 1.63f}, // V
+            {24, 1.66f}, // Cr
+            {25, 1.55f}, // Mn
+            {26, 1.83f}  // Fe
         };
 
-        // Temporary
         inline uint8_t getValenceElectrons(uint8_t ZIndex)
         {
             switch (ZIndex)
@@ -136,7 +134,50 @@ namespace sim
                 case 15: return 5;  // P
                 case 16: return 6;  // S
                 case 17: return 7;  // Cl
+                case 18: return 8;  // Ar
+                case 19: return 1;  // K
+                case 20: return 2;  // Ca
+                case 21: return 3;  // Sc (3d¹ 4s² → 3)
+                case 22: return 4;  // Ti (3d² 4s² → 4)
+                case 23: return 5;  // V  (3d³ 4s² → 5)
+                case 24: return 6;  // Cr (3d⁵ 4s¹ → 6)
+                case 25: return 7;  // Mn (3d⁵ 4s² → 7)
+                case 26: return 8;  // Fe (3d⁶ 4s² → 8)
                 default: return 0;
+            }
+        }
+
+        inline std::string getAtomLetter(uint32_t ZIndex)
+        {
+            switch (ZIndex)
+            {
+                case 1:  return "H";  // Hydrogen
+                case 2:  return "He"; // Helium
+                case 3:  return "Li"; // Lithium
+                case 4:  return "Be"; // Beryllium
+                case 5:  return "B";  // Boron
+                case 6:  return "C";  // Carbon
+                case 7:  return "N";  // Nitrogen
+                case 8:  return "O";  // Oxygen
+                case 9:  return "F";  // Fluorine
+                case 10: return "Ne"; // Neon
+                case 11: return "Na"; // Sodium
+                case 12: return "Mg"; // Magnesium
+                case 13: return "Al"; // Aluminum
+                case 14: return "Si"; // Silicon
+                case 15: return "P";  // Phosphorus
+                case 16: return "S";  // Sulfur
+                case 17: return "Cl"; // Chlorine
+                case 18: return "Ar"; // Argon
+                case 19: return "K";  // Potassium
+                case 20: return "Ca"; // Calcium
+                case 21: return "Sc"; // Scandium
+                case 22: return "Ti"; // Titanium
+                case 23: return "V";  // Vanadium
+                case 24: return "Cr"; // Chromium
+                case 25: return "Mn"; // Manganese
+                case 26: return "Fe"; // Iron
+                default: return "H";
             }
         }
 
@@ -217,33 +258,6 @@ namespace sim
 
             return ideal_angle;
         }
-
-        inline std::string getAtomLetter(uint32_t ZIndex)
-        {
-            std::string name = "H";
-            switch (ZIndex)
-            {
-                case 1:  name = "H";  break;
-                case 2:  name = "He"; break;
-                case 3:  name = "Li"; break;
-                case 4:  name = "Be"; break;
-                case 5:  name = "B";  break;
-                case 6:  name = "C";  break;
-                case 7:  name = "N";  break;
-                case 8:  name = "O";  break;
-                case 9:  name = "F";  break;
-                case 10: name = "Ne"; break;
-                case 11: name = "Na"; break;
-                case 12: name = "Mg"; break;
-                case 13: name = "Al"; break;
-                case 14: name = "Si"; break;
-                case 15: name = "P";  break;
-                case 16: name = "S";  break;
-                case 17: name = "Cl"; break;
-                default: name = "H";  break;
-            }
-            return name;
-        }
     };
 
     namespace fun
@@ -280,7 +294,7 @@ namespace sim
             uint8_t NCount; // neutrons
             int8_t bondCount;
 
-            void draw(sf::Vector2f& pos, core::window_t &window, bool letterMode);
+            void draw(sf::Vector3f& pos, core::window_t &window, bool letterMode);
         };
 
         class universe
@@ -289,10 +303,10 @@ namespace sim
             universe(float universeSize = 10.f);
             ~universe() = default;
 
-            size_t createAtom(sf::Vector2f p, sf::Vector2f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
+            size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
             size_t createSubset(const size_t central, const size_t subsetNext, const size_t subsetLast, 
                 const size_t mainNext, const size_t mainLast, const std::vector<size_t>& bonds, const std::vector<fun::BondType>& bondTypes);
-            void createMolecule(const molecule_structure& structure, sf::Vector2f pos);
+            void createMolecule(const molecule_structure& structure, sf::Vector3f pos);
 
             void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges(subset& mol);
@@ -314,9 +328,9 @@ namespace sim
             void boundCheck(size_t i);
 
             float ljPot(size_t i, float epsilon, float sigma);
-            sf::Vector2f ljGrad(size_t i);
-            sf::Vector2f ljForce(size_t i, size_t j);
-            sf::Vector2f coulombForce(size_t i, size_t j, sf::Vector2f& dr_vec);
+            sf::Vector3f ljGrad(size_t i);
+            sf::Vector3f ljForce(size_t i, size_t j);
+            sf::Vector3f coulombForce(size_t i, size_t j, sf::Vector3f& dr_vec);
 
             void calcBondForces();
             void calcAngleForces();
@@ -326,7 +340,7 @@ namespace sim
             void setTemperature(float kelvin = 0.f);
             
             // Molecule Creation
-            void organizeMolecule(const molecule_structure& structure, const sf::Vector2f& initPos);
+            void organizeMolecule(const molecule_structure& structure, const sf::Vector3f& initPos);
             void positionMolecule(size_t firstSubsetIndex);
 
             bool areBonded(size_t i, size_t j) 
@@ -356,15 +370,15 @@ namespace sim
 
             std::vector<bond> bonds;
 
-            std::vector<sf::Vector2f> forces;
-            std::vector<sf::Vector2f> positions;
-            std::vector<sf::Vector2f> velocities;
+            std::vector<sf::Vector3f> forces;
+            std::vector<sf::Vector3f> positions;
+            std::vector<sf::Vector3f> velocities;
 
             float temp = 0;
             size_t timeStep = 0;
 
             // Helper Funcs
-            sf::Vector2f minImageVec(sf::Vector2f dr)
+            sf::Vector3f minImageVec(sf::Vector3f dr)
             {
                 dr.x -= boxSize * std::round(dr.x / boxSize);
                 dr.y -= boxSize * std::round(dr.y / boxSize);
