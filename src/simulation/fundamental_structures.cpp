@@ -76,7 +76,7 @@ namespace sim
 
                 if ((pA - pB).length() > 5.f * MULT_FACTOR) continue;
 
-                sf::Vector3f dir  = (pA - pB).normalized();
+                sf::Vector3f dir  = pA - pB == sf::Vector3f(0.f, 0.f, 0.f) ? sf::Vector3f(0.f, 0.f, 0.f) : (pA - pB).normalized();
                 sf::Vector2f perp{-dir.y, dir.x};       
 
                 int8_t lines = 1;
@@ -260,9 +260,11 @@ namespace sim
             size_t baseAtomIndex = atoms.size();
             
             sf::Vector3f current_pos = pos;
-            for (const def_atom& a : structure.atoms)
+            for (size_t i = 0; i < structure.atoms.size(); ++i)
             {
-                createAtom(current_pos, {1.f, -1.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
+                const def_atom& a = structure.atoms[i];
+                createAtom(/*structure.positons[i] +*/ current_pos, {1.f, -1.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
+                current_pos += {1.0f, 1.f, 0.f};
             }
 
             std::map<size_t, std::vector<BondType>> bondOrder{};
@@ -296,12 +298,13 @@ namespace sim
                 createSubset(s.mainAtomIdx + baseAtomIndex, s.bondedSubset + baseSubset, s.bondingSubset + baseSubset, structure.subsets[s.bondedSubset].mainAtomIdx, 
                     structure.subsets[s.bondingSubset].mainAtomIdx, mainAtomBonds, bondOrder[s.mainAtomIdx]);
             }
+            size_t lastSubset = subsets.size();
             
             if (structure.subsets.empty())
                 organizeMolecule(structure, pos); // Creates subsets, automatically
 
-            positionMolecule(baseSubset);
-            balanceMolecularCharges(subsets[baseSubset]);
+            //positionMolecule(baseSubset);
+            //balanceMolecularCharges(subsets[baseSubset]);
         }
 
         void universe::organizeMolecule(const molecule_structure& structure, const sf::Vector3f& initPos)
@@ -326,8 +329,6 @@ namespace sim
                 positions[mainAtomIdx] = mainAtomPos;
 
                 std::vector<size_t> neighbours = sub.connectedIdx;
-                neighbours.emplace_back(sub.bondedSubsetIdx);
-                neighbours.emplace_back(sub.bondingSubsetIdx);
 
                 float angleOffset = 0.0f;
                 for (size_t n = 0; n < neighbours.size(); ++n)
@@ -685,7 +686,7 @@ namespace sim
             if (timeStep % THERMOSTAT_INTERVAL == 0) 
             {
                 float avg_KE = calculateKineticEnergy() / atoms.size();
-                temp = 2.f / 3.f * avg_KE * KB * kelvin;
+                temp = 2.f / 3.f * avg_KE * KB;
                 float lambda = sqrtf(kelvin / temp);
                 // lambda = (lambda - 1.0f) * 0.5f + 1.0f; // update slower
 

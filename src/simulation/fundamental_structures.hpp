@@ -40,10 +40,6 @@ namespace sim
         #define ANGLE_K 15000.f // kJ/mol/rad² for angular potential
         #define BOND_LENGTH_FACTOR 1.0f
 
-        #define M_PI 3.1415926535
-        #define RADIAN M_PI / 180
-        #define DEGREE 180 / M_PI
-
         inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
         {
             std::pair<float, float> constants; // {sigma (Å), epsilon (kJ/mol)}
@@ -113,40 +109,6 @@ namespace sim
             {26, 1.83f}  // Fe
         };
 
-        inline uint8_t getValenceElectrons(uint8_t ZIndex)
-        {
-            switch (ZIndex)
-            {
-                case 1:  return 1;  // H
-                case 2:  return 2;  // He
-                case 3:  return 1;  // Li
-                case 4:  return 2;  // Be
-                case 5:  return 3;  // B
-                case 6:  return 4;  // C
-                case 7:  return 5;  // N
-                case 8:  return 6;  // O
-                case 9:  return 7;  // F
-                case 10: return 8;  // Ne
-                case 11: return 1;  // Na
-                case 12: return 2;  // Mg
-                case 13: return 3;  // Al
-                case 14: return 4;  // Si
-                case 15: return 5;  // P
-                case 16: return 6;  // S
-                case 17: return 7;  // Cl
-                case 18: return 8;  // Ar
-                case 19: return 1;  // K
-                case 20: return 2;  // Ca
-                case 21: return 3;  // Sc (3d¹ 4s² → 3)
-                case 22: return 4;  // Ti (3d² 4s² → 4)
-                case 23: return 5;  // V  (3d³ 4s² → 5)
-                case 24: return 6;  // Cr (3d⁵ 4s¹ → 6)
-                case 25: return 7;  // Mn (3d⁵ 4s² → 7)
-                case 26: return 8;  // Fe (3d⁶ 4s² → 8)
-                default: return 0;
-            }
-        }
-
         inline std::string getAtomLetter(uint32_t ZIndex)
         {
             switch (ZIndex)
@@ -196,6 +158,7 @@ namespace sim
                     if ((ZIndex1 == 6 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 6)) base = 1.81f; // C-S
                     if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8)) base = 0.96f; // O-H 
                     if ((ZIndex1 == 16 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 16)) base = 1.34f; // S-H 
+                    if ((ZIndex1 == 16 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 16)) base = 1.57f; // S-O 
                     if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17)) base = 1.27f; // Cl-H 
                     if ((ZIndex1 == 7 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 7)) base = 1.01f; // N-H 
                     if ((ZIndex1 == 7 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 7)) base = 1.40f; // N-O 
@@ -207,6 +170,7 @@ namespace sim
                     if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6)) base = 1.21f; // C=O
                     if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6)) base = 1.38f; // C=N
                     if ((ZIndex1 == 6 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 6)) base = 1.71f; // C=S
+                    if ((ZIndex1 == 8 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 8)) base = 1.42f; // S=O
                     if ((ZIndex1 == 7 && ZIndex2 == 7)) base = 1.20f; // N=N 
                     if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 2.05f; // S=S 
                     break;
@@ -226,37 +190,6 @@ namespace sim
             }
 
             return base;
-        }
-
-        inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t>& neighborZs, const std::vector<fun::BondType>& types)
-        {
-            size_t bond_count = neighborZs.size();
-            if (bond_count < 2) return 0.0f; // No angle if fewer than 2 neighbors
-
-            uint32_t valence = getValenceElectrons(centralZIndex);
-            uint32_t bonding_electrons = 0;
-            for (const auto& type : types)
-            {
-                bonding_electrons += (type == fun::BondType::SINGLE ? 2 : (type == fun::BondType::DOUBLE ? 4 : 6));
-            }
-            uint32_t lone_pairs = (valence - (bonding_electrons / 2)) / 2; // Approximate lone pairs
-            uint32_t total_pairs = bond_count + lone_pairs;
-            float ideal_angle = 0.0f;
-
-            switch (total_pairs)
-            {
-                case 2: ideal_angle = M_PI; break; // Linear
-                case 3: ideal_angle = 120.0f * RADIAN; break; // Trigonal planar
-                case 4:
-                    ideal_angle = 109.5f * RADIAN; // Tetrahedral base
-                    if (lone_pairs == 1 && bond_count == 3) ideal_angle = 107.0f * RADIAN; 
-                    if (lone_pairs == 2 && bond_count == 2) ideal_angle = 104.5f * RADIAN; 
-                    break;
-                case 5: ideal_angle = 120.0f * RADIAN; break; // Trigonal bipyramidal (equatorial)
-                case 6: ideal_angle = 90.0f * RADIAN; break; // Octahedral
-            }
-
-            return ideal_angle;
         }
     };
 
@@ -343,19 +276,6 @@ namespace sim
             void organizeMolecule(const molecule_structure& structure, const sf::Vector3f& initPos);
             void positionMolecule(size_t firstSubsetIndex);
 
-            bool areBonded(size_t i, size_t j) 
-            {
-                for (const auto& bond : bonds)
-                {
-                    if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
             // Others
 
             float calculateKineticEnergy();
@@ -382,7 +302,21 @@ namespace sim
             {
                 dr.x -= boxSize * std::round(dr.x / boxSize);
                 dr.y -= boxSize * std::round(dr.y / boxSize);
+                dr.z -= boxSize * std::round(dr.z / boxSize);
                 return dr;
+            }
+
+            bool areBonded(size_t i, size_t j) 
+            {
+                for (const auto& bond : bonds)
+                {
+                    if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
             }
         };
     } // namespace fun
