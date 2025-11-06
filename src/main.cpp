@@ -59,14 +59,12 @@ int main()
 
     float targetTemp = 100.0f;
 
-    auto mol = sim::parseSMILES("CCCCCCCCCCCCCCCC(=O)OC[C@H](COP(=O)(O)OCCN(C)C)OC(=O)CCCCCCCCCCCCCCC");
-    //auto mol = sim::parseSMILES("COc(c1)cccc1C#");
-    universe.createMolecule(mol, sf::Vector3f(150.f, 20.f, 0.f));
+    auto cyclopropane = sim::parseSMILES("CC1(C2CCC1(C=C2)C)C");
+    universe.createMolecule(cyclopropane, sf::Vector3f(250.f , 250.f, 0.f));
 
-    bool test = false;
     while (window.isOpen())
     {
-        window.pollEvents();
+        window.pollEvents(); 
         window.refresh();
         
         if (!window.isPaused())
@@ -78,6 +76,9 @@ int main()
             double delta_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             std::cout << delta_time_ms << "ms" << std::endl;
         }
+
+        if (window.stepFrame())
+            universe.update(targetTemp);
         
         window.clear();
         universe.drawDebug(window);

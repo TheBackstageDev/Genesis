@@ -32,6 +32,8 @@ namespace core
 
     bool window_t::pollEvents()
     {
+        step = false;
+        
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
@@ -71,6 +73,12 @@ namespace core
                 const auto& key = event->getIf<sf::Event::KeyPressed>()->code;
                 if (key == sf::Keyboard::Key::Space)
                     paused = !paused;
+            }
+            if (event->is<sf::Event::KeyPressed>())
+            {
+                const auto& key = event->getIf<sf::Event::KeyPressed>()->code;
+                if (key == sf::Keyboard::Key::F)
+                    step = true;
             }
             if (event->is<sf::Event::MouseWheelScrolled>())
             {

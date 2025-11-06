@@ -20,6 +20,7 @@ namespace core
 
         bool isOpen() const { return window.isOpen(); }
         bool isPaused() const { return paused; }
+        bool stepFrame() const { return step; }
 
         void refresh()
         {
@@ -48,6 +49,7 @@ namespace core
         sf::Font arial;
         sf::Text timeStepText;
 
-        bool paused = false;
+        bool paused = true;
+        bool step = false;
     };
 } // namespace core
