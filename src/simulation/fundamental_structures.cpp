@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <unordered_set>
 
 #include "constants.hpp"
 
@@ -160,9 +161,8 @@ namespace sim
             newAtom.bondCount = 0;
 
             atoms.emplace_back(std::move(newAtom));
-
             forces.resize(atoms.size());
-
+ 
             return atoms.size() - 1;
         }
 
@@ -182,10 +182,7 @@ namespace sim
             nBond.equilibriumLength = constants::getBondLength(atoms[idx1].ZIndex, atoms[idx2].ZIndex, type);
 
             int8_t bondCount = static_cast<int8_t>(type) + 1;
-
-            atoms[idx1].charge = 0.f;
-            atoms[idx2].charge = 0.f;
-
+            
             atoms[idx1].bondCount += bondCount;
             atoms[idx2].bondCount += bondCount;
             
@@ -209,12 +206,6 @@ namespace sim
                 }
             }
 
-            uint8_t valence1 = constants::getValenceElectrons(atoms[idx1].ZIndex);
-            uint8_t valence2 = constants::getValenceElectrons(atoms[idx2].ZIndex);
-
-            atoms[idx1].charge += valence1 - atoms[idx1].bondCount;
-            atoms[idx2].charge += valence2 - atoms[idx2].bondCount;
-
             bonds.emplace_back(std::move(nBond));
         }
 
@@ -222,8 +213,8 @@ namespace sim
         {
             subset nSubset{};
             nSubset.mainAtomIdx = nSub.mainAtomIdx + baseAtom;
-            nSubset.bondedSubsetIdx = nSub.bondedSubset + baseSubset;
-            nSubset.bondingSubsetIdx = nSub.bondingSubset + baseSubset;
+            nSubset.bondedSubsetIdx = nSub.bondedSubset == SIZE_MAX ? SIZE_MAX : nSub.bondedSubset + baseSubset;
+            nSubset.bondingSubsetIdx = nSub.bondingSubset == SIZE_MAX ? SIZE_MAX : nSub.bondingSubset + baseSubset;
             
             std::vector<size_t> connected{nSub.connectedIdx};
             std::vector<size_t> hydrogens{nSub.hydrogensIdx};
@@ -285,23 +276,27 @@ namespace sim
 
         void universe::balanceMolecularCharges(subset& mol)
         {
-            std::vector<size_t> atomsToBalance;
-
             auto it = std::find_if(subsets.begin(), subsets.end(), [&](const subset& s) { return &s == &mol; });
             if (it == subsets.end()) return; 
-            size_t molIndex = std::distance(subsets.begin(), it);
-            const size_t initialMol = molIndex;
 
-            while (molIndex != SIZE_MAX) 
-            {
-                if (molIndex >= subsets.size()) break; 
-                atomsToBalance.push_back(subsets[molIndex].mainAtomIdx);
-                atomsToBalance.insert(atomsToBalance.end(), subsets[molIndex].connectedIdx.begin(), subsets[molIndex].connectedIdx.end());
-                atomsToBalance.insert(atomsToBalance.end(), subsets[molIndex].hydrogenIdx.begin(), subsets[molIndex].hydrogenIdx.end());
-                molIndex = subsets[molIndex].bondedSubsetIdx;
+            size_t startIdx = std::distance(subsets.begin(), it);
+            std::vector<size_t> atomsToBalance;
+            std::unordered_set<size_t> visited;
+            size_t currentIdx = startIdx;
 
-                if (molIndex == initialMol)
+            while (currentIdx < subsets.size()) {
+                if (!visited.insert(currentIdx).second) 
                     break;
+
+                const auto& currentSubset = subsets[currentIdx];
+                atomsToBalance.push_back(currentSubset.mainAtomIdx);
+                atomsToBalance.insert(atomsToBalance.end(), currentSubset.connectedIdx.begin(), currentSubset.connectedIdx.end());
+                atomsToBalance.insert(atomsToBalance.end(), currentSubset.hydrogenIdx.begin(), currentSubset.hydrogenIdx.end());
+
+                size_t nextIdx = currentSubset.bondedSubsetIdx;
+                if (nextIdx >= subsets.size() || nextIdx == SIZE_MAX) 
+                    break; 
+                currentIdx = nextIdx;
             }
 
             if (atomsToBalance.empty()) return;
@@ -329,11 +324,12 @@ namespace sim
 
                 if (std::abs(total_charge) > 1e-6f)
                 {
-                    uint8_t valence = constants::getValenceElectrons(atoms[idx].ZIndex);
-
+                    uint8_t valence = constants::getUsualBonds(atoms[idx].ZIndex);
                     float adjustment = -total_charge / (neighbors.size() + 1);
-                    atoms[idx].charge -= adjustment + valence - atoms[idx].bondCount;
-                    
+
+                    atoms[idx].charge -= adjustment;
+                    atoms[idx].charge += valence - atoms[idx].bondCount;  
+
                     for (size_t j : neighbors)
                         atoms[j].charge += adjustment;
                 }
@@ -422,7 +418,7 @@ namespace sim
 
             float dr = dr_vec.length();
 
-            if (dr < EPSILON * EPSILON || dr > COULOMB_CUTOFF * COULOMB_CUTOFF)
+            if (dr < EPSILON || dr > COULOMB_CUTOFF)
                 return {0.f, 0.f, 0.f};
 
             float qq = a1.charge * a2.charge;
@@ -509,19 +505,29 @@ namespace sim
 
         void universe::calcLjForces()
         {
+            //size_t count = 0;
+
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                for (size_t j = i + 1; j < atoms.size(); ++j)
+                std::vector<size_t>& neighbours = neighbourList[i];
+
+                for (size_t j = 0; j < neighbours.size(); ++j)
                 {
-                    const float sigma = (atoms[i].sigma + atoms[j].sigma) / 2.0f;
+                    size_t index_j = neighbours[j];
+
+                    const float sigma = (atoms[i].sigma + atoms[index_j].sigma) / 2.0f;
                     if (areBonded(i, j)) continue;
 
-                    sf::Vector3f force = ljForce(i, j);
+                    //++count;
+                    
+                    sf::Vector3f force = ljForce(i, index_j);
 
                     forces[i] += force;
-                    forces[j] -= force; // Every action creates an Equal and opposite reaction - Sir Isaac Newton
+                    forces[index_j] -= force; // Every action creates an Equal and opposite reaction - Sir Isaac Newton
                 }
             }
+
+            //std::cout << "count: " << count << std::endl;
         }
 
         void universe::calcElectrostaticForces()
@@ -529,18 +535,15 @@ namespace sim
             float cutoff2 = COULOMB_CUTOFF * COULOMB_CUTOFF;
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                for (size_t j = i + 1; j < atoms.size(); ++j)
+                for (size_t j : neighbourList[i])  
                 {
-                    if (areBonded(i, j)) continue; // Skip electrostatics for bonded atoms
-
                     sf::Vector3f dr = minImageVec(positions[j] - positions[i]);
                     float dr2 = dr.lengthSquared();
-
                     if (dr2 > cutoff2 || dr2 < EPSILON * EPSILON) continue;
 
                     sf::Vector3f force = coulombForce(i, j, dr);
-                    forces[i] += force;      
-                    forces[j] -= force;      
+                    forces[i] += force;
+                    forces[j] -= force;
                 }
             }
         }
@@ -548,6 +551,10 @@ namespace sim
         void universe::update(float targetTemperature)
         {
             std::fill(forces.begin(), forces.end(), sf::Vector3f{0.f, 0.f, 0.f});
+            
+            if (neighbourList.empty() || neighbourListNeedRebuild()) 
+                buildNeighborList();  
+
             calcLjForces();    
             calcBondForces();
             calcAngleForces();
@@ -602,6 +609,7 @@ namespace sim
             }
         }
 
+        // Energy Calculation
         float universe::calculateKineticEnergy()
         {
             float kinetic_energy = 0.0f;
@@ -613,6 +621,47 @@ namespace sim
             return kinetic_energy;
         }
 
+        void universe::buildNeighborList()
+        {
+            if (neighbourList.size() != atoms.size())
+                neighbourList.resize(atoms.size());
+
+            const float rskin = COULOMB_CUTOFF + VERLET_SKIN;
+            const float rskin2 = rskin * rskin;
+
+            for (auto& list : neighbourList) list.clear();
+
+            for (size_t i = 0; i < atoms.size(); ++i) {
+                for (size_t j = i + 1; j < atoms.size(); ++j) {
+                    if (areBonded(i, j)) continue;
+
+                    sf::Vector3f dr = minImageVec(positions[i] - positions[j]);
+                    if (dr.lengthSquared() < rskin2) {
+                        neighbourList[i].push_back(j);
+                    }
+                }
+            }
+
+            neighbourInterval = 0.0f;
+            neighbourPos = positions;
+        }
+
+        bool universe::neighbourListNeedRebuild()
+        {
+            if (neighbourList.size() != atoms.size())
+                return true;
+
+            const float threshold2 = REBUILD_THRESHOLD * REBUILD_THRESHOLD; 
+
+            for (size_t i = 0; i < atoms.size(); ++i)
+            {
+                sf::Vector3f d = positions[i] - neighbourPos[i];
+                if (d.lengthSquared() > threshold2)
+                    return true;
+            }
+            return false;
+        }
+
         // Reactions
 
         void universe::breakBond(size_t atom1, size_t atom2)
@@ -622,9 +671,15 @@ namespace sim
                 return bond.centralAtom == atom1 && bond.bondedAtom == atom2 
                     || bond.centralAtom == atom2 && bond.bondedAtom == atom1;
             });
+
+            BondType type = it->type;
             
             if (it != bonds.end())
+            {
                 bonds.erase(it);
+                atoms[atom1].bondCount -= static_cast<uint8_t>(type) + 1;
+                atoms[atom2].bondCount -= static_cast<uint8_t>(type) + 1;
+            }
 
             if (atoms[atom1].ZIndex == 1 || atoms[atom2].ZIndex == 1)
             {
@@ -683,6 +738,17 @@ namespace sim
                     s2.bondingSubsetIdx = SIZE_MAX;
 
                 balanceMolecularCharges(s2);
+            }
+        }
+
+        void universe::handleReactions()
+        {
+            for (size_t s = 0; s < subsets.size(); ++s)
+            {
+                for (size_t s2 = 0; s2 < subsets.size(); ++s2)
+                {
+                    
+                }
             }
         }
     } // namespace fun 

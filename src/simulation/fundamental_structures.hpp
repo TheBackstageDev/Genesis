@@ -5,6 +5,7 @@
 #include "core/window.hpp"
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <set>
 
 #include <chrono>
@@ -95,8 +96,10 @@ namespace sim
 
             void setTemperature(float kelvin = 0.f);
 
-            // Others
+            // Energies
             float calculateKineticEnergy();
+            float calculateBondEnergy(size_t i, size_t j);
+            float calculateNonBondedEnergy(size_t i, size_t j);
 
             // Reactions
             void handleReactions();
@@ -111,9 +114,14 @@ namespace sim
 
             std::vector<sf::Vector3f> forces;
             std::vector<sf::Vector3f> positions;
+            std::vector<sf::Vector3f> neighbourPos;
             std::vector<sf::Vector3f> velocities;
 
+            std::vector<std::vector<size_t>> neighbourList; 
+            void buildNeighborList();
+
             float temp = 0;
+            float neighbourInterval = 0.f;
             size_t timeStep = 0;
 
             // Helper Funcs
@@ -125,6 +133,7 @@ namespace sim
                 return dr;
             }
 
+            bool neighbourListNeedRebuild();
             bool areBonded(size_t i, size_t j) 
             {
                 for (const auto& bond : bonds)

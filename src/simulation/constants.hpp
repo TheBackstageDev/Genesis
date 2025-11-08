@@ -28,17 +28,23 @@ namespace constants
 
 #define VERLET_SKIN 2.f
 #define CUTOFF 2.5f
-#define COULOMB_CUTOFF 10.f * MULT_FACTOR
+#define COULOMB_CUTOFF 8.f * MULT_FACTOR
+#define REACTION_CUTOFF 3.0f * MULT_FACTOR
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
+
+#define REBUILD_THRESHOLD 2.f * MULT_FACTOR
 #define THERMOSTAT_INTERVAL 2
+#define REACTION_INTERVAL 50
+#define NEIGHBOURSEARCH_INTERVAL 100
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å * 1/5 ·e⁻²
 #define BOND_K 2000.f        // Harmonic force constant
 #define ANGLE_K 12000.f       // kJ/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
+
 
     inline uint8_t symbolToZ(const std::string &sym)
     {

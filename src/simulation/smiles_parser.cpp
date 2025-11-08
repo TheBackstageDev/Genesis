@@ -595,6 +595,10 @@ namespace sim
                     if (hydrogens.size() > 1)
                         rotateDirection(60 * h * RADIAN);
                 }
+                else if (hydrogens.size() > 1)
+                {
+                    rotateDirection(sub.idealAngle * h);   
+                }
 
                 positions[hydrogenIdx] += currentDir * bondLength;
             }

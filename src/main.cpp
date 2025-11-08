@@ -6,6 +6,8 @@
 #include <random>
 #include <chrono>
 
+#include <algorithm>
+
 sf::Text timeStepText;
 sf::Text tempText;
 
@@ -45,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 500.f;
+    size_t universeSize = 300.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -54,13 +56,54 @@ int main()
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    std::uniform_real_distribution<> dis(10.0f, universeSize - 10.f); 
+    std::uniform_real_distribution<> dis(15.0f, universeSize - 15.f); 
     std::uniform_real_distribution<> vel(-5.f, 5.f); 
 
     float targetTemp = 100.0f;
 
-    auto cyclopropane = sim::parseSMILES("CC1(C2CCC1(C=C2)C)C");
-    universe.createMolecule(cyclopropane, sf::Vector3f(250.f , 250.f, 0.f));
+    auto water = sim::parseSMILES("O");  
+    auto ethanol = sim::parseSMILES("");  
+
+    size_t count = 0;
+    float minDistance = 30.f;
+
+    std::vector<sf::Vector3f> centers{{150.f, 150.f, 0.f}};
+    centers.reserve(count + 1);
+
+    universe.createMolecule(ethanol, {150.f, 150.f, 0.f});
+
+    const float minDistSq = minDistance * minDistance;
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        sf::Vector3f pos;
+        bool valid = false;
+
+        for (int attempt = 0; attempt < 100 && !valid; ++attempt)
+        {
+            pos.x = dis(gen);
+            pos.y = dis(gen);
+            pos.z = 0.0f;
+
+            valid = true;
+            for (const auto& c : centers)
+            {
+                float dx = pos.x - c.x;
+                float dy = pos.y - c.y;
+                if (dx*dx + dy*dy < minDistSq)
+                {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+
+        if (valid)
+        {
+            centers.push_back(pos);
+            universe.createMolecule(water, pos);
+        }
+    }
 
     while (window.isOpen())
     {
