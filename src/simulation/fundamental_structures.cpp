@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <numeric>
 #include <unordered_set>
 
 #include "constants.hpp"
@@ -10,11 +11,34 @@ namespace sim
 {
     constexpr float pixel_per_A = 1.0f; // 50 pixels/Å
 
+    sf::Color lerpColor(sf::Color a, sf::Color b, float t)
+    {
+        return sf::Color(
+            static_cast<uint8_t>(a.r + (b.r - a.r) * sin(t)),
+            static_cast<uint8_t>(a.g + (b.g - a.g) * sin(t)),
+            static_cast<uint8_t>(a.b + (b.b - a.b) * sin(t)),
+            255
+        );
+    }
+
     namespace fun
     {
-        void atom::draw(sf::Vector3f& pos, core::window_t& window, bool letter)
+        void atom::draw(float temperature, sf::Vector3f& pos, core::window_t &window, float UniverseSize, bool letter)
         {
             sf::Vector2f posVec{pos.x, pos.y};
+
+            float z = pos.z; 
+            float depthFactor = 1.0f - std::clamp((z + UniverseSize/2) / UniverseSize, 0.f, 1.f); 
+            float scale = 0.7f + 0.6f * depthFactor; 
+
+            sf::Color atomColor = lerpColor(sf::Color::Blue, sf::Color::Red, temperature / 100.f * RADIAN);
+
+            const float cloudRadius = radius * 0.5f * scale;
+            sf::CircleShape cloud(cloudRadius);
+            cloud.setOrigin({cloudRadius, cloudRadius});
+            cloud.setPosition(posVec);
+            cloud.setFillColor(sf::Color(atomColor.r, atomColor.g, atomColor.b, 120));
+            window.draw(cloud);
 
             if (letter)
             {
@@ -23,39 +47,35 @@ namespace sim
                 sf::Text name_text;
                 name_text.setFont(font);
                 name_text.setString(name);
-                name_text.setCharacterSize(20.f);
-                name_text.setScale({0.02f * radius, 0.02f * radius});
+                name_text.setCharacterSize(static_cast<unsigned>(20.f * scale));
+                name_text.setScale({0.02f * radius * scale, 0.02f * radius * scale});
+                name_text.setFillColor({
+                    255,
+                    255,
+                    255,
+                    120
+                });
 
                 sf::FloatRect bounds = name_text.getLocalBounds();
-                name_text.setOrigin(bounds.getCenter());  
+                name_text.setOrigin(bounds.getCenter());
                 name_text.setPosition(posVec);
                 window.draw(name_text);
 
+                // Charge
                 if (charge != 0.f && std::abs(charge) > 0.5f)
                 {
-                    bool cation = charge > 0.f;
                     sf::Text ion_text;
-                    auto& font = window.getFont();
-
                     ion_text.setFont(font);
-                    ion_text.setString(cation ? "+" : "-");
-                    ion_text.setCharacterSize(16.f);
-                    ion_text.setScale({0.02f * radius, 0.02f * radius});
-
+                    ion_text.setString(charge > 0.f ? "+" : "-");
+                    ion_text.setCharacterSize(static_cast<unsigned>(16.f * scale));
+                    ion_text.setScale({0.02f * radius * scale, 0.02f * radius * scale});
+                    ion_text.setFillColor(sf::Color::White);
                     sf::FloatRect bounds = ion_text.getLocalBounds();
                     ion_text.setOrigin(bounds.getCenter());
-                    ion_text.setPosition(posVec + sf::Vector2f(0.f, -radius * 0.3f));
+                    ion_text.setPosition(posVec + sf::Vector2f(0.f, -radius * 0.3f * scale));
                     window.draw(ion_text);
                 }
             }
-
-            const float cloudRadius = radius * 0.5f;
-
-            sf::CircleShape cloud(cloudRadius);
-            cloud.setOrigin({cloudRadius, cloudRadius});             
-            cloud.setPosition(posVec);
-            cloud.setFillColor(sf::Color(50, 50, 255, 80));
-            window.draw(cloud);
         }
 
         universe::universe(float universeSize)
@@ -65,9 +85,18 @@ namespace sim
 
         void universe::draw(core::window_t& window, bool letter)
         {
+            std::vector<size_t> drawOrder(atoms.size());
+            std::iota(drawOrder.begin(), drawOrder.end(), 0);
+
+            std::sort(drawOrder.begin(), drawOrder.end(),
+                [&](size_t a, size_t b) {
+                    return positions[a].z > positions[b].z; 
+                });
+
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                atoms[i].draw(positions[i], window, letter);
+                float temp = calculateAtomTemperature(drawOrder[i]);
+                atoms[drawOrder[i]].draw(temp, positions[drawOrder[i]], window, boxSize, letter);
             }
 
             for (size_t b = 0; b < bonds.size(); ++b)
@@ -81,7 +110,7 @@ namespace sim
                 sf::Vector3f dir  = pA - pB == sf::Vector3f(0.f, 0.f, 0.f) ? sf::Vector3f(0.f, 0.f, 0.f) : (pA - pB).normalized();
                 sf::Vector2f perp{-dir.y, dir.x};       
 
-                int8_t lines = static_cast<int8_t>(bond.type) + 1;
+                int8_t lines = static_cast<int8_t>(bond.type);
                 const float shrink = 0.5f * MULT_FACTOR;   
 
                 std::vector<sf::Vertex> vertices;
@@ -181,8 +210,8 @@ namespace sim
             nBond.type = type;
             nBond.equilibriumLength = constants::getBondLength(atoms[idx1].ZIndex, atoms[idx2].ZIndex, type);
 
-            int8_t bondCount = static_cast<int8_t>(type) + 1;
-            
+            int8_t bondCount = static_cast<int8_t>(type);
+
             atoms[idx1].bondCount += bondCount;
             atoms[idx2].bondCount += bondCount;
             
@@ -253,7 +282,7 @@ namespace sim
             for (size_t i = 0; i < structure.atoms.size(); ++i)
             {
                 const def_atom& a = structure.atoms[i];
-                createAtom(structure.positons[i] + pos, {0.f, 0.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
+                createAtom(structure.positons[i] + pos + sf::Vector3f(0.f, 0.f, 0.01f * i), {0.f, 0.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
             }
 
             for (size_t b = 0; b < structure.bonds.size(); ++b)
@@ -548,7 +577,7 @@ namespace sim
             }
         }
 
-        void universe::update(float targetTemperature)
+        void universe::update(float targetTemperature, bool reactions)
         {
             std::fill(forces.begin(), forces.end(), sf::Vector3f{0.f, 0.f, 0.f});
             
@@ -585,6 +614,9 @@ namespace sim
                 velocities[i] += 0.5f * (acc + forces[i] / a.mass) * DT; 
             }
 
+            if (reactions)
+                handleReactions();
+
             setTemperature(targetTemperature);
  
             ++timeStep;
@@ -614,10 +646,8 @@ namespace sim
         {
             float kinetic_energy = 0.0f;
             for (size_t i = 0; i < atoms.size(); ++i) 
-            {
-                float v_squared = velocities[i].lengthSquared();
-                kinetic_energy += 0.5f * atoms[i].mass * v_squared;
-            }
+                kinetic_energy += 0.5f * atoms[i].mass * velocities[i].lengthSquared();
+            
             return kinetic_energy;
         }
 
@@ -664,6 +694,22 @@ namespace sim
 
         // Reactions
 
+        float universe::calculateAtomTemperature(size_t i)
+        {
+            float ke = 0.5f * atoms[i].mass * velocities[i].lengthSquared();
+            return (2.0f / 3.0f) * ke * KB;
+        }
+
+        float universe::calculateBondEnergy(size_t i, size_t j)
+        {
+            return 0.f;
+        }
+
+        float universe::calculateNonBondedEnergy(size_t i, size_t j)
+        {
+            return 0.f;
+        }
+
         void universe::breakBond(size_t atom1, size_t atom2)
         {
             auto it = std::find_if(bonds.begin(), bonds.end(), [&](const bond& bond)
@@ -677,8 +723,8 @@ namespace sim
             if (it != bonds.end())
             {
                 bonds.erase(it);
-                atoms[atom1].bondCount -= static_cast<uint8_t>(type) + 1;
-                atoms[atom2].bondCount -= static_cast<uint8_t>(type) + 1;
+                atoms[atom1].bondCount -= static_cast<uint8_t>(type);
+                atoms[atom2].bondCount -= static_cast<uint8_t>(type);
             }
 
             if (atoms[atom1].ZIndex == 1 || atoms[atom2].ZIndex == 1)
@@ -741,13 +787,72 @@ namespace sim
             }
         }
 
+        BondType universe::chooseBestBondType(size_t i, size_t j) 
+        {
+            if (areBonded(i, j)) return BondType::NONE;
+
+            uint8_t Z1 = atoms
+
+            [i].ZIndex, Z2 = atoms[j].ZIndex;
+                float r = minImageVec(positions[i] - positions[j]).length();
+
+            uint8_t val1 = atoms[i].bondCount;
+            uint8_t val2 = atoms[j].bondCount;
+            uint8_t max1 = constants::getUsualBonds(Z1);
+            uint8_t max2 = constants::getUsualBonds(Z2);
+
+            for (int8_t order = 3; order >= 1; --order)
+            {
+                BondType type = static_cast<BondType>(order - 1);
+                float r0 = constants::getBondLength(Z1, Z2, type);
+
+                if (r0 <= 0.0f) continue;
+                if (r > r0 * 1.3f || r < r0 * 0.5f) continue;
+
+                if (val1 + order > max1 || val2 + order > max2) continue;
+
+                return type; 
+            }
+
+            return BondType::NONE; 
+        }
+
+        void universe::checkStrainedBonds()
+        {
+        
+        }
+
         void universe::handleReactions()
         {
-            for (size_t s = 0; s < subsets.size(); ++s)
+            std::vector<std::pair<size_t, size_t>> candidates;
+
+            for (size_t i = 0; i < atoms.size(); ++i)
             {
-                for (size_t s2 = 0; s2 < subsets.size(); ++s2)
+                if (!isReactive(i)) continue;
+
+                for (size_t j : neighbourList[i])
                 {
-                    
+                    if (!isReactive(j)) continue;
+                    if (areBonded(i, j)) continue;
+
+                    BondType bestType = chooseBestBondType(i, j);
+                    float r = minImageVec(positions[i] - positions[j]).length();
+                    float r0 = constants::getBondLength(atoms[i].ZIndex, atoms[j].ZIndex, bestType);
+                    if (r0 > 0 && r < r0 * 1.3f) 
+                    {
+                        createBond(i, j, bestType);
+                        auto subset_it1 = std::find_if(subsets.begin(), subsets.end(),
+                            [&](const subset& s) { return s.mainAtomIdx == i; });
+
+                        auto subset_it2 = std::find_if(subsets.begin(), subsets.end(),
+                            [&](const subset& s) { return s.mainAtomIdx == j; });
+
+                        if (subset_it1 != subsets.end() && subset_it2 != subsets.end())
+                        {
+                            subset_it1->bondingSubsetIdx = std::distance(subsets.begin(), subset_it2);
+                            subset_it2->bondingSubsetIdx = std::distance(subsets.begin(), subset_it1);
+                        }
+                    }
                 }
             }
         }

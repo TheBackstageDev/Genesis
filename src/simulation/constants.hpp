@@ -6,7 +6,7 @@
 
 namespace sim
 {
-    namespace fun { enum class BondType { SINGLE, DOUBLE, TRIPLE, QUADRUPLE }; };
+    namespace fun { enum class BondType { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE }; };
 }; // namespace sim
 
 

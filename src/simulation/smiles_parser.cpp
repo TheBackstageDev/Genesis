@@ -58,8 +58,8 @@ namespace sim
 
                     bool isAromatic = nAtoms[openAtom].aromatic && nAtoms[closeAtom].aromatic;
 
-                    nAtoms[openAtom].nBonds += static_cast<uint32_t>(bondType) + 1;
-                    nAtoms[closeAtom].nBonds += static_cast<uint32_t>(bondType) + 1;
+                    nAtoms[openAtom].nBonds += static_cast<uint32_t>(bondType);
+                    nAtoms[closeAtom].nBonds += static_cast<uint32_t>(bondType);
 
                     if (isAromatic && ringBondIndices[ringID].size() >= 5 && ringIndices[ringID].size() <= 7)
                     {
@@ -96,7 +96,7 @@ namespace sim
 
                         bondType = !makeDouble ? BondType::DOUBLE : BondType::SINGLE;
                         nAtoms[openAtom].nBonds += static_cast<uint32_t>(bondType);
-                        nAtoms[closeAtom].nBonds += static_cast<uint32_t>(bondType) + 1;
+                        nAtoms[closeAtom].nBonds += static_cast<uint32_t>(bondType);
                     }
 
                     def_bond nBond{};
@@ -172,8 +172,8 @@ namespace sim
                     nBond.type = bondType;
                     nBonds.emplace_back(std::move(nBond));
 
-                    nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType) + 1;
-                    nAtoms[currentAtom].nBonds += static_cast<uint32_t>(bondType) + 1;
+                    nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType);
+                    nAtoms[currentAtom].nBonds += static_cast<uint32_t>(bondType);
                 }
                 
                 if (ringOpen.size() > 0 && prevAtom != SIZE_MAX && 
@@ -516,7 +516,7 @@ namespace sim
                 {
                     const def_atom& a1 = nAtoms[prevAtom];
                     const def_atom& a2 = nAtoms[atomIdx];
-                    bondLength = 1.2f * constants::getBondLength(a1.ZIndex, a2.ZIndex, bondType);
+                    bondLength = constants::getBondLength(a1.ZIndex, a2.ZIndex, bondType);
 
                     static bool flip = false;
 

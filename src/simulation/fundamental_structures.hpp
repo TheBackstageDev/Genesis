@@ -52,7 +52,7 @@ namespace sim
             uint8_t NCount; // neutrons
             int8_t bondCount;
 
-            void draw(sf::Vector3f& pos, core::window_t &window, bool letterMode);
+            void draw(float temperature, sf::Vector3f& pos, core::window_t &window, float UniverseSize, bool letterMode);
         };
 
         class universe
@@ -70,7 +70,7 @@ namespace sim
 
             void linkSubset(size_t subset, size_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
-            void update(float targetTemperature = 1.0f);
+            void update(float targetTemperature = 1.0f, bool reactions = true);
             void draw(core::window_t &window, bool letter = false);
             void drawDebug(core::window_t& window);
 
@@ -91,6 +91,7 @@ namespace sim
 
             void calcBondForces();
             void calcAngleForces();
+            void calcDihedralForces();
             void calcLjForces();
             void calcElectrostaticForces();
 
@@ -98,13 +99,19 @@ namespace sim
 
             // Energies
             float calculateKineticEnergy();
+            float calculateAtomTemperature(size_t i);
             float calculateBondEnergy(size_t i, size_t j);
             float calculateNonBondedEnergy(size_t i, size_t j);
 
             // Reactions
             void handleReactions();
             void checkBonds(); // for either forming or breaking
+            void checkStrainedBonds();
             void breakBond(size_t atom1, size_t atom2);
+
+            bool isReactive(size_t i) { return atoms[i].bondCount < constants::getUsualBonds(atoms[i].ZIndex) || atoms[i].bondCount > constants::getUsualBonds(atoms[i].ZIndex); }
+
+            BondType chooseBestBondType(size_t i, size_t j);
 
             float boxSize = 10.f;
             std::vector<atom> atoms;

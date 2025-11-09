@@ -47,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 300.f;
+    size_t universeSize = 200.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -62,15 +62,16 @@ int main()
     float targetTemp = 100.0f;
 
     auto water = sim::parseSMILES("O");  
-    auto ethanol = sim::parseSMILES("");  
+    auto hy = sim::parseSMILES("C1CCCCC1");  
 
-    size_t count = 0;
-    float minDistance = 30.f;
+    //niverse.createMolecule(hy, {100, 50, 0});
+    //universe.createMolecule(water, {100, 40, 0});
+
+    size_t count = 150;
+    float minDistance = 15.f;
 
     std::vector<sf::Vector3f> centers{{150.f, 150.f, 0.f}};
     centers.reserve(count + 1);
-
-    universe.createMolecule(ethanol, {150.f, 150.f, 0.f});
 
     const float minDistSq = minDistance * minDistance;
 
@@ -83,7 +84,7 @@ int main()
         {
             pos.x = dis(gen);
             pos.y = dis(gen);
-            pos.z = 0.0f;
+            pos.z = dis(gen);
 
             valid = true;
             for (const auto& c : centers)
@@ -121,7 +122,7 @@ int main()
         }
 
         if (window.stepFrame())
-            universe.update(targetTemp);
+            universe.update(targetTemp, false);
         
         window.clear();
         universe.drawDebug(window);
