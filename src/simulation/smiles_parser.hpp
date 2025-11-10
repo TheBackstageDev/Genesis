@@ -43,7 +43,7 @@ namespace sim
         std::vector<def_atom> atoms;
         std::vector<def_subset> subsets;
         std::vector<def_bond> bonds;
-        std::vector<sf::Vector3f> positons{};
+        std::vector<sf::Vector3f> positions{};
     };
 
     molecule_structure parseSMILES(const std::string& molecule, bool implicitHydrogens = true);

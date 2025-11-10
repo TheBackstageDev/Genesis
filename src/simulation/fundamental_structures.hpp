@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "core/window.hpp"
+#include "core/camera.hpp"
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -18,6 +19,13 @@ namespace sim
 {
     namespace fun
     {
+        // for vizualization and debugging
+        struct hydrogen_bond
+        {
+            size_t H, A, D;
+            float strength = 0.f;
+        };
+
         struct bond {
             uint32_t bondedAtom; 
             uint32_t centralAtom; 
@@ -53,6 +61,7 @@ namespace sim
             int8_t bondCount;
 
             void draw(float temperature, sf::Vector3f& pos, core::window_t &window, float UniverseSize, bool letterMode);
+            void drawProjected(sf::Vector2f screenPos, core::window_t& win, bool letter, sf::Color baseColor);
         };
 
         class universe
@@ -63,7 +72,7 @@ namespace sim
 
             size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
             size_t createSubset(const def_subset& nSub, const size_t baseAtom, const size_t baseSubset);
-            void createMolecule(const molecule_structure& structure, sf::Vector3f pos);
+            void createMolecule(molecule_structure& structure, sf::Vector3f pos);
 
             void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges(subset& mol);
@@ -72,6 +81,7 @@ namespace sim
 
             void update(float targetTemperature = 1.0f, bool reactions = true);
             void draw(core::window_t &window, bool letter = false);
+            void drawHydrogenBond(core::window_t& window, size_t H);
             void drawDebug(core::window_t& window);
 
             size_t numAtoms() { return atoms.size(); }
@@ -81,6 +91,7 @@ namespace sim
             float timestep() { return timeStep; }
 
             void log(size_t step = 100);
+            void handleCamera(bool leftDown, bool rightDown, const sf::Vector2i& mousePos, float wheelDelta, const std::vector<sf::Keyboard::Key>& keys);
         private:
             void boundCheck(size_t i);
 
@@ -153,6 +164,11 @@ namespace sim
 
                 return false;
             }
+
+            // Camera
+            sf::Vector2i lastMouse;
+            sf::Vector2f project(core::window_t& window, const sf::Vector3f& p) const;
+            core::camera_t cam;
         };
     } // namespace fun
 } // namespace sim

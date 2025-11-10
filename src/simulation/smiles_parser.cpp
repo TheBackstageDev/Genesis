@@ -12,7 +12,7 @@ namespace sim
         std::vector<def_bond> nBonds{};
         std::vector<def_subset> nSubsets{};
         std::vector<def_atom> nAtoms{};
-        std::vector<sf::Vector3f> nPositons{};
+        std::vector<sf::Vector3f> npositions{};
 
         if (molecule.empty()) return nStructure;
 
@@ -192,15 +192,15 @@ namespace sim
         if (implicitHydrogens)
             addImplicitHydrogens(nAtoms, nBonds);
             
-        nPositons.resize(nAtoms.size());
+        npositions.resize(nAtoms.size());
         organizeSubsets(nSubsets, nAtoms, nBonds);
         getAngles(nSubsets, nAtoms, nBonds);    
-        positionAtoms(molecule, rings, nAtoms, nSubsets, nPositons);
+        positionAtoms(molecule, rings, nAtoms, nSubsets, npositions);
 
         nStructure.atoms = std::move(nAtoms);
         nStructure.bonds = std::move(nBonds);
         nStructure.subsets = std::move(nSubsets);
-        nStructure.positons = std::move(nPositons);
+        nStructure.positions = std::move(npositions);
 
         return nStructure;
     }

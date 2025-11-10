@@ -33,6 +33,11 @@ namespace core
     bool window_t::pollEvents()
     {
         step = false;
+        bool left  = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
+        bool right = sf::Mouse::isButtonPressed(sf::Mouse::Button::Right);
+        sf::Vector2i mouse = sf::Mouse::getPosition(window);
+        float wheel = 0.f;
+        std::vector<sf::Keyboard::Key> pressedKeys;
         
         while (const std::optional event = window.pollEvent())
         {
@@ -98,6 +103,9 @@ namespace core
         
         handleCameraInput();
 
+        if (cameraCallback)
+            cameraCallback(left, right, mouse, wheel, pressedKeys);
+    
         return true;
     }
 

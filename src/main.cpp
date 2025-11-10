@@ -47,28 +47,31 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 200.f;
+    size_t universeSize = 50.f;
 
     sim::fun::universe universe(universeSize);
     
     setupUI(window);
 
+    window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
+    {
+        universe.handleCamera(left, right, mouse, wheel, keys);
+    });
+
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    std::uniform_real_distribution<> dis(15.0f, universeSize - 15.f); 
-    std::uniform_real_distribution<> vel(-5.f, 5.f); 
-
-    float targetTemp = 100.0f;
+    std::uniform_real_distribution<> dis(5.f, universeSize - 5.f); 
+    float targetTemp = 100.f;
 
     auto water = sim::parseSMILES("O");  
     auto hy = sim::parseSMILES("C1CCCCC1");  
 
-    //niverse.createMolecule(hy, {100, 50, 0});
+    //universe.createMolecule(hy, {100, 50, 0});
     //universe.createMolecule(water, {100, 40, 0});
 
-    size_t count = 150;
-    float minDistance = 15.f;
+    size_t count = 100;
+    float minDistance = 5.f;
 
     std::vector<sf::Vector3f> centers{{150.f, 150.f, 0.f}};
     centers.reserve(count + 1);
@@ -80,7 +83,7 @@ int main()
         sf::Vector3f pos;
         bool valid = false;
 
-        for (int attempt = 0; attempt < 100 && !valid; ++attempt)
+        for (int32_t attempt = 0; attempt < 100 && !valid; ++attempt)
         {
             pos.x = dis(gen);
             pos.y = dis(gen);
@@ -91,7 +94,8 @@ int main()
             {
                 float dx = pos.x - c.x;
                 float dy = pos.y - c.y;
-                if (dx*dx + dy*dy < minDistSq)
+                float dz = pos.z - c.z;
+                if (dx*dx + dy*dy + dz*dz < minDistSq)
                 {
                     valid = false;
                     break;
@@ -122,8 +126,11 @@ int main()
         }
 
         if (window.stepFrame())
+        {
             universe.update(targetTemp, false);
-        
+            targetTemp += 1.f;
+        }
+
         window.clear();
         universe.drawDebug(window);
         universe.draw(window, true);

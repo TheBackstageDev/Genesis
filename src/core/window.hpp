@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <functional>
 
 #define MIN_ZOOM 0.001f
 #define MAX_ZOOM 100.f
@@ -27,6 +28,9 @@ namespace core
             window.setView(view);
         }
 
+        void setCameraCallback(std::function<void(bool left, bool right, const sf::Vector2i& mouse, float wheel,
+                       const std::vector<sf::Keyboard::Key>& keys)> callback) { cameraCallback = callback; }
+
         void draw(sf::Drawable& drawable) { window.draw(drawable); }
 
         void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); }
@@ -51,5 +55,8 @@ namespace core
 
         bool paused = true;
         bool step = false;
+
+        std::function<void(bool left, bool right, const sf::Vector2i& mouse, float wheel,
+                       const std::vector<sf::Keyboard::Key>& keys)> cameraCallback;
     };
 } // namespace core

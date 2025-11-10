@@ -21,8 +21,8 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.01f // ps
-#define MULT_FACTOR 5.f
+#define DT 0.005f // ps
+#define MULT_FACTOR 2.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
 
@@ -36,15 +36,13 @@ namespace constants
 #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
 
 #define REBUILD_THRESHOLD 2.f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 2
+#define THERMOSTAT_INTERVAL 5
 #define REACTION_INTERVAL 50
-#define NEIGHBOURSEARCH_INTERVAL 100
 
-#define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å * 1/5 ·e⁻²
-#define BOND_K 2000.f        // Harmonic force constant
-#define ANGLE_K 12000.f       // kJ/mol/rad² for angular potential
+#define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
+#define BOND_K 10000.f        // Harmonic force constant
+#define ANGLE_K 7000.f       // kJ/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
-
 
     inline uint8_t symbolToZ(const std::string &sym)
     {

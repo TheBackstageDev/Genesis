@@ -78,6 +78,55 @@ namespace sim
             }
         }
 
+        void atom::drawProjected(sf::Vector2f screenPos,
+                                core::window_t& window,
+                                bool letter,
+                                sf::Color baseColor)
+        {       
+            sf::CircleShape cloud(1.5f);
+            cloud.setOrigin({1.5f, 1.5f});
+            cloud.setPosition(screenPos);
+            cloud.setFillColor(sf::Color(baseColor.r, baseColor.g, baseColor.b, 150));
+            window.draw(cloud);
+
+            if (letter)
+            {
+                auto& font = window.getFont();
+                std::string name = constants::getAtomLetter(ZIndex);
+                sf::Text name_text;
+                name_text.setFont(font);
+                name_text.setString(name);
+                name_text.setCharacterSize(static_cast<unsigned>(20.f));
+                name_text.setScale({0.02f * radius, 0.02f * radius});
+                name_text.setFillColor({
+                    255,
+                    255,
+                    255,
+                    120
+                });
+
+                sf::FloatRect b = name_text.getLocalBounds();
+                name_text.setOrigin(b.getCenter());
+                name_text.setPosition(screenPos);
+                window.draw(name_text);
+
+                if (std::abs(charge) > 0.5f)
+                {
+                    sf::Text ion_text;
+                    ion_text.setFont(font);
+                    ion_text.setString(charge > 0.f ? "+" : "-");
+                    ion_text.setCharacterSize(16);
+                    ion_text.setScale({0.02f * radius, 0.02f * radius});
+                    ion_text.setFillColor(sf::Color::White);
+
+                    sf::FloatRect bounds = ion_text.getLocalBounds();
+                    ion_text.setOrigin(bounds.getCenter());
+                    ion_text.setPosition(screenPos + sf::Vector2f(8.f, -8.f));
+                    window.draw(ion_text);
+                }
+            }
+        }
+        
         universe::universe(float universeSize)
             : boxSize(universeSize)
         {
@@ -87,15 +136,22 @@ namespace sim
         {
             std::vector<size_t> drawOrder(atoms.size());
             std::iota(drawOrder.begin(), drawOrder.end(), 0);
-
+            sf::Vector3f eye = cam.eye();
+            
             std::sort(drawOrder.begin(), drawOrder.end(),
-                [&](size_t a, size_t b) {
-                    return positions[a].z > positions[b].z; 
-                });
+            [&](size_t a,size_t b){ return (positions[a]-eye).lengthSquared()
+                                     < (positions[b]-eye).lengthSquared(); });
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
+                sf::Vector2f p2 = project(window, positions[i]);
+                if (p2.x < -1000) continue;
+
                 float temp = calculateAtomTemperature(drawOrder[i]);
+                if (atoms[drawOrder[i]].ZIndex == 1)
+                    drawHydrogenBond(window, drawOrder[i]);
+
+                float T  = calculateAtomTemperature(i);
                 atoms[drawOrder[i]].draw(temp, positions[drawOrder[i]], window, boxSize, letter);
             }
 
@@ -158,6 +214,72 @@ namespace sim
             window.getWindow().draw(down.data(), down.size(), sf::PrimitiveType::Lines);
             window.getWindow().draw(left.data(), left.size(), sf::PrimitiveType::Lines);
             window.getWindow().draw(right.data(), right.size(), sf::PrimitiveType::Lines);
+        }
+
+        void universe::drawHydrogenBond(core::window_t& window, size_t H)
+        {
+            if (neighbourList.size() != atoms.size()) return;
+            if (atoms[H].charge > -0.2f && atoms[H].charge < 0.2f) return;
+
+            size_t D = SIZE_MAX;
+            for (const auto& b : bonds)
+            {
+                if (b.bondedAtom == H) { D = b.centralAtom; break; }
+                if (b.centralAtom == H) { D = b.bondedAtom; break; }
+            }
+            if (D == SIZE_MAX) return;
+
+            for (size_t j : neighbourList[H])
+            {
+                if (j == D) continue;
+                uint8_t ZA = atoms[j].ZIndex;
+                
+                if (ZA != 7 && ZA != 8 && ZA != 9) continue;  // N, O, F
+                if (atoms[j].charge < 0.2f && atoms[j].charge > -0.2f) continue;
+
+                sf::Vector3f r_HD = minImageVec(positions[D] - positions[H]);
+                sf::Vector3f r_HA = minImageVec(positions[j] - positions[H]);
+                float d_HD = r_HD.length();
+                float d_HA = r_HA.length();
+
+                if (d_HD < 0.3f * MULT_FACTOR || d_HD > 2.f * MULT_FACTOR) continue;
+
+                float cos_angle = r_HD.dot(r_HA) / (d_HD * d_HA);
+                if (cos_angle < 0.5f) continue;  // >120°
+                
+                sf::Vector2f pH = {positions[H].x, positions[H].y};
+                sf::Vector2f pA = {positions[j].x, positions[j].y};
+                
+                sf::Vector2f d = pA - pH;
+
+                if (d.length() <= 0.f) continue;
+
+                sf::Vector2f dir =  d.normalized();
+                float len = (pA - pH).length();
+
+                if (len > 5.f * MULT_FACTOR) continue;
+                float energy_kJ = COULOMB_K * atoms[H].charge * atoms[j].charge / d_HA;
+
+                float maxEnergy = -20.0f;
+                float minEnergy =  -2.0f;
+                float norm = std::clamp((energy_kJ - minEnergy) / (maxEnergy - minEnergy), 0.f, 1.f);
+                uint8_t alpha = static_cast<uint8_t>(norm * 255.f);
+
+                if (norm < 0.2f) continue;
+
+                for (float t = 0.3f; t < 0.8f; t += 0.1f)
+                {
+                    sf::Vector2f start = pH + dir * len * t;
+                    sf::Vector2f end   = pH + dir * len * (t + 0.06f);
+                    if (end.x < 0 || end.y < 0 || start.x > boxSize || start.y > boxSize) continue;
+
+                    sf::Vertex line[] = {
+                        sf::Vertex(start, sf::Color(255, 255, 255, alpha)),
+                        sf::Vertex(end,   sf::Color(255, 255, 255, alpha))
+                    };
+                    window.getWindow().draw(line, 2, sf::PrimitiveType::Lines);
+                }
+            }
         }
 
         void universe::drawDebug(core::window_t& window)
@@ -275,14 +397,17 @@ namespace sim
         }
 
         // TO DO: Support ionic-molecules 
-        void universe::createMolecule(const molecule_structure& structure, sf::Vector3f pos)
+        void universe::createMolecule(molecule_structure& structure, sf::Vector3f pos)
         {
             size_t baseAtomIndex = atoms.size();
             
             for (size_t i = 0; i < structure.atoms.size(); ++i)
             {
                 const def_atom& a = structure.atoms[i];
-                createAtom(structure.positons[i] + pos + sf::Vector3f(0.f, 0.f, 0.01f * i), {0.f, 0.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
+                if (pos.z != 0)
+                    structure.positions[i] += sf::Vector3f(0.f, 0.f, 0.01f * i);
+                
+                createAtom(structure.positions[i] + pos, {0.f, 0.f, 0.f}, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
             }
 
             for (size_t b = 0; b < structure.bonds.size(); ++b)
@@ -579,6 +704,7 @@ namespace sim
 
         void universe::update(float targetTemperature, bool reactions)
         {
+            std::vector<sf::Vector3f> old_forces = forces;
             std::fill(forces.begin(), forces.end(), sf::Vector3f{0.f, 0.f, 0.f});
             
             if (neighbourList.empty() || neighbourListNeedRebuild()) 
@@ -591,11 +717,9 @@ namespace sim
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                atom& a = atoms[i];
-                if (a.mass <= 0) continue;
-                sf::Vector3f acc = forces[i] / a.mass;
-
-                positions[i] += velocities[i] * DT + 0.5f * acc * DT * DT;
+                sf::Vector3f a_old = old_forces[i] / atoms[i].mass;
+                sf::Vector3f a_new = forces[i] / atoms[i].mass;
+                positions[i] += velocities[i] * DT + 0.5f * (a_old + a_new) * DT * DT;
                 boundCheck(i);
             }
 
@@ -606,13 +730,7 @@ namespace sim
             calcElectrostaticForces();
 
             for (size_t i = 0; i < atoms.size(); ++i)
-            {
-                atom& a = atoms[i];
-                if (a.mass <= 0) continue;
-                sf::Vector3f acc = forces[i] / a.mass;
-
-                velocities[i] += 0.5f * (acc + forces[i] / a.mass) * DT; 
-            }
+                velocities[i] += (old_forces[i] + forces[i]) * (0.5f * DT / atoms[i].mass);
 
             if (reactions)
                 handleReactions();
@@ -855,6 +973,50 @@ namespace sim
                     }
                 }
             }
+        }
+
+        // Camera
+        sf::Vector2f universe::project(core::window_t& window, const sf::Vector3f& p) const
+        {
+            auto size = window.getWindow().getView().getSize();
+            return cam.project(p, size.x, size.y);
+        }
+
+        void universe::handleCamera(bool leftDown, bool rightDown, const sf::Vector2i& mousePos, float wheelDelta, const std::vector<sf::Keyboard::Key>& keys)
+        {
+            if (leftDown)
+            {
+                sf::Vector2i delta = mousePos - lastMouse;
+                cam.azimuth   -= delta.x * 0.3f;
+                cam.elevation  = std::clamp(cam.elevation - delta.y*0.3f,
+                                            -89.f, 89.f);
+            }
+
+            if (rightDown)
+            {
+                sf::Vector2i delta = mousePos - lastMouse;
+                sf::Vector3f forward = (cam.target-cam.eye()).normalized();
+                sf::Vector3f right   = forward.cross({0,0,1}).normalized();
+                sf::Vector3f up      = right.cross(forward);
+                cam.target += sf::Vector3f{right.x * delta.x, right.y, right.z} * cam.distance * 0.002f +
+                              sf::Vector3f{up.x, up.y * delta.y, up.z} * cam.distance * 0.002f;
+            }
+
+            if (wheelDelta != 0.f)
+            {
+                cam.distance *= (wheelDelta>0) ? 0.9f : 1.1f;
+                cam.distance = std::max(50.f, std::min(600.f, cam.distance));
+            }
+
+            for (auto k : keys)
+            {
+                if (k == sf::Keyboard::Key::X) { cam.azimuth=0.f;   cam.elevation=0.f; }
+                if (k == sf::Keyboard::Key::Y) { cam.azimuth=90.f;  cam.elevation=0.f; }
+                if (k == sf::Keyboard::Key::Z) { cam.azimuth=45.f;  cam.elevation=90.f;}
+                if (k == sf::Keyboard::Key::R) { cam = core::camera_t(); cam.distance=180.f; }
+            }
+
+            lastMouse = mousePos;
         }
     } // namespace fun 
 } // namespace sim
