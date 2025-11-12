@@ -78,10 +78,6 @@ namespace core
                 const auto& key = event->getIf<sf::Event::KeyPressed>()->code;
                 if (key == sf::Keyboard::Key::Space)
                     paused = !paused;
-            }
-            if (event->is<sf::Event::KeyPressed>())
-            {
-                const auto& key = event->getIf<sf::Event::KeyPressed>()->code;
                 if (key == sf::Keyboard::Key::F)
                     step = true;
             }
@@ -101,7 +97,22 @@ namespace core
             }
         }
         
-        handleCameraInput();
+        //handleCameraInput();
+
+        const sf::Keyboard::Key keysToCheck[] = {
+            sf::Keyboard::Key::W, sf::Keyboard::Key::A, sf::Keyboard::Key::S, sf::Keyboard::Key::D,
+            sf::Keyboard::Key::Q, sf::Keyboard::Key::E,
+            sf::Keyboard::Key::LShift, sf::Keyboard::Key::R
+        };
+
+        for (auto k : keysToCheck)
+        {
+            if (sf::Keyboard::isKeyPressed(k))
+                pressedKeys.push_back(k);
+        }
+
+        if (cameraCallback)
+            cameraCallback(left, right, mouse, wheel, pressedKeys);
 
         if (cameraCallback)
             cameraCallback(left, right, mouse, wheel, pressedKeys);

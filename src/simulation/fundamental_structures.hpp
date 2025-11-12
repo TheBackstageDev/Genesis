@@ -60,8 +60,7 @@ namespace sim
             uint8_t NCount; // neutrons
             int8_t bondCount;
 
-            void draw(float temperature, sf::Vector3f& pos, core::window_t &window, float UniverseSize, bool letterMode);
-            void drawProjected(sf::Vector2f screenPos, core::window_t& win, bool letter, sf::Color baseColor);
+            void draw(float temperature, sf::Vector2f& pos, float camDistance, core::window_t &window, bool letterMode, bool lennardBall);
         };
 
         class universe
@@ -80,8 +79,9 @@ namespace sim
             void linkSubset(size_t subset, size_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
             void update(float targetTemperature = 1.0f, bool reactions = true);
-            void draw(core::window_t &window, bool letter = false);
+            void draw(core::window_t &window, bool letter = false, bool lennardBall = true);
             void drawHydrogenBond(core::window_t& window, size_t H);
+            void drawBonds(core::window_t& window);
             void drawDebug(core::window_t& window);
 
             size_t numAtoms() { return atoms.size(); }
@@ -164,7 +164,7 @@ namespace sim
 
                 return false;
             }
-
+            
             // Camera
             sf::Vector2i lastMouse;
             sf::Vector2f project(core::window_t& window, const sf::Vector3f& p) const;

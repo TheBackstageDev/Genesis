@@ -9,21 +9,19 @@ namespace core
     struct camera_t
     {
         sf::Vector3f target{0, 0, 0};      // look-at point
-        float distance = 180.f;            // eye distance from target
-        float azimuth = 45.f;              // horizontal angle (deg)
-        float elevation = 25.f;            // vertical angle (deg)
-        float fov = 60.f;                  // field of view (deg)
+        float distance = 1.f;            // eye distance from target
+        float azimuth = 0.f;              // horizontal angle (deg)
+        float elevation = 0.f;            // vertical angle (deg)
+        float fov = 50.f;                  // field of view (deg)
         float nearPlane = 1.f;
         float farPlane = 1000.f;
 
         sf::Vector3f eye() const
         {
-            float az = azimuth * M_PI / 180.f;
-            float el = elevation * M_PI / 180.f;
-            float x = distance * std::cos(el) * std::sin(az);
-            float y = distance * std::cos(el) * std::cos(az);
-            float z = distance * std::sin(el);
-            return target + sf::Vector3f(x, y, z);
+            float x = distance * cos(elevation * RADIAN) * sin(azimuth * RADIAN);
+            float y = distance * cos(elevation * RADIAN) * cos(azimuth * RADIAN);
+            float z = distance * sin(elevation * RADIAN);
+            return target + sf::Vector3f{x, y, z};
         }
 
         void setSideView(char axis)
@@ -39,26 +37,26 @@ namespace core
         sf::Vector2f project(const sf::Vector3f& p, float w, float h) const
         {
             sf::Vector3f eyePos = eye();
-            sf::Vector3f view = p - eyePos; 
-
-            sf::Vector3f forward = (target - eyePos).normalized();
+            sf::Vector3f view = p - eyePos;
+            sf::Vector3f forward = distance == 0.f ? sf::Vector3f(1.f, 0.f, 0.f) : (target - eyePos).normalized();
             sf::Vector3f up{0, 0, 1};
             sf::Vector3f right = forward.cross(up).normalized();
-            up = right.cross(forward);  
+            up = right.cross(forward).normalized();
 
             float depth = view.dot(forward);
             if (depth <= nearPlane || depth >= farPlane)
                 return {-9999.f, -9999.f};
 
+            float f = 1.0f / std::tan(fov * 0.5f * M_PI / 180.0f);
             float aspect = w / h;
-            float f = 1.0f / std::tan(fov * 0.5f * M_PI / 180.f);
-            float px = view.dot(right) * f * aspect / depth;
-            float py = view.dot(up)    * f          / depth;
 
-            return {
-                w * 0.5f + px * (w * 0.4f),   
-                h * 0.5f - py * (h * 0.4f)
-            };
+            float px = view.dot(right) * f / depth;
+            float py = view.dot(up)    * f / depth;
+
+            float x = (px + 1.0f) * 0.5f * w;
+            float y = (1.0f - py) * 0.5f * h;
+
+            return {x, y};
         }
 
         sf::Transform getViewMatrix() const

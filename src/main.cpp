@@ -47,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 50.f;
+    size_t universeSize = 40.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -65,9 +65,9 @@ int main()
     float targetTemp = 100.f;
 
     auto water = sim::parseSMILES("O");  
-    auto hy = sim::parseSMILES("C1CCCCC1");  
+    auto hy = sim::parseSMILES("CCCCCCCCCC");  
 
-    //universe.createMolecule(hy, {100, 50, 0});
+    //universe.createMolecule(hy, {30, 30, 1});
     //universe.createMolecule(water, {100, 40, 0});
 
     size_t count = 100;

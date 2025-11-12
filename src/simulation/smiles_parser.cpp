@@ -6,7 +6,7 @@
 namespace sim
 {
     using namespace sim::fun;
-    molecule_structure sim::parseSMILES(const std::string& molecule, bool implicitHydrogens)
+    molecule_structure sim::parseSMILES(const std::string &molecule, bool implicitHydrogens)
     {
         molecule_structure nStructure{};
         std::vector<def_bond> nBonds{};
@@ -14,24 +14,29 @@ namespace sim
         std::vector<def_atom> nAtoms{};
         std::vector<sf::Vector3f> npositions{};
 
-        if (molecule.empty()) return nStructure;
+        if (molecule.empty())
+            return nStructure;
 
         size_t prevAtom = SIZE_MAX;
         BondType bondType = BondType::SINGLE; // Current Bond
-        
+
         std::stack<size_t> branchStack;
 
-        std::unordered_map<int32_t, size_t> ringOpen;  // ring number > atom index
-        std::unordered_map<size_t, std::vector<size_t>> ringIndices;  // atom indices
-        std::unordered_map<size_t, std::vector<size_t>> ringBondIndices; 
+        std::unordered_map<int32_t, size_t> ringOpen;                // ring number > atom index
+        std::unordered_map<size_t, std::vector<size_t>> ringIndices; // atom indices
+        std::unordered_map<size_t, std::vector<size_t>> ringBondIndices;
 
         std::vector<std::vector<size_t>> rings;
 
         for (size_t i = 0; i < molecule.size(); ++i)
         {
             const uint8_t c = molecule[i];
-            
-            if (isspace(c)) { ++i; continue; }
+
+            if (isspace(c))
+            {
+                ++i;
+                continue;
+            }
 
             if (c == '=' || c == '#')
             {
@@ -47,7 +52,7 @@ namespace sim
                 // Ring number > 9
                 if (c == '%')
                 {
-                    ringID = (molecule[i+1]-'0') * 10 + (molecule[i+2]-'0'); 
+                    ringID = (molecule[i + 1] - '0') * 10 + (molecule[i + 2] - '0');
                     i += 2;
                 }
 
@@ -68,11 +73,11 @@ namespace sim
                         for (size_t k = 0; k < ringIndices[ringID].size(); ++k)
                         {
                             size_t a1 = ringIndices[ringID][k];
-                            size_t a2 = ringIndices[ringID][(k+1) % ringIndices[ringID].size()];
+                            size_t a2 = ringIndices[ringID][(k + 1) % ringIndices[ringID].size()];
 
                             for (size_t b = 0; b < nBonds.size(); ++b)
                             {
-                                const def_bond& bb = nBonds[b];
+                                const def_bond &bb = nBonds[b];
                                 if ((bb.centralAtomIdx == a1 && bb.bondingAtomIdx == a2) ||
                                     (bb.centralAtomIdx == a2 && bb.bondingAtomIdx == a1))
                                 {
@@ -135,19 +140,16 @@ namespace sim
 
             if (c == '[')
             {
-                
             }
             else if (c == ']')
             {
-            
             }
 
             // Different molecule
             if (c == '.')
             {
-
             }
-            
+
             if (isalpha(c))
             {
                 bool aromatic = islower(c);
@@ -159,6 +161,28 @@ namespace sim
                 nAtom.NIndex = ZIndex;
                 nAtom.ZIndex = ZIndex;
                 nAtom.aromatic = aromatic;
+
+                if (i + 1 < molecule.size())
+                {
+                    char next = molecule[i + 1];
+                    if (isalpha(next))
+                    {
+                        std::string two = sym + next;
+
+                        two[0] = std::toupper(two[0]);
+                        if (two.size() > 1) two[1] = std::tolower(two[1]);
+
+                        uint8_t newZ = constants::symbolToZ(two);
+                        if (newZ != 0)      
+                        {
+                            sym = two;
+                            nAtom.ZIndex = newZ;
+                            nAtom.NIndex = newZ; // Usually yes
+                            ++i;                            
+                            aromatic = false;                 
+                        }
+                    }
+                }
 
                 nAtoms.emplace_back(std::move(nAtom));
 
@@ -175,10 +199,9 @@ namespace sim
                     nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType);
                     nAtoms[currentAtom].nBonds += static_cast<uint32_t>(bondType);
                 }
-                
-                if (ringOpen.size() > 0 && prevAtom != SIZE_MAX && 
-                    std::find(ringIndices[ringOpen.size()].begin(), ringIndices[ringOpen.size()].end(), prevAtom) 
-                    == ringIndices[ringOpen.size()].end())
+
+                if (ringOpen.size() > 0 && prevAtom != SIZE_MAX &&
+                    std::find(ringIndices[ringOpen.size()].begin(), ringIndices[ringOpen.size()].end(), prevAtom) == ringIndices[ringOpen.size()].end())
                 {
                     ringBondIndices[ringOpen.size()].emplace_back(nBonds.size() - 1);
                     ringIndices[ringOpen.size()].emplace_back(prevAtom);
@@ -188,13 +211,13 @@ namespace sim
                 bondType = BondType::SINGLE;
             }
         }
-        
+
         if (implicitHydrogens)
             addImplicitHydrogens(nAtoms, nBonds);
-            
+
         npositions.resize(nAtoms.size());
         organizeSubsets(nSubsets, nAtoms, nBonds);
-        getAngles(nSubsets, nAtoms, nBonds);    
+        getAngles(nSubsets, nAtoms, nBonds);
         positionAtoms(molecule, rings, nAtoms, nSubsets, npositions);
 
         nStructure.atoms = std::move(nAtoms);
@@ -205,18 +228,19 @@ namespace sim
         return nStructure;
     }
 
-    std::vector<float> sim::getAngles(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds)
+    std::vector<float> sim::getAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
     {
         std::vector<float> angles(nSubsets.size());
 
         for (size_t s = 0; s < nSubsets.size(); ++s)
         {
-            def_subset& sub = nSubsets[s];
+            def_subset &sub = nSubsets[s];
 
             std::vector<size_t> connected = sub.connectedIdx;
             connected.insert(connected.end(), sub.hydrogensIdx.begin(), sub.hydrogensIdx.end());
 
-            if (sub.connectedIdx.size() < 2 && sub.hydrogensIdx.size() < 2) continue; 
+            if (connected.size() < 2)
+                continue;
 
             std::vector<uint8_t> ZIndices;
             std::vector<BondType> bondTypes;
@@ -227,12 +251,13 @@ namespace sim
 
             for (size_t b = 0; b < connected.size(); ++b)
             {
-                auto bondIt = std::find_if(nBonds.begin(), nBonds.end(), 
-                    [&](const def_bond& a){ return a.bondingAtomIdx == connected[b] && a.centralAtomIdx == sub.mainAtomIdx; });
+                auto bondIt = std::find_if(nBonds.begin(), nBonds.end(),
+                                           [&](const def_bond &a)
+                                           { return a.bondingAtomIdx == connected[b] && a.centralAtomIdx == sub.mainAtomIdx; });
 
-                if (bondIt != nBonds.end()) 
+                if (bondIt != nBonds.end())
                 {
-                    const def_bond& bond = *bondIt;
+                    const def_bond &bond = *bondIt;
                     bondTypes.emplace_back(bond.type);
                 }
 
@@ -246,14 +271,14 @@ namespace sim
 
         return angles;
     }
-    
-    void sim::organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds)
+
+    void sim::organizeSubsets(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
     {
         std::unordered_map<size_t, std::vector<size_t>> atomBonds; // atomIndex > atomsIndices
 
         for (size_t b = 0; b < nBonds.size(); ++b)
         {
-            const def_bond& bond = nBonds[b];
+            const def_bond &bond = nBonds[b];
 
             atomBonds[bond.centralAtomIdx].emplace_back(bond.bondingAtomIdx);
             atomBonds[bond.bondingAtomIdx].emplace_back(bond.centralAtomIdx);
@@ -269,16 +294,17 @@ namespace sim
             return;
         }
 
-        nSubsets.reserve(nAtoms.size());  // upper bound
+        nSubsets.reserve(nAtoms.size()); // upper bound
         for (size_t a = 0; a < nAtoms.size(); ++a)
         {
-            const def_atom& atom = nAtoms[a];
+            const def_atom &atom = nAtoms[a];
 
-            if (atom.ZIndex == 1) continue; // Hydrogen is not a central atom other than in H2
+            if (atom.ZIndex == 1)
+                continue; // Hydrogen is not a central atom other than in H2
 
             def_subset nSubset{};
             nSubset.mainAtomIdx = a;
-            
+
             std::vector<size_t> connected = atomBonds[a];
 
             for (size_t i = 0; i < connected.size(); ++i)
@@ -300,36 +326,43 @@ namespace sim
         {
             size_t main = nSubsets[s].mainAtomIdx;
 
-            for (const auto& bond : nBonds)
+            for (const auto &bond : nBonds)
             {
-                if (bond.centralAtomIdx != main) continue;
+                if (bond.centralAtomIdx != main)
+                    continue;
                 size_t neigh = bond.bondingAtomIdx;
 
-                if (nAtoms[neigh].ZIndex == 1) continue;
+                if (nAtoms[neigh].ZIndex == 1)
+                    continue;
 
                 auto it = atomToSubset.find(neigh);
-                if (it == atomToSubset.end()) continue;
+                if (it == atomToSubset.end())
+                    continue;
 
                 size_t neighSubset = it->second;
 
-                nSubsets[s].bondingSubset = neighSubset;   
-                nSubsets[neighSubset].bondedSubset = s; 
+                nSubsets[s].bondingSubset = neighSubset;
+                nSubsets[neighSubset].bondedSubset = s;
             }
         }
     }
 
-    void sim::addImplicitHydrogens(std::vector<def_atom>& nAtoms, std::vector<def_bond>& nBonds)
+    void sim::addImplicitHydrogens(std::vector<def_atom> &nAtoms, std::vector<def_bond> &nBonds)
     {
-        size_t originalSize = nAtoms.size(); 
+        size_t originalSize = nAtoms.size();
 
         for (size_t i = 0; i < originalSize; ++i)
         {
-            const def_atom& a = nAtoms[i];
-            if (a.ZIndex == 1) continue;
+            const def_atom &a = nAtoms[i];
+            if (a.ZIndex == 1)
+                continue;
 
             int8_t bonds = constants::getUsualBonds(a.ZIndex);
+            if (bonds == 0)
+                continue; // Noble Gas
             int32_t numHydrogen = bonds - a.nBonds;
-            if (numHydrogen <= 0) continue;
+            if (numHydrogen <= 0)
+                continue;
 
             for (int32_t h = 0; h < numHydrogen; ++h)
             {
@@ -347,12 +380,13 @@ namespace sim
         }
     }
 
-    void sim::positionAtoms(const std::string& SMILES, const std::vector<std::vector<size_t>>& rings, 
-                            const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, 
-                            std::vector<sf::Vector3f>& positions)
+    void sim::positionAtoms(const std::string &SMILES, const std::vector<std::vector<size_t>> &rings,
+                            const std::vector<def_atom> &nAtoms, const std::vector<def_subset> &nSubsets,
+                            std::vector<sf::Vector3f> &positions)
     {
         positions.assign(nAtoms.size(), sf::Vector3f(0, 0, 0));
-        if (nAtoms.empty()) return;
+        if (nAtoms.empty())
+            return;
 
         std::unordered_map<size_t, size_t> atomToSubset;
         for (size_t s = 0; s < nSubsets.size(); ++s)
@@ -360,17 +394,19 @@ namespace sim
 
         std::unordered_map<size_t, float> ringDir;
 
-        for (const auto& ring : rings) 
+        for (const auto &ring : rings)
         {
-            if (ring.size() < 3) continue;
+            if (ring.size() < 3)
+                continue;
 
             float turnDeg = 360.f / static_cast<float>(ring.size());
             float turnRad = turnDeg * RADIAN;
 
-            for (size_t i = 0; i < ring.size(); ++i) {
-                size_t a = ring[i];                       
+            for (size_t i = 0; i < ring.size(); ++i)
+            {
+                size_t a = ring[i];
 
-                ringDir[a] = turnRad;                         
+                ringDir[a] = turnRad;
             }
         }
 
@@ -380,34 +416,40 @@ namespace sim
 
         std::stack<sf::Vector3f> branchPosStack;
         std::stack<sf::Vector3f> branchDirStack;
-        std::stack<size_t>       branchAtomStack;
+        std::stack<size_t> branchAtomStack;
 
-        std::map<int32_t, size_t> ringOpen;   
+        std::map<int32_t, size_t> ringOpen;
         std::unordered_map<size_t, bool> flipMap;
-        
-        size_t atomIdx = 0;
-        size_t prevAtom = SIZE_MAX; 
 
-        auto placeAtom = [&](size_t idx, const sf::Vector3f& pos) {
+        size_t atomIdx = 0;
+        size_t prevAtom = SIZE_MAX;
+
+        auto placeAtom = [&](size_t idx, const sf::Vector3f &pos)
+        {
             positions[idx] = pos;
             currentPos = positions[idx];
         };
 
-        auto rotateDirection = [&](float radians) {
+        auto rot = [&](float radians)
+        {
             float c = std::cos(radians);
             float s = std::sin(radians);
             currentDir = sf::Vector3f(
-                currentDir.x * c - currentDir.y * s,
-                currentDir.x * s + currentDir.y * c,
-                0.0f
-            ).normalized();
+                             currentDir.x * c - currentDir.y * s,
+                             currentDir.x * s + currentDir.y * c,
+                             0.0f)
+                             .normalized();
         };
 
         for (size_t i = 0; i < SMILES.size(); ++i)
         {
             const uint8_t c = SMILES[i];
-            
-            if (isspace(c)) { ++i; continue; }
+
+            if (isspace(c))
+            {
+                ++i;
+                continue;
+            }
 
             if (c == '=' || c == '#')
             {
@@ -417,37 +459,37 @@ namespace sim
 
             if (c == '[')
             {
-                
             }
             else if (c == ']')
             {
-            
             }
 
             float ideal = 0.f;
             auto subIt = atomToSubset.find(prevAtom);
-            if (subIt != atomToSubset.end()) 
+            if (subIt != atomToSubset.end())
             {
                 ideal = nSubsets[subIt->second].idealAngle;
             }
 
             // Direction up or down
-            if (c == '/') {
+            if (c == '/')
+            {
 
-                if (prevAtom != SIZE_MAX) 
+                if (prevAtom != SIZE_MAX)
                 {
-                    rotateDirection(-M_PI / 3);  // 60° up
+                    rot(-M_PI / 3); // 60° up
                 }
                 continue;
             }
-            if (c == '\\') {
-                if (prevAtom != SIZE_MAX) 
+            if (c == '\\')
+            {
+                if (prevAtom != SIZE_MAX)
                 {
-                    rotateDirection(M_PI / 3);  // 60° down
+                    rot(M_PI / 3); // 60° down
                 }
                 continue;
             }
-            
+
             if (c == '@')
             {
                 if (SMILES[i + 1] == '@')
@@ -458,49 +500,60 @@ namespace sim
                 continue;
             }
 
-            if (c == '(') {
-                if (prevAtom != SIZE_MAX) {
+            if (c == '(')
+            {
+                if (prevAtom != SIZE_MAX)
+                {
                     branchAtomStack.push(prevAtom);
                     branchPosStack.push(currentPos);
                     branchDirStack.push(currentDir);
                 }
                 continue;
             }
-            if (c == ')') {
-                if (!branchAtomStack.empty()) {
-                    prevAtom   = branchAtomStack.top();   branchAtomStack.pop();
-                    currentPos = branchPosStack.top();    branchPosStack.pop();
-                    currentDir = branchDirStack.top();    branchDirStack.pop();
+            if (c == ')')
+            {
+                if (!branchAtomStack.empty())
+                {
+                    prevAtom = branchAtomStack.top();
+                    branchAtomStack.pop();
+                    currentPos = branchPosStack.top();
+                    branchPosStack.pop();
+                    currentDir = branchDirStack.top();
+                    branchDirStack.pop();
 
-                    if (ideal > 0.f) {
-                        bool& flip = flipMap[prevAtom];
+                    if (ideal > 0.f)
+                    {
+                        bool &flip = flipMap[prevAtom];
                         float sign = flip ? 1.f : -1.f;
-                        rotateDirection(sign * ideal);
+                        rot(sign * ideal * 0.5f);
                         flip = !flip;
-                    } else {
-                        rotateDirection(M_PI);  
+                    }
+                    else
+                    {
+                        rot(M_PI);
                     }
                 }
                 continue;
             }
 
-            if (std::isdigit(c) || c == '%') 
+            if (std::isdigit(c) || c == '%')
             {
                 int32_t ringID = c - '0';
-                if (c == '%') {
+                if (c == '%')
+                {
                     ringID = (SMILES[i + 1] - '0') * 10 + (SMILES[i + 2] - '0');
                     i += 2;
                 }
 
-                if (ringOpen.count(ringID)) 
-                {                    
-                    prevAtom = atomIdx;                 
+                if (ringOpen.count(ringID))
+                {
+                    prevAtom = atomIdx;
                     ringOpen.erase(ringOpen[ringID]);
-                } 
-                else 
-                {                
-                    rotateDirection(M_PI * 1.5f);  
-                    ringOpen[ringID] = prevAtom;                          
+                }
+                else
+                {
+                    rot(M_PI * 1.5f);
+                    ringOpen[ringID] = prevAtom;
                 }
                 bondType = BondType::SINGLE;
                 continue;
@@ -508,33 +561,34 @@ namespace sim
 
             if (isalpha(c))
             {
-                if (atomIdx >= nAtoms.size()) break;
+                if (atomIdx >= nAtoms.size())
+                    break;
 
                 float bondLength = 2.f * MULT_FACTOR;
-                
+
                 if (prevAtom != SIZE_MAX && nAtoms[atomIdx].ZIndex != 1 && c != 'H')
                 {
-                    const def_atom& a1 = nAtoms[prevAtom];
-                    const def_atom& a2 = nAtoms[atomIdx];
+                    const def_atom &a1 = nAtoms[prevAtom];
+                    const def_atom &a2 = nAtoms[atomIdx];
                     bondLength = constants::getBondLength(a1.ZIndex, a2.ZIndex, bondType);
 
                     static bool flip = false;
 
                     auto ringIt = ringDir.find(prevAtom);
-                    if (ringIt != ringDir.end()) 
+                    if (ringIt != ringDir.end())
                     {
-                        rotateDirection(ringIt->second);         
+                        rot(ringIt->second);
                     }
                     else if (ideal > 0.f)
                     {
                         float sign = flip ? 1.f : -1.f;
-                        rotateDirection(sign * ideal * 0.5f);
+                        rot(sign * ideal * 0.3f);
                         flip = !flip;
                     }
-                    
+
                     bondType = BondType::SINGLE;
                 }
-                
+
                 placeAtom(atomIdx, currentPos + currentDir * bondLength);
                 ++atomIdx;
                 prevAtom = atomIdx - 1;
@@ -544,64 +598,113 @@ namespace sim
         // Hydrogen Placement
         for (size_t s = 0; s < nSubsets.size(); ++s)
         {
-            const def_subset& sub = nSubsets[s];
+            const def_subset &sub = nSubsets[s];
             const std::vector<size_t> hydrogens = sub.hydrogensIdx;
             const size_t centralAtom = sub.mainAtomIdx;
 
-            for (size_t h = 0; h < hydrogens.size(); ++h)
+            sf::Vector3f axis(0,0,1);
+            if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX)
             {
-                const size_t hydrogenIdx = hydrogens[h];
-                float bondLength = 1.3f * MULT_FACTOR;
+                const size_t c1 = nSubsets[sub.bondedSubset].mainAtomIdx;
+                const size_t c2 = nSubsets[sub.bondingSubset].mainAtomIdx;
+                const sf::Vector3f v1 = (positions[centralAtom] - positions[c1]).normalized();
+                const sf::Vector3f v2 = (positions[centralAtom] - positions[c2]).normalized();
+                axis = (v1 + v2).length() == 0.f ? axis : (v1 + v2).normalized();
+            }
+            else if (sub.bondingSubset != SIZE_MAX)
+            {
+                const size_t prev = nSubsets[sub.bondingSubset].mainAtomIdx;
+                axis = (positions[centralAtom] - positions[prev]).normalized();
+            }
+            else if (sub.bondedSubset != SIZE_MAX)
+            {
+                const size_t next = nSubsets[sub.bondedSubset].mainAtomIdx;
+                axis = (positions[centralAtom] - positions[next]).normalized();
+            }
 
-                positions[hydrogenIdx] = positions[centralAtom];
+            sf::Vector3f baseDir = axis;
+            auto turnIt = ringDir.find(centralAtom);
+            if (turnIt != ringDir.end())
+            {
+                float turnRad = turnIt->second;
+                const sf::Vector3f ringNormal(0, 0, 1);
 
-                if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX)
+                baseDir = rotateDirection(axis, ringNormal, -30.0f * RADIAN);
+            }
+
+            const size_t nH = sub.hydrogensIdx.size();
+            for (size_t h = 0; h < nH; ++h)
+            {
+                const size_t hIdx = sub.hydrogensIdx[h];
+                positions[hIdx] = positions[centralAtom];
+
+                sf::Vector3f dir = baseDir; 
+                const sf::Vector3f ringNormal(1, 0, 1);
+
+                if (nH == 3)
+                    dir = rotateDirection(dir, axis, -90.f * RADIAN);
+
+                if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX && ringDir.count(sub.mainAtomIdx) > 0)
+                    dir = rotateDirection(dir, ringNormal, 120.f * h * RADIAN);
+                else if (nH == 2) 
+                    dir = rotateDirection(dir, ringNormal, M_PI * h);
+                else if (nH == 3) 
+                    dir = rotateDirection(dir, ringNormal, 90.f * h * RADIAN);
+                else if (nH == 4)
                 {
-                    const size_t central1 = nSubsets[sub.bondedSubset].mainAtomIdx;
-                    const size_t central2 = nSubsets[sub.bondingSubset].mainAtomIdx;
-                    
-                    currentDir = (positions[central2] - positions[central1]).cross(sf::Vector3f(0, 0, 1)).normalized();
+                    const float cosT = -1.0f / 3.0f;
+                    const float sinT = std::sqrt(1.0f - cosT * cosT);
 
-                    if (hydrogens.size() > 1 && ringDir.find(centralAtom) != ringDir.end())
+                    sf::Vector3f X = (std::abs(ringNormal.x) < 0.9f) ? sf::Vector3f(0, 1, 0) : sf::Vector3f(1, 0, 0);
+                    X = ringNormal.cross(X).normalized();
+                    const sf::Vector3f Y = ringNormal.cross(X);
+
+                    sf::Vector3f tet[4] = {
+                        cosT * ringNormal + sinT * X,
+                        cosT * ringNormal - sinT * X,
+                        cosT * ringNormal + sinT * Y,
+                        cosT * ringNormal - sinT * Y};
+
+                    if (baseDir.dot(tet[0]) < 0.999f)
                     {
-                        rotateDirection(-20 * RADIAN);
-                        rotateDirection(60 * h * RADIAN);
+                        sf::Vector3f rotAxis = tet[0].cross(baseDir);
+                        if (rotAxis.length() > 1e-6f)
+                        {
+                            rotAxis = rotAxis.normalized();
+                            const float ang = std::acos(std::clamp(tet[0].dot(baseDir), -1.0f, 1.0f));
+                            for (int k = 0; k < 4; ++k)
+                                tet[k] = rotateDirection(tet[k], rotAxis, ang);
+                        }
                     }
-                    else if (hydrogens.size() > 1)
-                    {
-                        rotateDirection(180 * h * RADIAN);
-                    }
-                    else if (ringDir.find(centralAtom) != ringDir.end())
-                    {
-                        rotateDirection(-90 * RADIAN);
-                        rotateDirection(sub.idealAngle);
-                    }
+                    dir = tet[h];
                 }
-                else if (sub.bondedSubset == SIZE_MAX && sub.bondingSubset != SIZE_MAX) // Terminal Atom
+                else 
                 {
-                    const size_t centrallast = nSubsets[sub.bondingSubset].mainAtomIdx;
-
-                    currentDir = (positions[hydrogenIdx] - positions[centrallast]).normalized();
-
-                    if (hydrogens.size() > 1)
-                        rotateDirection(60 * h * RADIAN);
-                }
-                else if (sub.bondingSubset == SIZE_MAX && sub.bondedSubset != SIZE_MAX) // Initial Atom
-                {
-                    const size_t centralNext = nSubsets[sub.bondedSubset].mainAtomIdx;
-
-                    currentDir = (positions[hydrogenIdx] - positions[centralNext]).normalized();
-
-                    if (hydrogens.size() > 1)
-                        rotateDirection(60 * h * RADIAN);
-                }
-                else if (hydrogens.size() > 1)
-                {
-                    rotateDirection(sub.idealAngle * h);   
+                    dir = rotateDirection(dir, ringNormal, 90 * h * RADIAN);
                 }
 
-                positions[hydrogenIdx] += currentDir * bondLength;
+                positions[hIdx] += dir * 0.9f;
             }
         }
+    }
+
+    sf::Vector3f sim::rotateDirection(const sf::Vector3f &v, const sf::Vector3f &axis, float angle)
+    {
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+        const float t = 1.0f - c;
+
+        const float x = axis.x, y = axis.y, z = axis.z;
+        const float xx = x * x, yy = y * y, zz = z * z;
+        const float xy = x * y, xz = x * z, yz = y * z;
+
+        const sf::Vector3f row1(t * xx + c, t * xy - s * z, t * xz + s * y);
+        const sf::Vector3f row2(t * xy + s * z, t * yy + c, t * yz - s * x);
+        const sf::Vector3f row3(t * xz - s * y, t * yz + s * x, t * zz + c);
+
+        return sf::Vector3f(
+            v.x * row1.x + v.y * row1.y + v.z * row1.z,
+            v.x * row2.x + v.y * row2.y + v.z * row2.z,
+            v.x * row3.x + v.y * row3.y + v.z * row3.z);
     }
 } // namespace sim

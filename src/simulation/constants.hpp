@@ -21,12 +21,12 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.005f // ps
-#define MULT_FACTOR 2.f
+#define DT 0.001f // ps
+#define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
 
-#define VERLET_SKIN 2.f
+#define VERLET_SKIN 1.f
 #define CUTOFF 2.5f
 #define COULOMB_CUTOFF 8.f * MULT_FACTOR
 #define REACTION_CUTOFF 3.0f * MULT_FACTOR
@@ -36,13 +36,47 @@ namespace constants
 #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
 
 #define REBUILD_THRESHOLD 2.f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 5
+#define THERMOSTAT_INTERVAL 2
 #define REACTION_INTERVAL 50
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
-#define BOND_K 10000.f        // Harmonic force constant
-#define ANGLE_K 7000.f       // kJ/mol/rad² for angular potential
+#define BOND_K 50000.f        // Harmonic force constant
+#define ANGLE_K 5000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
+
+    inline sf::Color getElementColor(uint8_t Z)
+    {
+        switch (Z)
+        {
+            case  1: return sf::Color(233, 233, 233);    // H  - Hydrogen     (White)
+            case  2: return sf::Color(217, 255, 255);    // He - Helium       (Light Cyan)
+            case  3: return sf::Color(204, 128, 255);    // Li - Lithium      (Violet)
+            case  4: return sf::Color(178, 255, 255);    // Be - Beryllium    (Light Green)
+            case  5: return sf::Color(128, 128, 128);    // B  - Boron        (Dark Gray)
+            case  6: return sf::Color(144, 144, 144);    // C  - Carbon       (Gray)
+            case  7: return sf::Color( 48,  80, 248);    // N  - Nitrogen     (Blue)
+            case  8: return sf::Color(255,  13,  13);    // O  - Oxygen       (Red)
+            case  9: return sf::Color(  0, 255, 255);    // F  - Fluorine     (Cyan)
+            case 10: return sf::Color(179, 227, 245);    // Ne - Neon         (Pale Blue)
+            case 11: return sf::Color( 42,  82, 190);    // Na - Sodium       (Blue)
+            case 12: return sf::Color(  0, 130,  70);    // Mg - Magnesium    (Dark Green)
+            case 13: return sf::Color(194, 194, 194);    // Al - Aluminum     (Silver)
+            case 14: return sf::Color( 99,  99,  99);    // Si - Silicon      (Gray)
+            case 15: return sf::Color(255, 165,   0);    // P  - Phosphorus   (Orange)
+            case 16: return sf::Color(255, 255,   0);    // S  - Sulfur       (Yellow)
+            case 17: return sf::Color( 50, 205,  50);    // Cl - Chlorine     (Green)
+            case 18: return sf::Color(128, 128, 128);    // Ar - Argon        (Dark Gray)
+            case 19: return sf::Color(160,  82,  45);    // K  - Potassium    (Brown)
+            case 20: return sf::Color(135, 206, 235);    // Ca - Calcium      (Sky Blue)
+            case 21: return sf::Color(138, 138, 138);    // Sc - Scandium     (Gray)
+            case 22: return sf::Color(  0, 100,   0);    // Ti - Titanium     (Dark Green)
+            case 23: return sf::Color(148,   0, 211);    // V  - Vanadium     (Purple)
+            case 24: return sf::Color( 70, 130, 180);    // Cr - Chromium     (Steel Blue)
+            case 25: return sf::Color( 25,  25, 112);    // Mn - Manganese    (Midnight Blue)
+            case 26: return sf::Color(194,  78,  84);    // Fe - Iron         (Rust Red)
+            default: return sf::Color(200, 200, 200);    // Unknown
+        }
+    }
 
     inline uint8_t symbolToZ(const std::string &sym)
     {
@@ -75,7 +109,7 @@ namespace constants
             {"Fe", 26},
         };
         auto it = elements.find(sym);
-        return it != elements.end() ? it->second : 6; // default C
+        return it != elements.end() ? it->second : 0; 
     }
 
     inline uint8_t getValenceElectrons(uint8_t ZIndex)
@@ -146,7 +180,7 @@ namespace constants
         // special cases
         if (ZIndex == 1)
             return 1;
-        if (valenceShell == 8)
+        if (valenceShell == 8 || ZIndex == 2)
             return 0; // noble gases
 
         // octet rule
@@ -159,6 +193,8 @@ namespace constants
             return 2; // Be
         case 5:
             return 3; // B
+        case 11:
+            return 1; // Na
         case 15:
             return 3; // P
         case 16:
@@ -186,17 +222,22 @@ namespace constants
         if (bond_count < 2)
             return 0.0f; // No angle if fewer than 2 neighbors
 
-        uint32_t valence = getValenceElectrons(centralZIndex);
-        uint32_t bonding_electrons = 0;
-        for (const auto &type : types)
+        uint32_t totalBondOrder = 0;
+        for (const auto& t : types)
         {
-            bonding_electrons += (static_cast<uint32_t>(type) + 1) * 2;
+            totalBondOrder += static_cast<uint32_t>(t);
         }
-        uint32_t lone_pairs = (valence - (bonding_electrons / 2)) / 2; // Approximate lone pairs
-        uint32_t total_pairs = bond_count + lone_pairs;
-        float ideal_angle = 0.0f;
 
-        switch (total_pairs)
+        const uint32_t valence = getValenceElectrons(centralZIndex);
+
+        const uint32_t electronsInBonds = totalBondOrder * 2;
+        int32_t remaining = valence - electronsInBonds;
+        if (remaining < 0) remaining = 0;
+
+        const uint32_t totalPairs = bond_count + remaining;
+
+        float ideal_angle = 0.0f;
+        switch (totalPairs)
         {
         case 2:
             ideal_angle = M_PI;
@@ -206,9 +247,9 @@ namespace constants
             break; // Trigonal planar
         case 4:
             ideal_angle = 109.5f * RADIAN; // Tetrahedral base
-            if (lone_pairs == 1 && bond_count == 3)
+            if (remaining == 1 && bond_count == 3)
                 ideal_angle = 107.0f * RADIAN;
-            if (lone_pairs == 2 && bond_count == 2)
+            if (remaining == 2 && bond_count == 2)
                 ideal_angle = 104.5f * RADIAN;
             break;
         case 5:
@@ -408,77 +449,97 @@ namespace constants
 
     inline float getBondLength(uint8_t ZIndex1, uint8_t ZIndex2, sim::fun::BondType type)
     {
-        float base = (getAtomConstants(ZIndex1).first / MULT_FACTOR + getAtomConstants(ZIndex2).first / MULT_FACTOR) / 2.0f * BOND_LENGTH_FACTOR;
-        const float baseBase = base;
+        // Fallback: average covalent radii (scaled)
+        float base = (getAtomConstants(ZIndex1).first / MULT_FACTOR +
+                    getAtomConstants(ZIndex2).first / MULT_FACTOR) / 2.3f * BOND_LENGTH_FACTOR;
+        float baseBase = base;
+
+        if (ZIndex1 > ZIndex2) std::swap(ZIndex1, ZIndex2);
+        else std::swap(ZIndex2, ZIndex1);
 
         switch (type)
         {
         case sim::fun::BondType::SINGLE:
-            if ((ZIndex1 == 6 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 6))
-                base = 1.29f; // C-H
-            if ((ZIndex1 == 8 && ZIndex2 == 6) || (ZIndex1 == 6 && ZIndex2 == 8))
-                base = 1.12f; // C-O
-            if ((ZIndex1 == 6 && ZIndex2 == 6))
-                base = 1.74f; // C-C
-            if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6))
-                base = 1.47f; // C-N
-            if ((ZIndex1 == 6 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 6))
-                base = 1.81f; // C-S
-            if ((ZIndex1 == 6 && ZIndex2 == 9) || (ZIndex1 == 9 && ZIndex2 == 6))
-                base = 1.385f; // C-F
-            if ((ZIndex1 == 8 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 8))
-                base = 0.96f; // O-H
-            if ((ZIndex1 == 16 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 16))
-                base = 1.34f; // S-H
-            if ((ZIndex1 == 16 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 16))
-                base = 1.57f; // S-O
-            if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17))
-                base = 1.27f; // Cl-H
-            if ((ZIndex1 == 7 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 7))
-                base = 1.01f; // N-H
-            if ((ZIndex1 == 7 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 7))
-                base = 1.40f; // N-O
-            if ((ZIndex1 == 9 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 9))
-                base = 0.93f; // F-H
-            if ((ZIndex1 == 15 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 15))
-                base = 1.58f; // P-O
+            // --- Carbon bonds ---
+            if (ZIndex1 == 6 && ZIndex2 == 6)  base = 1.54f; // C–C (sp³)
+            if (ZIndex1 == 6 && ZIndex2 == 1)  base = 1.09f; // C–H
+            if (ZIndex1 == 6 && ZIndex2 == 7)  base = 1.47f; // C–N
+            if (ZIndex1 == 6 && ZIndex2 == 8)  base = 1.43f; // C–O
+            if (ZIndex1 == 6 && ZIndex2 == 9)  base = 1.35f; // C–F
+            if (ZIndex1 == 6 && ZIndex2 == 15) base = 1.85f; // C–P
+            if (ZIndex1 == 6 && ZIndex2 == 16) base = 1.82f; // C–S
+            if (ZIndex1 == 6 && ZIndex2 == 17) base = 1.77f; // C–Cl
+            if (ZIndex1 == 6 && ZIndex2 == 35) base = 1.94f; // C–Br
+            if (ZIndex1 == 6 && ZIndex2 == 53) base = 2.14f; // C–I
+
+            // --- Nitrogen bonds ---
+            if (ZIndex1 == 7 && ZIndex2 == 7)  base = 1.45f; // N–N
+            if (ZIndex1 == 7 && ZIndex2 == 8)  base = 1.46f; // N–O
+            if (ZIndex1 == 7 && ZIndex2 == 1)  base = 1.01f; // N–H
+
+            // --- Oxygen bonds ---
+            if (ZIndex1 == 8 && ZIndex2 == 8)  base = 1.48f; // O–O
+            if (ZIndex1 == 8 && ZIndex2 == 1)  base = 0.96f; // O–H
+            if (ZIndex1 == 8 && ZIndex2 == 16) base = 1.57f; // O–S
+
+            // --- Halogens ---
+            if (ZIndex1 == 9 && ZIndex2 == 1)   base = 0.92f; // F–H
+            if (ZIndex1 == 17 && ZIndex2 == 1)  base = 1.27f; // Cl–H
+            if (ZIndex1 == 35 && ZIndex2 == 1)  base = 1.41f; // Br–H
+            if (ZIndex1 == 53 && ZIndex2 == 1)  base = 1.61f; // I–H
+
+            // --- Phosphorus ---
+            if (ZIndex1 == 15 && ZIndex2 == 15) base = 2.22f; // P–P
+            if (ZIndex1 == 15 && ZIndex2 == 8)  base = 1.60f; // P–O
+            if (ZIndex1 == 15 && ZIndex2 == 1)  base = 1.42f; // P–H
+
+            // --- Sulfur ---
+            if (ZIndex1 == 16 && ZIndex2 == 16) base = 2.05f; // S–S
+            if (ZIndex1 == 16 && ZIndex2 == 1)  base = 1.34f; // S–H
+
+            // --- Metals (coordination) ---
+            if (ZIndex1 == 26 && ZIndex2 == 6)  base = 1.92f; // Fe–C
+            if (ZIndex1 == 26 && ZIndex2 == 8)  base = 1.62f; // Fe–O
+            if (ZIndex1 == 28 && ZIndex2 == 6)  base = 1.88f; // Ni–C
+            if (ZIndex1 == 29 && ZIndex2 == 6)  base = 1.90f; // Cu–C
+            if (ZIndex1 == 30 && ZIndex2 == 6)  base = 1.95f; // Zn–C
+
+            // --- Aromatic (special case) ---
+            if ((ZIndex1 == 6 && ZIndex2 == 6) && 
+                (getAtomConstants(ZIndex1).second || getAtomConstants(ZIndex2).second))
+                base = 1.39f; // C–C aromatic (benzene)
+
             break;
+
         case sim::fun::BondType::DOUBLE:
-            base *= 0.7f;
-            if ((ZIndex1 == 6 && ZIndex2 == 6))
-                base = 1.34f; // C=C
-            if ((ZIndex1 == 6 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 6))
-                base = 1.21f; // C=O
-            if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6))
-                base = 1.38f; // C=N
-            if ((ZIndex1 == 6 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 6))
-                base = 1.71f; // C=S
-            if ((ZIndex1 == 8 && ZIndex2 == 16) || (ZIndex1 == 16 && ZIndex2 == 8))
-                base = 1.42f; // S=O
-            if ((ZIndex1 == 8 && ZIndex2 == 15) || (ZIndex1 == 15 && ZIndex2 == 8))
-                base = 1.45f; // O=P
-            if ((ZIndex1 == 7 && ZIndex2 == 7))
-                base = 1.20f; // N=N
-            if ((ZIndex1 == 16 && ZIndex2 == 16))
-                base = 2.05f; // S=S
+            if (ZIndex1 == 6 && ZIndex2 == 6)  base = 1.34f; // C=C
+            if (ZIndex1 == 6 && ZIndex2 == 7)  base = 1.27f; // C=N
+            if (ZIndex1 == 6 && ZIndex2 == 8)  base = 1.22f; // C=O
+            if (ZIndex1 == 6 && ZIndex2 == 16) base = 1.61f; // C=S
+            if (ZIndex1 == 7 && ZIndex2 == 7)  base = 1.24f; // N=N
+            if (ZIndex1 == 7 && ZIndex2 == 8)  base = 1.28f; // N=O
+            if (ZIndex1 == 8 && ZIndex2 == 8)  base = 1.21f; // O=O
+            if (ZIndex1 == 8 && ZIndex2 == 16) base = 1.43f; // S=O
+            if (ZIndex1 == 15 && ZIndex2 == 8) base = 1.44f; // P=O
             break;
+
         case sim::fun::BondType::TRIPLE:
-            base *= 0.6f;
-            if ((ZIndex1 == 6 && ZIndex2 == 6))
-                base = 1.20f; // C≡C
-            if ((ZIndex1 == 6 && ZIndex2 == 7) || (ZIndex1 == 7 && ZIndex2 == 6))
-                base = 1.16f; // C≡N
-            if ((ZIndex1 == 7 && ZIndex2 == 7))
-                base = 1.10f; // N≡N
+            if (ZIndex1 == 6 && ZIndex2 == 6)  base = 1.20f; // C≡C
+            if (ZIndex1 == 6 && ZIndex2 == 7)  base = 1.16f; // C≡N
+            if (ZIndex1 == 7 && ZIndex2 == 7)  base = 1.10f; // N≡N
             break;
+
+        case sim::fun::BondType::QUADRUPLE:
+            // Rare (e.g. Cr≡Cr), fallback
+            base *= 0.55f;
+            break;
+
         default:
             break;
         }
 
-        if (baseBase != base) // Has passed through one of the IF's
-        {
+        if (!std::isnan(base) && base != baseBase)
             base *= MULT_FACTOR;
-        }
 
         return base;
     }
