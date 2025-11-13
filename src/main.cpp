@@ -47,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 40.f;
+    size_t universeSize = 50.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -61,17 +61,17 @@ int main()
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    std::uniform_real_distribution<> dis(5.f, universeSize - 5.f); 
+    std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
     float targetTemp = 100.f;
 
     auto water = sim::parseSMILES("O");  
-    auto hy = sim::parseSMILES("CCCCCCCCCC");  
+    auto hy = sim::parseSMILES("C1CNCCN1c(c2)c(F)cc3c2N(C4CC4)C=C(C3=O)C(=O)O");  
 
-    //universe.createMolecule(hy, {30, 30, 1});
+    universe.createMolecule(hy, {30, 30, 1});
     //universe.createMolecule(water, {100, 40, 0});
 
-    size_t count = 100;
-    float minDistance = 5.f;
+    size_t count = 0;
+    float minDistance = 3.f;
 
     std::vector<sf::Vector3f> centers{{150.f, 150.f, 0.f}};
     centers.reserve(count + 1);

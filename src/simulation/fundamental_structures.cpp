@@ -28,7 +28,7 @@ namespace sim
             sf::Color atomColor = lerpColor(sf::Color::Blue, sf::Color::Red, temperature / 100.f * RADIAN) + constants::getElementColor(ZIndex);
 
             float minDist = 20.0f;  
-            float maxDist = 100.0f; 
+            float maxDist = 300.0f; 
             float alpha = 255.0f;
 
             if (camDistance > minDist) {
@@ -43,7 +43,7 @@ namespace sim
                 sf::CircleShape cloud(rad);
                 cloud.setOrigin({rad, rad});
                 cloud.setPosition(pos);
-                cloud.setFillColor(sf::Color(atomColor.r - 10, atomColor.g - 10, atomColor.b - 10, alpha));
+                cloud.setFillColor(sf::Color(atomColor.r, atomColor.g, atomColor.b, alpha));
                 window.draw(cloud);
             }
 
@@ -163,6 +163,7 @@ namespace sim
                 sf::Vector2f s2 = cam.project(pBonded,  dimensions.x, dimensions.y);  // end
 
                 if (s1.x <= -9999 || s2.x <= -9999) continue;
+                if ((pCentral - pBonded).length() > 5.f) continue;
 
                 sf::Vector2f dir = s2 - s1;
                 float len = dir.length();
@@ -235,7 +236,7 @@ namespace sim
                 sf::Vector2f dir =  d.normalized();
                 float len = (pA - pH).length();
 
-                if (d_HA > 10.f * MULT_FACTOR || d_HD > 10.f * MULT_FACTOR) continue;
+                if (d_HA > 6.f * MULT_FACTOR || d_HD > 6.f * MULT_FACTOR) continue;
                 float energy_kJ = COULOMB_K * atoms[H].charge * atoms[j].charge / d_HA;
 
                 float maxEnergy = -20.0f;
@@ -249,7 +250,6 @@ namespace sim
                 {
                     sf::Vector2f start = pH + dir * len * t;
                     sf::Vector2f end   = pH + dir * len * (t + 0.06f);
-                    if (end.x < 0 || end.y < 0 || start.x > boxSize || start.y > boxSize) continue;
 
                     sf::Vertex line[] = {
                         sf::Vertex(start, sf::Color(255, 255, 255, alpha)),
@@ -574,11 +574,11 @@ namespace sim
 
                 float delta_r = dr - bond.equilibriumLength;
 
-                if (delta_r > bond.equilibriumLength * 2.f)
+                /* if (delta_r > bond.equilibriumLength * 2.f)
                 {
                     breakBond(idx1, idx2);
                     continue;
-                }
+                } */
 
                 float force_magnitude = BOND_K * delta_r;
 

@@ -42,6 +42,7 @@ namespace sim
             
             std::vector<size_t> hydrogenIdx;
             std::vector<size_t> connectedIdx; // non hydrogen connected to the main atom
+            std::vector<size_t> branchSubsets;
             float idealAngle;                // In radians
         };
 

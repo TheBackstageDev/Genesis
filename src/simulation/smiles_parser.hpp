@@ -17,6 +17,7 @@ namespace sim
         uint8_t NIndex;
         int8_t charge = 0; // non-Zero for ions 
         int32_t nBonds = 0;
+        int32_t chirality = 0;
         bool aromatic = false;
     };
 
@@ -36,6 +37,7 @@ namespace sim
 
         std::vector<size_t> hydrogensIdx;
         std::vector<size_t> connectedIdx; // any connection other than hydrogen 
+        std::vector<size_t> branches; 
     };
 
     struct molecule_structure 
@@ -51,7 +53,7 @@ namespace sim
 
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
     void addImplicitHydrogens(std::vector<def_atom>& nAtoms, std::vector<def_bond>& nBonds);
-    void positionAtoms(const std::string& SMILES, const std::vector<std::vector<size_t>>& rings, const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions);
+    void positionAtoms(const std::string& SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>>& rings, const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions);
 
     sf::Vector3f rotateDirection(const sf::Vector3f& v, const sf::Vector3f& axis, float angle);
 } // namespace sim
