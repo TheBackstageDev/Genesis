@@ -41,7 +41,7 @@ namespace constants
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 50000.f        // Harmonic force constant
-#define ANGLE_K 10000.f       // J/mol/rad² for angular potential
+#define ANGLE_K 35000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
 
 #define COUNT_ATOMS 26 // supported by the simulation
@@ -70,7 +70,7 @@ namespace constants
             case 18: return sf::Color(128, 128, 128);    // Ar - Argon        (Dark Gray)
             case 19: return sf::Color(160,  82,  45);    // K  - Potassium    (Brown)
             case 20: return sf::Color(135, 206, 235);    // Ca - Calcium      (Sky Blue)
-            case 21: return sf::Color(138, 138, 138);    // Sc - Scandium     (Gray)
+            case 21: return sf::Color(108, 108, 100);    // Sc - Scandium     (Gray)
             case 22: return sf::Color(  0, 100,   0);    // Ti - Titanium     (Dark Green)
             case 23: return sf::Color(148,   0, 211);    // V  - Vanadium     (Purple)
             case 24: return sf::Color( 70, 130, 180);    // Cr - Chromium     (Steel Blue)
@@ -220,46 +220,55 @@ namespace constants
 
     inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t> &neighborZs, const std::vector<sim::fun::BondType> &types)
     {
-        size_t bond_count = neighborZs.size();
-        if (bond_count < 2)
-            return 0.0f; // No angle if fewer than 2 neighbors
+        const size_t bond_count = types.size();
+        if (bond_count < 2) return 0.0f;
 
-        uint32_t totalBondOrder = 0;
-        for (const auto& t : types)
-        {
-            totalBondOrder += static_cast<uint32_t>(t);
-        }
+        const uint32_t domains_from_bonds = bond_count;
+
+        uint32_t electrons_in_bonds = 0;
+        for (const auto& t : types) 
+            electrons_in_bonds += static_cast<uint32_t>(t);
 
         const uint32_t valence = getValenceElectrons(centralZIndex);
-
-        const uint32_t electronsInBonds = totalBondOrder * 2;
-        int32_t remaining = valence - electronsInBonds;
-        if (remaining < 0) remaining = 0;
-
-        const uint32_t totalPairs = bond_count + remaining;
+        const int32_t lone_pair_electrons = valence - electrons_in_bonds;
+        if (lone_pair_electrons < 0) 
+            return 0.0f;
+        
+        const uint32_t lone_pairs = lone_pair_electrons / 2;
+        const uint32_t total_domains = domains_from_bonds + lone_pairs;
 
         float ideal_angle = 0.0f;
-        switch (totalPairs)
-        {
-        case 2:
-            ideal_angle = M_PI;
-            break; // Linear
-        case 3:
-            ideal_angle = 120.0f * RADIAN;
-            break; // Trigonal planar
-        case 4:
-            ideal_angle = 109.5f * RADIAN; // Tetrahedral base
-            if (remaining == 1 && bond_count == 3)
-                ideal_angle = 107.0f * RADIAN;
-            if (remaining == 2 && bond_count == 2)
-                ideal_angle = 104.5f * RADIAN;
-            break;
-        case 5:
-            ideal_angle = 120.0f * RADIAN;
-            break; // Trigonal bipyramidal (equatorial)
-        case 6:
-            ideal_angle = 90.0f * RADIAN;
-            break; // Octahedral
+
+        switch (total_domains) {
+            case 2:
+                ideal_angle = 180.0f * RADIAN; // Linear: AX₂
+                break;
+
+            case 3:
+                ideal_angle = 120.0f * RADIAN; // Trigonal planar: AX₃
+                break;
+
+            case 4:
+                if (bond_count == 4) {
+                    ideal_angle = 109.5f * RADIAN; // AX₄
+                } else if (bond_count == 3) {
+                    ideal_angle = 107.0f * RADIAN; // AX₃E
+                } else if (bond_count == 2) {
+                    ideal_angle = 104.5f * RADIAN; // AX₂E₂
+                }
+                break;
+
+            case 5:
+                ideal_angle = 120.0f * RADIAN; // AX₅ equatorial
+                break;
+
+            case 6:
+                ideal_angle = 90.0f * RADIAN; // AX₆ octahedral
+                break;
+
+            default:
+                ideal_angle = 109.5f * RADIAN; // Fallback
+                break;
         }
 
         return ideal_angle;

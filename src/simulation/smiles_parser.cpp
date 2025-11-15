@@ -341,23 +341,25 @@ namespace sim
                             std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles)
     {
         std::unordered_map<std::pair<size_t, size_t>, def_bond, pair_hash> bond_map;
-        for (const auto& b : nBonds) {
+        for (const auto& b : nBonds) 
+        {
             size_t i = b.centralAtomIdx;
             size_t j = b.bondingAtomIdx;
             if (i > j) std::swap(i,j);
             bond_map[{i, j}] = b;
         }
 
-        for (def_subset& sub : nSubsets) {
+        for (def_subset& sub : nSubsets) 
+        {
             const size_t B = sub.mainAtomIdx;
 
+            if (sub.connectedIdx.size() + sub.hydrogensIdx.size() < 2) continue;
+
+            std::vector<uint8_t> Z(sub.connectedIdx.size() + sub.hydrogensIdx.size());
+            std::vector<BondType> type(sub.connectedIdx.size() + sub.hydrogensIdx.size(), BondType::SINGLE);
+
             std::vector<size_t> neigh = sub.connectedIdx;
-
-            if (neigh.size() + sub.hydrogensIdx.size() < 2) continue;
-
-            std::vector<uint8_t> Z(neigh.size() + sub.hydrogensIdx.size());
-            std::vector<BondType> type(neigh.size() + sub.hydrogensIdx.size(), BondType::SINGLE);
-
+            neigh.insert(neigh.end(), sub.hydrogensIdx.begin(), sub.hydrogensIdx.end());
             for (size_t i = 0; i < neigh.size(); ++i) 
             {
                 const size_t A = neigh[i];
@@ -369,22 +371,22 @@ namespace sim
                 if (it != bond_map.end()) type[i] = it->second.type;
             }
 
-            for (size_t i = 0; i < neigh.size(); ++i) 
+            for (size_t i = 0; i < sub.connectedIdx.size(); ++i) 
             {
-                for (size_t j = i + 1; j < neigh.size(); ++j) 
+                for (size_t j = i + 1; j < sub.connectedIdx.size(); ++j) 
                 {
                     angle ang;
-                    ang.A = neigh[i];
+                    ang.A = sub.connectedIdx[i];
                     ang.B = B;
-                    ang.C = neigh[j];
+                    ang.C = sub.connectedIdx[j];
                     ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
                     ang.K   = ANGLE_K;
                     angles.push_back(ang);
                 }
             }
 
-            for (size_t c_idx = 0; c_idx < neigh.size(); ++c_idx) {
-                const size_t C = neigh[c_idx];
+            for (size_t c_idx = 0; c_idx < sub.connectedIdx.size(); ++c_idx) {
+                const size_t C = sub.connectedIdx[c_idx];
 
                 size_t a = B, b = C;
                 if (a > b) std::swap(a, b);
@@ -392,6 +394,8 @@ namespace sim
                 auto it = bond_map.find({a, b});
                 if (it != bond_map.end()) bc_bond = &it->second;
                 if (!bc_bond) continue;
+
+                if (nAtoms[a].aromatic || nAtoms[b].aromatic) continue;
 
                 const auto& neigh_B = sub.connectedIdx; 
 
@@ -405,11 +409,12 @@ namespace sim
                 for (size_t A : neigh_B) 
                 {
                     if (A == C) continue;
+
                     for (size_t D : neigh_C) 
                     {
                         if (D == B) continue;
-
                         if (nAtoms[A].ZIndex == 1 && nAtoms[D].ZIndex == 1) continue;
+                        if (nAtoms[A].aromatic && nAtoms[D].aromatic) continue;
 
                         dihedral_angle dh{};
                         dh.A = A; dh.B = B; dh.C = C; dh.D = D;

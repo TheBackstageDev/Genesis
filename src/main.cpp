@@ -1,5 +1,5 @@
 #include "core/window.hpp"
-#include "simulation/fundamental_structures.hpp"
+#include "simulation/universe.hpp"
 #include "simulation/smiles_parser.hpp"
 
 #include <iostream>
@@ -47,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 100.f;
+    size_t universeSize = 55.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -63,13 +63,13 @@ int main()
 
     std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
-    float targetTemp = 100.f;
+    float targetTemp = 50.f;
 
     auto water = sim::parseSMILES("O");  
     auto methane = sim::parseSMILES("C");  
-    auto sac = sim::parseSMILES("CCCCCCCCC");
+    auto sac = sim::parseSMILES("FOOF");
 
-    universe.createMolecule(sac, {50, 30, 15});
+    universe.createMolecule(sac, {30, 30, 15});
 
     //universe.createMolecule(methane, {30, 30, 30});
 
