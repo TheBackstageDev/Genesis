@@ -47,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 50.f;
+    size_t universeSize = 100.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -62,19 +62,16 @@ int main()
     std::mt19937 gen(rd());
 
     std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
-    std::uniform_real_distribution<> ve(-55.f, 55.f); 
-    float targetTemp = 300.f;
+    std::uniform_real_distribution<> ve(-5.f, 5.f); 
+    float targetTemp = 100.f;
 
     auto water = sim::parseSMILES("O");  
-    auto hy = sim::parseSMILES("OS(=O)(=O)O");  
-    auto sac = sim::parseSMILES("C12=C3C4=C5C6=C1C7=C8C9=C1C%10=C%11C(=C29)C3=C2C3=C4C4=C5C5=C9C6=C7C6=C7C8=C1C1=C8C%10=C%10C%11=C2C2=C3C3=C4C4=C5C5=C%11C%12=C(C6=C95)C7=C1C1=C%12C5=C%11C4=C3C3=C5C(=C81)C%10=C23");
+    auto methane = sim::parseSMILES("C");  
+    auto sac = sim::parseSMILES("CCCCCCCCC");
 
-    universe.createMolecule(sac, {30, 30, 15}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
-    universe.createMolecule(sac, {15, 20, 70}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
-    universe.createMolecule(sac, {30, 60, 40}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
-    universe.createMolecule(sac, {16, 50, 40}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
+    universe.createMolecule(sac, {50, 30, 15});
 
-    //universe.createMolecule(hy, {20, 30, 20});
+    //universe.createMolecule(methane, {30, 30, 30});
 
     size_t count = 0;
     float minDistance = 5.f;

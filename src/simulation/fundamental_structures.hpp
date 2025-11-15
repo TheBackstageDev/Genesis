@@ -70,6 +70,7 @@ namespace sim
             uint8_t NCount; // neutrons
             int8_t bondCount;
 
+            int32_t chirality;
             void draw(float temperature, sf::Vector2f& pos, float camDistance, core::window_t &window, bool letterMode, bool lennardBall);
         };
 
@@ -79,7 +80,7 @@ namespace sim
             universe(float universeSize = 10.f);
             ~universe() = default;
 
-            size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
+            size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             size_t createSubset(const def_subset& nSub, const size_t baseAtom, const size_t baseSubset);
             void createMolecule(molecule_structure& structure, sf::Vector3f pos, sf::Vector3f vel = {0.f, 0.f, 0.f});
 

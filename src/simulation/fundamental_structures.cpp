@@ -320,7 +320,7 @@ namespace sim
         {
         }
 
-        size_t universe::createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron)
+        size_t universe::createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron, int32_t chirality)
         {
             atom newAtom{};
             newAtom.ZIndex = ZIndex;
@@ -337,6 +337,7 @@ namespace sim
             newAtom.NCount = numNeutrons;
             newAtom.charge = ZIndex - numElectron;
             newAtom.mass = ZIndex * MASS_PROTON + numNeutrons * MASS_NEUTRON + numElectron * MASS_ELECTRON;
+            newAtom.chirality = chirality;
             newAtom.bondCount = 0;
 
             atoms.emplace_back(std::move(newAtom));
@@ -435,7 +436,7 @@ namespace sim
                 const def_atom &a = structure.atoms[i];
                 if (pos.z != 0)
                     structure.positions[i].z += 0.01f * i;
-                createAtom(structure.positions[i] + pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge);
+                createAtom(structure.positions[i] + pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
 
                 nMolecule.atomIdx.emplace_back(baseAtomIndex + i);
             }
@@ -748,11 +749,64 @@ namespace sim
 
         float universe::calculateDihedral(const sf::Vector3f &pa, const sf::Vector3f &pb, const sf::Vector3f &pc, const sf::Vector3f &pd)
         {
-            return 0.f;
+            sf::Vector3f v1 = pb - pa;
+            sf::Vector3f v2 = pc - pb;
+            sf::Vector3f v3 = pd - pc;
+
+            sf::Vector3f n1 = v1.cross(v2).normalized();
+            sf::Vector3f n2 = v2.cross(v3).normalized();
+
+            float cosPhi = std::clamp(n1.dot(n2), -1.f, 1.f);
+            float phi    = std::acos(cosPhi);
+
+            // sign via right-hand rule
+            if (v2.dot(n1.cross(n2)) < 0.f) phi = -phi;
+            if (phi < 0.f) phi += 2.f * M_PI;
+            return phi;
         }
 
         void universe::calcDihedralForces()
         {
+            for (size_t d = 0; d < dihedral_angles.size(); ++d)
+            {
+                const dihedral_angle& d_angle = dihedral_angles[d];
+
+                const sf::Vector3f& pa = positions[d_angle.A];
+                const sf::Vector3f& pb = positions[d_angle.B]; 
+                const sf::Vector3f& pc = positions[d_angle.C]; 
+                const sf::Vector3f& pd = positions[d_angle.D]; 
+
+                float phi = calculateDihedral(pa, pb, pc, pd);
+
+                float target = d_angle.rad;
+                if (target == 0.f && d_angle.periodicity == 1) 
+                {
+                    int32_t chi = atoms[d_angle.B].chirality ? atoms[d_angle.B].chirality : atoms[d_angle.C].chirality;
+                    if (chi == 1) target = (phi < static_cast<float>(M_PI)) ? 1.047f : 5.236f;   // ~60° / ~300°
+                    else if (chi == 2) target = (phi < static_cast<float>(M_PI)) ? 5.236f : 1.047f;
+                    else continue;
+                }
+
+                float diff = phi - target;
+                while (diff > M_PI) diff -= 2.f * M_PI;
+                while (diff < -M_PI) diff += 2.f * M_PI;
+
+                float forceMag = -d_angle.K * float(d_angle.periodicity) *
+                                std::sin(float(d_angle.periodicity) * phi);
+
+                sf::Vector3f axis = (pc - pb).normalized();
+
+                sf::Vector3f rA = pa - pb;
+                sf::Vector3f torqueA = axis.cross(rA).normalized() * forceMag;
+
+                sf::Vector3f rD = pd - pc;
+                sf::Vector3f torqueD = axis.cross(rD).normalized() * (-forceMag);
+
+                forces[d_angle.A] += torqueA * 0.5f;
+                forces[d_angle.B] += torqueA * 0.5f - torqueD * 0.5f;
+                forces[d_angle.C] += torqueD * 0.5f;
+                forces[d_angle.D] -= torqueD * 0.5f;
+            }
         }
 
         void universe::calcElectrostaticForces()

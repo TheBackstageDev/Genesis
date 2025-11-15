@@ -25,7 +25,7 @@ namespace sim
 
         float K; // spring constant
         float rad; // angle in radians
-        int32_t perioditicy; // 1, 2, 3
+        int32_t periodicity; // 1, 2, 3
     };
 
     struct def_atom

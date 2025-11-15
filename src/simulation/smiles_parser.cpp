@@ -128,22 +128,36 @@ namespace sim
                 char chirality = 0;
                 size_t k = 0;
 
-                if (std::isdigit(atomStr[k])) isotope = std::stoi(atomStr.substr(k), &k);
-                while (k < atomStr.size() && std::isalpha(atomStr[k])) symbol += atomStr[k++];
+                if (std::isdigit(atomStr[k]))
+                    isotope = std::stoi(atomStr.substr(k), &k);
+
+                if (k >= atomStr.size() || !std::isalpha(atomStr[k])) { i = j; continue; }
+                symbol += atomStr[k++];
+
+                if (k < atomStr.size() && std::islower(atomStr[k]) &&
+                    !std::isdigit(atomStr[k]) && atomStr[k] != '@' &&
+                    atomStr[k] != '+' && atomStr[k] != '-' && atomStr[k] != ']')
+                {
+                    symbol += atomStr[k++];
+                }
+
                 if (symbol.empty()) { i = j; continue; }
 
                 bool aromatic = (symbol.size() == 1 && std::islower(symbol[0]));
                 if (aromatic) symbol[0] = std::toupper(symbol[0]);
 
-                if (k < atomStr.size() && atomStr[k] == '@') {
+                if (k < atomStr.size() && atomStr[k] == '@')
+                {
                     chirality = atomStr[k++];
-                    if (k < atomStr.size() && atomStr[k] == '@') { chirality = '@@'; k++; }
+                    if (k < atomStr.size() && atomStr[k] == '@') { chirality = '@@'; ++k; }
                 }
 
-                if (k < atomStr.size() && (atomStr[k] == '+' || atomStr[k] == '-')) {
+                if (k < atomStr.size() && (atomStr[k] == '+' || atomStr[k] == '-'))
+                {
                     char sign = atomStr[k++];
-                    int mult = 1;
-                    if (k < atomStr.size() && std::isdigit(atomStr[k])) mult = atomStr[k++] - '0';
+                    int32_t mult = 1;
+                    if (k < atomStr.size() && std::isdigit(atomStr[k]))
+                        mult = atomStr[k++] - '0';
                     charge = (sign == '+') ? mult : -mult;
                 }
 
@@ -151,27 +165,29 @@ namespace sim
                 if (Z == 0) { i = j; continue; }
 
                 def_atom nAtom{};
-                nAtom.charge = charge;
-                nAtom.NIndex = isotope;
-                nAtom.ZIndex = Z;
-                nAtom.aromatic = aromatic;
+                nAtom.charge    = charge;
+                nAtom.NIndex    = isotope ? isotope : Z;
+                nAtom.ZIndex    = Z;
+                nAtom.aromatic  = aromatic;
                 nAtom.chirality = chirality;
+                nAtom.hydrogenize = false;
                 nAtoms.emplace_back(std::move(nAtom));
 
-                size_t cur = nAtoms.size() - 1;
-                if (prevAtom != SIZE_MAX && !newMolecule) 
+                size_t currentAtom = nAtoms.size() - 1;
+
+                if (prevAtom != SIZE_MAX && !newMolecule)
                 {
                     def_bond nb{};
                     nb.centralAtomIdx = prevAtom;
-                    nb.bondingAtomIdx = cur;
-                    nb.type = bondType;
+                    nb.bondingAtomIdx = currentAtom;
+                    nb.type           = bondType;
                     nBonds.emplace_back(std::move(nb));
                     nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType);
-                    nAtoms[cur].nBonds += static_cast<uint32_t>(bondType);
+                    nAtoms[currentAtom].nBonds += static_cast<uint32_t>(bondType);
                 }
 
-                prevAtom = cur;
-                bondType = BondType::SINGLE;
+                prevAtom   = currentAtom;
+                bondType   = BondType::SINGLE;
                 i = j;
                 continue;
             }
@@ -234,7 +250,7 @@ namespace sim
                 }
                 else if (prevAtom != SIZE_MAX && newMolecule)
                 {
-                    nAtom.hydrogenize = false;
+                    nAtoms[currentAtom].hydrogenize = false;
                 }
 
                 int32_t currentRingID = -1;
@@ -364,6 +380,66 @@ namespace sim
                     ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
                     ang.K   = ANGLE_K;
                     angles.push_back(ang);
+                }
+            }
+
+            for (size_t c_idx = 0; c_idx < neigh.size(); ++c_idx) {
+                const size_t C = neigh[c_idx];
+
+                size_t a = B, b = C;
+                if (a > b) std::swap(a, b);
+                const def_bond* bc_bond = nullptr;
+                auto it = bond_map.find({a, b});
+                if (it != bond_map.end()) bc_bond = &it->second;
+                if (!bc_bond) continue;
+
+                const auto& neigh_B = sub.connectedIdx; 
+
+                std::vector<size_t> neigh_C;
+                for (const auto& bond : nBonds) 
+                {
+                    if (bond.centralAtomIdx == C) neigh_C.push_back(bond.bondingAtomIdx);
+                    else if (bond.bondingAtomIdx == C) neigh_C.push_back(bond.centralAtomIdx);
+                }
+
+                for (size_t A : neigh_B) 
+                {
+                    if (A == C) continue;
+                    for (size_t D : neigh_C) 
+                    {
+                        if (D == B) continue;
+
+                        if (nAtoms[A].ZIndex == 1 && nAtoms[D].ZIndex == 1) continue;
+
+                        dihedral_angle dh{};
+                        dh.A = A; dh.B = B; dh.C = C; dh.D = D;
+
+                        dh.rad      = M_PI / 3.0f;      // 60°
+                        dh.K          = 1.5f;
+                        dh.periodicity = 3;
+
+                        if (bc_bond->type == BondType::DOUBLE) 
+                        {
+                            dh.rad      = M_PI;        // trans
+                            dh.K          = 6.0f;
+                            dh.periodicity = 2;
+                        }
+                        else if (nAtoms[B].ZIndex == 7 || nAtoms[C].ZIndex == 7) 
+                        {
+                            dh.rad      = M_PI;
+                            dh.K          = 4.0f;
+                            dh.periodicity = 2;
+                        }
+
+                        char chi = nAtoms[B].chirality ? nAtoms[B].chirality : nAtoms[C].chirality;
+                        if (chi != 0) {
+                            dh.rad      = 0.0f;
+                            dh.K          = 12.0f;
+                            dh.periodicity = 1;
+                        }
+
+                        dihedral_angles.push_back(dh);
+                    }
                 }
             }
         }
@@ -618,6 +694,54 @@ namespace sim
                 continue;
             }
 
+            if (isalpha(c) || c == '[')
+            {
+                if (atomIdx >= nAtoms.size()) break;
+                const def_atom& a = nAtoms[atomIdx];
+
+                for (const auto& [ringID, openAtom] : ringOpen)
+                {
+                    if (rings.size() > 0 && std::find(rings[ringID - 1].begin(),
+                                rings[ringID - 1].end(),
+                                prevAtom) == rings[ringID - 1].end() &&
+                        std::find(branchStack.begin(), branchStack.end(), prevAtom) == branchStack.end())
+                    {
+                        ringBonds[ringID - 1].push_back(nBonds.size() - 1);
+                    }
+                }
+
+                float len = 2.0f * MULT_FACTOR;
+                if (prevAtom != SIZE_MAX && a.ZIndex != 1)
+                {
+                    len = constants::getBondLength(nAtoms[prevAtom].ZIndex, a.ZIndex, curBond);
+
+                    if (ringDir.count(prevAtom))
+                    {
+                        auto ring_it = std::find_if(rings.begin(), rings.end(), [&](const std::vector<size_t>& atoms) {
+                            return std::find(atoms.begin(), atoms.end(), prevAtom) != atoms.end();
+                        });
+
+                        int32_t ringID = std::distance(rings.begin(), ring_it);
+
+                        float sign =  ringID % 2 == 0 ? 1.f : -1.f;
+                        rotate2D(ringDir[prevAtom] * sign);
+                    }
+                    else if (ideal > 0.f)
+                    {
+                        bool& fl = flipMap[prevAtom];
+                        rotate2D((fl ? 1.f : -1.f) * ideal * 0.3f);
+                        fl = !fl;
+                    }
+                }
+
+                place(atomIdx, pos + dir * len);
+
+                prevAtom = atomIdx;
+                ++atomIdx;
+                curBond = BondType::SINGLE;
+                continue;
+            }
+
             // ----- ring numbers -----
             if (std::isdigit(c) || c == '%')
             {
@@ -664,54 +788,6 @@ namespace sim
                 {
                     ringOpen[ringID] = prevAtom;
                 }
-                curBond = BondType::SINGLE;
-                continue;
-            }
-
-            if (isalpha(c) || c == '[')
-            {
-                if (atomIdx >= nAtoms.size()) break;
-                const def_atom& a = nAtoms[atomIdx];
-
-                for (const auto& [ringID, openAtom] : ringOpen)
-                {
-                    if (std::find(rings[ringID - 1].begin(),
-                                rings[ringID - 1].end(),
-                                prevAtom) == rings[ringID - 1].end() &&
-                        std::find(branchStack.begin(), branchStack.end(), prevAtom) == branchStack.end())
-                    {
-                        ringBonds[ringID - 1].push_back(nBonds.size() - 1);
-                    }
-                }
-
-                float len = 2.0f * MULT_FACTOR;
-                if (prevAtom != SIZE_MAX && a.ZIndex != 1)
-                {
-                    len = constants::getBondLength(nAtoms[prevAtom].ZIndex, a.ZIndex, curBond);
-
-                    if (ringDir.count(prevAtom))
-                    {
-                        auto ring_it = std::find_if(rings.begin(), rings.end(), [&](const std::vector<size_t>& atoms) {
-                            return std::find(atoms.begin(), atoms.end(), prevAtom) != atoms.end();
-                        });
-
-                        int32_t ringID = std::distance(rings.begin(), ring_it);
-
-                        float sign =  ringID % 2 == 0 ? 1.f : -1.f;
-                        rotate2D(ringDir[prevAtom] * sign);
-                    }
-                    else if (ideal > 0.f)
-                    {
-                        bool& fl = flipMap[prevAtom];
-                        rotate2D((fl ? 1.f : -1.f) * ideal * 0.3f);
-                        fl = !fl;
-                    }
-                }
-
-                place(atomIdx, pos + dir * len);
-
-                prevAtom = atomIdx;
-                ++atomIdx;
                 curBond = BondType::SINGLE;
             }
         }
@@ -870,8 +946,10 @@ namespace sim
         }
 
         const int32_t iterations = 20 * nAtoms.size();
-        const float k = 2.0f, repulse = 5.f;
-        float repulse_distance = 5.f;
+        const float k = 2.0f, repulse = 8.f;
+        float repulse_distance = 4.f;
+
+        float maxForce = 0.f;
         for (int it = 0; it < iterations; ++it)
         {
             std::vector<sf::Vector3f> forces(positions.size(), sf::Vector3f(0,0,0));
@@ -882,7 +960,11 @@ namespace sim
             {
                 sf::Vector3f d = positions[i] - positions[j];
                 float dist = d.length();
-                if (dist < 1e-3f) dist = 1e-3f;
+                if (dist < 1e-1f)
+                {
+                    positions[i].x += 0.2f;
+                    positions[j].y -= 0.2f;
+                }
                 if (dist < repulse_distance)
                 {
                     float f = repulse * (repulse_distance - dist) / dist;
@@ -910,7 +992,13 @@ namespace sim
 
             for (size_t i = 0; i < positions.size(); ++i)
                 if (nAtoms[i].ZIndex != 1)
+                {
                     positions[i] += forces[i] * 0.1f;
+                    maxForce = std::max(forces[i].length(), maxForce);
+                }
+
+            if (maxForce <= 0.1f) // Converged
+                break;
         }
     }
 

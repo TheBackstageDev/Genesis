@@ -21,7 +21,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.002f // ps
+#define DT 0.001f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
@@ -41,7 +41,7 @@ namespace constants
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 50000.f        // Harmonic force constant
-#define ANGLE_K 5000.f       // J/mol/rad² for angular potential
+#define ANGLE_K 10000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
 
 #define COUNT_ATOMS 26 // supported by the simulation
@@ -514,7 +514,7 @@ namespace constants
     {
         // Fallback: average covalent radii (scaled)
         float base = (getAtomConstants(ZIndex1).first / MULT_FACTOR +
-                    getAtomConstants(ZIndex2).first / MULT_FACTOR) / 2.6f * BOND_LENGTH_FACTOR;
+                    getAtomConstants(ZIndex2).first / MULT_FACTOR) / 5.f * BOND_LENGTH_FACTOR;
         float baseBase = base;
 
         switch (type)
@@ -552,6 +552,7 @@ namespace constants
             else if ((ZIndex1 == 15 && ZIndex2 == 15)) base = 2.22f; // P–P
             else if ((ZIndex1 == 15 && ZIndex2 == 8) || (ZIndex1 == 8 && ZIndex2 == 15)) base = 1.60f; // P–O
             else if ((ZIndex1 == 15 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 15)) base = 1.42f; // P–H
+            else if ((ZIndex1 == 15 && ZIndex2 == 9) || (ZIndex1 == 9 && ZIndex2 == 15)) base = 1.561f; // P–F
 
             // --- Sulfur ---
             else if ((ZIndex1 == 16 && ZIndex2 == 16)) base = 2.05f; // S–S
