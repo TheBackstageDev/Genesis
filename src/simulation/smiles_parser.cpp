@@ -12,6 +12,8 @@ namespace sim
         std::vector<def_bond> nBonds{};
         std::vector<def_subset> nSubsets{};
         std::vector<def_atom> nAtoms{};
+        std::vector<angle> nAngles{};
+        std::vector<dihedral_angle> nDihedralAngles{};
         std::vector<sf::Vector3f> npositions{};
 
         if (molecule.empty())
@@ -29,6 +31,7 @@ namespace sim
 
         std::vector<std::vector<size_t>> rings;
 
+        bool newMolecule = false;
         for (size_t i = 0; i < molecule.size(); ++i)
         {
             const uint8_t c = molecule[i];
@@ -149,14 +152,15 @@ namespace sim
 
                 def_atom nAtom{};
                 nAtom.charge = charge;
-                nAtom.NIndex = Z;
+                nAtom.NIndex = isotope;
                 nAtom.ZIndex = Z;
                 nAtom.aromatic = aromatic;
                 nAtom.chirality = chirality;
                 nAtoms.emplace_back(std::move(nAtom));
 
                 size_t cur = nAtoms.size() - 1;
-                if (prevAtom != SIZE_MAX) {
+                if (prevAtom != SIZE_MAX && !newMolecule) 
+                {
                     def_bond nb{};
                     nb.centralAtomIdx = prevAtom;
                     nb.bondingAtomIdx = cur;
@@ -165,6 +169,7 @@ namespace sim
                     nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType);
                     nAtoms[cur].nBonds += static_cast<uint32_t>(bondType);
                 }
+
                 prevAtom = cur;
                 bondType = BondType::SINGLE;
                 i = j;
@@ -174,6 +179,8 @@ namespace sim
             // Different molecule
             if (c == '.')
             {
+                newMolecule = true;
+                continue;
             }
 
             if (isalpha(c))
@@ -214,8 +221,8 @@ namespace sim
 
                 size_t currentAtom = nAtoms.size() - 1;
 
-                if (prevAtom != SIZE_MAX)
-                {
+                if (prevAtom != SIZE_MAX && !newMolecule)
+                {   
                     def_bond nBond{};
                     nBond.bondingAtomIdx = currentAtom;
                     nBond.centralAtomIdx = prevAtom;
@@ -224,6 +231,10 @@ namespace sim
 
                     nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType);
                     nAtoms[currentAtom].nBonds += static_cast<uint32_t>(bondType);
+                }
+                else if (prevAtom != SIZE_MAX && newMolecule)
+                {
+                    nAtom.hydrogenize = false;
                 }
 
                 int32_t currentRingID = -1;
@@ -249,6 +260,40 @@ namespace sim
 
                 prevAtom = currentAtom;
                 bondType = BondType::SINGLE;
+                newMolecule = false;
+            }
+        }
+
+        for (size_t ringIdx = 0; ringIdx < rings.size(); ++ringIdx) {
+            const auto& ring = rings[ringIdx];
+            if (ring.size() < 3) continue;
+
+            bool isAromatic = true;
+            for (size_t a : ring)
+                if (!nAtoms[a].aromatic) { isAromatic = false; break; }
+            if (!isAromatic) continue;
+
+            bool doubleBond = true;
+            for (size_t i = 0; i < ring.size(); ++i) {
+                size_t a = ring[i];
+                size_t b = ring[(i + 1) % ring.size()];
+
+                auto bondIt = std::find_if(nBonds.begin(), nBonds.end(),
+                    [&](const def_bond& bb) {
+                        return (bb.centralAtomIdx == a && bb.bondingAtomIdx == b) ||
+                            (bb.centralAtomIdx == b && bb.bondingAtomIdx == a);
+                    });
+
+                if (bondIt != nBonds.end()) 
+                    bondIt->type = doubleBond ? BondType::DOUBLE : BondType::SINGLE;
+
+                if (doubleBond)
+                {
+                    ++nAtoms[a].nBonds;
+                    ++nAtoms[b].nBonds;
+                }
+
+                doubleBond = !doubleBond;
             }
         }
 
@@ -257,59 +302,71 @@ namespace sim
 
         npositions.resize(nAtoms.size());
         organizeSubsets(nSubsets, nAtoms, nBonds);
-        getAngles(nSubsets, nAtoms, nBonds);
+        organizeAngles(nSubsets, nAtoms, nBonds, nDihedralAngles, nAngles);
         positionAtoms(molecule, nBonds, rings, nAtoms, nSubsets, npositions);
 
         nStructure.atoms = std::move(nAtoms);
         nStructure.bonds = std::move(nBonds);
         nStructure.subsets = std::move(nSubsets);
+        nStructure.angles = std::move(nAngles);
+        nStructure.dihedral_angles = std::move(nDihedralAngles);
         nStructure.positions = std::move(npositions);
 
         return nStructure;
     }
 
-    std::vector<float> sim::getAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
+    struct pair_hash {
+        size_t operator() (const std::pair<int64_t, int64_t>& p) const {
+            return (size_t)(p.first << 32) | p.second;
+        }
+    };
+
+    void sim::organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
+                            std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles)
     {
-        std::vector<float> angles(nSubsets.size());
-
-        for (size_t s = 0; s < nSubsets.size(); ++s)
-        {
-            def_subset &sub = nSubsets[s];
-
-            std::vector<size_t> connected = sub.connectedIdx;
-            connected.insert(connected.end(), sub.hydrogensIdx.begin(), sub.hydrogensIdx.end());
-
-            if (connected.size() < 2)
-                continue;
-
-            std::vector<uint8_t> ZIndices;
-            std::vector<BondType> bondTypes;
-            ZIndices.reserve(connected.size());
-            bondTypes.reserve(connected.size());
-
-            // no angle for one bonds;
-
-            for (size_t b = 0; b < connected.size(); ++b)
-            {
-                auto bondIt = std::find_if(nBonds.begin(), nBonds.end(),
-                                           [&](const def_bond &a)
-                                           { return a.bondingAtomIdx == connected[b] && a.centralAtomIdx == sub.mainAtomIdx; });
-
-                if (bondIt != nBonds.end())
-                {
-                    const def_bond &bond = *bondIt;
-                    bondTypes.emplace_back(bond.type);
-                }
-
-                ZIndices.emplace_back(nAtoms[connected[b]].ZIndex);
-            }
-
-            float idealAngle = constants::getAngles(nAtoms[sub.mainAtomIdx].ZIndex, ZIndices, bondTypes);
-            sub.idealAngle = idealAngle;
-            angles[s] = idealAngle;
+        std::unordered_map<std::pair<size_t, size_t>, def_bond, pair_hash> bond_map;
+        for (const auto& b : nBonds) {
+            size_t i = b.centralAtomIdx;
+            size_t j = b.bondingAtomIdx;
+            if (i > j) std::swap(i,j);
+            bond_map[{i, j}] = b;
         }
 
-        return angles;
+        for (def_subset& sub : nSubsets) {
+            const size_t B = sub.mainAtomIdx;
+
+            std::vector<size_t> neigh = sub.connectedIdx;
+
+            if (neigh.size() + sub.hydrogensIdx.size() < 2) continue;
+
+            std::vector<uint8_t> Z(neigh.size() + sub.hydrogensIdx.size());
+            std::vector<BondType> type(neigh.size() + sub.hydrogensIdx.size(), BondType::SINGLE);
+
+            for (size_t i = 0; i < neigh.size(); ++i) 
+            {
+                const size_t A = neigh[i];
+                Z[i] = nAtoms[A].ZIndex;
+
+                size_t a = B, b = A;
+                if (a > b) std::swap(a,b);
+                auto it = bond_map.find({a,b});
+                if (it != bond_map.end()) type[i] = it->second.type;
+            }
+
+            for (size_t i = 0; i < neigh.size(); ++i) 
+            {
+                for (size_t j = i + 1; j < neigh.size(); ++j) 
+                {
+                    angle ang;
+                    ang.A = neigh[i];
+                    ang.B = B;
+                    ang.C = neigh[j];
+                    ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
+                    ang.K   = ANGLE_K;
+                    angles.push_back(ang);
+                }
+            }
+        }
     }
 
     void sim::organizeSubsets(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
@@ -397,6 +454,8 @@ namespace sim
             if (a.ZIndex == 1)
                 continue;
 
+            if (!a.hydrogenize) continue;
+
             int8_t bonds = constants::getUsualBonds(a.ZIndex);
             if (bonds == 0)
                 continue; // Noble Gas
@@ -448,6 +507,7 @@ namespace sim
 
         auto place = [&](size_t idx, const sf::Vector3f& p){
             positions[idx] = p; pos = p;
+            pos.z += 0.001f * idx;
         };
         auto rotate2D = [&](float rad){
             float c = std::cos(rad), s = std::sin(rad);
@@ -810,7 +870,8 @@ namespace sim
         }
 
         const int32_t iterations = 20 * nAtoms.size();
-        const float k = 2.0f, repulse = 5.0f;
+        const float k = 2.0f, repulse = 5.f;
+        float repulse_distance = 5.f;
         for (int it = 0; it < iterations; ++it)
         {
             std::vector<sf::Vector3f> forces(positions.size(), sf::Vector3f(0,0,0));
@@ -822,9 +883,9 @@ namespace sim
                 sf::Vector3f d = positions[i] - positions[j];
                 float dist = d.length();
                 if (dist < 1e-3f) dist = 1e-3f;
-                if (dist < 2.0f)
+                if (dist < repulse_distance)
                 {
-                    float f = repulse * (2.0f - dist) / dist;
+                    float f = repulse * (repulse_distance - dist) / dist;
                     sf::Vector3f force = d.normalized() * f;
                     forces[i] += force; forces[j] -= force;
                 }
@@ -836,7 +897,7 @@ namespace sim
                 sf::Vector3f d = positions[b.bondingAtomIdx] - positions[b.centralAtomIdx];
                 float target = constants::getBondLength(
                     nAtoms[b.centralAtomIdx].ZIndex,
-                    nAtoms[b.bondingAtomIdx].ZIndex, b.type) * 2.0f;
+                    nAtoms[b.bondingAtomIdx].ZIndex, b.type);
                 float dist = d.length();
                 if (dist > 1e-3f)
                 {

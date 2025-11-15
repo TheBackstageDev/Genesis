@@ -21,7 +21,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.001f // ps
+#define DT 0.002f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
@@ -44,11 +44,13 @@ namespace constants
 #define ANGLE_K 5000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
 
+#define COUNT_ATOMS 26 // supported by the simulation
+
     inline sf::Color getElementColor(uint8_t Z)
     {
         switch (Z)
         {
-            case  1: return sf::Color(233, 233, 233);    // H  - Hydrogen     (White)
+            case  1: return sf::Color(210, 210, 210);    // H  - Hydrogen     (White)
             case  2: return sf::Color(217, 255, 255);    // He - Helium       (Light Cyan)
             case  3: return sf::Color(204, 128, 255);    // Li - Lithium      (Violet)
             case  4: return sf::Color(178, 255, 255);    // Be - Beryllium    (Light Green)
@@ -56,14 +58,14 @@ namespace constants
             case  6: return sf::Color(144, 144, 144);    // C  - Carbon       (Gray)
             case  7: return sf::Color( 48,  80, 248);    // N  - Nitrogen     (Blue)
             case  8: return sf::Color(255,  13,  13);    // O  - Oxygen       (Red)
-            case  9: return sf::Color(  0, 255, 255);    // F  - Fluorine     (Cyan)
+            case  9: return sf::Color(  0, 233, 233);    // F  - Fluorine     (Cyan)
             case 10: return sf::Color(179, 227, 245);    // Ne - Neon         (Pale Blue)
             case 11: return sf::Color( 42,  82, 190);    // Na - Sodium       (Blue)
             case 12: return sf::Color(  0, 130,  70);    // Mg - Magnesium    (Dark Green)
             case 13: return sf::Color(194, 194, 194);    // Al - Aluminum     (Silver)
             case 14: return sf::Color( 99,  99,  99);    // Si - Silicon      (Gray)
             case 15: return sf::Color(255, 165,   0);    // P  - Phosphorus   (Orange)
-            case 16: return sf::Color(255, 255,   0);    // S  - Sulfur       (Yellow)
+            case 16: return sf::Color(222, 222,   1);    // S  - Sulfur       (Yellow)
             case 17: return sf::Color( 50, 205,  50);    // Cl - Chlorine     (Green)
             case 18: return sf::Color(128, 128, 128);    // Ar - Argon        (Dark Gray)
             case 19: return sf::Color(160,  82,  45);    // K  - Potassium    (Brown)
@@ -385,6 +387,67 @@ namespace constants
             {25, 1.55f}, // Mn
             {26, 1.83f}  // Fe
     };
+
+    inline std::string getAtomName(uint32_t ZIndex)
+    {
+        switch (ZIndex)
+        {
+        case 1:
+            return "Hydrogen";
+        case 2:
+            return "Helium";
+        case 3:
+            return "Lithium";
+        case 4:
+            return "Beryllium";
+        case 5:
+            return "Boron";
+        case 6:
+            return "Carbon";
+        case 7:
+            return "Nitrogen";
+        case 8:
+            return "Oxygen";
+        case 9:
+            return "Fluorine";
+        case 10:
+            return "Neon";
+        case 11:
+            return "Sodium";
+        case 12:
+            return "Magnesium";
+        case 13:
+            return "Aluminum";
+        case 14:
+            return "Silicon";
+        case 15:
+            return "Phosphorus";
+        case 16:
+            return "Sulfur";
+        case 17:
+            return "Chlorine";
+        case 18:
+            return "Argon";
+        case 19:
+            return "Potassium";
+        case 20:
+            return "Calcium";
+        case 21:
+            return "Scandium";
+        case 22:
+            return "Titanium";
+        case 23:
+            return "Vanadium";
+        case 24:
+            return "Chromium";
+        case 25:
+            return "Manganese";
+        case 26:
+            return "Iron";
+        default:
+            return "Unknown";
+        }
+    }
 
     inline std::string getAtomLetter(uint32_t ZIndex)
     {

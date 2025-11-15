@@ -42,8 +42,17 @@ namespace sim
             
             std::vector<size_t> hydrogenIdx;
             std::vector<size_t> connectedIdx; // non hydrogen connected to the main atom
-            std::vector<size_t> branchSubsets;
-            float idealAngle;                // In radians
+        };
+
+        struct molecule
+        {
+            std::string name = "Unknown"; // For Visualization
+            std::vector<size_t> subsetIdx;
+            std::vector<size_t> atomIdx;
+            std::vector<size_t> bondIdx;
+
+            std::vector<size_t> dihedrals;
+            std::vector<size_t> angles;
         };
 
         struct atom
@@ -72,7 +81,7 @@ namespace sim
 
             size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1);
             size_t createSubset(const def_subset& nSub, const size_t baseAtom, const size_t baseSubset);
-            void createMolecule(molecule_structure& structure, sf::Vector3f pos);
+            void createMolecule(molecule_structure& structure, sf::Vector3f pos, sf::Vector3f vel = {0.f, 0.f, 0.f});
 
             void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges(subset& mol);
@@ -84,6 +93,8 @@ namespace sim
             void drawHydrogenBond(core::window_t& window, size_t H);
             void drawBonds(core::window_t& window);
             void drawDebug(core::window_t& window);
+
+            std::vector<sf::Vector3f> getPositions() const { return positions; }
 
             size_t numAtoms() { return atoms.size(); }
             const subset& getSubset(size_t index) { return subsets[index]; }
@@ -108,6 +119,7 @@ namespace sim
             void calcElectrostaticForces();
 
             void setTemperature(float kelvin = 0.f);
+            float calculateDihedral(const sf::Vector3f& pa, const sf::Vector3f& pb, const sf::Vector3f& pc, const sf::Vector3f& pd);
 
             // Energies
             float calculateKineticEnergy();
@@ -127,9 +139,12 @@ namespace sim
 
             float boxSize = 10.f;
             std::vector<atom> atoms;
-            std::vector<subset> subsets;
-
             std::vector<bond> bonds;
+            std::vector<subset> subsets;
+            std::vector<molecule> molecules;
+
+            std::vector<angle> angles;
+            std::vector<dihedral_angle> dihedral_angles;
 
             std::vector<sf::Vector3f> forces;
             std::vector<sf::Vector3f> positions;
@@ -170,6 +185,10 @@ namespace sim
             sf::Vector2i lastMouse;
             sf::Vector2f project(core::window_t& window, const sf::Vector3f& p) const;
             core::camera_t cam;
+
+            // Other
+            std::string moleculeName(const std::vector<size_t>& subsetIdx);
+            void drawBox(core::window_t& window);
         };
     } // namespace fun
 } // namespace sim

@@ -8,7 +8,7 @@ namespace core
 {
     struct camera_t
     {
-        sf::Vector3f target{0, 0, 0};      // look-at point
+        sf::Vector3f target{20, 10, 0};      // look-at point
         float distance = 1.f;            // eye distance from target
         float azimuth = 0.f;              // horizontal angle (deg)
         float elevation = 0.f;            // vertical angle (deg)

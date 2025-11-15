@@ -62,25 +62,31 @@ int main()
     std::mt19937 gen(rd());
 
     std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
-    float targetTemp = 100.f;
+    std::uniform_real_distribution<> ve(-55.f, 55.f); 
+    float targetTemp = 300.f;
 
     auto water = sim::parseSMILES("O");  
-    auto hy = sim::parseSMILES("C1CNCCN1c(c2)c(F)cc3c2N(C4CC4)C=C(C3=O)C(=O)O");  
+    auto hy = sim::parseSMILES("OS(=O)(=O)O");  
+    auto sac = sim::parseSMILES("C12=C3C4=C5C6=C1C7=C8C9=C1C%10=C%11C(=C29)C3=C2C3=C4C4=C5C5=C9C6=C7C6=C7C8=C1C1=C8C%10=C%10C%11=C2C2=C3C3=C4C4=C5C5=C%11C%12=C(C6=C95)C7=C1C1=C%12C5=C%11C4=C3C3=C5C(=C81)C%10=C23");
 
-    universe.createMolecule(hy, {30, 30, 1});
-    //universe.createMolecule(water, {100, 40, 0});
+    universe.createMolecule(sac, {30, 30, 15}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
+    universe.createMolecule(sac, {15, 20, 70}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
+    universe.createMolecule(sac, {30, 60, 40}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
+    universe.createMolecule(sac, {16, 50, 40}, sf::Vector3f{static_cast<float>(ve(gen)), static_cast<float>(ve(gen)), static_cast<float>(ve(gen))});
+
+    //universe.createMolecule(hy, {20, 30, 20});
 
     size_t count = 0;
-    float minDistance = 3.f;
+    float minDistance = 5.f;
 
-    std::vector<sf::Vector3f> centers{{150.f, 150.f, 0.f}};
-    centers.reserve(count + 1);
+    std::vector<sf::Vector3f> centers{universe.getPositions()};
 
     const float minDistSq = minDistance * minDistance;
 
     for (size_t i = 0; i < count; ++i)
     {
         sf::Vector3f pos;
+        sf::Vector3f vel;
         bool valid = false;
 
         for (int32_t attempt = 0; attempt < 100 && !valid; ++attempt)
@@ -88,6 +94,10 @@ int main()
             pos.x = dis(gen);
             pos.y = dis(gen);
             pos.z = dis(gen);
+
+            vel.x = ve(gen);
+            vel.y = ve(gen);
+            vel.z = ve(gen);
 
             valid = true;
             for (const auto& c : centers)

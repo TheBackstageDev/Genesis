@@ -11,6 +11,23 @@
 
 namespace sim
 {
+    struct angle
+    {
+        size_t A, B, C; // atom idx
+
+        float K; // spring constant
+        float rad; // angle in radians
+    };
+
+    struct dihedral_angle
+    {
+        size_t A, B, C, D; // atom idx
+
+        float K; // spring constant
+        float rad; // angle in radians
+        int32_t perioditicy; // 1, 2, 3
+    };
+
     struct def_atom
     {
         uint8_t ZIndex;
@@ -19,6 +36,7 @@ namespace sim
         int32_t nBonds = 0;
         int32_t chirality = 0;
         bool aromatic = false;
+        bool hydrogenize = true; // add hydrogens
     };
 
     struct def_bond 
@@ -45,15 +63,18 @@ namespace sim
         std::vector<def_atom> atoms;
         std::vector<def_subset> subsets;
         std::vector<def_bond> bonds;
-        std::vector<sf::Vector3f> positions{};
+        std::vector<angle> angles;
+        std::vector<dihedral_angle> dihedral_angles;
+        std::vector<sf::Vector3f> positions;
     };
 
     molecule_structure parseSMILES(const std::string& molecule, bool implicitHydrogens = true);
-    std::vector<float> getAngles(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
-
+    void organizeAngles(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds, 
+                        std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles);
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
     void addImplicitHydrogens(std::vector<def_atom>& nAtoms, std::vector<def_bond>& nBonds);
-    void positionAtoms(const std::string& SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>>& rings, const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions);
+    void positionAtoms(const std::string& SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>>& rings, 
+        const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions);
 
     sf::Vector3f rotateDirection(const sf::Vector3f& v, const sf::Vector3f& axis, float angle);
 } // namespace sim
