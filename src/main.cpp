@@ -47,7 +47,7 @@ void setupUI(core::window_t& window)
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 55.f;
+    size_t universeSize = 100.f;
 
     sim::fun::universe universe(universeSize);
     
@@ -63,24 +63,31 @@ int main()
 
     std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
-    float targetTemp = 50.f;
+    float targetTemp = 200.f;
+
+    auto sac = sim::parseSMILES("HH");
+    auto sac2 = sim::parseSMILES("O=O");
 
     auto water = sim::parseSMILES("O");  
-    auto methane = sim::parseSMILES("C");  
-    auto sac = sim::parseSMILES("FOOF");
 
-    universe.createMolecule(sac, {30, 30, 15});
+    auto stuff = sim::parseSMILES("CC(C)CC(C(=O)NC(C)C(=O)NC(CC1=CN=CN1)C(=O)NC(C(C)C)C(=O)NC(CCCCN)C(=O)NC(C)C(=O)NC(CC2=CC=CC=C2)C(=O)NC(C)C(=O)NC(CC3=CC=CC=C3)C(=O)NC(CCCCN)C(=O)NC(C(C)O)C(=O)NC(CCCCN)C(=O)O)N");
+    auto stuff2 = sim::parseSMILES("CC(C)CC(C(=O)NC(C)C(=O)NC(CO)C(=O)NC(C(C)O)C(=O)NC(CC1=CN=CN1)C(=O)NC(CCCCN)C(=O)NC(CC2=CC=CC=C2)C(=O)NC(C)C(=O)NC(CC3=CC=CC=C3)C(=O)NC(C(C)C)C(=O)NC(CCCCN)C(=O)NC(C)C(=O)NC(CC4=CC=CC=C4)C(=O)NC(C)C(=O)NC(CCCCN)C(=O)NC(C(C)O)C(=O)NC(CCCCN)C(=O)O)N");
+    //universe.createMolecule(sac, {10, 10, 15});
+    universe.createMolecule(stuff, {30, 30, 30});
+    universe.createMolecule(stuff2, {30, 50, 30});
 
     //universe.createMolecule(methane, {30, 30, 30});
 
-    size_t count = 0;
-    float minDistance = 5.f;
+    size_t count = 150;
+    size_t count2 = 75;
+    float minDistance = 2.f;
 
-    std::vector<sf::Vector3f> centers{universe.getPositions()};
+    std::vector<sf::Vector3f> centers{};
 
     const float minDistSq = minDistance * minDistance;
 
-    for (size_t i = 0; i < count; ++i)
+    for (size_t t = 0; t < 0; ++t)
+    for (size_t i = 0; i < (t == 0 ? count : count2); ++i)
     {
         sf::Vector3f pos;
         sf::Vector3f vel;
@@ -113,7 +120,7 @@ int main()
         if (valid)
         {
             centers.push_back(pos);
-            universe.createMolecule(water, pos);
+            universe.createMolecule(t == 0 ? sac : sac2, pos);
         }
     }
 

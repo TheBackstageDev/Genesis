@@ -21,21 +21,21 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.001f // ps
+#define DT 0.002f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
 
 #define VERLET_SKIN 1.f
 #define CUTOFF 2.5f
-#define COULOMB_CUTOFF 8.f * MULT_FACTOR
+#define COULOMB_CUTOFF 12.f * MULT_FACTOR
 #define REACTION_CUTOFF 3.0f * MULT_FACTOR
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
 
-#define REBUILD_THRESHOLD 2.f * MULT_FACTOR
+#define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
 #define THERMOSTAT_INTERVAL 2
 #define REACTION_INTERVAL 50
 
@@ -272,6 +272,11 @@ namespace constants
         }
 
         return ideal_angle;
+    }
+
+    inline float getBondHarmonicConstant(int8_t ZIndexCentral, int8_t ZIndexBonding, sim::fun::BondType type)
+    {
+        return BOND_K * static_cast<float>(type) / 2.f;
     }
 
     inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
@@ -554,6 +559,7 @@ namespace constants
             // --- Halogens ---
             else if ((ZIndex1 == 9 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 9))   base = 0.92f; // F–H
             else if ((ZIndex1 == 17 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 17)) base = 1.27f; // Cl–H
+            else if ((ZIndex1 == 17 && ZIndex2 == 5) || (ZIndex1 == 5 && ZIndex2 == 17)) base = 1.81f; // Cl-B
             else if ((ZIndex1 == 35 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 35)) base = 1.41f; // Br–H
             else if ((ZIndex1 == 53 && ZIndex2 == 1) || (ZIndex1 == 1 && ZIndex2 == 53)) base = 1.61f; // I–H
 

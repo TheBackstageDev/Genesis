@@ -7,6 +7,17 @@ namespace sim
 {
     namespace fun
     {
+        struct simData
+        {
+            alignas(32) std::vector<float> x, y, z;
+            alignas(32) std::vector<float> vx, vy, vz;
+            alignas(32) std::vector<float> fx, fy, fz;
+            alignas(32) std::vector<float> old_fx, old_fy, old_fz;
+            alignas(32) std::vector<float> q, mass;
+
+            alignas(32) std::vector<float> x0, y0, z0;
+        };
+
         class universe
         {
         public:
@@ -31,8 +42,6 @@ namespace sim
             void saveScene();
             void loadScene(const std::string& path);
 
-            std::vector<sf::Vector3f> getPositions() const { return positions; }
-
             size_t numAtoms() { return atoms.size(); }
             const subset& getSubset(size_t index) { return subsets[index]; }
 
@@ -45,6 +54,7 @@ namespace sim
             void boundCheck(size_t i);
 
             float ljPot(size_t i, float epsilon, float sigma);
+            float wolfForce(float r, float qi_qj); 
             sf::Vector3f ljGrad(size_t i);
             sf::Vector3f ljForce(size_t i, size_t j);
             sf::Vector3f coulombForce(size_t i, size_t j, sf::Vector3f& dr_vec);
@@ -67,7 +77,6 @@ namespace sim
             // Reactions
             void handleReactions();
             void checkBonds(); // for either forming or breaking
-            void checkStrainedBonds();
             void breakBond(size_t atom1, size_t atom2);
 
             bool isReactive(size_t i) { return atoms[i].bondCount < constants::getUsualBonds(atoms[i].ZIndex) || atoms[i].bondCount > constants::getUsualBonds(atoms[i].ZIndex); }
@@ -75,6 +84,9 @@ namespace sim
             BondType chooseBestBondType(size_t i, size_t j);
 
             float boxSize = 10.f;
+
+            simData data;
+            std::vector<std::vector<bool>> bondedMatrix;
             std::vector<atom> atoms;
             std::vector<bond> bonds;
             std::vector<subset> subsets;
@@ -83,12 +95,7 @@ namespace sim
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
 
-            std::vector<sf::Vector3f> forces;
-            std::vector<sf::Vector3f> positions;
-            std::vector<sf::Vector3f> neighbourPos;
-            std::vector<sf::Vector3f> velocities;
-
-            std::vector<std::vector<size_t>> neighbourList; 
+            std::vector<std::vector<size_t>> neighbourList;  // for each subset
             void buildNeighborList();
 
             float temp = 0;
@@ -104,18 +111,47 @@ namespace sim
                 return dr;
             }
 
-            bool neighbourListNeedRebuild();
-            bool areBonded(size_t i, size_t j) 
+            std::vector<size_t> getAllSubsetAtoms(size_t s)
             {
-                for (const auto& bond : bonds)
+                const subset& sub = subsets[s];
+                std::vector<size_t> indices;
+                indices.reserve(sub.connectedIdx.size() + sub.hydrogenIdx.size() + 1);
+                indices.push_back(sub.mainAtomIdx);
+                indices.insert(indices.end(), sub.connectedIdx.begin(), sub.connectedIdx.end());
+                indices.insert(indices.end(), sub.hydrogenIdx.begin(), sub.hydrogenIdx.end());
+                return indices;
+            }
+
+            bool neighbourListNeedRebuild();
+            bool areBonded(size_t i, size_t j) const
+            {
+                return i < bondedMatrix.size() && j < bondedMatrix[i].size() && bondedMatrix[i][j];
+            }
+
+            void rebuildBondTopology()
+            {
+                size_t N = atoms.size();
+                bondedMatrix.assign(N, std::vector<bool>(N, false));
+
+                for (const auto& b : bonds)
                 {
+                    bondedMatrix[b.centralAtom][b.bondedAtom] = true;
+                    bondedMatrix[b.bondedAtom][b.centralAtom] = true;
+                }
+            }
+
+            size_t getBond(size_t i, size_t j)
+            {
+                for (size_t b = 0; b < bonds.size(); ++b)
+                {
+                    const bond& bond = bonds[b];
                     if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
                     {
-                        return true;
+                        return b;
                     }
                 }
 
-                return false;
+                return SIZE_MAX;
             }
             
             // Camera
@@ -126,6 +162,18 @@ namespace sim
             // Other
             std::string moleculeName(const std::vector<size_t>& subsetIdx);
             void drawBox(core::window_t& window);
+
+            inline sf::Vector3f neigh_pos(size_t i) const   { return {data.x0[i], data.y0[i], data.z0[i]}; }
+            inline sf::Vector3f pos(size_t i) const   { return {data.x[i], data.y[i], data.z[i]}; }
+            inline sf::Vector3f vel(size_t i) const   { return {data.vx[i], data.vy[i], data.vz[i]}; }
+            inline sf::Vector3f force(size_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
+            inline sf::Vector3f old_force(size_t i) const { return {data.old_fx[i], data.old_fy[i], data.old_fz[i]}; }
+            inline void add_force(size_t i, sf::Vector3f f) { data.fx[i] += f.x, data.fy[i] += f.y, data.fz[i] += f.z; }
+            inline void add_pos(size_t i, sf::Vector3f p) { data.x[i] += p.x, data.y[i] += p.y, data.z[i] += p.z; }
+            inline void add_vel(size_t i, sf::Vector3f v) { data.vx[i] += v.x, data.vy[i] += v.y, data.vz[i] += v.z; }
+
+            inline void emplace_vel(sf::Vector3f v) { data.vx.emplace_back(v.x); data.vy.emplace_back(v.y); data.vz.emplace_back(v.z); }
+            inline void emplace_pos(sf::Vector3f p) { data.x.emplace_back(p.x); data.y.emplace_back(p.y); data.z.emplace_back(p.z); }
         };
     } // namespace fun
 } // namespace sim

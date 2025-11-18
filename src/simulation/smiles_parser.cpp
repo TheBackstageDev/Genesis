@@ -6,7 +6,7 @@
 namespace sim
 {
     using namespace sim::fun;
-    molecule_structure sim::parseSMILES(const std::string &molecule, bool implicitHydrogens)
+    molecule_structure sim::parseSMILES(const std::string &molecule, const std::string& positionPath, bool implicitHydrogens)
     {
         molecule_structure nStructure{};
         std::vector<def_bond> nBonds{};
@@ -31,10 +31,12 @@ namespace sim
 
         std::vector<std::vector<size_t>> rings;
 
+        std::string currentMolecule = molecule;
         bool newMolecule = false;
-        for (size_t i = 0; i < molecule.size(); ++i)
+
+        for (size_t i = 0; i < currentMolecule.size(); ++i)
         {
-            const uint8_t c = molecule[i];
+            const uint8_t c = currentMolecule[i];
 
             if (isspace(c))
             {
@@ -49,12 +51,12 @@ namespace sim
             }
 
             // is Ring
-            if (std::isdigit(c) || (c == '%' && i + 2 < molecule.size() && std::isdigit(molecule[i+1]) && std::isdigit(molecule[i+2])))
+            if (std::isdigit(c) || (c == '%' && i + 2 < currentMolecule.size() && std::isdigit(currentMolecule[i+1]) && std::isdigit(currentMolecule[i+2])))
             {
                 int ringID = 0;
                 if (c == '%')
                 {
-                    ringID = (molecule[i+1] - '0') * 10 + (molecule[i+2] - '0');
+                    ringID = (currentMolecule[i+1] - '0') * 10 + (currentMolecule[i+2] - '0');
                     i += 2;
                 }
                 else
@@ -120,8 +122,8 @@ namespace sim
             {
                 size_t j = i + 1;
                 std::string atomStr;
-                while (j < molecule.size() && molecule[j] != ']') atomStr += molecule[j++];
-                if (j >= molecule.size() || molecule[j] != ']') { i = j; continue; }
+                while (j < currentMolecule.size() && currentMolecule[j] != ']') atomStr += currentMolecule[j++];
+                if (j >= currentMolecule.size() || currentMolecule[j] != ']') { i = j; continue; }
 
                 std::string symbol;
                 int isotope = 0, charge = 0;
@@ -152,12 +154,22 @@ namespace sim
                     if (k < atomStr.size() && atomStr[k] == '@') { chirality = '@@'; ++k; }
                 }
 
+                size_t Hcount = 0;
+                if (k < atomStr.size() && atomStr[k] == 'H')
+                {
+                    ++k;
+                    if (k < atomStr.size() && std::isdigit(atomStr[k]))
+                        Hcount = atomStr[k] - '0';
+                    else
+                        Hcount = 1;
+                }
+
                 if (k < atomStr.size() && (atomStr[k] == '+' || atomStr[k] == '-'))
                 {
-                    char sign = atomStr[k++];
+                    char sign = atomStr[k];
                     int32_t mult = 1;
                     if (k < atomStr.size() && std::isdigit(atomStr[k]))
-                        mult = atomStr[k++] - '0';
+                        mult = atomStr[k] - '0';
                     charge = (sign == '+') ? mult : -mult;
                 }
 
@@ -170,12 +182,13 @@ namespace sim
                 nAtom.ZIndex    = Z;
                 nAtom.aromatic  = aromatic;
                 nAtom.chirality = chirality;
-                nAtom.hydrogenize = false;
+                nAtom.hydrogenize = Hcount > 0;
+                nAtom.nHydrogens = Hcount;
                 nAtoms.emplace_back(std::move(nAtom));
 
                 size_t currentAtom = nAtoms.size() - 1;
 
-                if (prevAtom != SIZE_MAX && !newMolecule)
+                if (prevAtom != SIZE_MAX)
                 {
                     def_bond nb{};
                     nb.centralAtomIdx = prevAtom;
@@ -188,6 +201,7 @@ namespace sim
 
                 prevAtom   = currentAtom;
                 bondType   = BondType::SINGLE;
+
                 i = j;
                 continue;
             }
@@ -195,6 +209,8 @@ namespace sim
             // Different molecule
             if (c == '.')
             {
+                prevAtom = SIZE_MAX;
+                bondType = BondType::SINGLE;
                 newMolecule = true;
                 continue;
             }
@@ -211,9 +227,9 @@ namespace sim
                 nAtom.ZIndex = ZIndex;
                 nAtom.aromatic = aromatic;
 
-                if (i + 1 < molecule.size())
+                if (i + 1 < currentMolecule.size())
                 {
-                    char next = molecule[i + 1];
+                    char next = currentMolecule[i + 1];
                     if (isalpha(next))
                     {
                         std::string two = sym + next;
@@ -237,7 +253,7 @@ namespace sim
 
                 size_t currentAtom = nAtoms.size() - 1;
 
-                if (prevAtom != SIZE_MAX && !newMolecule)
+                if (prevAtom != SIZE_MAX)
                 {   
                     def_bond nBond{};
                     nBond.bondingAtomIdx = currentAtom;
@@ -248,7 +264,7 @@ namespace sim
                     nAtoms[prevAtom].nBonds += static_cast<uint32_t>(bondType);
                     nAtoms[currentAtom].nBonds += static_cast<uint32_t>(bondType);
                 }
-                else if (prevAtom != SIZE_MAX && newMolecule)
+                else if (newMolecule)
                 {
                     nAtoms[currentAtom].hydrogenize = false;
                 }
@@ -276,7 +292,6 @@ namespace sim
 
                 prevAtom = currentAtom;
                 bondType = BondType::SINGLE;
-                newMolecule = false;
             }
         }
 
@@ -543,6 +558,8 @@ namespace sim
             int32_t numHydrogen = bonds - a.nBonds;
             if (numHydrogen <= 0)
                 continue;
+
+            numHydrogen = a.nHydrogens == 0 ? numHydrogen : a.nHydrogens;
 
             for (int32_t h = 0; h < numHydrogen; ++h)
             {
@@ -950,59 +967,83 @@ namespace sim
             }
         }
 
-        const int32_t iterations = 20 * nAtoms.size();
-        const float k = 2.0f, repulse = 8.f;
-        float repulse_distance = 4.f;
+        const int32_t max_iters = 20 * static_cast<int32_t>(nAtoms.size());
+        constexpr float   dt          = 0.01f;
+        constexpr float   repulse     = 5.0f;
+        constexpr float   repulse_dist = 4.5f;
+        constexpr float   k_spring    = 3.0f;
+        constexpr float   convergence = 0.01f;
 
-        float maxForce = 0.f;
-        for (int it = 0; it < iterations; ++it)
+        for (int32_t it = 0; it < max_iters; ++it)
         {
-            std::vector<sf::Vector3f> forces(positions.size(), sf::Vector3f(0,0,0));
+            std::vector<sf::Vector3f> forces(positions.size(), sf::Vector3f(0.f, 0.f, 0.f));
+            float maxF = 0.f;
 
-            // Repulsion
             for (size_t i = 0; i < positions.size(); ++i)
-            for (size_t j = i+1; j < positions.size(); ++j)
+            for (size_t j = i + 1; j < positions.size(); ++j)
             {
-                sf::Vector3f d = positions[i] - positions[j];
-                float dist = d.length();
-                if (dist < 1e-1f)
+                sf::Vector3f dr = positions[j] - positions[i];
+                float dist = dr.length();
+
+                if (dist < EPSILON) 
                 {
-                    positions[i].x += 0.2f;
-                    positions[j].y -= 0.2f;
+                    positions[i] += sf::Vector3f( 0.2f,  0.1f, 0.0f);
+                    positions[j] += sf::Vector3f(-0.2f, -0.1f, 0.0f);
+                    continue;
                 }
-                if (dist < repulse_distance)
+
+                if (dist < repulse_dist)
                 {
-                    float f = repulse * (repulse_distance - dist) / dist;
-                    sf::Vector3f force = d.normalized() * f;
-                    forces[i] += force; forces[j] -= force;
+                    float f = repulse * (repulse_dist - dist) / dist;
+                    sf::Vector3f F = dr * (f / dist);
+                    forces[i] -= F;
+                    forces[j] += F;
+                }
+
+                if (dist < COULOMB_CUTOFF)
+                {
+                    float qq = nAtoms[i].charge * nAtoms[j].charge;
+                    if (qq != 0.f)
+                    {
+                        float factor = COULOMB_K * qq / (dist * dist * dist);
+                        sf::Vector3f F = dr * factor;
+                        forces[i] += F;
+                        forces[j] -= F;
+                    }
                 }
             }
 
-            // Attraction
             for (const auto& b : nBonds)
             {
-                sf::Vector3f d = positions[b.bondingAtomIdx] - positions[b.centralAtomIdx];
+                size_t c = b.centralAtomIdx;
+                size_t a = b.bondingAtomIdx;
+
+                sf::Vector3f dr = positions[a] - positions[c];
+                float dist = dr.length();
+
+                if (dist < EPSILON) continue;
+
                 float target = constants::getBondLength(
-                    nAtoms[b.centralAtomIdx].ZIndex,
-                    nAtoms[b.bondingAtomIdx].ZIndex, b.type);
-                float dist = d.length();
-                if (dist > 1e-3f)
-                {
-                    float f = k * (dist - target);
-                    sf::Vector3f force = d.normalized() * f;
-                    forces[b.centralAtomIdx] += force;
-                    forces[b.bondingAtomIdx] -= force;
-                }
+                                nAtoms[c].ZIndex,
+                                nAtoms[a].ZIndex,
+                                b.type);
+
+                float f = k_spring * (dist - target);
+                sf::Vector3f F = dr * (f / dist);
+
+                forces[c] += F;
+                forces[a] -= F;
             }
 
             for (size_t i = 0; i < positions.size(); ++i)
-                if (nAtoms[i].ZIndex != 1)
-                {
-                    positions[i] += forces[i] * 0.1f;
-                    maxForce = std::max(forces[i].length(), maxForce);
-                }
+            {
+                sf::Vector3f delta = forces[i] * dt;
+                positions[i] += delta;
 
-            if (maxForce <= 0.1f) // Converged
+                maxF = std::max(maxF, delta.length());
+            }
+
+            if (maxF <= convergence) 
                 break;
         }
     }

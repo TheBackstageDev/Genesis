@@ -35,6 +35,8 @@ namespace sim
         int8_t charge = 0; // non-Zero for ions 
         int32_t nBonds = 0;
         int32_t chirality = 0;
+
+        int32_t nHydrogens = 0;
         bool aromatic = false;
         bool hydrogenize = true; // add hydrogens
     };
@@ -68,7 +70,7 @@ namespace sim
         std::vector<sf::Vector3f> positions;
     };
 
-    molecule_structure parseSMILES(const std::string& molecule, bool implicitHydrogens = true);
+    molecule_structure parseSMILES(const std::string& molecule, const std::string& positionPath = "", bool implicitHydrogens = true);
     void organizeAngles(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds, 
                         std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles);
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
