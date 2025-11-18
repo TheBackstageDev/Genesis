@@ -3,6 +3,8 @@
 #include <SFML/Graphics.hpp>
 #include <functional>
 
+#include "imgui/imgui-SFML.h"
+
 #define MIN_ZOOM 0.001f
 #define MAX_ZOOM 100.f
 #define ZOOM_SPEED 0.1f

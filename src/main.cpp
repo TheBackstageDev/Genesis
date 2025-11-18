@@ -2,56 +2,38 @@
 #include "simulation/universe.hpp"
 #include "simulation/smiles_parser.hpp"
 
+#include <imgui/imgui.h>
+#include <imgui/imgui-SFML.h>
+
 #include <iostream>
 #include <random>
 #include <chrono>
 
 #include <algorithm>
 
-sf::Text timeStepText;
-sf::Text tempText;
+float targetTemp = 100.f;
 
 void displayUI(core::window_t& window, sim::fun::universe &universe)
 {
-    auto& uiview = window.getuiview();
-    window.getWindow().setView(uiview);
+    ImGui::Begin("Info");
 
-    sf::Vector2u windowSize = window.getWindow().getSize();
+    ImGui::DragFloat("Target Temp", &targetTemp, 0.01f, 0.01f, 0.f);
+    ImGui::Text("Current Temp: %.2fK", universe.temperature());
+    ImGui::Text("Current Time: %.3fps", universe.timestep() * DT);
 
-    uiview.setSize({static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)});
-    uiview.setCenter({windowSize.x / 2.0f, windowSize.y / 2.0f});
-    uiview.setViewport(sf::FloatRect({0.f, 0.f}, {1.f, 1.f}));
-
-    std::ostringstream tempStream;
-    tempStream << std::fixed << std::setprecision(2) << "Temp: " << universe.temperature() << " K";
-    tempText.setString(tempStream.str());
-
-    std::ostringstream timeStream;
-    timeStream << std::fixed << std::setprecision(1) << "Time: " << static_cast<float>(universe.timestep() * DT) << " ps";
-    timeStepText.setString(timeStream.str());
-
-    window.draw(timeStepText);
-    window.draw(tempText);
-}
-
-void setupUI(core::window_t& window)
-{
-    timeStepText.setFont(window.getFont());
-    timeStepText.setCharacterSize(25);
-
-    tempText.setFont(window.getFont());
-    tempText.setCharacterSize(25);
-    tempText.setPosition({0.f, 26.f});
+    ImGui::End();
 }
 
 int main()
 {    
     core::window_t window(500, 500, "Genesis Engine");
-    size_t universeSize = 100.f;
+    if (!ImGui::SFML::Init(window.getWindow()))
+    {
+        throw std::runtime_error("Failed to init imgui!");
+    }
 
+    size_t universeSize = 50.f;
     sim::fun::universe universe(universeSize);
-    
-    setupUI(window);
 
     window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
     {
@@ -63,23 +45,21 @@ int main()
 
     std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
-    float targetTemp = 200.f;
 
+    auto water = sim::parseSMILES("O");  
     auto sac = sim::parseSMILES("HH");
     auto sac2 = sim::parseSMILES("O=O");
 
-    auto water = sim::parseSMILES("O");  
-
-    auto stuff = sim::parseSMILES("CC(C)CC(C(=O)NC(C)C(=O)NC(CC1=CN=CN1)C(=O)NC(C(C)C)C(=O)NC(CCCCN)C(=O)NC(C)C(=O)NC(CC2=CC=CC=C2)C(=O)NC(C)C(=O)NC(CC3=CC=CC=C3)C(=O)NC(CCCCN)C(=O)NC(C(C)O)C(=O)NC(CCCCN)C(=O)O)N");
+    auto stuff = sim::parseSMILES("C1C=C(C(=CC1(NC2=NC(=NC(=N2)N(CCO)CCO)N(CCO)CCO)NC3=NC(=NC(=N3)N(CCO)CCO)N(CCO)CCO)S(=O)(=O)[O-])/C=C/C4=CC=CC=C4S(=O)(=O)[O-].C(CO)NCCO.[Na+].[K+]");
     auto stuff2 = sim::parseSMILES("CC(C)CC(C(=O)NC(C)C(=O)NC(CO)C(=O)NC(C(C)O)C(=O)NC(CC1=CN=CN1)C(=O)NC(CCCCN)C(=O)NC(CC2=CC=CC=C2)C(=O)NC(C)C(=O)NC(CC3=CC=CC=C3)C(=O)NC(C(C)C)C(=O)NC(CCCCN)C(=O)NC(C)C(=O)NC(CC4=CC=CC=C4)C(=O)NC(C)C(=O)NC(CCCCN)C(=O)NC(C(C)O)C(=O)NC(CCCCN)C(=O)O)N");
     //universe.createMolecule(sac, {10, 10, 15});
     universe.createMolecule(stuff, {30, 30, 30});
-    universe.createMolecule(stuff2, {30, 50, 30});
+    //universe.createMolecule(stuff2, {30, 50, 30});
 
     //universe.createMolecule(methane, {30, 30, 30});
 
-    size_t count = 150;
-    size_t count2 = 75;
+    size_t count = 100;
+    size_t count2 = 50;
     float minDistance = 2.f;
 
     std::vector<sf::Vector3f> centers{};
@@ -124,9 +104,12 @@ int main()
         }
     }
 
+    sf::Clock deltaClock;
     while (window.isOpen())
     {
         window.pollEvents(); 
+        ImGui::SFML::Update(window.getWindow(), deltaClock.restart());
+
         window.refresh();
         
         if (!window.isPaused())
@@ -140,15 +123,14 @@ int main()
         }
 
         if (window.stepFrame())
-        {
             universe.update(targetTemp, false);
-            targetTemp += 1.f;
-        }
 
         window.clear();
         universe.drawDebug(window);
         universe.draw(window, true);
+
         displayUI(window, universe);
+        ImGui::SFML::Render(window.getWindow());
         window.display();
     }
 }

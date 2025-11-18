@@ -39,16 +39,18 @@ namespace core
         float wheel = 0.f;
         std::vector<sf::Keyboard::Key> pressedKeys;
         
-        while (const std::optional event = window.pollEvent())
+        for (std::optional<sf::Event> optEvent = window.pollEvent(); optEvent.has_value(); optEvent = window.pollEvent())
         {
-            if (event->is<sf::Event::Closed>())
+            const sf::Event& event = *optEvent;
+            ImGui::SFML::ProcessEvent(window, event);
+            if (event.is<sf::Event::Closed>())
             {
                 window.close();
                 return false;
             }
-            if (event->is<sf::Event::Resized>())
+            if (event.is<sf::Event::Resized>())
             {
-                const auto& resizedEvent = event->getIf<sf::Event::Resized>()->size;
+                const auto& resizedEvent = event.getIf<sf::Event::Resized>()->size;
                 width = resizedEvent.x;
                 height = resizedEvent.y;
 
@@ -73,17 +75,17 @@ namespace core
                 view.setSize(sf::Vector2f(boxSizeAspect, boxSizeAspect));
                 window.setView(view);
             }
-            if (event->is<sf::Event::KeyPressed>())
+            if (event.is<sf::Event::KeyPressed>())
             {
-                const auto& key = event->getIf<sf::Event::KeyPressed>()->code;
+                const auto& key = event.getIf<sf::Event::KeyPressed>()->code;
                 if (key == sf::Keyboard::Key::Space)
                     paused = !paused;
                 if (key == sf::Keyboard::Key::F)
                     step = true;
             }
-            if (event->is<sf::Event::MouseWheelScrolled>())
+            if (event.is<sf::Event::MouseWheelScrolled>())
             {
-                float zoomFactor = 1.0f - event->getIf<sf::Event::MouseWheelScrolled>()->delta * ZOOM_SPEED;
+                float zoomFactor = 1.0f - event.getIf<sf::Event::MouseWheelScrolled>()->delta * ZOOM_SPEED;
                 sf::Vector2f currentSize = view.getSize();
                 sf::Vector2f newSize = currentSize * zoomFactor;
     

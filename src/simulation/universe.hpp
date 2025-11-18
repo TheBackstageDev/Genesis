@@ -64,6 +64,8 @@ namespace sim
             void calcDihedralForces();
             void calcLjForces();
             void calcElectrostaticForces();
+            void calcBondedForces();
+            void calcUnbondedForces();
 
             void setTemperature(float kelvin = 0.f);
             float calculateDihedral(const sf::Vector3f& pa, const sf::Vector3f& pb, const sf::Vector3f& pc, const sf::Vector3f& pd);
@@ -95,6 +97,7 @@ namespace sim
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
 
+            std::vector<bool> needNeighbourRebuild;
             std::vector<std::vector<size_t>> neighbourList;  // for each subset
             void buildNeighborList();
 

@@ -775,7 +775,6 @@ namespace sim
 
         void universe::calcElectrostaticForces()
         {
-            float cutoff2 = COULOMB_CUTOFF * COULOMB_CUTOFF;
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 if (atoms[i].charge == 0.f) continue;
@@ -786,7 +785,7 @@ namespace sim
 
                     sf::Vector3f dr = minImageVec(pos(j) - pos(i));
                     float dr_m = dr.length();
-                    if (dr_m > cutoff2 || dr_m < EPSILON)
+                    if (dr_m > CUTOFF || dr_m < EPSILON)
                         continue;
 
                     sf::Vector3f force = coulombForce(i, j, dr);
@@ -794,6 +793,16 @@ namespace sim
                     add_force(j, -force);
                 }
             }
+        }
+
+        void universe::calcBondedForces()
+        {
+            
+        }
+
+        void universe::calcUnbondedForces()
+        {
+        
         }
 
         void universe::update(float targetTemperature, bool reactions)
@@ -885,10 +894,16 @@ namespace sim
             const float rskin = COULOMB_CUTOFF + VERLET_SKIN;
             
             if (neighbourList.size() != atoms.size())
+            {
                 neighbourList.assign(atoms.size(), {});
+                needNeighbourRebuild.assign(atoms.size(), true);
+            }
 
-            for (auto& list : neighbourList)
-                list.clear();
+            for (size_t l = 0; l < neighbourList.size(); ++l)
+            {
+                if (!needNeighbourRebuild[l]) continue;
+                neighbourList[l].clear();
+            }
 
             data.x0 = data.x;
             data.y0 = data.y;
@@ -896,8 +911,10 @@ namespace sim
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
+                if (!needNeighbourRebuild[i]) continue;
                 for (size_t j = i + 1; j < atoms.size(); ++j)
                 {
+                    if (!needNeighbourRebuild[j]) continue;
                     if (areBonded(i, j))
                         continue;
 
@@ -916,15 +933,20 @@ namespace sim
             if (neighbourList.size() != atoms.size())
                 return true;
 
-            const float threshold2 = REBUILD_THRESHOLD * REBUILD_THRESHOLD;
-
+            bool needRebuild = false;
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 sf::Vector3f d = pos(i) - neigh_pos(i);
-                if (d.lengthSquared() > threshold2)
-                    return true;
+                if (d.length() > REBUILD_THRESHOLD)
+                {
+                    needRebuild = true;
+                    needNeighbourRebuild[i] = true;
+
+                    for (auto& val : neighbourList[i])
+                        val = true;
+                }
             }
-            return false;
+            return needRebuild;
         }
 
         // Reactions
