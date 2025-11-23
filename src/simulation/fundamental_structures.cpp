@@ -25,7 +25,7 @@ namespace sim
             sf::Color atomColor = constants::getElementColor(ZIndex);
 
             float minDist = 20.0f;
-            float maxDist = 300.0f;
+            float maxDist = 200.0f;
             float alpha = 255.0f;
 
             if (camDistance > minDist)

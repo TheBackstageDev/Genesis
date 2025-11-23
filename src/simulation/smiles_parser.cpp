@@ -230,12 +230,9 @@ namespace sim
                 if (i + 1 < currentMolecule.size())
                 {
                     char next = currentMolecule[i + 1];
-                    if (isalpha(next))
+                    if (isalpha(next) && !isupper(next))
                     {
                         std::string two = sym + next;
-
-                        two[0] = std::toupper(two[0]);
-                        if (two.size() > 1) two[1] = std::tolower(two[1]);
 
                         uint8_t newZ = constants::symbolToZ(two);
                         if (newZ != 0)      
@@ -386,22 +383,22 @@ namespace sim
                 if (it != bond_map.end()) type[i] = it->second.type;
             }
 
-            for (size_t i = 0; i < sub.connectedIdx.size(); ++i) 
+            for (size_t i = 0; i < neigh.size(); ++i) 
             {
-                for (size_t j = i + 1; j < sub.connectedIdx.size(); ++j) 
+                for (size_t j = i + 1; j < neigh.size(); ++j) 
                 {
                     angle ang;
-                    ang.A = sub.connectedIdx[i];
+                    ang.A = neigh[i];
                     ang.B = B;
-                    ang.C = sub.connectedIdx[j];
+                    ang.C = neigh[j];
                     ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
                     ang.K   = ANGLE_K;
                     angles.push_back(ang);
                 }
             }
 
-            for (size_t c_idx = 0; c_idx < sub.connectedIdx.size(); ++c_idx) {
-                const size_t C = sub.connectedIdx[c_idx];
+            for (size_t c_idx = 0; c_idx < neigh.size(); ++c_idx) {
+                const size_t C = neigh[c_idx];
 
                 size_t a = B, b = C;
                 if (a > b) std::swap(a, b);
@@ -412,7 +409,7 @@ namespace sim
 
                 if (nAtoms[a].aromatic || nAtoms[b].aromatic) continue;
 
-                const auto& neigh_B = sub.connectedIdx; 
+                const auto& neigh_B = neigh; 
 
                 std::vector<size_t> neigh_C;
                 for (const auto& bond : nBonds) 
@@ -967,11 +964,12 @@ namespace sim
             }
         }
 
+        if (nAtoms.size() < 4) return;
         const int32_t max_iters = 20 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
-        constexpr float   repulse     = 5.0f;
-        constexpr float   repulse_dist = 4.5f;
-        constexpr float   k_spring    = 3.0f;
+        constexpr float   repulse     = 3.0f;
+        constexpr float   repulse_dist = 2.f;
+        constexpr float   k_spring    = 2.0f;
         constexpr float   convergence = 0.01f;
 
         for (int32_t it = 0; it < max_iters; ++it)

@@ -21,7 +21,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.002f // ps
+#define DT 0.001f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
@@ -30,6 +30,8 @@ namespace constants
 #define CUTOFF 2.5f
 #define COULOMB_CUTOFF 12.f * MULT_FACTOR
 #define REACTION_CUTOFF 3.0f * MULT_FACTOR
+
+#define CELL_CUTOFF COULOMB_CUTOFF + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
@@ -40,8 +42,8 @@ namespace constants
 #define REACTION_INTERVAL 50
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
-#define BOND_K 50000.f        // Harmonic force constant
-#define ANGLE_K 35000.f       // J/mol/rad² for angular potential
+#define BOND_K 150000.f        // Harmonic force constant
+#define ANGLE_K 12000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
 
 #define COUNT_ATOMS 26 // supported by the simulation

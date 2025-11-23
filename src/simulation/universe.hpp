@@ -18,10 +18,17 @@ namespace sim
             alignas(32) std::vector<float> x0, y0, z0;
         };
 
+        constexpr int32_t offsets[14][3] = 
+        {
+            {0,0,0}, {1,0,0}, {1,1,0}, {0,1,0}, {-1,1,0},
+            {0,0,1}, {1,0,1}, {1,1,1}, {0,1,1}, {-1,0,1},
+            {1,-1,1}, {0,-1,1}, {-1,-1,1}, {-1,0,0}
+        };
+
         class universe
         {
         public:
-            universe(float universeSize = 10.f);
+            universe(float universeSize = 10.f, float cell_size = CELL_CUTOFF);
             ~universe() = default;
 
             size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
@@ -47,6 +54,19 @@ namespace sim
 
             float temperature() { return temp; }
             float timestep() { return timeStep; }
+
+            _NODISCARD std::vector<sf::Vector3f> positions() const 
+            {
+                std::vector<sf::Vector3f> positions;
+                positions.reserve(data.x.size());
+
+                for (int32_t i = 0; i < data.x.size(); ++i)
+                {
+                    positions.emplace_back(pos(i));
+                }
+
+                return positions;
+            }
 
             void log(size_t step = 100);
             void handleCamera(bool leftDown, bool rightDown, const sf::Vector2i& mousePos, float wheelDelta, const std::vector<sf::Keyboard::Key>& keys);
@@ -88,7 +108,23 @@ namespace sim
             float boxSize = 10.f;
 
             simData data;
-            std::vector<std::vector<bool>> bondedMatrix;
+            std::vector<std::vector<uint64_t>> bondedBits;
+            void markBonded(size_t i, size_t j)
+            {
+                if (i >= bondedBits.size()) bondedBits.resize(atoms.size());
+                if (j >= bondedBits.size()) bondedBits.resize(atoms.size());
+                while (bondedBits[i].size() * 64 <= j) bondedBits[i].push_back(0);
+                while (bondedBits[j].size() * 64 <= i) bondedBits[j].push_back(0);
+
+                size_t word_i = j / 64;
+                size_t bit_i  = j % 64;
+                size_t word_j = i / 64;
+                size_t bit_j  = i % 64;
+
+                bondedBits[i][word_i] |= (1ull << bit_i);
+                bondedBits[j][word_j] |= (1ull << bit_j);
+            }
+
             std::vector<atom> atoms;
             std::vector<bond> bonds;
             std::vector<subset> subsets;
@@ -96,10 +132,21 @@ namespace sim
 
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
+            
+            // CellList
+            std::vector<std::vector<size_t>> cells;
 
-            std::vector<bool> needNeighbourRebuild;
-            std::vector<std::vector<size_t>> neighbourList;  // for each subset
-            void buildNeighborList();
+            float cell_size = 0.f;
+            size_t cx = 0, cy = 0, cz = 0; // cell dimensions
+
+            void buildCells();
+            size_t getCellID(int32_t ix, int32_t iy, int32_t iz)
+            {
+                ix = (ix % (int32_t)cx + (int32_t)cx) % (int32_t)cx;
+                iy = (iy % (int32_t)cy + (int32_t)cy) % (int32_t)cy;
+                iz = (iz % (int32_t)cz + (int32_t)cz) % (int32_t)cz;
+                return static_cast<size_t>(ix + cx * (iy + cy * iz));
+            }
 
             float temp = 0;
             float neighbourInterval = 0.f;
@@ -125,21 +172,20 @@ namespace sim
                 return indices;
             }
 
-            bool neighbourListNeedRebuild();
-            bool areBonded(size_t i, size_t j) const
+            inline bool areBonded(size_t i, size_t j) const
             {
-                return i < bondedMatrix.size() && j < bondedMatrix[i].size() && bondedMatrix[i][j];
+                if (i >= bondedBits.size() || j >= bondedBits[i].size() * 64) return false;
+                size_t word = j / 64;
+                size_t bit  = j % 64;
+                return (bondedBits[i][word] & (1ull << bit)) != 0;
             }
-
             void rebuildBondTopology()
             {
                 size_t N = atoms.size();
-                bondedMatrix.assign(N, std::vector<bool>(N, false));
 
                 for (const auto& b : bonds)
                 {
-                    bondedMatrix[b.centralAtom][b.bondedAtom] = true;
-                    bondedMatrix[b.bondedAtom][b.centralAtom] = true;
+                    markBonded(b.centralAtom, b.bondedAtom);
                 }
             }
 
@@ -169,8 +215,8 @@ namespace sim
             inline sf::Vector3f neigh_pos(size_t i) const   { return {data.x0[i], data.y0[i], data.z0[i]}; }
             inline sf::Vector3f pos(size_t i) const   { return {data.x[i], data.y[i], data.z[i]}; }
             inline sf::Vector3f vel(size_t i) const   { return {data.vx[i], data.vy[i], data.vz[i]}; }
-            inline sf::Vector3f force(size_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
             inline sf::Vector3f old_force(size_t i) const { return {data.old_fx[i], data.old_fy[i], data.old_fz[i]}; }
+            inline sf::Vector3f force(size_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
             inline void add_force(size_t i, sf::Vector3f f) { data.fx[i] += f.x, data.fy[i] += f.y, data.fz[i] += f.z; }
             inline void add_pos(size_t i, sf::Vector3f p) { data.x[i] += p.x, data.y[i] += p.y, data.z[i] += p.z; }
             inline void add_vel(size_t i, sf::Vector3f v) { data.vx[i] += v.x, data.vy[i] += v.y, data.vz[i] += v.z; }

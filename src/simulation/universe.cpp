@@ -13,8 +13,8 @@ namespace sim
     namespace fun
     {
         
-        universe::universe(float universeSize)
-            : boxSize(universeSize)
+        universe::universe(float universeSize, float cell_size)
+            : boxSize(universeSize), cell_size(cell_size)
         {
         }
 
@@ -51,6 +51,8 @@ namespace sim
             {
                 sf::Vector2f p1 = project(window, corners[i]);
                 sf::Vector2f p2 = project(window, corners[j]);
+
+                if (p1.x < -1000.f || p2.x < -1000.f) continue;
 
                 const sf::Vector3f &a = corners[i];
                 const sf::Vector3f &b = corners[j];
@@ -154,8 +156,7 @@ namespace sim
         void universe::drawHydrogenBond(core::window_t &window, size_t H)
         {
             const auto& atomH = atoms[H];
-            if (neighbourList.size() != atoms.size())
-                return;
+
             if (atomH.charge > -0.2f && atomH.charge < 0.2f)
                 return;
 
@@ -177,64 +178,147 @@ namespace sim
             constexpr float MIN_COS_ANGLE   = 0.5f;
             constexpr float STRONG_ENERGY   = -40.0f;
             constexpr float WEAK_ENERGY     = -5.0f;
-            
-            for (size_t A : neighbourList[H]) {
-                if (A == D || A == H) continue;
 
-                const auto& atomA = atoms[A];
-                if (std::abs(atomA.charge) < 0.15f) continue;
-                if (atomH.charge * atomA.charge > 0.0f) continue;
+            sf::Vector3f p = pos(H);
+            p.x -= boxSize * std::floor(p.x * (1.0f / boxSize));
+            p.y -= boxSize * std::floor(p.y * (1.0f / boxSize));
+            p.z -= boxSize * std::floor(p.z * (1.0f / boxSize));
 
-                sf::Vector3f rHD = minImageVec(pos(D) - pos(H));
-                sf::Vector3f rHA = minImageVec(pos(A) - pos(H));
-                float dHD = rHD.length();
-                float dHA = rHA.length();
+            int32_t ix = static_cast<int32_t>(p.x * 1/cell_size);
+            int32_t iy = static_cast<int32_t>(p.y * 1/cell_size);
+            int32_t iz = static_cast<int32_t>(p.z * 1/cell_size);
+                
+            ix = ix >= static_cast<int32_t>(cx) ? static_cast<int32_t>(cx)-1 : ix;
+            iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy)-1 : iy;
+            iz = iz >= static_cast<int32_t>(cz) ? static_cast<int32_t>(cz)-1 : iz;
 
-                if (dHA > MAX_HA_DISTANCE || dHA < 0.7f) continue;
-                if (dHD < 0.5f) continue;
+            for (size_t d = 0; d < 14; ++d) 
+            {
+                int32_t iix = ix + offsets[d][0];
+                int32_t iiy = iy + offsets[d][1];
+                int32_t iiz = iz + offsets[d][2];
 
-                float cos_angle = rHD.dot(rHA) / (dHD * dHA);
-                if (cos_angle < MIN_COS_ANGLE) continue;
+                size_t cell_id = iix + cx * (iiy + cy * iiz);
 
-                float energy_kJ = COULOMB_K * atomH.charge * atomA.charge / dHA;
-                if (energy_kJ > WEAK_ENERGY) continue;
+                if (cell_id < -1 || cell_id > cx * cy * cz) continue;
 
-                float strength = std::clamp((energy_kJ - WEAK_ENERGY) / (STRONG_ENERGY - WEAK_ENERGY), 0.0f, 1.0f);
-                if (strength < 0.15f) continue;
-
-                uint8_t alpha = static_cast<uint8_t>(255 * strength);
-
-                sf::Vector2f pA = project(window, pos(A));
-                sf::Vector2f dir = (pA - pH).normalized();
-                float dist2D = (pA - pH).length();
-                if (dist2D < 1e-3f) continue;
-
-                constexpr int   NUM_DASHES = 8;
-                constexpr float DASH_FRACTION = 0.55f;
-                constexpr float GAP_FRACTION  = 0.45f;
-
-                float dash_len = dist2D * DASH_FRACTION / NUM_DASHES;
-                float gap_len  = dist2D * GAP_FRACTION  / NUM_DASHES;
-
-                sf::Vertex line[2];
-                line[0].color = line[1].color = sf::Color(255, 255, 255, alpha);
-
-                for (int i = 0; i < NUM_DASHES; ++i) {
-                    float start = (dash_len + gap_len) * i;
-                    float end   = start + dash_len;
-
-                    if (end > dist2D) end = dist2D;
-                    if (start >= dist2D) break;
-
-                    line[0].position = pH + dir * start;
-                    line[1].position = pH + dir * end;
-                    window.getWindow().draw(line, 2, sf::PrimitiveType::Lines);
-                }
+                for (size_t A : cells[cell_id])
+                {
+                    if (A == D || A == H) continue;
+    
+                    const auto& atomA = atoms[A];
+                    if (std::abs(atomA.charge) < 0.15f) continue;
+                    if (atomH.charge * atomA.charge > 0.0f) continue;
+    
+                    sf::Vector3f rHD = minImageVec(pos(D) - pos(H));
+                    sf::Vector3f rHA = minImageVec(pos(A) - pos(H));
+                    float dHD = rHD.length();
+                    float dHA = rHA.length();
+    
+                    if (dHA > MAX_HA_DISTANCE || dHA < 0.7f) continue;
+                    if (dHD < 0.5f) continue;
+    
+                    float cos_angle = rHD.dot(rHA) / (dHD * dHA);
+                    if (cos_angle < MIN_COS_ANGLE) continue;
+    
+                    float energy_kJ = COULOMB_K * atomH.charge * atomA.charge / dHA;
+                    if (energy_kJ > WEAK_ENERGY) continue;
+    
+                    float strength = std::clamp((energy_kJ - WEAK_ENERGY) / (STRONG_ENERGY - WEAK_ENERGY), 0.0f, 1.0f);
+                    if (strength < 0.15f) continue;
+    
+                    uint8_t alpha = static_cast<uint8_t>(255 * strength);
+    
+                    sf::Vector2f pA = project(window, pos(A));
+                    sf::Vector2f dir = (pA - pH).normalized();
+                    float dist2D = (pA - pH).length();
+                    if (dist2D < 1e-3f) continue;
+    
+                    constexpr int   NUM_DASHES = 8;
+                    constexpr float DASH_FRACTION = 0.55f;
+                    constexpr float GAP_FRACTION  = 0.45f;
+    
+                    float dash_len = dist2D * DASH_FRACTION / NUM_DASHES;
+                    float gap_len  = dist2D * GAP_FRACTION  / NUM_DASHES;
+    
+                    sf::Vertex line[2];
+                    line[0].color = line[1].color = sf::Color(255, 255, 255, alpha);
+    
+                    for (int i = 0; i < NUM_DASHES; ++i) {
+                        float start = (dash_len + gap_len) * i;
+                        float end   = start + dash_len;
+    
+                        if (end > dist2D) end = dist2D;
+                        if (start >= dist2D) break;
+    
+                        line[0].position = pH + dir * start;
+                        line[1].position = pH + dir * end;
+                        window.getWindow().draw(line, 2, sf::PrimitiveType::Lines);
+                    }
+                }    
             }
         }
 
         void universe::drawDebug(core::window_t &window)
         {
+            if (cx == 0 || cell_size <= 0.f) return;
+
+            sf::VertexArray grid(sf::PrimitiveType::Lines, 0);
+            grid.resize(24 * cx * cy * cz);
+
+            sf::Color cellColor(100, 149, 237, 60);
+            sf::Color hotColor (255, 69, 0, 120); 
+
+            size_t vert_idx = 0;
+
+            for (size_t ix = 0; ix < cx; ++ix)
+            for (size_t iy = 0; iy < cy; ++iy)
+            for (size_t iz = 0; iz < cz; ++iz)
+            {
+                size_t cell_id = ix + cx * (iy + cy * iz);
+                bool has_atoms = !cells[cell_id].empty();
+
+                sf::Color color = has_atoms ? hotColor : cellColor;
+
+                float x0 = ix * cell_size;
+                float y0 = iy * cell_size;
+                float z0 = iz * cell_size;
+                float x1 = x0 + cell_size;
+                float y1 = y0 + cell_size;
+                float z1 = z0 + cell_size;
+                
+
+                // 8 corners of the cell
+                std::array<sf::Vector3f, 8> c = {{
+                    {x0,y0,z0}, {x1,y0,z0}, {x1,y1,z0}, {x0,y1,z0},
+                    {x0,y0,z1}, {x1,y0,z1}, {x1,y1,z1}, {x0,y1,z1}
+                }};
+
+                // 12 edges
+                const int edges[12][2] = {
+                    {0,1},{1,2},{2,3},{3,0}, // bottom
+                    {4,5},{5,6},{6,7},{7,4}, // top
+                    {0,4},{1,5},{2,6},{3,7}  // vertical
+                };
+
+                for (int e = 0; e < 12; ++e)
+                {
+                    sf::Vector2f a = project(window, c[edges[e][0]]);
+                    sf::Vector2f b = project(window, c[edges[e][1]]);
+
+                    if (a.x < -1000.f || b.x < -1000.f) continue;
+
+                    sf::Vector3f camToA = c[edges[e][0]] - cam.eye();
+                    sf::Vector3f camToB = c[edges[e][1]] - cam.eye();
+                    if (camToA.normalized().dot(camToB.normalized()) < 0.2f)
+                        continue;
+
+                    grid[vert_idx++]   = sf::Vertex(a, color);
+                    grid[vert_idx++]   = sf::Vertex(b, color);
+                }
+            }
+
+            window.getWindow().draw(grid);
         }
 
         void universe::log(size_t step)
@@ -384,14 +468,25 @@ namespace sim
             size_t baseAngle = angles.size();
             for (size_t a = 0; a < structure.angles.size(); ++a)
             {
-                angles.emplace_back(structure.angles[a]);
+                angle angle = structure.angles[a];
+                angle.A += baseAtomIndex;
+                angle.B += baseAtomIndex;
+                angle.C += baseAtomIndex;
+
+                angles.emplace_back(angle);
                 nMolecule.angles.emplace_back(baseAngle + a);
             }
 
             size_t baseDihedral = dihedral_angles.size();
             for (size_t a = 0; a < structure.dihedral_angles.size(); ++a)
             {
-                dihedral_angles.emplace_back(structure.dihedral_angles[a]);
+                dihedral_angle angle = structure.dihedral_angles[a];
+                angle.A += baseAtomIndex;
+                angle.B += baseAtomIndex;
+                angle.C += baseAtomIndex;
+                angle.D += baseAtomIndex;
+
+                dihedral_angles.emplace_back(angle);
                 nMolecule.dihedrals.emplace_back(baseDihedral + a);
             }
 
@@ -441,12 +536,14 @@ namespace sim
             atomsToBalance.erase(last, atomsToBalance.end());
 
             std::vector<std::vector<size_t>> neighborLists(atoms.size());
-            for (const auto &bond : bonds) {
+            for (const auto &bond : bonds) 
+            {
                 size_t a = bond.bondedAtom;
                 size_t b = bond.centralAtom;
                 bool aIn = std::binary_search(atomsToBalance.begin(), atomsToBalance.end(), a);
                 bool bIn = std::binary_search(atomsToBalance.begin(), atomsToBalance.end(), b);
-                if (aIn && bIn) {
+                if (aIn && bIn) 
+                {
                     neighborLists[a].push_back(b);
                     neighborLists[b].push_back(a);
                 }
@@ -480,15 +577,18 @@ namespace sim
             {
                 for (size_t i = 0; i < atomsToBalance.size(); ++i) 
                 {
-                    if (valenceDeficit[i] > 0) {
+                    if (valenceDeficit[i] > 0) 
+                    {
                         float share = chargeToDistribute * (valenceDeficit[i] / totalDeficit);
                         atoms[atomsToBalance[i]].charge += share;
                     }
                 }
-            } else 
+            } 
+            else 
             {
                 float adjustment = chargeToDistribute / atomsToBalance.size();
-                for (size_t idx : atomsToBalance) {
+                for (size_t idx : atomsToBalance) 
+                {
                     atoms[idx].charge += adjustment;
                 }
             }
@@ -504,8 +604,8 @@ namespace sim
         float universe::ljPot(size_t i, float epsilon_i, float sigma_i)
         {
             float potential = 0.f;
-
-            for (size_t j = 0; j < neighbourList.size(); ++j)
+            
+            /* for (size_t j = 0; j < neighbourList.size(); ++j)
             {
                 float dr = minImageVec(pos(i) - pos(neighbourList[i][j])).length();
 
@@ -519,7 +619,7 @@ namespace sim
                     float r12 = r6 * r6;
                     potential += 4.0f * epsilon * (r12 - r6);
                 }
-            }
+            } */
 
             return potential;
         }
@@ -541,6 +641,8 @@ namespace sim
 
             if (dr < sigma * CUTOFF && dr > EPSILON)
             {
+                if (areBonded(i, j)) return sf::Vector3f{0.f, 0.f, 0.f};
+                
                 float sigma6 = powf(sigma, 6);
                 float sigma12 = sigma6 * sigma6;
 
@@ -603,6 +705,8 @@ namespace sim
             if (qq == 0.f)
                 return {0.f, 0.f, 0.f};
 
+            if (areBonded(i, j)) return sf::Vector3f{0.f, 0.f, 0.f};
+
             float forceMag = COULOMB_K * a1.charge * a2.charge / dr;
             return -forceMag * dr_vec / dr;
         }
@@ -660,11 +764,12 @@ namespace sim
                 sf::Vector3f u_jk = r_jk / len_jk;
 
                 float cos_theta = std::clamp(u_ji.dot(u_jk), -1.0f, 1.0f);
-                float theta = std::acos(cos_theta);
-
-                float sin_theta = std::sqrt(1.0f - cos_theta * cos_theta);
+                float sin_theta = 1.0f - cos_theta * cos_theta;
+                sin_theta = std::max(sin_theta, 0.0f);
+                sin_theta = std::sqrt(sin_theta);
                 if (sin_theta < 1e-6f) sin_theta = 1e-6f;
-
+                
+                float theta = std::acos(cos_theta);
                 float delta_theta = theta - ang.rad;
                 float k_angle = 2.0f * ang.K;
 
@@ -689,22 +794,48 @@ namespace sim
         {
             // size_t count = 0;
 
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (size_t ix = 0 ; ix < cx; ++ix)
+            for (size_t iy = 0; iy < cy; ++iy)
+            for (size_t iz = 0; iz < cz; ++iz)
             {
-                std::vector<size_t> &neighbours = neighbourList[i];
+                size_t cell_id = ix + cx * (iy + cy * iz);
 
-                for (size_t j = 0; j < neighbours.size(); ++j)
+                const std::vector<size_t>& cell = cells[cell_id];
+
+                for (size_t ii = 0; ii < cell.size(); ++ii)
                 {
-                    size_t index_j = neighbours[j];
+                    size_t i = cell[ii];
+                    for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                    {
+                        size_t j = cell[jj];
 
-                    const float sigma = (atoms[i].sigma + atoms[index_j].sigma) / 2.0f;
+                        sf::Vector3f f = ljForce(i, j);
+                        add_force(i, f);
+                        add_force(j, -f);
+                    }
+                }
 
-                    //++count;
+                for (size_t d = 1; d < 14; ++d)
+                {
+                    int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                    size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
-                    sf::Vector3f force = ljForce(i, index_j);
+                    const std::vector<size_t>& neighbour_cell = cells[neighbour_id];
 
-                    add_force(i, force);
-                    add_force(index_j, -force); // Every action creates an Equal and opposite reaction - Sir Isaac Newton
+                    for (size_t ii = 0; ii < cell.size(); ++ii)
+                    {
+                        const size_t& i = cell[ii];
+                        for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                        {
+                            const size_t& j = neighbour_cell[jj];
+
+                            if (j <= i) continue;
+
+                            sf::Vector3f f = ljForce(i, j);
+                            add_force(i, f);
+                            add_force(j, -f);
+                        }
+                    }
                 }
             }
 
@@ -775,34 +906,72 @@ namespace sim
 
         void universe::calcElectrostaticForces()
         {
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (size_t ix = 0 ; ix < cx; ++ix)
+            for (size_t iy = 0; iy < cy; ++iy)
+            for (size_t iz = 0; iz < cz; ++iz)
             {
-                if (atoms[i].charge == 0.f) continue;
+                size_t cell_id = getCellID(ix, iy, iz);
 
-                for (size_t j : neighbourList[i])
+                const std::vector<size_t>& cell = cells[cell_id];
+
+                for (size_t ii = 0; ii < cell.size(); ++ii)
                 {
-                    if (atoms[j].charge == 0.f) continue;
+                    size_t i = cell[ii];
+                    for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                    {
+                        const size_t& j = cell[jj];
+                            
+                        if (j <= i) continue;
+                        if (atoms[j].charge == 0.f) continue;
 
-                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                    float dr_m = dr.length();
-                    if (dr_m > CUTOFF || dr_m < EPSILON)
-                        continue;
+                        sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                        sf::Vector3f force = coulombForce(i, j, dr);
 
-                    sf::Vector3f force = coulombForce(i, j, dr);
-                    add_force(i, force);
-                    add_force(j, -force);
+                        add_force(i, force);
+                        add_force(j, -force);
+                    }
+                }
+
+                for (size_t d = 1; d < 14; ++d)
+                {
+                    int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                    size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+
+                    const std::vector<size_t>& neighbour_cell = cells[neighbour_id];
+
+                    for (size_t ii = 0; ii < cell.size(); ++ii)
+                    {
+                        const size_t& i = cell[ii];
+                        if (atoms[i].charge == 0.f) continue;
+                        for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                        {
+                            const size_t& j = neighbour_cell[jj];
+                            
+                            if (j <= i) continue;
+                            if (atoms[j].charge == 0.f) continue;
+
+                            sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                            sf::Vector3f force = coulombForce(i, j, dr);
+
+                            add_force(i, force);
+                            add_force(j, -force);
+                        }
+                    }
                 }
             }
         }
 
         void universe::calcBondedForces()
         {
-            
+            calcBondForces();
+            calcAngleForces();
+            calcDihedralForces();
         }
 
         void universe::calcUnbondedForces()
         {
-        
+            calcLjForces();
+            calcElectrostaticForces();
         }
 
         void universe::update(float targetTemperature, bool reactions)
@@ -814,23 +983,18 @@ namespace sim
             std::swap(data.fy, data.old_fy);
             std::swap(data.fz, data.old_fz);
 
-            data.fx.resize(atoms.size());
-            data.fy.resize(atoms.size());
-            data.fz.resize(atoms.size());
+            data.fx.assign(atoms.size(), 0.0f);
+            data.fy.assign(atoms.size(), 0.0f);
+            data.fz.assign(atoms.size(), 0.0f);
 
-            if (neighbourList.empty() || neighbourListNeedRebuild())
-                buildNeighborList();
-
-            calcLjForces();
-            calcBondForces();
-            calcAngleForces();
-            calcDihedralForces();
-            calcElectrostaticForces();
+            calcBondedForces();
+            calcUnbondedForces();
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 sf::Vector3f a_old = old_force(i) / atoms[i].mass;
                 sf::Vector3f a_new = force(i) / atoms[i].mass;
+
                 add_pos(i, vel(i) * DT + 0.5f * (a_old + a_new) * DT * DT);
                 boundCheck(i);
             }
@@ -839,14 +1003,16 @@ namespace sim
             std::fill(data.fy.begin(), data.fy.end(), 0.f);
             std::fill(data.fz.begin(), data.fz.end(), 0.f);
 
-            calcLjForces();
-            calcBondForces();
-            calcAngleForces();
-            calcDihedralForces();
-            calcElectrostaticForces();
+            calcBondedForces();
+            calcUnbondedForces();
 
             for (size_t i = 0; i < atoms.size(); ++i)
-                add_vel(i, (old_force(i) + force(i)) * (0.5f * DT / atoms[i].mass));
+            {
+                sf::Vector3f accel = (old_force(i) + force(i)) * (0.5f * DT / atoms[i].mass);
+                add_vel(i, accel);
+            }
+
+            buildCells();
 
             if (reactions)
                 handleReactions();
@@ -889,64 +1055,40 @@ namespace sim
             return kinetic_energy;
         }
 
-        void universe::buildNeighborList()
+        void universe::buildCells()
         {
-            const float rskin = COULOMB_CUTOFF + VERLET_SKIN;
-            
-            if (neighbourList.size() != atoms.size())
+            if ((CELL_CUTOFF - cell_size) > EPSILON || timeStep == 0)
             {
-                neighbourList.assign(atoms.size(), {});
-                needNeighbourRebuild.assign(atoms.size(), true);
+                cx = static_cast<size_t>(std::ceil(boxSize / cell_size));
+                cy = cx; cz = cx;
             }
 
-            for (size_t l = 0; l < neighbourList.size(); ++l)
-            {
-                if (!needNeighbourRebuild[l]) continue;
-                neighbourList[l].clear();
-            }
+            size_t ncells = cx * cy * cz;
+            if (cells.size() != ncells)
+                cells.assign(ncells, {});
+            else
+                for (auto& c : cells) c.clear();
 
-            data.x0 = data.x;
-            data.y0 = data.y;
-            data.z0 = data.z;
+            const float inv = 1.0f / cell_size;
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                if (!needNeighbourRebuild[i]) continue;
-                for (size_t j = i + 1; j < atoms.size(); ++j)
-                {
-                    if (!needNeighbourRebuild[j]) continue;
-                    if (areBonded(i, j))
-                        continue;
+                sf::Vector3f p = pos(i);
+                p.x -= boxSize * std::floor(p.x / boxSize);
+                p.y -= boxSize * std::floor(p.y / boxSize);
+                p.z -= boxSize * std::floor(p.z / boxSize);
 
-                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                    if (dr.length() < rskin)
-                    {
-                        neighbourList[i].push_back(j);
-                        neighbourList[j].push_back(i);
-                    }
-                }
+                int32_t ix = static_cast<int32_t>(p.x * inv);
+                int32_t iy = static_cast<int32_t>(p.y * inv);
+                int32_t iz = static_cast<int32_t>(p.z * inv);
+
+                ix = std::clamp(ix, 0, (int32_t)cx - 1);
+                iy = std::clamp(iy, 0, (int32_t)cy - 1);
+                iz = std::clamp(iz, 0, (int32_t)cz - 1);
+
+                size_t id = static_cast<size_t>(ix) + cx * (static_cast<size_t>(iy) + cy * static_cast<size_t>(iz));
+                cells[id].emplace_back(i);
             }
-        }
-
-        bool universe::neighbourListNeedRebuild()
-        {
-            if (neighbourList.size() != atoms.size())
-                return true;
-
-            bool needRebuild = false;
-            for (size_t i = 0; i < atoms.size(); ++i)
-            {
-                sf::Vector3f d = pos(i) - neigh_pos(i);
-                if (d.length() > REBUILD_THRESHOLD)
-                {
-                    needRebuild = true;
-                    needNeighbourRebuild[i] = true;
-
-                    for (auto& val : neighbourList[i])
-                        val = true;
-                }
-            }
-            return needRebuild;
         }
 
         // Reactions
@@ -1095,37 +1237,7 @@ namespace sim
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                if (!isReactive(i))
-                    continue;
 
-                for (size_t j : neighbourList[i])
-                {
-                    if (!isReactive(j))
-                        continue;
-                    if (areBonded(i, j))
-                        continue;
-
-                    BondType bestType = chooseBestBondType(i, j);
-                    float r = minImageVec(pos(i) - pos(j)).length();
-                    float r0 = constants::getBondLength(atoms[i].ZIndex, atoms[j].ZIndex, bestType);
-                    if (r0 > 0 && r < r0 * 1.3f)
-                    {
-                        createBond(i, j, bestType);
-                        auto subset_it1 = std::find_if(subsets.begin(), subsets.end(),
-                                                       [&](const subset &s)
-                                                       { return s.mainAtomIdx == i; });
-
-                        auto subset_it2 = std::find_if(subsets.begin(), subsets.end(),
-                                                       [&](const subset &s)
-                                                       { return s.mainAtomIdx == j; });
-
-                        if (subset_it1 != subsets.end() && subset_it2 != subsets.end())
-                        {
-                            subset_it1->bondingSubsetIdx = std::distance(subsets.begin(), subset_it2);
-                            subset_it2->bondingSubsetIdx = std::distance(subsets.begin(), subset_it1);
-                        }
-                    }
-                }
             }
         }
 

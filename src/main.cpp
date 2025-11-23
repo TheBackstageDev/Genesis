@@ -32,7 +32,7 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 50.f;
+    size_t universeSize = 30.f;
     sim::fun::universe universe(universeSize);
 
     window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
@@ -47,27 +47,18 @@ int main()
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
 
     auto water = sim::parseSMILES("O");  
-    auto sac = sim::parseSMILES("HH");
-    auto sac2 = sim::parseSMILES("O=O");
+    auto stuff = sim::parseSMILES("CC[C@@H](C)[C@H]1C(=O)N[C@H](C(=O)NC(C(=O)N[C@H](CSSC(C(=O)N[C@H](C(=O)N1)CC2=CC=C(C=C2)O)N)C(=O)N3CCC[C@@H]3C(=O)N[C@H](CC(C)C)C(=O)O)CC(=O)N)CCC(=O)N");
+ 
+    universe.createMolecule(stuff, {15, 15, 15});
 
-    auto stuff = sim::parseSMILES("C1C=C(C(=CC1(NC2=NC(=NC(=N2)N(CCO)CCO)N(CCO)CCO)NC3=NC(=NC(=N3)N(CCO)CCO)N(CCO)CCO)S(=O)(=O)[O-])/C=C/C4=CC=CC=C4S(=O)(=O)[O-].C(CO)NCCO.[Na+].[K+]");
-    auto stuff2 = sim::parseSMILES("CC(C)CC(C(=O)NC(C)C(=O)NC(CO)C(=O)NC(C(C)O)C(=O)NC(CC1=CN=CN1)C(=O)NC(CCCCN)C(=O)NC(CC2=CC=CC=C2)C(=O)NC(C)C(=O)NC(CC3=CC=CC=C3)C(=O)NC(C(C)C)C(=O)NC(CCCCN)C(=O)NC(C)C(=O)NC(CC4=CC=CC=C4)C(=O)NC(C)C(=O)NC(CCCCN)C(=O)NC(C(C)O)C(=O)NC(CCCCN)C(=O)O)N");
-    //universe.createMolecule(sac, {10, 10, 15});
-    universe.createMolecule(stuff, {30, 30, 30});
-    //universe.createMolecule(stuff2, {30, 50, 30});
+    size_t count = 70;
+    float minDistance = 3.f;
 
-    //universe.createMolecule(methane, {30, 30, 30});
-
-    size_t count = 100;
-    size_t count2 = 50;
-    float minDistance = 2.f;
-
-    std::vector<sf::Vector3f> centers{};
+    std::vector<sf::Vector3f> centers{universe.positions()};
 
     const float minDistSq = minDistance * minDistance;
 
-    for (size_t t = 0; t < 0; ++t)
-    for (size_t i = 0; i < (t == 0 ? count : count2); ++i)
+    for (size_t i = 0; i < count; ++i)
     {
         sf::Vector3f pos;
         sf::Vector3f vel;
@@ -100,7 +91,7 @@ int main()
         if (valid)
         {
             centers.push_back(pos);
-            universe.createMolecule(t == 0 ? sac : sac2, pos);
+            universe.createMolecule(water, pos);
         }
     }
 
@@ -115,7 +106,7 @@ int main()
         if (!window.isPaused())
         {
             auto start_time = std::chrono::steady_clock::now();
-            universe.update(targetTemp);
+            universe.update(targetTemp, false);
             auto end_time = std::chrono::steady_clock::now();
             auto duration = end_time - start_time;
             double delta_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -126,7 +117,7 @@ int main()
             universe.update(targetTemp, false);
 
         window.clear();
-        universe.drawDebug(window);
+        //universe.drawDebug(window);
         universe.draw(window, true);
 
         displayUI(window, universe);
