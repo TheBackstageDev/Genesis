@@ -230,7 +230,7 @@ namespace sim
                 if (i + 1 < currentMolecule.size())
                 {
                     char next = currentMolecule[i + 1];
-                    if (isalpha(next) && !isupper(next))
+                    if (isupper(c) && isalpha(next) && !isupper(next))
                     {
                         std::string two = sym + next;
 

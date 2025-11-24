@@ -3,6 +3,9 @@
 #include "fundamental_structures.hpp"
 #include <SFML/Graphics.hpp>
 
+#include <filesystem>
+#include <json.hpp>
+
 namespace sim
 {
     namespace fun
@@ -29,6 +32,7 @@ namespace sim
         {
         public:
             universe(float universeSize = 10.f, float cell_size = CELL_CUTOFF);
+            universe(std::filesystem::path scene);
             ~universe() = default;
 
             size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
@@ -46,8 +50,8 @@ namespace sim
             void drawBonds(core::window_t& window);
             void drawDebug(core::window_t& window);
 
-            void saveScene();
-            void loadScene(const std::string& path);
+            void saveScene(const std::filesystem::path path);
+            void loadScene(const std::filesystem::path path);
 
             size_t numAtoms() { return atoms.size(); }
             const subset& getSubset(size_t index) { return subsets[index]; }

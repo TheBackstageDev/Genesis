@@ -1,6 +1,7 @@
 #include "core/window.hpp"
 #include "simulation/universe.hpp"
 #include "simulation/smiles_parser.hpp"
+#include "simulation/format_loader.hpp"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui-SFML.h>
@@ -47,12 +48,12 @@ int main()
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
 
     auto water = sim::parseSMILES("O");  
-    auto stuff = sim::parseSMILES("CC[C@@H](C)[C@H]1C(=O)N[C@H](C(=O)NC(C(=O)N[C@H](CSSC(C(=O)N[C@H](C(=O)N1)CC2=CC=C(C=C2)O)N)C(=O)N3CCC[C@@H]3C(=O)N[C@H](CC(C)C)C(=O)O)CC(=O)N)CCC(=O)N");
- 
+    auto stuff = sim::parseSMILES("O=P(O)(O)OP(=O)(O)OP(=O)(O)OC[C@H]3O[C@@H](n2cnc1c(ncnc12)N)[C@H](O)[C@@H]3O");
+
     universe.createMolecule(stuff, {15, 15, 15});
 
-    size_t count = 70;
-    float minDistance = 3.f;
+    size_t count = 5;
+    float minDistance = 6.f;
 
     std::vector<sf::Vector3f> centers{universe.positions()};
 

@@ -17,6 +17,10 @@ namespace sim
             : boxSize(universeSize), cell_size(cell_size)
         {
         }
+        
+        universe::universe(const std::filesystem::path path)
+        {
+        }
 
         void universe::drawBox(core::window_t &window)
         {
@@ -155,6 +159,8 @@ namespace sim
 
         void universe::drawHydrogenBond(core::window_t &window, size_t H)
         {
+            if (timeStep == 0 || cells.size() == 0) return;
+
             const auto& atomH = atoms[H];
 
             if (atomH.charge > -0.2f && atomH.charge < 0.2f)
@@ -198,9 +204,9 @@ namespace sim
                 int32_t iiy = iy + offsets[d][1];
                 int32_t iiz = iz + offsets[d][2];
 
-                size_t cell_id = iix + cx * (iiy + cy * iiz);
+                int32_t cell_id = iix + cx * (iiy + cy * iiz);
 
-                if (cell_id < -1 || cell_id > cx * cy * cz) continue;
+                if (cell_id < -1 || cell_id >= (cx * cy * cz)) continue;
 
                 for (size_t A : cells[cell_id])
                 {
@@ -373,8 +379,8 @@ namespace sim
             atoms[idx1].bondCount += bondCount;
             atoms[idx2].bondCount += bondCount;
 
-            float EN1 = constants::electronegativity.at(atoms[idx1].ZIndex);
-            float EN2 = constants::electronegativity.at(atoms[idx2].ZIndex);
+            float EN1 = constants::getElectronegativity(atoms[idx1].ZIndex);
+            float EN2 = constants::getElectronegativity(atoms[idx2].ZIndex);
             float deltaEN = std::abs(EN1 - EN2);
 
             if (deltaEN > 0.4f) // Significant electronegativity difference
@@ -732,7 +738,8 @@ namespace sim
                     continue;
                 } */
 
-                float force_magnitude = BOND_K * delta_r;
+                float bond_k = constants::getBondHarmonicConstantFromEnergy(atoms[idx1].ZIndex, atoms[idx2].ZIndex, bond.type);
+                float force_magnitude = bond_k * delta_r;
 
                 sf::Vector3f force_dir = r_vec / dr;
                 sf::Vector3f force = force_magnitude * force_dir;
@@ -1345,6 +1352,19 @@ namespace sim
             }
 
             return name;
+        }
+
+        // loading and saving scenes
+
+        void universe::saveScene(const std::filesystem::path path)
+        {
+            nlohmann::json scene{};
+            
+        }
+
+        void universe::loadScene(const std::filesystem::path path)
+        {
+        
         }
     } // namespace fun
 } // namespace sim
