@@ -22,7 +22,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.001f // ps
+#define DT 0.0005f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
@@ -30,7 +30,7 @@ namespace constants
 #define VERLET_SKIN 1.f
 #define CUTOFF 2.5f
 #define COULOMB_CUTOFF 12.f * MULT_FACTOR
-#define REACTION_CUTOFF 3.0f * MULT_FACTOR
+#define REACTION_CUTOFF 2.f * MULT_FACTOR
 
 #define CELL_CUTOFF COULOMB_CUTOFF + VERLET_SKIN
 
@@ -40,12 +40,16 @@ namespace constants
 
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
 #define THERMOSTAT_INTERVAL 2
-#define REACTION_INTERVAL 50
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
-#define BOND_K 150000.f        // Harmonic force constant
+#define BOND_K 340000.f        // Harmonic force constant
 #define ANGLE_K 12000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.1f
+
+#define REACTION_INTERVAL 3 // time steps
+#define REACTION_STRETCH_FACTOR 1.5f
+#define REACTION_FORMING_FACTOR 1.3f
+#define REACTION_VELOCITY_THRESHOLD 0.05f 
 
 #define COUNT_ATOMS 118
 
@@ -428,11 +432,6 @@ namespace constants
         }
 
         return ideal_angle;
-    }
-
-    inline float getBondHarmonicConstant(int8_t ZIndexCentral, int8_t ZIndexBonding, sim::fun::BondType type)
-    {
-        return BOND_K * static_cast<float>(type) / 2.f;
     }
 
     inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)

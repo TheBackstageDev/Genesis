@@ -12,12 +12,12 @@ namespace sim
 {
     namespace fun
     {
-        
+
         universe::universe(float universeSize, float cell_size)
             : boxSize(universeSize), cell_size(cell_size)
         {
         }
-        
+
         universe::universe(const std::filesystem::path path)
         {
         }
@@ -56,7 +56,8 @@ namespace sim
                 sf::Vector2f p1 = project(window, corners[i]);
                 sf::Vector2f p2 = project(window, corners[j]);
 
-                if (p1.x < -1000.f || p2.x < -1000.f) continue;
+                if (p1.x < -1000.f || p2.x < -1000.f)
+                    continue;
 
                 const sf::Vector3f &a = corners[i];
                 const sf::Vector3f &b = corners[j];
@@ -121,7 +122,7 @@ namespace sim
 
                 if (s1.x <= -9999 || s2.x <= -9999)
                     continue;
-                if ((pCentral - pBonded).length() > 20.f)
+                if ((pCentral - pBonded).length() > 5.f)
                     continue;
                 if ((pCentral - cam.eye()).length() > 200.f)
                     continue;
@@ -159,9 +160,10 @@ namespace sim
 
         void universe::drawHydrogenBond(core::window_t &window, size_t H)
         {
-            if (timeStep == 0 || cells.size() == 0) return;
+            if (timeStep == 0 || cells.size() == 0)
+                return;
 
-            const auto& atomH = atoms[H];
+            const auto &atomH = atoms[H];
 
             if (atomH.charge > -0.2f && atomH.charge < 0.2f)
                 return;
@@ -181,24 +183,24 @@ namespace sim
             sf::Vector2f pH = project(window, pos(H));
 
             constexpr float MAX_HA_DISTANCE = 2.8f;
-            constexpr float MIN_COS_ANGLE   = 0.5f;
-            constexpr float STRONG_ENERGY   = -40.0f;
-            constexpr float WEAK_ENERGY     = -5.0f;
+            constexpr float MIN_COS_ANGLE = 0.5f;
+            constexpr float STRONG_ENERGY = -40.0f;
+            constexpr float WEAK_ENERGY = -5.0f;
 
             sf::Vector3f p = pos(H);
             p.x -= boxSize * std::floor(p.x * (1.0f / boxSize));
             p.y -= boxSize * std::floor(p.y * (1.0f / boxSize));
             p.z -= boxSize * std::floor(p.z * (1.0f / boxSize));
 
-            int32_t ix = static_cast<int32_t>(p.x * 1/cell_size);
-            int32_t iy = static_cast<int32_t>(p.y * 1/cell_size);
-            int32_t iz = static_cast<int32_t>(p.z * 1/cell_size);
-                
-            ix = ix >= static_cast<int32_t>(cx) ? static_cast<int32_t>(cx)-1 : ix;
-            iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy)-1 : iy;
-            iz = iz >= static_cast<int32_t>(cz) ? static_cast<int32_t>(cz)-1 : iz;
+            int32_t ix = static_cast<int32_t>(p.x * 1 / cell_size);
+            int32_t iy = static_cast<int32_t>(p.y * 1 / cell_size);
+            int32_t iz = static_cast<int32_t>(p.z * 1 / cell_size);
 
-            for (size_t d = 0; d < 14; ++d) 
+            ix = ix >= static_cast<int32_t>(cx) ? static_cast<int32_t>(cx) - 1 : ix;
+            iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy) - 1 : iy;
+            iz = iz >= static_cast<int32_t>(cz) ? static_cast<int32_t>(cz) - 1 : iz;
+
+            for (size_t d = 0; d < 14; ++d)
             {
                 int32_t iix = ix + offsets[d][0];
                 int32_t iiy = iy + offsets[d][1];
@@ -206,123 +208,140 @@ namespace sim
 
                 int32_t cell_id = iix + cx * (iiy + cy * iiz);
 
-                if (cell_id < -1 || cell_id >= (cx * cy * cz)) continue;
+                if (cell_id < -1 || cell_id >= (cx * cy * cz))
+                    continue;
 
                 for (size_t A : cells[cell_id])
                 {
-                    if (A == D || A == H) continue;
-    
-                    const auto& atomA = atoms[A];
-                    if (std::abs(atomA.charge) < 0.15f) continue;
-                    if (atomH.charge * atomA.charge > 0.0f) continue;
-    
+                    if (A == D || A == H)
+                        continue;
+
+                    const auto &atomA = atoms[A];
+                    if (std::abs(atomA.charge) < 0.15f)
+                        continue;
+                    if (atomH.charge * atomA.charge > 0.0f)
+                        continue;
+
                     sf::Vector3f rHD = minImageVec(pos(D) - pos(H));
                     sf::Vector3f rHA = minImageVec(pos(A) - pos(H));
                     float dHD = rHD.length();
                     float dHA = rHA.length();
-    
-                    if (dHA > MAX_HA_DISTANCE || dHA < 0.7f) continue;
-                    if (dHD < 0.5f) continue;
-    
+
+                    if (dHA > MAX_HA_DISTANCE || dHA < 0.7f)
+                        continue;
+                    if (dHD < 0.5f)
+                        continue;
+
                     float cos_angle = rHD.dot(rHA) / (dHD * dHA);
-                    if (cos_angle < MIN_COS_ANGLE) continue;
-    
+                    if (cos_angle < MIN_COS_ANGLE)
+                        continue;
+
                     float energy_kJ = COULOMB_K * atomH.charge * atomA.charge / dHA;
-                    if (energy_kJ > WEAK_ENERGY) continue;
-    
+                    if (energy_kJ > WEAK_ENERGY)
+                        continue;
+
                     float strength = std::clamp((energy_kJ - WEAK_ENERGY) / (STRONG_ENERGY - WEAK_ENERGY), 0.0f, 1.0f);
-                    if (strength < 0.15f) continue;
-    
+                    if (strength < 0.15f)
+                        continue;
+
                     uint8_t alpha = static_cast<uint8_t>(255 * strength);
-    
+
                     sf::Vector2f pA = project(window, pos(A));
                     sf::Vector2f dir = (pA - pH).normalized();
                     float dist2D = (pA - pH).length();
-                    if (dist2D < 1e-3f) continue;
-    
-                    constexpr int   NUM_DASHES = 8;
+                    if (dist2D < 1e-3f)
+                        continue;
+
+                    constexpr int NUM_DASHES = 8;
                     constexpr float DASH_FRACTION = 0.55f;
-                    constexpr float GAP_FRACTION  = 0.45f;
-    
+                    constexpr float GAP_FRACTION = 0.45f;
+
                     float dash_len = dist2D * DASH_FRACTION / NUM_DASHES;
-                    float gap_len  = dist2D * GAP_FRACTION  / NUM_DASHES;
-    
+                    float gap_len = dist2D * GAP_FRACTION / NUM_DASHES;
+
                     sf::Vertex line[2];
                     line[0].color = line[1].color = sf::Color(255, 255, 255, alpha);
-    
-                    for (int i = 0; i < NUM_DASHES; ++i) {
+
+                    for (int i = 0; i < NUM_DASHES; ++i)
+                    {
                         float start = (dash_len + gap_len) * i;
-                        float end   = start + dash_len;
-    
-                        if (end > dist2D) end = dist2D;
-                        if (start >= dist2D) break;
-    
+                        float end = start + dash_len;
+
+                        if (end > dist2D)
+                            end = dist2D;
+                        if (start >= dist2D)
+                            break;
+
                         line[0].position = pH + dir * start;
                         line[1].position = pH + dir * end;
                         window.getWindow().draw(line, 2, sf::PrimitiveType::Lines);
                     }
-                }    
+                }
             }
         }
 
         void universe::drawDebug(core::window_t &window)
         {
-            if (cx == 0 || cell_size <= 0.f) return;
+            if (cx == 0 || cell_size <= 0.f)
+                return;
 
             sf::VertexArray grid(sf::PrimitiveType::Lines, 0);
             grid.resize(24 * cx * cy * cz);
 
             sf::Color cellColor(100, 149, 237, 60);
-            sf::Color hotColor (255, 69, 0, 120); 
+            sf::Color hotColor(255, 69, 0, 120);
 
             size_t vert_idx = 0;
 
             for (size_t ix = 0; ix < cx; ++ix)
-            for (size_t iy = 0; iy < cy; ++iy)
-            for (size_t iz = 0; iz < cz; ++iz)
-            {
-                size_t cell_id = ix + cx * (iy + cy * iz);
-                bool has_atoms = !cells[cell_id].empty();
+                for (size_t iy = 0; iy < cy; ++iy)
+                    for (size_t iz = 0; iz < cz; ++iz)
+                    {
+                        size_t cell_id = ix + cx * (iy + cy * iz);
+                        bool has_atoms = !cells[cell_id].empty();
 
-                sf::Color color = has_atoms ? hotColor : cellColor;
+                        sf::Color color = has_atoms ? hotColor : cellColor;
 
-                float x0 = ix * cell_size;
-                float y0 = iy * cell_size;
-                float z0 = iz * cell_size;
-                float x1 = x0 + cell_size;
-                float y1 = y0 + cell_size;
-                float z1 = z0 + cell_size;
-                
+                        float x0 = ix * cell_size;
+                        float y0 = iy * cell_size;
+                        float z0 = iz * cell_size;
+                        float x1 = x0 + cell_size;
+                        float y1 = y0 + cell_size;
+                        float z1 = z0 + cell_size;
 
-                // 8 corners of the cell
-                std::array<sf::Vector3f, 8> c = {{
-                    {x0,y0,z0}, {x1,y0,z0}, {x1,y1,z0}, {x0,y1,z0},
-                    {x0,y0,z1}, {x1,y0,z1}, {x1,y1,z1}, {x0,y1,z1}
-                }};
+                        // 8 corners of the cell
+                        std::array<sf::Vector3f, 8> c = {{{x0, y0, z0}, {x1, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}}};
 
-                // 12 edges
-                const int edges[12][2] = {
-                    {0,1},{1,2},{2,3},{3,0}, // bottom
-                    {4,5},{5,6},{6,7},{7,4}, // top
-                    {0,4},{1,5},{2,6},{3,7}  // vertical
-                };
+                        // 12 edges
+                        const int edges[12][2] = {
+                            {0, 1}, {1, 2}, {2, 3}, {3, 0}, // bottom
+                            {4, 5},
+                            {5, 6},
+                            {6, 7},
+                            {7, 4}, // top
+                            {0, 4},
+                            {1, 5},
+                            {2, 6},
+                            {3, 7} // vertical
+                        };
 
-                for (int e = 0; e < 12; ++e)
-                {
-                    sf::Vector2f a = project(window, c[edges[e][0]]);
-                    sf::Vector2f b = project(window, c[edges[e][1]]);
+                        for (int e = 0; e < 12; ++e)
+                        {
+                            sf::Vector2f a = project(window, c[edges[e][0]]);
+                            sf::Vector2f b = project(window, c[edges[e][1]]);
 
-                    if (a.x < -1000.f || b.x < -1000.f) continue;
+                            if (a.x < -1000.f || b.x < -1000.f)
+                                continue;
 
-                    sf::Vector3f camToA = c[edges[e][0]] - cam.eye();
-                    sf::Vector3f camToB = c[edges[e][1]] - cam.eye();
-                    if (camToA.normalized().dot(camToB.normalized()) < 0.2f)
-                        continue;
+                            sf::Vector3f camToA = c[edges[e][0]] - cam.eye();
+                            sf::Vector3f camToB = c[edges[e][1]] - cam.eye();
+                            if (camToA.normalized().dot(camToB.normalized()) < 0.2f)
+                                continue;
 
-                    grid[vert_idx++]   = sf::Vertex(a, color);
-                    grid[vert_idx++]   = sf::Vertex(b, color);
-                }
-            }
+                            grid[vert_idx++] = sf::Vertex(a, color);
+                            grid[vert_idx++] = sf::Vertex(b, color);
+                        }
+                    }
 
             window.getWindow().draw(grid);
         }
@@ -498,17 +517,17 @@ namespace sim
 
             nMolecule.name = moleculeName(nMolecule.subsetIdx);
             balanceMolecularCharges(subsets[baseSubset]);
-
             rebuildBondTopology();
+
+            molecules.emplace_back(std::move(nMolecule));
         }
 
         void universe::balanceMolecularCharges(subset &mol)
         {
-            auto it = std::find_if(subsets.begin(), subsets.end(), [&](const subset &s) 
-            {
-                return &s == &mol;
-            });
-            if (it == subsets.end()) return;
+            auto it = std::find_if(subsets.begin(), subsets.end(), [&](const subset &s)
+                                   { return &s == &mol; });
+            if (it == subsets.end())
+                return;
 
             size_t startIdx = std::distance(subsets.begin(), it);
 
@@ -518,37 +537,40 @@ namespace sim
             q.push(startIdx);
             visited.insert(startIdx);
 
-            while (!q.empty()) {
-                size_t currentIdx = q.front(); q.pop();
+            while (!q.empty())
+            {
+                size_t currentIdx = q.front();
+                q.pop();
                 const auto &currentSubset = subsets[currentIdx];
 
                 atomsToBalance.push_back(currentSubset.mainAtomIdx);
                 atomsToBalance.insert(atomsToBalance.end(),
-                    currentSubset.connectedIdx.begin(), currentSubset.connectedIdx.end());
+                                      currentSubset.connectedIdx.begin(), currentSubset.connectedIdx.end());
                 atomsToBalance.insert(atomsToBalance.end(),
-                    currentSubset.hydrogenIdx.begin(), currentSubset.hydrogenIdx.end());
+                                      currentSubset.hydrogenIdx.begin(), currentSubset.hydrogenIdx.end());
 
                 size_t nextIdx = currentSubset.bondedSubsetIdx;
-                if (nextIdx < subsets.size() && nextIdx != SIZE_MAX && visited.insert(nextIdx).second) 
+                if (nextIdx < subsets.size() && nextIdx != SIZE_MAX && visited.insert(nextIdx).second)
                 {
                     q.push(nextIdx);
                 }
             }
 
-            if (atomsToBalance.empty()) return;
+            if (atomsToBalance.empty())
+                return;
 
             std::sort(atomsToBalance.begin(), atomsToBalance.end());
             auto last = std::unique(atomsToBalance.begin(), atomsToBalance.end());
             atomsToBalance.erase(last, atomsToBalance.end());
 
             std::vector<std::vector<size_t>> neighborLists(atoms.size());
-            for (const auto &bond : bonds) 
+            for (const auto &bond : bonds)
             {
                 size_t a = bond.bondedAtom;
                 size_t b = bond.centralAtom;
                 bool aIn = std::binary_search(atomsToBalance.begin(), atomsToBalance.end(), a);
                 bool bIn = std::binary_search(atomsToBalance.begin(), atomsToBalance.end(), b);
-                if (aIn && bIn) 
+                if (aIn && bIn)
                 {
                     neighborLists[a].push_back(b);
                     neighborLists[b].push_back(a);
@@ -556,15 +578,16 @@ namespace sim
             }
 
             float totalCharge = 0.0f;
-            for (size_t idx : atomsToBalance) 
+            for (size_t idx : atomsToBalance)
             {
                 totalCharge += atoms[idx].charge;
             }
 
-            if (std::abs(totalCharge) < 1e-6f) return;
+            if (std::abs(totalCharge) < 1e-6f)
+                return;
 
             std::vector<float> valenceDeficit(atomsToBalance.size(), 0.0f);
-            for (size_t i = 0; i < atomsToBalance.size(); ++i) 
+            for (size_t i = 0; i < atomsToBalance.size(); ++i)
             {
                 size_t idx = atomsToBalance[i];
                 uint8_t usualValence = constants::getUsualBonds(atoms[idx].ZIndex);
@@ -574,26 +597,27 @@ namespace sim
 
             float chargeToDistribute = -totalCharge;
             float totalDeficit = 0.0f;
-            for (float d : valenceDeficit) 
+            for (float d : valenceDeficit)
             {
-                if (d > 0) totalDeficit += d;
+                if (d > 0)
+                    totalDeficit += d;
             }
 
-            if (totalDeficit > 0.5f) 
+            if (totalDeficit > 0.5f)
             {
-                for (size_t i = 0; i < atomsToBalance.size(); ++i) 
+                for (size_t i = 0; i < atomsToBalance.size(); ++i)
                 {
-                    if (valenceDeficit[i] > 0) 
+                    if (valenceDeficit[i] > 0)
                     {
                         float share = chargeToDistribute * (valenceDeficit[i] / totalDeficit);
                         atoms[atomsToBalance[i]].charge += share;
                     }
                 }
-            } 
-            else 
+            }
+            else
             {
                 float adjustment = chargeToDistribute / atomsToBalance.size();
-                for (size_t idx : atomsToBalance) 
+                for (size_t idx : atomsToBalance)
                 {
                     atoms[idx].charge += adjustment;
                 }
@@ -607,25 +631,23 @@ namespace sim
             data.z[i] = std::fmod(data.z[i] + boxSize, boxSize);
         }
 
-        float universe::ljPot(size_t i, float epsilon_i, float sigma_i)
+        float universe::ljPot(size_t i, size_t j)
         {
             float potential = 0.f;
-            
-            /* for (size_t j = 0; j < neighbourList.size(); ++j)
+
+            float dr = minImageVec(pos(i) - pos(j)).length();
+
+            auto [sigma_i, epsilon_i] = constants::getAtomConstants(atoms[i].ZIndex);
+            auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[j].ZIndex);
+            float sigma = (sigma_i + sigma_j) / 2.0f;
+
+            if (dr < sigma * CUTOFF && dr > EPSILON)
             {
-                float dr = minImageVec(pos(i) - pos(neighbourList[i][j])).length();
-
-                auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[neighbourList[i][j]].ZIndex);
-                float sigma = (sigma_i + sigma_j) / 2.0f;
-
-                if (dr < sigma * CUTOFF && dr > EPSILON)
-                {
-                    float epsilon = sqrtf(epsilon_i * epsilon_j);
-                    float r6 = powf((sigma / dr), 6);
-                    float r12 = r6 * r6;
-                    potential += 4.0f * epsilon * (r12 - r6);
-                }
-            } */
+                float epsilon = sqrtf(epsilon_i * epsilon_j);
+                float r6 = powf((sigma / dr), 6);
+                float r12 = r6 * r6;
+                potential += 4.0f * epsilon * (r12 - r6);
+            }
 
             return potential;
         }
@@ -647,8 +669,9 @@ namespace sim
 
             if (dr < sigma * CUTOFF && dr > EPSILON)
             {
-                if (areBonded(i, j)) return sf::Vector3f{0.f, 0.f, 0.f};
-                
+                if (areBonded(i, j))
+                    return sf::Vector3f{0.f, 0.f, 0.f};
+
                 float sigma6 = powf(sigma, 6);
                 float sigma12 = sigma6 * sigma6;
 
@@ -680,19 +703,18 @@ namespace sim
         // Wolf method
         float universe::wolfForce(float r, float qi_qj)
         {
-            constexpr float alpha = 0.25f;           // damping
+            constexpr float alpha = 0.25f; // damping
             constexpr float rc = COULOMB_CUTOFF;
-            if (r >= rc) return 0.f;
+            if (r >= rc)
+                return 0.f;
 
-            float ir = 1.f/r;
-            float ir_c = 1.f/rc;
+            float ir = 1.f / r;
+            float ir_c = 1.f / rc;
 
-            float erfc_ar = std::erfc(alpha*r);
-            float exp_term = std::exp(-(alpha*alpha*r*r));
+            float erfc_ar = std::erfc(alpha * r);
+            float exp_term = std::exp(-(alpha * alpha * r * r));
 
-            float force = COULOMB_K * qi_qj * ir*ir * (
-                erfc_ar + 2.f*alpha/std::sqrt(M_PI)*r*exp_term
-            );
+            float force = COULOMB_K * qi_qj * ir * ir * (erfc_ar + 2.f * alpha / std::sqrt(M_PI) * r * exp_term);
 
             return force;
         }
@@ -711,7 +733,8 @@ namespace sim
             if (qq == 0.f)
                 return {0.f, 0.f, 0.f};
 
-            if (areBonded(i, j)) return sf::Vector3f{0.f, 0.f, 0.f};
+            if (areBonded(i, j))
+                return sf::Vector3f{0.f, 0.f, 0.f};
 
             float forceMag = COULOMB_K * a1.charge * a2.charge / dr;
             return -forceMag * dr_vec / dr;
@@ -751,21 +774,22 @@ namespace sim
 
         void universe::calcAngleForces()
         {
-            //size_t count = 0;
+            // size_t count = 0;
 
-            for (const angle& ang : angles) 
+            for (const angle &ang : angles)
             {
-                size_t i = ang.A;   // left atom
-                size_t j = ang.B;   // central atom
-                size_t k = ang.C;   // right atom
+                size_t i = ang.A; // left atom
+                size_t j = ang.B; // central atom
+                size_t k = ang.C; // right atom
 
                 sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
-                sf::Vector3f r_jk = minImageVec(pos(k) - pos(j)); 
+                sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
 
                 float len_ji = r_ji.length();
                 float len_jk = r_jk.length();
 
-                if (len_ji < EPSILON || len_jk < EPSILON) continue;
+                if (len_ji < EPSILON || len_jk < EPSILON)
+                    continue;
 
                 sf::Vector3f u_ji = r_ji / len_ji;
                 sf::Vector3f u_jk = r_jk / len_jk;
@@ -774,8 +798,9 @@ namespace sim
                 float sin_theta = 1.0f - cos_theta * cos_theta;
                 sin_theta = std::max(sin_theta, 0.0f);
                 sin_theta = std::sqrt(sin_theta);
-                if (sin_theta < 1e-6f) sin_theta = 1e-6f;
-                
+                if (sin_theta < 1e-6f)
+                    sin_theta = 1e-6f;
+
                 float theta = std::acos(cos_theta);
                 float delta_theta = theta - ang.rad;
                 float k_angle = 2.0f * ang.K;
@@ -785,7 +810,7 @@ namespace sim
 
                 sf::Vector3f F_i = -k_angle * delta_theta * dtheta_dri;
                 sf::Vector3f F_k = -k_angle * delta_theta * dtheta_drk;
-                sf::Vector3f F_j = -F_i - F_k;  // Newton’s 3rd law
+                sf::Vector3f F_j = -F_i - F_k; // Newton’s 3rd law
 
                 add_force(i, F_i);
                 add_force(j, F_j);
@@ -794,57 +819,58 @@ namespace sim
                 //++count;
             }
 
-            //std::cout << "angle forces applied: " << count << std::endl;
+            // std::cout << "angle forces applied: " << count << std::endl;
         }
 
         void universe::calcLjForces()
         {
             // size_t count = 0;
 
-            for (size_t ix = 0 ; ix < cx; ++ix)
-            for (size_t iy = 0; iy < cy; ++iy)
-            for (size_t iz = 0; iz < cz; ++iz)
-            {
-                size_t cell_id = ix + cx * (iy + cy * iz);
-
-                const std::vector<size_t>& cell = cells[cell_id];
-
-                for (size_t ii = 0; ii < cell.size(); ++ii)
-                {
-                    size_t i = cell[ii];
-                    for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+            for (size_t ix = 0; ix < cx; ++ix)
+                for (size_t iy = 0; iy < cy; ++iy)
+                    for (size_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t j = cell[jj];
+                        size_t cell_id = ix + cx * (iy + cy * iz);
 
-                        sf::Vector3f f = ljForce(i, j);
-                        add_force(i, f);
-                        add_force(j, -f);
-                    }
-                }
+                        const std::vector<size_t> &cell = cells[cell_id];
 
-                for (size_t d = 1; d < 14; ++d)
-                {
-                    int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
-                    size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
-
-                    const std::vector<size_t>& neighbour_cell = cells[neighbour_id];
-
-                    for (size_t ii = 0; ii < cell.size(); ++ii)
-                    {
-                        const size_t& i = cell[ii];
-                        for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                        for (size_t ii = 0; ii < cell.size(); ++ii)
                         {
-                            const size_t& j = neighbour_cell[jj];
+                            size_t i = cell[ii];
+                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                            {
+                                size_t j = cell[jj];
 
-                            if (j <= i) continue;
+                                sf::Vector3f f = ljForce(i, j);
+                                add_force(i, f);
+                                add_force(j, -f);
+                            }
+                        }
 
-                            sf::Vector3f f = ljForce(i, j);
-                            add_force(i, f);
-                            add_force(j, -f);
+                        for (size_t d = 1; d < 14; ++d)
+                        {
+                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                            size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+
+                            const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
+
+                            for (size_t ii = 0; ii < cell.size(); ++ii)
+                            {
+                                const size_t &i = cell[ii];
+                                for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                                {
+                                    const size_t &j = neighbour_cell[jj];
+
+                                    if (j <= i)
+                                        continue;
+
+                                    sf::Vector3f f = ljForce(i, j);
+                                    add_force(i, f);
+                                    add_force(j, -f);
+                                }
+                            }
                         }
                     }
-                }
-            }
 
             // std::cout << "count: " << count << std::endl;
         }
@@ -859,11 +885,13 @@ namespace sim
             sf::Vector3f n2 = v2.cross(v3).normalized();
 
             float cosPhi = std::clamp(n1.dot(n2), -1.f, 1.f);
-            float phi    = std::acos(cosPhi);
+            float phi = std::acos(cosPhi);
 
             // sign via right-hand rule
-            if (v2.dot(n1.cross(n2)) < 0.f) phi = -phi;
-            if (phi < 0.f) phi += 2.f * M_PI;
+            if (v2.dot(n1.cross(n2)) < 0.f)
+                phi = -phi;
+            if (phi < 0.f)
+                phi += 2.f * M_PI;
             return phi;
         }
 
@@ -871,38 +899,43 @@ namespace sim
         {
             for (size_t d = 0; d < dihedral_angles.size(); ++d)
             {
-                const dihedral_angle& d_angle = dihedral_angles[d];
+                const dihedral_angle &d_angle = dihedral_angles[d];
 
-                const sf::Vector3f& pa = pos(d_angle.A);
-                const sf::Vector3f& pb = pos(d_angle.B); 
-                const sf::Vector3f& pc = pos(d_angle.C); 
-                const sf::Vector3f& pd = pos(d_angle.D); 
+                const sf::Vector3f &pa = pos(d_angle.A);
+                const sf::Vector3f &pb = pos(d_angle.B);
+                const sf::Vector3f &pc = pos(d_angle.C);
+                const sf::Vector3f &pd = pos(d_angle.D);
 
                 float phi = calculateDihedral(pa, pb, pc, pd);
 
                 float target = d_angle.rad;
-                if (target == 0.f && d_angle.periodicity == 1) 
+                if (target == 0.f && d_angle.periodicity == 1)
                 {
                     int32_t chi = atoms[d_angle.B].chirality ? atoms[d_angle.B].chirality : atoms[d_angle.C].chirality;
-                    if (chi == 1) target = (phi < static_cast<float>(M_PI)) ? 1.047f : 5.236f;   // ~60° / ~300°
-                    else if (chi == 2) target = (phi < static_cast<float>(M_PI)) ? 5.236f : 1.047f;
-                    else continue;
+                    if (chi == 1)
+                        target = (phi < static_cast<float>(M_PI)) ? 1.047f : 5.236f; // ~60° / ~300°
+                    else if (chi == 2)
+                        target = (phi < static_cast<float>(M_PI)) ? 5.236f : 1.047f;
+                    else
+                        continue;
                 }
 
                 float diff = phi - target;
-                while (diff > M_PI) diff -= 2.f * M_PI;
-                while (diff < -M_PI) diff += 2.f * M_PI;
+                while (diff > M_PI)
+                    diff -= 2.f * M_PI;
+                while (diff < -M_PI)
+                    diff += 2.f * M_PI;
 
-                float forceMag = -d_angle.K * float(d_angle.periodicity) *
-                                std::sin(float(d_angle.periodicity) * phi);
+                float torque_magnitude = -d_angle.K * d_angle.periodicity *
+                                         std::sin(d_angle.periodicity * phi - d_angle.K);
 
                 sf::Vector3f axis = (pc - pb).normalized();
 
-                sf::Vector3f rA = pa - pb;
-                sf::Vector3f torqueA = axis.cross(rA).normalized() * forceMag;
+                sf::Vector3f rA = (pa - pb.normalized());
+                sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_magnitude;
 
-                sf::Vector3f rD = pd - pc;
-                sf::Vector3f torqueD = axis.cross(rD).normalized() * (-forceMag);
+                sf::Vector3f rD = (pd - pc).normalized();
+                sf::Vector3f torqueD = axis.cross(rD).normalized() * (-torque_magnitude);
 
                 add_force(d_angle.A, torqueA * 0.5f);
                 add_force(d_angle.B, torqueA * 0.5f - torqueD * 0.5f);
@@ -913,59 +946,64 @@ namespace sim
 
         void universe::calcElectrostaticForces()
         {
-            for (size_t ix = 0 ; ix < cx; ++ix)
-            for (size_t iy = 0; iy < cy; ++iy)
-            for (size_t iz = 0; iz < cz; ++iz)
-            {
-                size_t cell_id = getCellID(ix, iy, iz);
-
-                const std::vector<size_t>& cell = cells[cell_id];
-
-                for (size_t ii = 0; ii < cell.size(); ++ii)
-                {
-                    size_t i = cell[ii];
-                    for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+            for (size_t ix = 0; ix < cx; ++ix)
+                for (size_t iy = 0; iy < cy; ++iy)
+                    for (size_t iz = 0; iz < cz; ++iz)
                     {
-                        const size_t& j = cell[jj];
-                            
-                        if (j <= i) continue;
-                        if (atoms[j].charge == 0.f) continue;
+                        size_t cell_id = getCellID(ix, iy, iz);
 
-                        sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                        sf::Vector3f force = coulombForce(i, j, dr);
+                        const std::vector<size_t> &cell = cells[cell_id];
 
-                        add_force(i, force);
-                        add_force(j, -force);
-                    }
-                }
-
-                for (size_t d = 1; d < 14; ++d)
-                {
-                    int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
-                    size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
-
-                    const std::vector<size_t>& neighbour_cell = cells[neighbour_id];
-
-                    for (size_t ii = 0; ii < cell.size(); ++ii)
-                    {
-                        const size_t& i = cell[ii];
-                        if (atoms[i].charge == 0.f) continue;
-                        for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                        for (size_t ii = 0; ii < cell.size(); ++ii)
                         {
-                            const size_t& j = neighbour_cell[jj];
-                            
-                            if (j <= i) continue;
-                            if (atoms[j].charge == 0.f) continue;
+                            size_t i = cell[ii];
+                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                            {
+                                const size_t &j = cell[jj];
 
-                            sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                            sf::Vector3f force = coulombForce(i, j, dr);
+                                if (j <= i)
+                                    continue;
+                                if (atoms[j].charge == 0.f)
+                                    continue;
 
-                            add_force(i, force);
-                            add_force(j, -force);
+                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                                sf::Vector3f force = coulombForce(i, j, dr);
+
+                                add_force(i, force);
+                                add_force(j, -force);
+                            }
+                        }
+
+                        for (size_t d = 1; d < 14; ++d)
+                        {
+                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                            size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+
+                            const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
+
+                            for (size_t ii = 0; ii < cell.size(); ++ii)
+                            {
+                                const size_t &i = cell[ii];
+                                if (atoms[i].charge == 0.f)
+                                    continue;
+                                for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                                {
+                                    const size_t &j = neighbour_cell[jj];
+
+                                    if (j <= i)
+                                        continue;
+                                    if (atoms[j].charge == 0.f)
+                                        continue;
+
+                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                                    sf::Vector3f force = coulombForce(i, j, dr);
+
+                                    add_force(i, force);
+                                    add_force(j, -force);
+                                }
+                            }
                         }
                     }
-                }
-            }
         }
 
         void universe::calcBondedForces()
@@ -1021,7 +1059,7 @@ namespace sim
 
             buildCells();
 
-            if (reactions)
+            if (reactions && timeStep > 200 && timeStep % REACTION_INTERVAL == 0)
                 handleReactions();
 
             setTemperature(targetTemperature);
@@ -1067,14 +1105,16 @@ namespace sim
             if ((CELL_CUTOFF - cell_size) > EPSILON || timeStep == 0)
             {
                 cx = static_cast<size_t>(std::ceil(boxSize / cell_size));
-                cy = cx; cz = cx;
+                cy = cx;
+                cz = cx;
             }
 
             size_t ncells = cx * cy * cz;
             if (cells.size() != ncells)
                 cells.assign(ncells, {});
             else
-                for (auto& c : cells) c.clear();
+                for (auto &c : cells)
+                    c.clear();
 
             const float inv = 1.0f / cell_size;
 
@@ -1106,47 +1146,38 @@ namespace sim
             return (2.0f / 3.0f) * ke * KB;
         }
 
-        float universe::calculateBondEnergy(size_t i, size_t j)
+        float universe::calculateBondEnergy(size_t i, size_t j, const BondType type)
         {
-            float r_ij = (pos(i) - pos(j)).length();
-            const bond& b = bonds[getBond(i, j)];
-
-            float bondStretchingEnergy;
-            float angleEnergy;
-            float dihedralEnergy;
-
-            float coulombPotential = COULOMB_K * (atoms[i].charge * atoms[j].charge) / r_ij; // Nitroglycerin is a great example
-
-            return coulombPotential + bondStretchingEnergy + angleEnergy + dihedralEnergy;
+            float r = minImageVec(pos(i) - pos(j)).length();
+            float r0 = constants::getBondLength(atoms[i].ZIndex, atoms[j].ZIndex, type);
+            float k = constants::getBondHarmonicConstantFromEnergy(atoms[i].ZIndex, atoms[j].ZIndex, type);
+            float dr = r - r0;
+            return 0.5f * k * dr * dr;
         }
 
         float universe::calculateNonBondedEnergy(size_t i, size_t j)
         {
             float r_ij = (pos(i) - pos(j)).length();
+            if (r_ij < EPSILON)
+                return 1e6f;
+
             float coulombPotential = COULOMB_K * (atoms[i].charge * atoms[j].charge) / r_ij;
-            float lennardjonesPotential = ljPot(i, atoms[i].epsilon, atoms[i].sigma);
+            float lennardjonesPotential = ljPot(i, j);
 
             return lennardjonesPotential + coulombPotential;
         }
 
-        void universe::breakBond(size_t atom1, size_t atom2)
+        void universe::breakBond(const bond &b)
         {
-            auto it = std::find_if(bonds.begin(), bonds.end(), [&](const bond &bond)
-                                   { return bond.centralAtom == atom1 && bond.bondedAtom == atom2 || bond.centralAtom == atom2 && bond.bondedAtom == atom1; });
+            BondType type = b.type;
 
-            BondType type = it->type;
+            atoms[b.centralAtom].bondCount -= static_cast<uint8_t>(type);
+            atoms[b.bondedAtom].bondCount -= static_cast<uint8_t>(type);
 
-            if (it != bonds.end())
+            if (atoms[b.centralAtom].ZIndex == 1 || atoms[b.bondedAtom].ZIndex == 1)
             {
-                bonds.erase(it);
-                atoms[atom1].bondCount -= static_cast<uint8_t>(type);
-                atoms[atom2].bondCount -= static_cast<uint8_t>(type);
-            }
-
-            if (atoms[atom1].ZIndex == 1 || atoms[atom2].ZIndex == 1)
-            {
-                size_t H = (atoms[atom1].ZIndex == 1 ? atom1 : atom2);
-                size_t C = (atoms[atom1].ZIndex == 1 ? atom2 : atom1);
+                size_t H = (atoms[b.centralAtom].ZIndex == 1 ? b.centralAtom : b.bondedAtom);
+                size_t C = (atoms[b.centralAtom].ZIndex == 1 ? b.bondedAtom : b.centralAtom);
 
                 auto sub_it = std::find_if(subsets.begin(), subsets.end(),
                                            [&](const subset &s)
@@ -1158,7 +1189,6 @@ namespace sim
 
                 if (sub_it != subsets.end())
                 {
-                    // balanceMolecularCharges(*sub_it);
                     sub_it->hydrogenIdx.erase(
                         std::remove(sub_it->hydrogenIdx.begin(),
                                     sub_it->hydrogenIdx.end(), H),
@@ -1169,83 +1199,236 @@ namespace sim
 
             auto subset_it1 = std::find_if(subsets.begin(), subsets.end(),
                                            [&](const subset &s)
-                                           { return s.mainAtomIdx == atom1; });
+                                           { return s.mainAtomIdx == b.centralAtom; });
 
             auto subset_it2 = std::find_if(subsets.begin(), subsets.end(),
                                            [&](const subset &s)
-                                           { return s.mainAtomIdx == atom2; });
+                                           { return s.mainAtomIdx == b.bondedAtom; });
 
             if (subset_it1 != subsets.end())
             {
                 auto &s1 = *subset_it1;
                 s1.connectedIdx.erase(
-                    std::remove(s1.connectedIdx.begin(), s1.connectedIdx.end(), atom2),
+                    std::remove(s1.connectedIdx.begin(), s1.connectedIdx.end(), b.bondedAtom),
                     s1.connectedIdx.end());
 
-                if (s1.bondedSubsetIdx < subsets.size() && subsets[s1.bondedSubsetIdx].mainAtomIdx == atom2)
+                if (s1.bondedSubsetIdx < subsets.size() && subsets[s1.bondedSubsetIdx].mainAtomIdx == b.bondedAtom)
                     s1.bondedSubsetIdx = SIZE_MAX;
-                if (s1.bondingSubsetIdx < subsets.size() && subsets[s1.bondingSubsetIdx].mainAtomIdx == atom2)
+                if (s1.bondingSubsetIdx < subsets.size() && subsets[s1.bondingSubsetIdx].mainAtomIdx == b.bondedAtom)
                     s1.bondingSubsetIdx = SIZE_MAX;
-
-                balanceMolecularCharges(s1);
             }
 
             if (subset_it2 != subsets.end())
             {
                 auto &s2 = *subset_it2;
                 s2.connectedIdx.erase(
-                    std::remove(s2.connectedIdx.begin(), s2.connectedIdx.end(), atom1),
+                    std::remove(s2.connectedIdx.begin(), s2.connectedIdx.end(), b.centralAtom),
                     s2.connectedIdx.end());
 
-                if (s2.bondedSubsetIdx < subsets.size() && subsets[s2.bondedSubsetIdx].mainAtomIdx == atom1)
+                if (s2.bondedSubsetIdx < subsets.size() && subsets[s2.bondedSubsetIdx].mainAtomIdx == b.centralAtom)
                     s2.bondedSubsetIdx = SIZE_MAX;
-                if (s2.bondingSubsetIdx < subsets.size() && subsets[s2.bondingSubsetIdx].mainAtomIdx == atom1)
+                if (s2.bondingSubsetIdx < subsets.size() && subsets[s2.bondingSubsetIdx].mainAtomIdx == b.centralAtom)
                     s2.bondingSubsetIdx = SIZE_MAX;
-
-                balanceMolecularCharges(s2);
             }
         }
 
         BondType universe::chooseBestBondType(size_t i, size_t j)
         {
-            if (areBonded(i, j))
+            const uint8_t Z1 = atoms[i].ZIndex;
+            const uint8_t Z2 = atoms[j].ZIndex;
+
+            const float r = minImageVec(pos(i) - pos(j)).length();
+            if (r < 0.6f || r > 2.8f)
                 return BondType::NONE;
 
-            uint8_t Z1 = atoms[i].ZIndex, Z2 = atoms[j].ZIndex;
-            float r = minImageVec(pos(i) - pos(j)).length();
+            const uint8_t current1 = atoms[i].bondCount;
+            const uint8_t current2 = atoms[j].bondCount;
+            const int8_t charge1 = atoms[i].ZIndex - atoms[i].electrons;
+            const int8_t charge2 = atoms[j].ZIndex - atoms[j].electrons;
 
-            uint8_t val1 = atoms[i].bondCount;
-            uint8_t val2 = atoms[j].bondCount;
-            uint8_t max1 = constants::getUsualBonds(Z1);
-            uint8_t max2 = constants::getUsualBonds(Z2);
+            const int8_t valence1 = constants::getValenceElectrons(Z1);
+            const int8_t valence2 = constants::getValenceElectrons(Z2);
+
+            const int8_t lone_pairs1 = std::max<int8_t>(0, constants::getValenceElectrons(Z1) - current1);
+            const int8_t lone_pairs2 = std::max<int8_t>(0, constants::getValenceElectrons(Z2) - current2);
+
+            const int8_t max1 = constants::getValenceElectrons(Z1) - constants::getUsualBonds(Z1);
+            const int8_t max2 = constants::getValenceElectrons(Z2) - constants::getUsualBonds(Z2);
+
+            const bool radical1 = (atoms[i].electrons - current1) % 2 != 0;
+            const bool radical2 = (atoms[j].electrons - current2) % 2 != 0;
 
             for (int8_t order = 3; order >= 1; --order)
             {
-                BondType type = static_cast<BondType>(order - 1);
+                BondType type = static_cast<BondType>(order);
+
                 float r0 = constants::getBondLength(Z1, Z2, type);
+                if (r0 < 0.1f) continue;
 
-                if (r0 <= 0.0f)
-                    continue;
-                if (r > r0 * 1.3f || r < r0 * 0.5f)
-                    continue;
+                float tol = (order >= 2) ? 1.72f : 1.88f;
+                if (r > r0 * tol || r < r0 * 0.52f) continue;
 
-                if (val1 + order > max1 || val2 + order > max2)
-                    continue;
+                if (current1 + order > max1 || current2 + order > max2) continue;
+                if (radical1 && radical2) return BondType::SINGLE;
 
+                if (lone_pairs1 >= 2 && charge2 > 0)
+                    return type;
+                if (lone_pairs2 >= 2 && charge1 > 0)
+                    return type;
+
+                if (charge1 * charge2 < 0)
+                    return type;
+
+                if (charge1 == 0 && charge2 == 0 && 
+                    current1 < max1 && current2 < max2)
                 return type;
             }
-
             return BondType::NONE;
         }
 
         void universe::handleReactions()
         {
-            std::vector<std::pair<size_t, size_t>> candidates;
+            bool reacted = false;
 
-            for (size_t i = 0; i < atoms.size(); ++i)
-            {
+            for (size_t ix = 0; ix < cx; ++ix)
+                for (size_t iy = 0; iy < cy; ++iy)
+                    for (size_t iz = 0; iz < cz; ++iz)
+                    {
+                        size_t cell_id = getCellID(ix, iy, iz);
 
-            }
+                        const std::vector<size_t> &cell = cells[cell_id];
+
+                        for (size_t d = 0; d < 14; ++d)
+                        {
+                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                            size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+
+                            const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
+
+                            for (size_t ii = 0; ii < cell.size(); ++ii)
+                            {
+                                const size_t &i = cell[ii];
+                                uint8_t Z1 = atoms[i].ZIndex;
+
+                                for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                                {
+                                    const size_t &j = neighbour_cell[jj];
+                                    if (j <= i)
+                                        continue;
+
+                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                                    float r = dr.length();
+
+                                    uint8_t Z2 = atoms[j].ZIndex;
+
+                                    if (areBonded(i, j))
+                                    {
+                                        auto it = std::find_if(bonds.begin(), bonds.end(),
+                                                               [&](const bond &ba)
+                                                               { return ba.bondedAtom == i && ba.centralAtom == j || ba.bondedAtom == j && ba.centralAtom == i; });
+
+                                        if (it == bonds.end())
+                                            continue;
+
+                                        float r0 = constants::getBondLength(i, j, it->type);
+
+                                        if (r > r0 * REACTION_STRETCH_FACTOR)
+                                        {
+                                            breakBond(*it);
+                                            bonds.erase(it);
+
+                                            float En1 = constants::getElectronegativity(Z1), En2 = constants::getElectronegativity(Z2);
+                                            if (En1 > En2) // Heterolytic
+                                            {
+                                                atoms[i].electrons += 1;
+                                                atoms[j].electrons -= 1;
+                                                atoms[i].charge -= 1.f;
+                                                atoms[j].charge += 1.f;
+                                            }
+                                            else if (En2 < En1)
+                                            {
+                                                atoms[i].electrons -= 1;
+                                                atoms[j].electrons += 1;
+                                                atoms[i].charge += 1.f;
+                                                atoms[j].charge -= 1.f;
+                                            }
+
+                                            reacted = true;
+                                        }
+                                    }
+                                    else if (r < REACTION_CUTOFF)
+                                    {
+                                        BondType type = chooseBestBondType(i, j);
+                                        if (type == BondType::NONE)
+                                            continue;
+
+                                        float r0 = constants::getBondLength(Z1, Z2, type);
+                                        if (r > r0 * REACTION_FORMING_FACTOR)
+                                            continue;
+
+                                        float E_before = calculateNonBondedEnergy(i, j);
+                                        float E_after = calculateBondEnergy(i, j, type);
+
+                                        float deltaE = E_after - E_before;
+
+                                        if (deltaE > -25.f && deltaE < 2500.f)
+                                        {
+                                            float probability = std::exp(-deltaE / (KB * temp));
+
+                                            if (rand() / (float)RAND_MAX > probability * 0.02f)
+                                                continue;
+                                        }
+                                        
+                                        createBond(std::max(i, j), std::min(i, j), type);
+
+                                        bool ih = atoms[i].ZIndex == 1, jh = atoms[j].ZIndex == 1;
+
+                                        auto it1 = std::find_if(subsets.begin(), subsets.end(), [&](const subset &s)
+                                                                { return s.mainAtomIdx == i; });
+                                        auto it2 = std::find_if(subsets.begin(), subsets.end(), [&](const subset &s)
+                                                                { return s.mainAtomIdx == j; });
+
+                                        if (!ih && !jh && it1 != subsets.end() && it2 != subsets.end())
+                                        {
+                                            it1->connectedIdx.emplace_back(j);
+                                            it2->connectedIdx.emplace_back(i);
+                                            it1->bondingSubsetIdx = std::distance(subsets.begin(), it2);
+                                            it2->bondedSubsetIdx = std::distance(subsets.begin(), it1);
+                                        }
+                                        else if (!ih && jh && it2 == subsets.end())
+                                        {
+                                            it1->hydrogenIdx.emplace_back(j);
+                                        }
+                                        else if (ih && jh && it1 == subsets.end())
+                                        {
+                                            it2->hydrogenIdx.emplace_back(i);
+                                        }
+                                        else // Hydrogen-Hydrogen
+                                        {
+                                            if (it1 == subsets.end() && it2 == subsets.end())
+                                            {
+                                                fun::def_subset nSubset{};
+                                                nSubset.mainAtomIdx = i;
+                                                nSubset.bondedSubset = SIZE_MAX;
+                                                nSubset.bondingSubset = SIZE_MAX;
+                                                nSubset.hydrogensIdx = {j};
+                                                createSubset(nSubset, atoms.size(), subsets.size());
+                                            }
+                                            else if (it1 == subsets.end())
+                                            {
+                                                it2->hydrogenIdx = {i};
+                                            }
+                                        }
+
+                                        reacted = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+            if (reacted)
+                rebuildBondTopology();
         }
 
         // Camera
@@ -1359,12 +1542,10 @@ namespace sim
         void universe::saveScene(const std::filesystem::path path)
         {
             nlohmann::json scene{};
-            
         }
 
         void universe::loadScene(const std::filesystem::path path)
         {
-        
         }
     } // namespace fun
 } // namespace sim

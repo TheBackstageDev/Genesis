@@ -53,7 +53,9 @@ namespace sim
             void saveScene(const std::filesystem::path path);
             void loadScene(const std::filesystem::path path);
 
+            size_t numBonds() { return bonds.size(); }
             size_t numAtoms() { return atoms.size(); }
+            size_t numMolecules() { return molecules.size(); }
             const subset& getSubset(size_t index) { return subsets[index]; }
 
             float temperature() { return temp; }
@@ -77,7 +79,7 @@ namespace sim
         private:
             void boundCheck(size_t i);
 
-            float ljPot(size_t i, float epsilon, float sigma);
+            float ljPot(size_t i, size_t j);
             float wolfForce(float r, float qi_qj); 
             sf::Vector3f ljGrad(size_t i);
             sf::Vector3f ljForce(size_t i, size_t j);
@@ -97,13 +99,12 @@ namespace sim
             // Energies
             float calculateKineticEnergy();
             float calculateAtomTemperature(size_t i);
-            float calculateBondEnergy(size_t i, size_t j);
+            float calculateBondEnergy(size_t i, size_t j, const BondType type);
             float calculateNonBondedEnergy(size_t i, size_t j);
 
             // Reactions
             void handleReactions();
-            void checkBonds(); // for either forming or breaking
-            void breakBond(size_t atom1, size_t atom2);
+            void breakBond(const bond& b);
 
             bool isReactive(size_t i) { return atoms[i].bondCount < constants::getUsualBonds(atoms[i].ZIndex) || atoms[i].bondCount > constants::getUsualBonds(atoms[i].ZIndex); }
 
@@ -183,6 +184,7 @@ namespace sim
                 size_t bit  = j % 64;
                 return (bondedBits[i][word] & (1ull << bit)) != 0;
             }
+            
             void rebuildBondTopology()
             {
                 size_t N = atoms.size();

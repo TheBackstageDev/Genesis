@@ -12,16 +12,17 @@
 
 #include <algorithm>
 
-float targetTemp = 100.f;
+float targetTemp = 100.0f;
 
-void displayUI(core::window_t& window, sim::fun::universe &universe)
+void displayUI(core::window_t& window, sim::fun::universe& universe)
 {
-    ImGui::Begin("Info");
-
-    ImGui::DragFloat("Target Temp", &targetTemp, 0.01f, 0.01f, 0.f);
-    ImGui::Text("Current Temp: %.2fK", universe.temperature());
-    ImGui::Text("Current Time: %.3fps", universe.timestep() * DT);
-
+    ImGui::Begin("Genesis Engine");
+    ImGui::DragFloat("Target Temp (K)", &targetTemp, 0.1f, 1.f, 12000.f);
+    ImGui::Text("Current Temp: %.1f K", universe.temperature());
+    ImGui::Text("Atoms: %zu", universe.numAtoms());
+    ImGui::Text("Bonds: %zu", universe.numBonds());
+    ImGui::Text("Molecules: %zu", universe.numMolecules());
+    ImGui::Text("Time: %.3f ps", universe.timestep() * DT);
     ImGui::End();
 }
 

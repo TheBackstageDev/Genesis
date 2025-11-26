@@ -64,7 +64,6 @@ namespace sim
 
             std::vector<size_t> hydrogensIdx;
             std::vector<size_t> connectedIdx; // any connection other than hydrogen 
-            std::vector<size_t> branches; 
         };
 
         struct molecule_structure 

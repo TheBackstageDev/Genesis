@@ -484,6 +484,16 @@ namespace sim
             return;
         }
 
+        if (nAtoms.size() == 1 && nAtoms[0].ZIndex == 1) // H
+        {
+            def_subset sub{};
+            sub.mainAtomIdx = 0;
+            sub.hydrogensIdx = {};
+
+            nSubsets.emplace_back(std::move(sub));
+            return;
+        }
+
         nSubsets.reserve(nAtoms.size()); // upper bound
         for (size_t a = 0; a < nAtoms.size(); ++a)
         {
