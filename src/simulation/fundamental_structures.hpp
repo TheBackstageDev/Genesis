@@ -83,6 +83,17 @@ namespace sim
             float strength = 0.f;
         };
 
+        struct reactive_bond
+        {
+            size_t i, j;
+
+            float bo_sigma = 0.0f;
+            float bo_pi = 0.0f;
+            float bo_pipi = 0.0f;
+            float strength = 0.f;
+            BondType type = BondType::NONE;
+        };
+
         struct bond 
         {
             uint32_t bondedAtom; 
@@ -121,7 +132,6 @@ namespace sim
             float epsilon; // LJ 
             float sigma; // LJ
 
-            float charge;
             int8_t electrons;
 
             uint8_t ZIndex;
@@ -129,7 +139,7 @@ namespace sim
             int8_t bondCount;
 
             int32_t chirality;
-            void draw(float temperature, sf::Vector2f& pos, float camDistance, core::window_t &window, bool letterMode, bool lennardBall);
+            void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, bool letterMode, bool lennardBall);
         };
     } // namespace fun
 } // namespace sim

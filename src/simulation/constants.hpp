@@ -7,7 +7,7 @@
 
 namespace sim
 {
-    namespace fun { enum class BondType { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE }; };
+    namespace fun { enum class BondType { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE, PARTIAL }; }; // Partial is for bonds that have partial pi bonds
 }; // namespace sim
 
 
@@ -22,10 +22,12 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.0005f // ps
+#define DT 0.001f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
+
+#define JOULE_TO_CAL 1/4.164f
 
 #define VERLET_SKIN 1.f
 #define CUTOFF 2.5f
@@ -44,11 +46,12 @@ namespace constants
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 340000.f        // Harmonic force constant
 #define ANGLE_K 12000.f       // J/mol/rad² for angular potential
-#define BOND_LENGTH_FACTOR 1.1f
+#define BOND_LENGTH_FACTOR 1.f
 
 #define REACTION_INTERVAL 3 // time steps
 #define REACTION_STRETCH_FACTOR 1.5f
 #define REACTION_FORMING_FACTOR 1.3f
+#define REACTION_CUT_BO 2.0f
 #define REACTION_VELOCITY_THRESHOLD 0.05f 
 
 #define COUNT_ATOMS 118
@@ -439,124 +442,124 @@ namespace constants
         std::pair<float, float> constants; // {sigma (Å), epsilon (kJ/mol)}
         switch (ZIndex)
         {
-            case   1: constants = {2.886f, 0.184f}; break; // H  (Hydrogen)
-            case   2: constants = {2.970f, 0.163f}; break; // He (Helium)
-            case   3: constants = {2.270f, 0.335f}; break; // Li (Lithium)
-            case   4: constants = {2.450f, 0.377f}; break; // Be (Beryllium)
-            case   5: constants = {3.638f, 0.335f}; break; // B  (Boron)
-            case   6: constants = {3.550f, 0.292f}; break; // C  (Carbon)
-            case   7: constants = {3.250f, 0.711f}; break; // N  (Nitrogen)
-            case   8: constants = {3.030f, 0.879f}; break; // O  (Oxygen)
-            case   9: constants = {2.950f, 0.628f}; break; // F  (Fluorine)
-            case  10: constants = {2.780f, 0.163f}; break; // Ne (Neon)
-            case  11: constants = {2.600f, 0.418f}; break; // Na (Sodium)
-            case  12: constants = {3.430f, 0.418f}; break; // Mg (Magnesium)
-            case  13: constants = {4.010f, 0.502f}; break; // Al (Aluminium)
-            case  14: constants = {3.830f, 0.837f}; break; // Si (Silicon)
-            case  15: constants = {3.740f, 0.837f}; break; // P  (Phosphorus)
-            case  16: constants = {3.560f, 1.046f}; break; // S  (Sulfur)
-            case  17: constants = {3.470f, 1.255f}; break; // Cl (Chlorine)
-            case  18: constants = {3.300f, 0.418f}; break; // Ar (Argon)
-            case  19: constants = {3.000f, 0.418f}; break; // K  (Potassium)
-            case  20: constants = {3.500f, 0.502f}; break; // Ca (Calcium)
-            case  21: constants = {3.800f, 0.711f}; break; // Sc (Scandium)
-            case  22: constants = {3.750f, 0.837f}; break; // Ti (Titanium)
-            case  23: constants = {3.700f, 0.920f}; break; // V  (Vanadium)
-            case  24: constants = {3.650f, 1.046f}; break; // Cr (Chromium)
-            case  25: constants = {3.600f, 1.171f}; break; // Mn (Manganese)
-            case  26: constants = {3.550f, 1.297f}; break; // Fe (Iron)
-            case  27: constants = {3.500f, 1.380f}; break; // Co (Cobalt)
-            case  28: constants = {3.450f, 1.464f}; break; // Ni (Nickel)
-            case  29: constants = {3.400f, 1.548f}; break; // Cu (Copper)
-            case  30: constants = {3.600f, 1.130f}; break; // Zn (Zinc)
-            case  31: constants = {4.200f, 0.502f}; break; // Ga (Gallium)
-            case  32: constants = {4.050f, 0.837f}; break; // Ge (Germanium)
-            case  33: constants = {3.950f, 0.920f}; break; // As (Arsenic)
-            case  34: constants = {3.850f, 1.046f}; break; // Se (Selenium)
-            case  35: constants = {3.700f, 1.464f}; break; // Br (Bromine)
-            case  36: constants = {3.550f, 0.418f}; break; // Kr (Krypton)
-            case  37: constants = {3.300f, 0.418f}; break; // Rb (Rubidium)
-            case  38: constants = {3.600f, 0.502f}; break; // Sr (Strontium)
-            case  39: constants = {3.900f, 0.711f}; break; // Y  (Yttrium)
-            case  40: constants = {3.800f, 0.837f}; break; // Zr (Zirconium)
-            case  41: constants = {3.750f, 0.920f}; break; // Nb (Niobium)
-            case  42: constants = {3.700f, 1.046f}; break; // Mo (Molybdenum)
-            case  43: constants = {3.650f, 1.171f}; break; // Tc (Technetium)
-            case  44: constants = {3.600f, 1.297f}; break; // Ru (Ruthenium)
-            case  45: constants = {3.550f, 1.380f}; break; // Rh (Rhodium)
-            case  46: constants = {3.500f, 1.464f}; break; // Pd (Palladium)
-            case  47: constants = {3.450f, 1.548f}; break; // Ag (Silver)
-            case  48: constants = {3.400f, 1.130f}; break; // Cd (Cadmium)
-            case  49: constants = {4.300f, 0.502f}; break; // In (Indium)
-            case  50: constants = {4.200f, 0.837f}; break; // Sn (Tin)
-            case  51: constants = {4.100f, 0.920f}; break; // Sb (Antimony)
-            case  52: constants = {4.000f, 1.046f}; break; // Te (Tellurium)
-            case  53: constants = {4.000f, 1.673f}; break; // I  (Iodine)
-            case  54: constants = {3.850f, 0.418f}; break; // Xe (Xenon)
-            case  55: constants = {3.600f, 0.418f}; break; // Cs (Caesium)
-            case  56: constants = {3.800f, 0.502f}; break; // Ba (Barium)
-            case  57: constants = {3.900f, 0.711f}; break; // La (Lanthanum)
-            case  58: constants = {3.850f, 0.837f}; break; // Ce (Cerium)
-            case  59: constants = {3.800f, 0.920f}; break; // Pr (Praseodymium)
-            case  60: constants = {3.750f, 1.046f}; break; // Nd (Neodymium)
-            case  61: constants = {3.700f, 1.171f}; break; // Pm (Promethium)
-            case  62: constants = {3.650f, 1.297f}; break; // Sm (Samarium)
-            case  63: constants = {3.600f, 1.380f}; break; // Eu (Europium)
-            case  64: constants = {3.550f, 1.464f}; break; // Gd (Gadolinium)
-            case  65: constants = {3.500f, 1.548f}; break; // Tb (Terbium)
-            case  66: constants = {3.450f, 1.130f}; break; // Dy (Dysprosium)
-            case  67: constants = {3.400f, 1.255f}; break; // Ho (Holmium)
-            case  68: constants = {3.350f, 1.380f}; break; // Er (Erbium)
-            case  69: constants = {3.300f, 1.464f}; break; // Tm (Thulium)
-            case  70: constants = {3.250f, 1.548f}; break; // Yb (Ytterbium)
-            case  71: constants = {3.200f, 1.130f}; break; // Lu (Lutetium)
-            case  72: constants = {3.800f, 0.837f}; break; // Hf (Hafnium)
-            case  73: constants = {3.750f, 0.920f}; break; // Ta (Tantalum)
-            case  74: constants = {3.700f, 1.046f}; break; // W  (Tungsten)
-            case  75: constants = {3.650f, 1.171f}; break; // Re (Rhenium)
-            case  76: constants = {3.600f, 1.297f}; break; // Os (Osmium)
-            case  77: constants = {3.550f, 1.380f}; break; // Ir (Iridium)
-            case  78: constants = {3.500f, 1.464f}; break; // Pt (Platinum)
-            case  79: constants = {3.450f, 1.548f}; break; // Au (Gold)
-            case  80: constants = {3.400f, 1.130f}; break; // Hg (Mercury)
-            case  81: constants = {4.400f, 0.502f}; break; // Tl (Thallium)
-            case  82: constants = {4.300f, 0.837f}; break; // Pb (Lead)
-            case  83: constants = {4.200f, 0.920f}; break; // Bi (Bismuth)
-            case  84: constants = {4.100f, 1.046f}; break; // Po (Polonium)
-            case  85: constants = {4.000f, 1.255f}; break; // At (Astatine)
-            case  86: constants = {3.900f, 0.418f}; break; // Rn (Radon)
-            case  87: constants = {3.700f, 0.418f}; break; // Fr (Francium)
-            case  88: constants = {3.900f, 0.502f}; break; // Ra (Radium)
-            case  89: constants = {4.000f, 0.711f}; break; // Ac (Actinium)
-            case  90: constants = {3.950f, 0.837f}; break; // Th (Thorium)
-            case  91: constants = {3.900f, 0.920f}; break; // Pa (Protactinium)
-            case  92: constants = {3.850f, 1.046f}; break; // U  (Uranium)
-            case  93: constants = {3.800f, 1.171f}; break; // Np (Neptunium)
-            case  94: constants = {3.750f, 1.297f}; break; // Pu (Plutonium)
-            case  95: constants = {3.700f, 1.380f}; break; // Am (Americium)
-            case  96: constants = {3.650f, 1.464f}; break; // Cm (Curium)
-            case  97: constants = {3.600f, 1.548f}; break; // Bk (Berkelium)
-            case  98: constants = {3.550f, 1.130f}; break; // Cf (Californium)
+            case   1: constants = {2.886f, 0.184f}; break; // H  Hydrogen
+            case   2: constants = {2.362f, 0.0844f}; break; // He Helium
+            case   3: constants = {3.345f, 0.335f}; break; // Li Lithium
+            case   4: constants = {3.051f, 0.418f}; break; // Be Beryllium
+            case   5: constants = {3.660f, 0.251f}; break; // B  Boron
+            case   6: constants = {3.500f, 0.276f}; break; // C  Carbon
+            case   7: constants = {3.300f, 0.460f}; break; // N  Nitrogen
+            case   8: constants = {3.100f, 0.585f}; break; // O  Oxygen
+            case   9: constants = {2.950f, 0.502f}; break; // F  Fluorine
+            case  10: constants = {2.800f, 0.205f}; break; // Ne Neon
+            case  11: constants = {3.830f, 0.502f}; break; // Na Sodium
+            case  12: constants = {3.580f, 0.544f}; break; // Mg Magnesium
+            case  13: constants = {4.010f, 0.335f}; break; // Al Aluminium
+            case  14: constants = {3.900f, 0.544f}; break; // Si Silicon
+            case  15: constants = {3.800f, 0.711f}; break; // P  Phosphorus
+            case  16: constants = {3.700f, 0.879f}; break; // S  Sulfur
+            case  17: constants = {3.520f, 1.046f}; break; // Cl Chlorine
+            case  18: constants = {3.410f, 0.996f}; break; // Ar Argon
+            case  19: constants = {4.230f, 0.335f}; break; // K  Potassium
+            case  20: constants = {3.830f, 0.418f}; break; // Ca Calcium
+            case  21: constants = {3.400f, 0.084f}; break; // Sc Scandium
+            case  22: constants = {3.350f, 0.084f}; break; // Ti Titanium
+            case  23: constants = {3.300f, 0.084f}; break; // V  Vanadium
+            case 24: constants = {3.250f, 0.084f}; break; // Cr Chromium
+            case  25: constants = {3.200f, 0.084f}; break; // Mn Manganese
+            case  26: constants = {2.935f, 0.105f}; break; // Fe Iron
+            case  27: constants = {2.880f, 0.088f}; break; // Co Cobalt
+            case  28: constants = {2.750f, 0.071f}; break; // Ni Nickel
+            case  29: constants = {2.650f, 0.100f}; break; // Cu Copper
+            case  30: constants = {3.120f, 0.167f}; break; // Zn Zinc
+            case  31: constants = {4.200f, 0.251f}; break; // Ga Gallium
+            case  32: constants = {4.050f, 0.335f}; break; // Ge Germanium
+            case  33: constants = {3.950f, 0.418f}; break; // As Arsenic
+            case  34: constants = {3.850f, 0.502f}; break; // Se Selenium
+            case  35: constants = {3.700f, 0.879f}; break; // Br Bromine
+            case  36: constants = {3.710f, 1.420f}; break; // Kr Krypton
+            case  37: constants = {4.600f, 0.335f}; break; // Rb Rubidium
+            case  38: constants = {4.300f, 0.418f}; break; // Sr Strontium
+            case  39: constants = {3.900f, 0.084f}; break; // Y  Yttrium
+            case  40: constants = {3.800f, 0.084f}; break; // Zr Zirconium
+            case  41: constants = {3.750f, 0.084f}; break; // Nb Niobium
+            case  42: constants = {3.700f, 0.084f}; break; // Mo Molybdenum
+            case  43: constants = {3.650f, 0.084f}; break; // Tc Technetium
+            case  44: constants = {3.600f, 0.084f}; break; // Ru Ruthenium
+            case  45: constants = {3.550f, 0.084f}; break; // Rh Rhodium
+            case  46: constants = {3.500f, 0.084f}; break; // Pd Palladium
+            case  47: constants = {3.450f, 0.084f}; break; // Ag Silver
+            case  48: constants = {3.400f, 0.167f}; break; // Cd Cadmium
+            case  49: constants = {4.400f, 0.251f}; break; // In Indium
+            case  50: constants = {4.300f, 0.335f}; break; // Sn Tin
+            case  51: constants = {4.200f, 0.418f}; break; // Sb Antimony
+            case  52: constants = {4.100f, 0.502f}; break; // Te Tellurium
+            case  53: constants = {4.000f, 0.879f}; break; // I  Iodine
+            case  54: constants = {4.050f, 1.920f}; break; // Xe Xenon
+            case  55: constants = {4.900f, 0.335f}; break; // Cs Caesium
+            case  56: constants = {4.600f, 0.418f}; break; // Ba Barium
+            case  57: constants = {4.000f, 0.100f}; break; // La Lanthanum
+            case  58: constants = {3.950f, 0.100f}; break; // Ce Cerium
+            case  59: constants = {3.930f, 0.100f}; break; // Pr Praseodymium
+            case  60: constants = {3.900f, 0.100f}; break; // Nd Neodymium
+            case  61: constants = {3.880f, 0.100f}; break; // Pm Promethium
+            case  62: constants = {3.860f, 0.100f}; break; // Sm Samarium
+            case  63: constants = {3.840f, 0.100f}; break; // Eu Europium
+            case  64: constants = {3.820f, 0.100f}; break; // Gd Gadolinium
+            case  65: constants = {3.800f, 0.100f}; break; // Tb Terbium
+            case  66: constants = {3.780f, 0.100f}; break; // Dy Dysprosium
+            case  67: constants = {3.760f, 0.100f}; break; // Ho Holmium
+            case  68: constants = {3.740f, 0.100f}; break; // Er Erbium
+            case  69: constants = {3.720f, 0.100f}; break; // Tm Thulium
+            case  70: constants = {3.700f, 0.100f}; break; // Yb Ytterbium
+            case  71: constants = {3.680f, 0.100f}; break; // Lu Lutetium
+            case  72: constants = {3.650f, 0.084f}; break; // Hf Hafnium
+            case  73: constants = {3.620f, 0.084f}; break; // Ta Tantalum
+            case  74: constants = {3.590f, 0.084f}; break; // W  Tungsten
+            case  75: constants = {3.570f, 0.084f}; break; // Re Rhenium
+            case  76: constants = {3.550f, 0.084f}; break; // Os Osmium
+            case  77: constants = {3.530f, 0.084f}; break; // Ir Iridium
+            case  78: constants = {3.510f, 0.084f}; break; // Pt Platinum
+            case  79: constants = {3.490f, 0.084f}; break; // Au Gold
+            case  80: constants = {3.470f, 0.167f}; break; // Hg Mercury
+            case  81: constants = {4.450f, 0.251f}; break; // Tl Thallium
+            case  82: constants = {4.400f, 0.335f}; break; // Pb Lead
+            case  83: constants = {4.350f, 0.418f}; break; // Bi Bismuth
+            case  84: constants = {4.300f, 0.502f}; break; // Po Polonium (estimated)
+            case  85: constants = {4.250f, 0.628f}; break; // At Astatine (estimated)
+            case  86: constants = {4.200f, 1.255f}; break; // Rn Radon (estimated)
+            case  87: constants = {5.000f, 0.335f}; break; // Fr Francium (estimated)
+            case  88: constants = {4.700f, 0.418f}; break; // Ra Radium
+            case  89: constants = {4.100f, 0.100f}; break; // Ac Actinium
+            case  90: constants = {4.050f, 0.100f}; break; // Th Thorium
+            case  91: constants = {4.000f, 0.100f}; break; // Pa Protactinium
+            case  92: constants = {3.950f, 0.100f}; break; // U  Uranium
+            case  93: constants = {3.900f, 0.100f}; break; // Np Neptunium
+            case 94: constants = {3.850f, 0.100f}; break; // Pu Plutonium
+            case  95: constants = {3.850f, 0.100f}; break; // Am Americium
+            case  96: constants = {3.850f, 0.100f}; break; // Cm Curium
+            case  97: constants = {3.850f, 0.100f}; break; // Bk Berkelium
+            case  98: constants = {3.850f, 0.100f}; break; // Cf Californium
             case  99: constants = {3.500f, 1.255f}; break; // Es (Einsteinium)
             case 100: constants = {3.450f, 1.380f}; break; // Fm (Fermium)
             case 101: constants = {3.400f, 1.464f}; break; // Md (Mendelevium)
             case 102: constants = {3.350f, 1.548f}; break; // No (Nobelium)
             case 103: constants = {3.300f, 1.130f}; break; // Lr (Lawrencium)
-            case 104: constants = {3.800f, 0.837f}; break; // Rf (Rutherfordium)
-            case 105: constants = {3.750f, 0.920f}; break; // Db (Dubnium)
-            case 106: constants = {3.700f, 1.046f}; break; // Sg (Seaborgium)
-            case 107: constants = {3.650f, 1.171f}; break; // Bh (Bohrium)
-            case 108: constants = {3.600f, 1.297f}; break; // Hs (Hassium)
-            case 109: constants = {3.550f, 1.380f}; break; // Mt (Meitnerium)
-            case 110: constants = {3.500f, 1.464f}; break; // Ds (Darmstadtium)
-            case 111: constants = {3.450f, 1.548f}; break; // Rg (Roentgenium)
-            case 112: constants = {3.400f, 1.130f}; break; // Cn (Copernicium)
-            case 113: constants = {4.400f, 0.502f}; break; // Nh (Nihonium)
-            case 114: constants = {4.300f, 0.837f}; break; // Fl (Flerovium)
-            case 115: constants = {4.200f, 0.920f}; break; // Mc (Moscovium)
-            case 116: constants = {4.100f, 1.046f}; break; // Lv (Livermorium)
-            case 117: constants = {4.000f, 1.255f}; break; // Ts (Tennessine)
-            case 118: constants = {3.900f, 0.418f}; break; // Og (Oganesson)
+            case 104: constants = {3.700f, 0.084f}; break; // Rf Rutherfordium
+            case 105: constants = {3.680f, 0.084f}; break; // Db Dubnium
+            case 106: constants = {3.660f, 0.084f}; break; // Sg Seaborgium
+            case 107: constants = {3.640f, 0.084f}; break; // Bh Bohrium
+            case 108: constants = {3.620f, 0.084f}; break; // Hs Hassium
+            case 109: constants = {3.600f, 0.084f}; break; // Mt Meitnerium
+            case 110: constants = {3.580f, 0.084f}; break; // Ds Darmstadtium
+            case 111: constants = {3.560f, 0.084f}; break; // Rg Roentgenium
+            case 112: constants = {3.540f, 0.167f}; break; // Cn Copernicium
+            case 113: constants = {4.500f, 0.251f}; break; // Nh Nihonium
+            case 114: constants = {4.450f, 0.335f}; break; // Fl Flerovium
+            case 115: constants = {4.400f, 0.418f}; break; // Mc Moscovium
+            case 116: constants = {4.350f, 0.502f}; break; // Lv Livermorium
+            case 117: constants = {4.300f, 0.628f}; break; // Ts Tennessine
+            case 118: constants = {4.250f, 0.836f}; break; // Og Oganesson
         default:
             constants = {2.50f, 0.1255f};
             break; // H fallback
@@ -564,6 +567,7 @@ namespace constants
 
         constants.first *= MULT_FACTOR;
         constants.second *= MULT_FACTOR;
+
         return constants;
     }
 

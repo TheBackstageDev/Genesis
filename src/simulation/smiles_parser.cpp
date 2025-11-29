@@ -6,7 +6,7 @@
 namespace sim
 {
     using namespace sim::fun;
-    molecule_structure sim::parseSMILES(const std::string &molecule, const std::string& positionPath, bool implicitHydrogens)
+    molecule_structure sim::parseSMILES(const std::string &molecule, bool implicitHydrogens)
     {
         molecule_structure nStructure{};
         std::vector<def_bond> nBonds{};

@@ -14,7 +14,7 @@ namespace sim::io
 
         if (z1 == 6 && z2 == 6) 
         {
-            if (distance < 1.36f) return fun::BondType::TRIPLE;     // C≡C
+            if (distance < 1.26f) return fun::BondType::TRIPLE;     // C≡C
             if (distance < 1.4f) return fun::BondType::DOUBLE;     // C=C
 
             return fun::BondType::SINGLE;
@@ -96,7 +96,7 @@ namespace sim::io
             std::getline(file, line);
             std::istringstream iss(line);
             std::string symbol;
-            float x, y, z;
+            double x, y, z;
 
             if (!(iss >> symbol >> x >> y >> z)) 
             {

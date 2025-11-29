@@ -13,7 +13,7 @@
 using namespace sim::fun;
 namespace sim
 {
-    molecule_structure parseSMILES(const std::string& molecule, const std::string& positionPath = "", bool implicitHydrogens = true);
+    molecule_structure parseSMILES(const std::string& molecule, bool implicitHydrogens = true);
     void organizeAngles(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds, 
                         std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles);
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);

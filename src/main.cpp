@@ -34,8 +34,8 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 30.f;
-    sim::fun::universe universe(universeSize);
+    size_t universeSize = 20.f;
+    sim::fun::universe universe(universeSize, 13.f, false);
 
     window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
     {
@@ -49,11 +49,22 @@ int main()
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
 
     auto water = sim::parseSMILES("O");  
+    auto HydrochloricAcid = sim::parseSMILES("[Cl-][H+]");  
     auto stuff = sim::parseSMILES("O=P(O)(O)OP(=O)(O)OP(=O)(O)OC[C@H]3O[C@@H](n2cnc1c(ncnc12)N)[C@H](O)[C@@H]3O");
+    auto O_Radical = sim::parseSMILES("O", false);  
 
-    universe.createMolecule(stuff, {15, 15, 15});
+    //universe.createMolecule(HydrochloricAcid, {10, 10, 10}, {0.f, 0.f, 0.0f});
+    universe.createMolecule(water, {10, 15, 10}, {0.f, -0.4f, 0});
+    //universe.createMolecule(stuff, {10, 5, 5}, {0.1f, 0.f, 0.f});
 
-    size_t count = 5;
+    /* molecule_structure mol{};
+    auto dna = sim::io::loadXYZ("src/resource/protein.xyz", mol.atoms, mol.bonds, mol.positions);
+    sim::organizeSubsets(mol.subsets, mol.atoms, mol.bonds);
+    sim::organizeAngles(mol.subsets, mol.atoms, mol.bonds, mol.dihedral_angles, mol.angles);
+
+    universe.createMolecule(mol, {40, 40, 40}, {0.f, 0.f, 0.0f}); */
+
+    size_t count = 0;
     float minDistance = 6.f;
 
     std::vector<sf::Vector3f> centers{universe.positions()};
@@ -108,7 +119,7 @@ int main()
         if (!window.isPaused())
         {
             auto start_time = std::chrono::steady_clock::now();
-            universe.update(targetTemp, false);
+            universe.update(targetTemp);
             auto end_time = std::chrono::steady_clock::now();
             auto duration = end_time - start_time;
             double delta_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -116,11 +127,12 @@ int main()
         }
 
         if (window.stepFrame())
-            universe.update(targetTemp, false);
+            universe.update(targetTemp);
 
         window.clear();
         //universe.drawDebug(window);
         universe.draw(window, true);
+        universe.drawChargeField(window);
 
         displayUI(window, universe);
         ImGui::SFML::Render(window.getWindow());

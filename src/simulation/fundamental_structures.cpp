@@ -20,7 +20,7 @@ namespace sim
 
     namespace fun
     {
-        void atom::draw(float temperature, sf::Vector2f &pos, float camDistance, core::window_t &window, bool letter, bool lennardBall)
+        void atom::draw(float temperature, sf::Vector2f &pos, float camDistance, float q, core::window_t &window, bool letter, bool lennardBall)
         {
             sf::Color atomColor = constants::getElementColor(ZIndex);
 
@@ -65,11 +65,11 @@ namespace sim
                 window.draw(name_text);
 
                 // Charge
-                if (std::abs(charge) > 0.5f)
+                if (std::abs(q) > 1.f)
                 {
                     sf::Text ion_text;
                     ion_text.setFont(font);
-                    ion_text.setString(charge > 0.0f ? "+" : "-");
+                    ion_text.setString(q > 0.0f ? "+" : "-");
                     ion_text.setCharacterSize(14);
                     ion_text.setScale({0.018f * rad, 0.018f * rad});
                     ion_text.setFillColor({255, 255, 255, static_cast<uint8_t>(alpha)});
