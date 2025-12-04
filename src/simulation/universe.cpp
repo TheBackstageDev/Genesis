@@ -111,6 +111,13 @@ namespace sim
             }
         }
 
+        float smootherstep(float edge0, float edge1, float x) 
+        {
+            x = std::clamp((x - edge0) / (edge1 - edge0), 0.f, 1.f);
+
+            return x * x * x * (x * (6.0f * x - 15.0f) + 10.0f);
+        }
+
         void universe::drawChargeField(core::window_t &window)
         {
             if (!(cx > 0 && cy > 0 && cz > 0)) return;
@@ -179,7 +186,7 @@ namespace sim
                 else                        col = sf::Color(30,  70, 200, 180);   // deep royal blue
 
                 uint8_t alpha = static_cast<uint8_t>(267 * (1.0f - dist / thickness));
-                col.a = alpha;
+                col.a = smootherstep(dist_to_neg, dist_to_pos, dist);
 
                 float distance = (worldPos - cam.eye()).length();
                 float size = 1.8f * step * GRID / distance;
@@ -403,8 +410,8 @@ namespace sim
             sf::Vector2f pH = project(window, pos(H));
 
             constexpr float MAX_HA_DISTANCE = 2.8f;
-            constexpr float MIN_COS_ANGLE = 0.8f;
-            constexpr float STRONG_ENERGY = -100.0f;
+            constexpr float MIN_COS_ANGLE = 0.9f;
+            constexpr float STRONG_ENERGY = -300.0f;
             constexpr float WEAK_ENERGY = -5.0f;
 
             sf::Vector3f p = pos(H);
@@ -908,21 +915,6 @@ namespace sim
             return sf::Vector3f{0.f, 0.f, 0.f};
         }
 
-        sf::Vector3f universe::ljGrad(size_t i)
-        {
-            sf::Vector3f gradient({0.f, 0.f, 0.f});
-
-            for (size_t j = 0; j < atoms.size(); ++j)
-            {
-                if (j == i)
-                    continue;
-
-                gradient += ljForce(i, j);
-            }
-
-            return gradient;
-        }
-
         // Wolf method
         float universe::wolfForce(float r, float qi_qj)
         {
@@ -1235,8 +1227,71 @@ namespace sim
 
         void universe::calcUnbondedForces()
         {
-            calcLjForces();
-            calcElectrostaticForces();
+            std::vector<bool> calculated(atoms.size(), false);
+
+            for (size_t ix = 0; ix < cx; ++ix)
+                for (size_t iy = 0; iy < cy; ++iy)
+                    for (size_t iz = 0; iz < cz; ++iz)
+                    {
+                        size_t cell_id = getCellID(ix, iy, iz);
+
+                        const std::vector<size_t> &cell = cells[cell_id];
+
+                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        {
+                            size_t i = cell[ii];
+
+                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                            {
+                                const size_t &j = cell[jj];
+
+                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+
+                                sf::Vector3f cForce = coulombForce(i, j, dr);
+                                sf::Vector3f lForce = ljForce(i, j);
+
+                                add_force(i, cForce + lForce);
+                                add_force(j, -cForce - lForce);
+                            }
+                        }
+
+                        for (size_t d = 1; d < 14; ++d)
+                        {
+                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                            size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+
+                            const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
+
+                            for (size_t ii = 0; ii < cell.size(); ++ii)
+                            {
+                                const size_t &i = cell[ii];
+
+                                for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                                {
+                                    const size_t &j = neighbour_cell[jj];
+
+                                    if (calculated[i] && calculated[j])
+                                        continue;
+
+                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+
+                                    sf::Vector3f cForce = coulombForce(i, j, dr);
+                                    sf::Vector3f lForce = ljForce(i, j);
+
+                                    add_force(i, cForce + lForce);
+                                    add_force(j, -cForce - lForce);
+
+                                    calculated[i] = true;
+                                    calculated[j] = true;
+                                }
+                            }
+                        }
+                    }
+        }
+
+        void universe::handleReactiveForces()
+        {
+        
         }
 
         void universe::update(float targetTemperature)
@@ -1400,181 +1455,6 @@ namespace sim
                     for (size_t iz = 0; iz < cz; ++cz)
                     {
                     }
-        }
-
-        void universe::assignCharges()
-        {
-            std::vector<float> new_q(atoms.size(), 0.0f);
-
-            for (const auto &[key, rb] : reactive_bonds)
-            {
-                if (rb.strength < 0.3f)
-                    continue;
-
-                size_t i = rb.i, j = rb.j;
-                float bo = rb.strength;
-
-                float chi_i = constants::getElectronegativity(atoms[i].ZIndex);
-                float chi_j = constants::getElectronegativity(atoms[j].ZIndex);
-                float delta_chi = chi_j - chi_i;
-
-                float ionic_char = 1.0f - std::exp(-0.25f * delta_chi * delta_chi);
-                float dq = 0.9f * ionic_char * bo;
-
-                if (chi_j > chi_i)
-                {
-                    new_q[i] += dq;
-                    new_q[j] -= dq;
-                }
-                else
-                {
-                    new_q[i] -= dq;
-                    new_q[j] += dq;
-                }
-            }
-
-            for (size_t i = 0; i < atoms.size(); ++i)
-            {
-                data.q[i] = 0.7f * data.q[i] + 0.3f * new_q[i];
-            }
-        }
-
-        void universe::calculateBondOrder()
-        {
-            reactive_bonds.clear();
-
-            size_t N = atoms.size();
-
-            std::vector<float> uncorrected_bo(atoms.size(), 0.0f);
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
-                    {
-                        size_t currentCell = getCellID(ix, iy, iz);
-
-                        for (int32_t d = 0; d < 14; ++d)
-                        {
-                            int32_t x = ix + offsets[d][0], y = iy + offsets[d][1], z = iz + offsets[d][2];
-                            size_t neighbourCell = getCellID(x, y, z);
-
-                            for (size_t ii = 0; ii < cells[currentCell].size(); ++ii)
-                            {
-                                size_t i = cells[currentCell][ii];
-                                for (size_t jj = 0; jj < cells[neighbourCell].size(); ++jj)
-                                {
-                                    size_t j = cells[neighbourCell][jj];
-                                    if (currentCell == neighbourCell && j <= i)
-                                        continue;
-
-                                    sf::Vector3f dr_vec = minImageVec(pos(j) - pos(i));
-                                    float r = dr_vec.length();
-                                    if (r < 0.3f || r > REACTION_CUT_BO)
-                                        continue;
-
-                                    uint8_t Z1 = atoms[i].ZIndex;
-                                    uint8_t Z2 = atoms[j].ZIndex;
-
-                                    float r0 = constants::covalent_radius[Z1] + constants::covalent_radius[Z2];
-                                    if (r0 < 0.1f)
-                                        continue;
-
-                                    // Note: Change the exponents later for a table
-                                    float bo_raw = 0.0f;
-                                    float ratio = r / r0;
-
-                                    float bo_sigma = std::exp(-1.5f * std::pow(ratio - 1.0f, 2.0f));
-                                    float bo_pi = 0.f;
-
-                                    if ((Z1 == 6 && Z2 == 6) || (Z1 == 6 && Z2 == 7) || (Z1 == 7 && Z2 == 7))
-                                    {
-                                        bo_pi = 0.7f * std::exp(-3.0f * std::pow(ratio - 0.9f, 2.0f));
-                                    }
-
-                                    float bo_total_uncorrected = bo_sigma + bo_pi;
-                                    if (bo_total_uncorrected < 0.01f)
-                                        continue;
-
-                                    uint64_t key = (uint64_t(i) << 32) | j;
-                                    reactive_bonds[key] = {i, j, bo_sigma, bo_pi, 0.f, 0.0f, BondType::SINGLE};
-
-                                    uncorrected_bo[i] += bo_total_uncorrected;
-                                    uncorrected_bo[j] += bo_total_uncorrected;
-                                }
-                            }
-                        }
-                    }
-
-            std::vector<float> Delta(atoms.size(), 0.0f);
-            for (size_t i = 0; i < atoms.size(); ++i)
-            {
-                float ideal = constants::getUsualBonds(atoms[i].ZIndex);
-                Delta[i] = uncorrected_bo[i] - ideal;
-            }
-
-            // OverCoordination
-            for (auto &[key, rb] : reactive_bonds)
-            {
-                size_t i = rb.i, j = rb.j;
-
-                float f_c_i = (Delta[i] <= 0) ? 1.0f : (Delta[i] >= 2.0f) ? 0.0f
-                                                                          : 0.5f * (1.0f + std::cos(M_PI * Delta[i]));
-
-                float f_c_j = (Delta[j] <= 0) ? 1.0f : (Delta[j] >= 2.0f) ? 0.0f
-                                                                          : 0.5f * (1.0f + std::cos(M_PI * Delta[j]));
-
-                float total_bo_raw = rb.bo_sigma + rb.bo_pi + rb.bo_pipi;
-                rb.strength = total_bo_raw * f_c_i * f_c_j;
-
-                if (rb.strength > 1.7f)
-                    rb.type = BondType::TRIPLE;
-                else if (rb.strength > 1.2f)
-                    rb.type = BondType::DOUBLE;
-                else if (rb.strength > 0.7f)
-                    rb.type = BondType::SINGLE;
-                // else                         rb.type = BondType::PARTIAL;
-            }
-        }
-
-        void universe::handleReactiveForces()
-        {
-            calculateBondOrder();
-            if (timeStep % 8 == 0)
-                assignCharges();
-
-            for (const auto &[key, rb] : reactive_bonds)
-            {
-                if (rb.strength < 0.1f)
-                    continue;
-
-                size_t i = rb.i, j = rb.j;
-                sf::Vector3f dr_vec = minImageVec(pos(j) - pos(i));
-                float r = dr_vec.length();
-                if (r < EPSILON)
-                    continue;
-
-                uint8_t Z1 = atoms[i].ZIndex;
-                uint8_t Z2 = atoms[j].ZIndex;
-
-                float r0_single = constants::getBondLength(Z1, Z2, rb.type);
-                float De_single = constants::getBondEnergy(Z1, Z2, rb.type);
-                float beta = 1.5f;
-
-                float p = 2.0f;
-                float r0 = r0_single * (1.0f + (1.0f - std::pow(rb.strength, p)) * 0.12f);
-                float De = De_single * rb.strength;
-
-                float exp_term = std::exp(-beta * (r - r0));
-                float force_mag = -2.0f * De * beta * (1.5f - exp_term) * exp_term;
-
-                sf::Vector3f dir = dr_vec / r;
-                sf::Vector3f force = force_mag * dir;
-
-                add_force(i, force);
-                add_force(j, -force);
-            }
-
-            calcLjForces();
-            calcElectrostaticForces();
         }
 
         // Camera

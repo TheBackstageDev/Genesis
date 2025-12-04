@@ -51,13 +51,18 @@ namespace sim
             }
 
             // is Ring
-            if (std::isdigit(c) || (c == '%' && i + 2 < currentMolecule.size() && std::isdigit(currentMolecule[i+1]) && std::isdigit(currentMolecule[i+2])))
+            if (std::isdigit(c) || c == '%')
             {
                 int ringID = 0;
                 if (c == '%')
                 {
-                    ringID = (currentMolecule[i+1] - '0') * 10 + (currentMolecule[i+2] - '0');
-                    i += 2;
+                    i++;
+
+                    while (i < currentMolecule.length() && std::isdigit(currentMolecule[i]))
+                    {
+                        ringID = ringID * 10 + (currentMolecule[i] - '0');
+                        i++;
+                    }
                 }
                 else
                 {
@@ -131,7 +136,7 @@ namespace sim
                 size_t k = 0;
 
                 if (std::isdigit(atomStr[k]))
-                    isotope = std::stoi(atomStr.substr(k), &k);
+                    isotope = std::stoi(atomStr.substr(k), &k) - 1;
 
                 if (k >= atomStr.size() || !std::isalpha(atomStr[k])) { i = j; continue; }
                 symbol += atomStr[k++];
@@ -331,7 +336,7 @@ namespace sim
         npositions.resize(nAtoms.size());
         organizeSubsets(nSubsets, nAtoms, nBonds);
         organizeAngles(nSubsets, nAtoms, nBonds, nDihedralAngles, nAngles);
-        positionAtoms(molecule, nBonds, rings, nAtoms, nSubsets, npositions);
+        positionAtoms(molecule, nBonds, rings, nAtoms, nSubsets, npositions, nAngles);
 
         nStructure.atoms = std::move(nAtoms);
         nStructure.bonds = std::move(nBonds);
@@ -586,7 +591,7 @@ namespace sim
 
     void sim::positionAtoms(const std::string &SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>> &rings,
                             const std::vector<def_atom> &nAtoms, const std::vector<def_subset> &nSubsets,
-                            std::vector<sf::Vector3f> &positions)
+                            std::vector<sf::Vector3f> &positions, std::vector<angle>& angles)
     {
         positions.assign(nAtoms.size(), sf::Vector3f(0, 0, 0));
         if (nAtoms.empty())
@@ -617,7 +622,9 @@ namespace sim
         auto rotate2D = [&](float rad){
             float c = std::cos(rad), s = std::sin(rad);
             dir = sf::Vector3f(dir.x*c - dir.y*s,
-                            dir.x*s + dir.y*c, 0.f).normalized();
+                            dir.x*s + dir.y*c, 0.f);
+            if (dir.length() > 0.f)
+                dir = dir.normalized();
         };
 
         for (const auto &ring : rings)
@@ -970,7 +977,7 @@ namespace sim
                     dir = rotateDirection(dir, ringNormal, 90 * h * RADIAN);
                 }
 
-                positions[hIdx] += dir * 0.9f;
+                positions[hIdx] += dir;
             }
         }
 
@@ -978,7 +985,6 @@ namespace sim
         const int32_t max_iters = 20 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
         constexpr float   repulse     = 3.0f;
-        constexpr float   repulse_dist = 2.f;
         constexpr float   k_spring    = 2.0f;
         constexpr float   convergence = 0.01f;
 
@@ -1000,9 +1006,10 @@ namespace sim
                     continue;
                 }
 
-                if (dist < repulse_dist)
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE);
+                if (dist < r0)
                 {
-                    float f = repulse * (repulse_dist - dist) / dist;
+                    float f = repulse * (r0 - dist) / dist;
                     sf::Vector3f F = dr * (f / dist);
                     forces[i] -= F;
                     forces[j] += F;

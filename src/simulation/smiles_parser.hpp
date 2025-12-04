@@ -19,7 +19,7 @@ namespace sim
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
     void addImplicitHydrogens(std::vector<def_atom>& nAtoms, std::vector<def_bond>& nBonds);
     void positionAtoms(const std::string& SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>>& rings, 
-        const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions);
+        const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions, std::vector<angle>& angles);
 
     sf::Vector3f rotateDirection(const sf::Vector3f& v, const sf::Vector3f& axis, float angle);
 } // namespace sim

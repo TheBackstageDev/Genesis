@@ -90,7 +90,7 @@ namespace sim
             float bo_sigma = 0.0f;
             float bo_pi = 0.0f;
             float bo_pipi = 0.0f;
-            float strength = 0.f;
+            
             BondType type = BondType::NONE;
         };
 

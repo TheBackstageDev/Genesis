@@ -87,7 +87,6 @@ namespace sim
 
             float ljPot(size_t i, size_t j);
             float wolfForce(float r, float qi_qj); 
-            sf::Vector3f ljGrad(size_t i);
             sf::Vector3f ljForce(size_t i, size_t j);
             sf::Vector3f coulombForce(size_t i, size_t j, sf::Vector3f& dr_vec);
 
@@ -111,8 +110,9 @@ namespace sim
             float calculateNonBondedEnergy(size_t i, size_t j);
 
             // Reactions
+            std::vector<float> calculateBondOrder();
             void assignCharges();
-            void calculateBondOrder();
+            void calcUnbondedForcesReactive();
             void handleReactiveForces();
 
             float boxSize = 10.f;
@@ -139,8 +139,7 @@ namespace sim
             {
                 if (i > j) std::swap(i, j);
                 uint64_t key = (uint64_t(i) << 32) | j;
-                auto it = reactive_bonds.find(key);
-                return (it != reactive_bonds.end()) ? it->second.strength : 0.0f;
+                return data.bond_orders[key];
             }
 
             std::vector<atom> atoms;
@@ -225,6 +224,17 @@ namespace sim
             }
             
             bool react = false;
+
+            // Logging
+            struct ReactionEvent 
+            {
+                enum Type { BOND_FORM, BOND_BREAK, PROTON_TRANSFER } type;
+                size_t atom1, atom2;
+                float old_bo, new_bo;
+                float time;
+            };
+
+            std::vector<ReactionEvent> reaction_log{};
 
             // Camera
             sf::Vector2i lastMouse;
