@@ -106,11 +106,11 @@ namespace sim
             // Energies
             float calculateKineticEnergy();
             float calculateAtomTemperature(size_t i);
-            float calculateBondEnergy(size_t i, size_t j, const BondType type);
-            float calculateNonBondedEnergy(size_t i, size_t j);
+            float calculateBondEnergy(size_t i, size_t j, float bo_sigma, float bo_pi, float bo_pp);
 
             // Reactions
-            std::vector<float> calculateBondOrder();
+            float calculateUncorrectedBondOrder(size_t i, size_t j);
+            void processReactivePair(size_t i, size_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
             void assignCharges();
             void calcUnbondedForcesReactive();
             void handleReactiveForces();
@@ -140,6 +140,12 @@ namespace sim
                 if (i > j) std::swap(i, j);
                 uint64_t key = (uint64_t(i) << 32) | j;
                 return data.bond_orders[key];
+            }
+
+            float getBondOrderKey(size_t i, size_t j) const
+            {
+                if (i > j) std::swap(i, j);
+                return (uint64_t(i) << 32) | j; 
             }
 
             std::vector<atom> atoms;
@@ -265,6 +271,8 @@ namespace sim
 
             inline void emplace_vel(sf::Vector3f v) { data.vx.emplace_back(v.x); data.vy.emplace_back(v.y); data.vz.emplace_back(v.z); }
             inline void emplace_pos(sf::Vector3f p) { data.x.emplace_back(p.x); data.y.emplace_back(p.y); data.z.emplace_back(p.z); }
+
+            void initReaxParams();
         };
     } // namespace fun
 } // namespace sim

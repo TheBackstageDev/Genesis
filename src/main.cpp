@@ -34,7 +34,7 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 30.f;
+    size_t universeSize = 40.f;
     sim::fun::universe universe(universeSize, 13.f, false);
 
     window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
@@ -49,16 +49,16 @@ int main()
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
 
     auto water = sim::parseSMILES("O"); 
-    auto benzene = sim::parseSMILES("C1CC1");  
+    auto benzene = sim::parseSMILES("c1ccccc1");  
     auto HydrochloricAcid = sim::parseSMILES("[Cl-].[H+]");  
-    auto stuff = sim::parseSMILES("O=N(=O)C1(C([N+](=O)[O-])([N+](=O)[O-])[N+](=O)[O-])C2C3C4C1C5(C([N+](=O)[O-])([N+](=O)[O-])[N+](=O)[O-])C2C3C45C([N+](=O)[O-])([N+](=O)[O-])[N+](=O)[O-])");
-    auto stuff2 = sim::parseSMILES("C12C3C4C1=C5C4C3C25");  
+    auto stuff = sim::parseSMILES("O=C(O)[C@@H]3[C@@H](O)C[C@@]2(O)C[C@@H](O)C[C@@H](O)[C@H](O)CC[C@@H](O)C[C@@H](O)CC(=O)O[C@@H](C)[C@H](C)[C@H](O)[C@@H](C)C=CC=CC=CC=CC=CC=CC=C[C@H](O[C@@H]1O[C@H](C)[C@@H](O)[C@H](N)[C@@H]1O)C[C@@H]3O2");
+    auto stuff2 = sim::parseSMILES("C(F)12C(F)3C(F)4C(F)1C(F)5C(F)4C(F)3C(F)25");  
 
-    //universe.createMolecule(HydrochloricAcid, {6, 13, 5}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(HydrochloricAcid, {6, 5, 5}, {0.f, 0.f, 0.f});
     //universe.createMolecule(water, {6, 2, 5}, {0.f, 0.1f, 0.f});
+    universe.createMolecule(stuff, {20, 20, 20}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff, {10, 10, 10}, {0.f, 0.f, 0.f});
-    //universe.createMolecule(stuff2, {10, 10, 10}, {0.f, 0.f, 0.f});
-    universe.createMolecule(benzene, {15, 15, 15}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(benzene, {15, 15, 15}, {0.f, 0.f, 0.f});
 
     /* molecule_structure mol{};
     auto dna = sim::io::loadXYZ("src/resource/protein.xyz", mol.atoms, mol.bonds, mol.positions);

@@ -86,11 +86,7 @@ namespace sim
         struct reactive_bond
         {
             size_t i, j;
-
-            float bo_sigma = 0.0f;
-            float bo_pi = 0.0f;
-            float bo_pipi = 0.0f;
-            
+            float bo;
             BondType type = BondType::NONE;
         };
 

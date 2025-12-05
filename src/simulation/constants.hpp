@@ -52,7 +52,7 @@ namespace constants
 #define REACTION_STRETCH_FACTOR 1.5f
 #define REACTION_FORMING_FACTOR 1.3f
 #define REACTION_CUT_BO 0.2f
-#define REACTION_BO_THRESHOLD 0.1f 
+#define REACTION_BO_THRESHOLD 0.3f 
 
 #define COUNT_ATOMS 118
 
@@ -327,6 +327,24 @@ namespace constants
                     return 3;
                 return 0;
         }
+    }
+
+    struct ReaxParams 
+    {
+        float p_boc1, p_boc2, p_boc3, p_boc4, p_boc5;  // For corrections
+        float p_bo1, p_bo2, p_bo3, p_bo4, p_bo5, p_bo6;  // Exponents for sigma/pi/pp
+        float r0_sigma, r0_pi, r0_pp;  // Equilibrium distances
+        float De_sigma, De_pi, De_pp;  // Dissociation energies
+    };
+
+    static std::map<uint8_t, ReaxParams> reaxParams;
+
+    static ReaxParams& getParams(uint8_t Z)
+    {
+        if (!reaxParams.count(Z))
+            return reaxParams[6];
+
+        return reaxParams[Z];
     }
 
     inline uint8_t getUsualBonds(uint8_t ZIndex)

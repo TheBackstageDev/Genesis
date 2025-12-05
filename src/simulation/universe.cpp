@@ -16,6 +16,7 @@ namespace sim
         universe::universe(float universeSize, float cell_size, bool react)
             : boxSize(universeSize), cell_size(cell_size), react(react)
         {
+            if (react) initReaxParams();
         }
 
         universe::universe(const std::filesystem::path path)
@@ -111,17 +112,18 @@ namespace sim
             }
         }
 
-        float smootherstep(float edge0, float edge1, float x) 
+        float smootherstep(float edge0, float edge1, float x)
         {
             x = std::clamp((x - edge0) / (edge1 - edge0), 0.f, 1.f);
 
-            return x * x * x * (x * (6.0f * x - 15.0f) + 10.0f);
+            return x * x * (3.0f - 2.0f * x);
         }
 
         void universe::drawChargeField(core::window_t &window)
         {
-            if (!(cx > 0 && cy > 0 && cz > 0)) return;
-            
+            if (!(cx > 0 && cy > 0 && cz > 0))
+                return;
+
             sf::RenderStates states;
             states.blendMode = sf::BlendAlpha;
 
@@ -130,91 +132,104 @@ namespace sim
 
             const float isovalue_pos = 1.f;
             const float isovalue_neg = -1.f;
-            const float thickness = 0.35f;
+            const float thickness = .7f;
 
-            struct Blob 
+            struct Blob
             {
                 sf::Vector2f screenPos;
-                float        depth;
-                float        size;
-                sf::Color    color;
+                float depth;
+                float size;
+                sf::Color color;
             };
 
             std::vector<Blob> blobs;
-            blobs.reserve(GRID*GRID*GRID);
+            blobs.reserve(GRID * GRID * GRID);
 
             for (int iz = 0; iz < GRID; ++iz)
-            for (int iy = 0; iy < GRID; ++iy)
-            for (int ix = 0; ix < GRID; ++ix)
-            {
-                sf::Vector3f worldPos(
-                    (ix + 0.5f) * step,
-                    (iy + 0.5f) * step,
-                    (iz + 0.5f) * step);
-
-                sf::Vector2f screen = project(window, worldPos);
-                if (screen.x < -500) continue;
-
-                float density = 0.0f;
-
-                for (size_t d = 0; d < 14; ++d)
-                {
-                    auto& cell = cells[getCellID(ix + offsets[d][0], iy + offsets[d][1], iz + offsets[d][2])];
-                    for (size_t i = 0; i < cell.size(); ++i)
+                for (int iy = 0; iy < GRID; ++iy)
+                    for (int ix = 0; ix < GRID; ++ix)
                     {
-                        sf::Vector3f dr = minImageVec(worldPos - pos(cell[i]));
-                        float r2 = dr.lengthSquared();
-                        density += data.q[cell[i]] * std::exp(-r2 / (1.2f * 1.2f));
+                        sf::Vector3f worldPos(
+                            (ix + 0.5f) * step,
+                            (iy + 0.5f) * step,
+                            (iz + 0.5f) * step);
+
+                        sf::Vector2f screen = project(window, worldPos);
+                        if (screen.x < -500)
+                            continue;
+
+                        float density = 0.0f;
+
+                        for (size_t d = 0; d < 14; ++d)
+                        {
+                            auto &cell = cells[getCellID(ix + offsets[d][0], iy + offsets[d][1], iz + offsets[d][2])];
+                            for (size_t i = 0; i < cell.size(); ++i)
+                            {
+                                sf::Vector3f dr = minImageVec(worldPos - pos(cell[i]));
+                                float r2 = dr.lengthSquared();
+                                density += data.q[cell[i]] * std::exp(-r2 / (1.2f * 1.2f));
+                            }
+                        }
+
+                        if (std::abs(density) < 0.1f)
+                            continue;
+
+                        float dist_to_pos = std::abs(density - isovalue_pos);
+                        float dist_to_neg = std::abs(density - isovalue_neg);
+                        float dist = std::min(dist_to_pos, dist_to_neg);
+
+                        if (dist > thickness)
+                            continue;
+
+                        sf::Color col;
+                        if (density <= -1.f)
+                            col = sf::Color(220, 20, 60, 180); // deep red
+                        else if (density <= -0.5f)
+                            col = sf::Color(255, 80, 80, 180); // red
+                        else if (density <= -0.2f)
+                            col = sf::Color(255, 147, 147, 150); // mild red / light pink
+                        else if (density < 0.2f)
+                            col = sf::Color(120, 240, 150, 200); // green
+                        else if (density < 0.5f)
+                            col = sf::Color(135, 206, 255, 160); // light sky blue
+                        else if (density < 1.f)
+                            col = sf::Color(70, 130, 255, 180); // medium blue
+                        else
+                            col = sf::Color(30, 70, 200, 180); // deep royal blue
+
+                        float alpha = 1.0f - smootherstep(0.0f, thickness, dist);
+                        float t = (density - isovalue_neg) / (isovalue_pos - isovalue_neg);
+                        t = std::clamp(t, 0.0f, 1.0f);
+
+                        float opacity = 1.0f - smootherstep(0.0f, thickness, dist);
+
+                        col.a = static_cast<uint8_t>(255 * opacity);
+
+                        float distance = (worldPos - cam.eye()).length();
+                        float size = step * GRID / distance;
+
+                        blobs.emplace_back(screen, distance, size, col);
                     }
-                }
 
-                if (std::abs(density) < 0.1f) continue;
-
-                float dist_to_pos = std::abs(density - isovalue_pos);
-                float dist_to_neg = std::abs(density - isovalue_neg);
-                float dist = std::min(dist_to_pos, dist_to_neg);
-
-                if (dist > thickness) continue;
-
-                sf::Color col;
-                if (density <= -1.f)       col = sf::Color(220,  20,  60, 180);   // deep red
-                else if (density <= -0.5f)  col = sf::Color(255,  80,  80, 180);   // red
-                else if (density <= -0.2f) col = sf::Color(255, 147, 147, 150);   // mild red / light pink
-                else if (density <  0.2f)  col = sf::Color(100, 240, 100, 200);   // green
-                else if (density <  0.5f)  col = sf::Color(135, 206, 255, 160);   // light sky blue
-                else if (density <  1.f)   col = sf::Color(70, 130, 255, 180);   // medium blue
-                else                        col = sf::Color(30,  70, 200, 180);   // deep royal blue
-
-                uint8_t alpha = static_cast<uint8_t>(267 * (1.0f - dist / thickness));
-                col.a = smootherstep(dist_to_neg, dist_to_pos, dist);
-
-                float distance = (worldPos - cam.eye()).length();
-                float size = 1.8f * step * GRID / distance;
-
-                blobs.emplace_back(screen, distance, size, col);
-            }
-
-            std::sort(blobs.begin(), blobs.end(), [=](const Blob& a, const Blob& b)
-            {
-                return a.depth > b.depth;
-            });
+            std::sort(blobs.begin(), blobs.end(), [=](const Blob &a, const Blob &b)
+                      { return a.depth > b.depth; });
 
             sf::VertexArray billboards(sf::PrimitiveType::Triangles);
             billboards.resize(blobs.size() * 6);
 
             size_t idx = 0;
-            for (const auto& b : blobs)
+            for (const auto &b : blobs)
             {
                 sf::Vector2f p = b.screenPos;
                 float s = b.size;
                 sf::Color c = b.color;
 
-                billboards[idx + 0] = {p + sf::Vector2f(-s,-s), c};
-                billboards[idx + 1] = {p + sf::Vector2f( s,-s), c};
-                billboards[idx + 2] = {p + sf::Vector2f( s, s), c};
+                billboards[idx + 0] = {p + sf::Vector2f(-s, -s), c};
+                billboards[idx + 1] = {p + sf::Vector2f(s, -s), c};
+                billboards[idx + 2] = {p + sf::Vector2f(s, s), c};
 
-                billboards[idx + 3] = {p + sf::Vector2f(-s,-s), c};
-                billboards[idx + 4] = {p + sf::Vector2f( s, s), c};
+                billboards[idx + 3] = {p + sf::Vector2f(-s, -s), c};
+                billboards[idx + 4] = {p + sf::Vector2f(s, s), c};
                 billboards[idx + 5] = {p + sf::Vector2f(-s, s), c};
 
                 idx += 6;
@@ -629,7 +644,7 @@ namespace sim
             float EN2 = constants::getElectronegativity(atoms[idx2].ZIndex);
             float deltaEN = std::abs(EN1 - EN2);
 
-            if (deltaEN > 0.3f) // Significant electronegativity difference
+            if (deltaEN > 0.1f) // Significant electronegativity difference
             {
                 float charge = deltaEN;
 
@@ -895,12 +910,11 @@ namespace sim
             sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
             float dr = dr_vec.length();
 
-            const float sigma = (sigma_i + sigma_j) / 2.0f;
+            const float sigma = sqrtf(sigma_i * sigma_j);
 
             if (dr < sigma * CUTOFF && dr > EPSILON)
             {
-                if (areBonded(i, j))
-                    return sf::Vector3f{0.f, 0.f, 0.f};
+                if (areBonded(i, j)) return sf::Vector3f{0.f, 0.f, 0.f};
 
                 float sigma6 = powf(sigma, 6);
                 float sigma12 = sigma6 * sigma6;
@@ -966,12 +980,6 @@ namespace sim
                     continue;
 
                 float delta_r = dr - bond.equilibriumLength;
-
-                /* if (delta_r > bond.equilibriumLength * 2.f)
-                {
-                    breakBond(idx1, idx2);
-                    continue;
-                } */
 
                 float bond_k = constants::getBondHarmonicConstantFromEnergy(atoms[idx1].ZIndex, atoms[idx2].ZIndex, bond.type);
                 float force_magnitude = bond_k * delta_r;
@@ -1046,25 +1054,13 @@ namespace sim
 
                         const std::vector<size_t> &cell = cells[cell_id];
 
-                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        for (int32_t dz = -1; dz <= 1; ++dz)
+                        for (int32_t dy = -1; dy <= 1; ++dy)
+                        for (int32_t dx = -1; dx <= 1; ++dx)
                         {
-                            size_t i = cell[ii];
-                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
-                            {
-                                size_t j = cell[jj];
-
-                                if (j <= i)
-                                    continue;
-
-                                sf::Vector3f f = ljForce(i, j);
-                                add_force(i, f);
-                                add_force(j, -f);
-                            }
-                        }
-
-                        for (size_t d = 1; d < 14; ++d)
-                        {
-                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                            int32_t n_ix = (ix + dx + cx) % cx;
+                            int32_t n_iy = (iy + dy + cy) % cy;
+                            int32_t n_iz = (iz + dz + cz) % cz;
                             size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
                             const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
@@ -1075,6 +1071,8 @@ namespace sim
                                 for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
                                 {
                                     const size_t &j = neighbour_cell[jj];
+
+                                    if (j <= i) continue;
 
                                     sf::Vector3f f = ljForce(i, j);
                                     add_force(i, f);
@@ -1227,8 +1225,6 @@ namespace sim
 
         void universe::calcUnbondedForces()
         {
-            std::vector<bool> calculated(atoms.size(), false);
-
             for (size_t ix = 0; ix < cx; ++ix)
                 for (size_t iy = 0; iy < cy; ++iy)
                     for (size_t iz = 0; iz < cz; ++iz)
@@ -1237,31 +1233,17 @@ namespace sim
 
                         const std::vector<size_t> &cell = cells[cell_id];
 
-                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        for (int32_t dz = -1; dz <= 1; ++dz)
+                        for (int32_t dy = -1; dy <= 1; ++dy)
+                        for (int32_t dx = -1; dx <= 1; ++dx)
                         {
-                            size_t i = cell[ii];
-
-                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
-                            {
-                                const size_t &j = cell[jj];
-
-                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-
-                                sf::Vector3f cForce = coulombForce(i, j, dr);
-                                sf::Vector3f lForce = ljForce(i, j);
-
-                                add_force(i, cForce + lForce);
-                                add_force(j, -cForce - lForce);
-                            }
-                        }
-
-                        for (size_t d = 1; d < 14; ++d)
-                        {
-                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
+                            int32_t n_ix = (ix + dx + cx) % cx;
+                            int32_t n_iy = (iy + dy + cy) % cy;
+                            int32_t n_iz = (iz + dz + cz) % cz;
                             size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
                             const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
-
+                            
                             for (size_t ii = 0; ii < cell.size(); ++ii)
                             {
                                 const size_t &i = cell[ii];
@@ -1270,8 +1252,7 @@ namespace sim
                                 {
                                     const size_t &j = neighbour_cell[jj];
 
-                                    if (calculated[i] && calculated[j])
-                                        continue;
+                                    if (j <= i) continue;
 
                                     sf::Vector3f dr = minImageVec(pos(j) - pos(i));
 
@@ -1280,18 +1261,89 @@ namespace sim
 
                                     add_force(i, cForce + lForce);
                                     add_force(j, -cForce - lForce);
-
-                                    calculated[i] = true;
-                                    calculated[j] = true;
                                 }
                             }
                         }
                     }
         }
 
+        std::vector<float> total_bo;
+
+        float taper(float r, float cutoff)
+        {
+            if (r >= cutoff)
+                return 0.0f;
+            float x = r / cutoff;
+            return 1.0f - x * x * x * (10.0f - 15.0f * x + 6.0f * x * x);
+        }
+
+        float universe::calculateUncorrectedBondOrder(size_t i, size_t j)
+        {
+            sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
+            float r = dr_vec.length();
+            if (r > CELL_CUTOFF)
+                return 0.0f;
+
+            uint8_t Zi = atoms[i].ZIndex;
+            uint8_t Zj = atoms[j].ZIndex;
+
+            auto &pi = constants::getParams(Zi);
+            auto &pj = constants::getParams(Zj);
+
+            float r_sigma = (pi.r0_sigma + pj.r0_sigma) / 2.0f;
+
+            float bo_sigma = std::exp(pi.p_bo1 * std::pow(r / r_sigma, pi.p_bo2));
+            float bo_pi = std::exp(pi.p_bo3 * std::pow(r / r_sigma, pi.p_bo4));
+            float bo_pp = std::exp(pi.p_bo5 * std::pow(r / r_sigma, pi.p_bo6));
+
+            return bo_sigma + bo_pi + bo_pp;
+        }
+
+        float universe::calculateBondEnergy(size_t i, size_t j, float bo_sigma, float bo_pi, float bo_pp)
+        {
+            auto &parami = constants::getParams(atoms[i].ZIndex);
+            auto &paramj = constants::getParams(atoms[j].ZIndex);
+
+            return -(sqrt(parami.De_sigma * paramj.De_sigma) * bo_sigma + sqrt(parami.De_pi * paramj.De_pi) * bo_pi + sqrt(parami.De_pp * paramj.De_pp) * bo_pp);
+        }
+
+        void universe::assignCharges()
+        {
+        }
+
+        void universe::processReactivePair(size_t i, size_t j, float cutoff, float vis_thresh)
+        {
+            sf::Vector3f dr_vec = minImageVec(pos(j) - pos(i));
+            float r = dr_vec.length();
+            if (r >= cutoff || r < EPSILON)
+                return;
+
+            float uncorr_bo = calculateUncorrectedBondOrder(i, j);
+            float tap = taper(r, cutoff);
+            float bo = uncorr_bo * tap;
+
+            total_bo[i] += bo;
+            total_bo[j] += bo;
+
+            if (bo > vis_thresh)
+            {
+                BondType type = BondType::SINGLE;
+                if (bo > 1.4f)
+                    type = BondType::DOUBLE;
+                if (bo > 2.4f)
+                    type = BondType::TRIPLE;
+
+                auto key = getBondOrderKey(i, j);
+                reactive_bonds[key] = {i, j, bo, type};
+            }
+        }
+
         void universe::handleReactiveForces()
         {
-        
+            reactive_bonds.clear();
+
+            total_bo.resize(atoms.size());
+            std::fill(total_bo.begin(), total_bo.end(), 0.0f);
         }
 
         void universe::update(float targetTemperature)
@@ -1419,42 +1471,10 @@ namespace sim
             }
         }
 
-        // Reactions
-
         float universe::calculateAtomTemperature(size_t i)
         {
             float ke = 0.5f * atoms[i].mass * vel(i).lengthSquared();
             return (2.0f / 3.0f) * ke * KB;
-        }
-
-        float universe::calculateBondEnergy(size_t i, size_t j, const BondType type)
-        {
-            float r = minImageVec(pos(i) - pos(j)).length();
-            float r0 = constants::getBondLength(atoms[i].ZIndex, atoms[j].ZIndex, type);
-            float k = constants::getBondHarmonicConstantFromEnergy(atoms[i].ZIndex, atoms[j].ZIndex, type);
-            float dr = r - r0;
-            return 0.5f * k * dr * dr;
-        }
-
-        float universe::calculateNonBondedEnergy(size_t i, size_t j)
-        {
-            float r_ij = (pos(i) - pos(j)).length();
-            if (r_ij < EPSILON)
-                return 1e6f;
-
-            float coulombPotential = COULOMB_K * (data.q[i] * data.q[j]) / r_ij;
-            float lennardjonesPotential = ljPot(i, j);
-
-            return lennardjonesPotential + coulombPotential;
-        }
-
-        void universe::calcReactiveAngleForces()
-        {
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++cz)
-                    {
-                    }
         }
 
         // Camera
@@ -1561,6 +1581,62 @@ namespace sim
             }
 
             return name;
+        }
+
+        void universe::initReaxParams()
+        {
+            constants::reaxParams[1] = {
+                .p_boc1 = 6.0f, .p_boc2 = 6.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.1f, .p_bo2 = 6.0f, .p_bo3 = -0.1f, .p_bo4 = 6.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 0.74f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 104.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[2] = {
+                .p_boc1 = 10.0f, .p_boc2 = 10.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = 0.0f, .p_bo2 = 1.0f, .p_bo3 = 0.0f, .p_bo4 = 1.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 1.40f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 0.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[3] = {
+                .p_boc1 = 1.5f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.1f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.00f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 30.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[6] = {
+                .p_boc1 = 1.5f, .p_boc2 = 6.5f, .p_boc3 = 6.5f, .p_boc4 = 8.0f, .p_boc5 = 6.5f, .p_bo1 = -0.2f, .p_bo2 = 5.0f, // sigm
+                .p_bo3 = -0.2f,
+                .p_bo4 = 6.0f, // pi
+                .p_bo5 = -0.2f,
+                .p_bo6 = 6.0f, // pi-pi
+                .r0_sigma = 1.54f,
+                .r0_pi = 1.40f,
+                .r0_pp = 1.20f,
+                .De_sigma = 85.0f,
+                .De_pi = 120.0f,
+                .De_pp = 160.0f};
+            constants::reaxParams[7] = {
+                .p_boc1 = 2.0f, .p_boc2 = 6.5f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.18f, .p_bo2 = 6.0f, // sigma
+                .p_bo3 = -0.18f,
+                .p_bo4 = 7.0f, // pi
+                .p_bo5 = -0.18f,
+                .p_bo6 = 7.0f, // pp
+                .r0_sigma = 1.45f,
+                .r0_pi = 1.30f,
+                .r0_pp = 1.10f,
+                .De_sigma = 40.0f,
+                .De_pi = 100.0f,
+                .De_pp = 150.0f};
+            constants::reaxParams[8] = {
+                .p_boc1 = 2.0f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.5f, .p_boc5 = 7.0f, .p_bo1 = -0.15f, .p_bo2 = 6.5f, .p_bo3 = -0.15f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 1.45f, .r0_pi = 1.20f, .r0_pp = 0.0f, .De_sigma = 35.0f, .De_pi = 110.0f, .De_pp = 0.0f};
+            constants::reaxParams[9] = {
+                .p_boc1 = 3.0f, .p_boc2 = 7.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.15f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 1.35f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 110.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[11] = {
+                .p_boc1 = 1.0f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.08f, .p_bo2 = 7.5f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.30f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 20.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[12] = {
+                .p_boc1 = 1.2f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.1f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.20f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 30.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[13] = {
+                .p_boc1 = 1.5f, .p_boc2 = 7.5f, .p_boc3 = 7.5f, .p_boc4 = 8.0f, .p_boc5 = 7.5f, .p_bo1 = -0.12f, .p_bo2 = 6.5f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.60f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 70.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[14] = {
+                .p_boc1 = 1.8f, .p_boc2 = 6.8f, .p_boc3 = 6.8f, .p_boc4 = 7.5f, .p_boc5 = 6.8f, .p_bo1 = -0.15f, .p_bo2 = 6.0f, .p_bo3 = -0.15f, .p_bo4 = 6.5f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.35f, .r0_pi = 2.10f, .r0_pp = 0.0f, .De_sigma = 75.0f, .De_pi = 50.0f, .De_pp = 0.0f};
+            constants::reaxParams[15] = {
+                .p_boc1 = 2.0f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.16f, .p_bo2 = 6.5f, .p_bo3 = -0.16f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.20f, .r0_pi = 1.90f, .r0_pp = 0.0f, .De_sigma = 60.0f, .De_pi = 80.0f, .De_pp = 0.0f};
+            constants::reaxParams[16] = {
+                .p_boc1 = 1.8f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.15f, .p_bo2 = 6.5f, .p_bo3 = -0.15f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.05f, .r0_pi = 1.80f, .r0_pp = 0.0f, .De_sigma = 65.0f, .De_pi = 90.0f, .De_pp = 0.0f};
+            constants::reaxParams[17] = {
+                .p_boc1 = 2.5f, .p_boc2 = 7.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.14f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 1.80f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 60.0f, .De_pi = 0.0f, .De_pp = 0.0f};
+            constants::reaxParams[16] = {
+                .p_boc1 = 1.8f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.15f, .p_bo2 = 6.5f, .p_bo3 = -0.15f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.05f, .r0_pi = 1.80f, .r0_pp = 0.0f, .De_sigma = 65.0f, .De_pi = 90.0f, .De_pp = 0.0f};
+            constants::reaxParams[26] = {
+                .p_boc1 = 1.0f, .p_boc2 = 8.0f, .p_boc3 = 8.0f, .p_boc4 = 9.0f, .p_boc5 = 8.0f, .p_bo1 = -0.1f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.50f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 100.0f, .De_pi = 0.0f, .De_pp = 0.0f};
         }
 
         // loading and saving scenes

@@ -982,9 +982,9 @@ namespace sim
         }
 
         if (nAtoms.size() < 4) return;
-        const int32_t max_iters = 20 * static_cast<int32_t>(nAtoms.size());
+        const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
-        constexpr float   repulse     = 3.0f;
+        constexpr float   repulse     = 4.0f;
         constexpr float   k_spring    = 2.0f;
         constexpr float   convergence = 0.01f;
 
@@ -1006,7 +1006,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE);
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 2.f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;
