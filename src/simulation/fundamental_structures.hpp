@@ -52,6 +52,7 @@ namespace sim
         {
             size_t bondingAtomIdx;   
             size_t centralAtomIdx;  
+
             sim::fun::BondType type;
         };
 
@@ -95,7 +96,8 @@ namespace sim
             uint32_t bondedAtom; 
             uint32_t centralAtom; 
             
-            double equilibriumLength = 0.f;
+            float equilibriumLength = 0.f;
+            float k = 100.f;
             BondType type;
         };
 

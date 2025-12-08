@@ -111,7 +111,6 @@ namespace sim
             // Reactions
             float calculateUncorrectedBondOrder(size_t i, size_t j);
             void processReactivePair(size_t i, size_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
-            void assignCharges();
             void calcUnbondedForcesReactive();
             void handleReactiveForces();
 
@@ -156,7 +155,7 @@ namespace sim
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
             
-            std::unordered_map<size_t, reactive_bond> reactive_bonds;
+            std::vector<reactive_bond> reactive_bonds;
 
             // CellList
             std::vector<std::vector<size_t>> cells;

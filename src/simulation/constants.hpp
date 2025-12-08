@@ -31,8 +31,7 @@ namespace constants
 
 #define VERLET_SKIN 1.f
 #define CUTOFF 2.5f
-#define COULOMB_CUTOFF 12.f * MULT_FACTOR
-#define REACTION_CUTOFF 5.f * MULT_FACTOR
+#define COULOMB_CUTOFF 11.f * MULT_FACTOR
 
 #define CELL_CUTOFF COULOMB_CUTOFF + VERLET_SKIN
 
@@ -49,10 +48,9 @@ namespace constants
 #define BOND_LENGTH_FACTOR 1.f
 
 #define REACTION_INTERVAL 3 // time steps
-#define REACTION_STRETCH_FACTOR 1.5f
-#define REACTION_FORMING_FACTOR 1.3f
-#define REACTION_CUT_BO 0.2f
-#define REACTION_BO_THRESHOLD 0.3f 
+#define REACTION_CUTOFF 10.f * MULT_FACTOR
+#define REACTION_UPDATE_Q 1
+#define REACTION_CUT_BO 0.3f
 
 #define COUNT_ATOMS 118
 
@@ -333,8 +331,18 @@ namespace constants
     {
         float p_boc1, p_boc2, p_boc3, p_boc4, p_boc5;  // For corrections
         float p_bo1, p_bo2, p_bo3, p_bo4, p_bo5, p_bo6;  // Exponents for sigma/pi/pp
+        float p_be1 = 0.f, p_be2 = 10.f;
         float r0_sigma, r0_pi, r0_pp;  // Equilibrium distances
         float De_sigma, De_pi, De_pp;  // Dissociation energies
+
+        float gamma;      // shielding (Å⁻¹)
+        float r_vdw;      // van der Waals radius (Å)
+        float D_vdw;     // van der Waals depth (kcal/mol)
+    };
+
+    struct PairReaxParams 
+    {
+        float De_sigma, De_pi, De_pp;
     };
 
     static std::map<uint8_t, ReaxParams> reaxParams;
@@ -345,6 +353,17 @@ namespace constants
             return reaxParams[6];
 
         return reaxParams[Z];
+    }
+
+    static PairReaxParams getPairReaxParams(uint8_t Zi, uint8_t Zj) 
+    {
+        const auto& pi = constants::getParams(Zi);
+        const auto& pj = constants::getParams(Zj);
+        PairReaxParams p;
+        p.De_sigma = std::sqrt(pi.De_sigma * pj.De_sigma);
+        p.De_pi    = std::sqrt(pi.De_pi    * pj.De_pi);
+        p.De_pp    = std::sqrt(pi.De_pp    * pj.De_pp);
+        return p;
     }
 
     inline uint8_t getUsualBonds(uint8_t ZIndex)
@@ -397,6 +416,11 @@ namespace constants
 
         // Final clamp
         return (bonds > 8) ? 4 : bonds;
+    }
+
+    inline float lonePairsBO(uint8_t ZIndex, float BO)
+    {
+        return (getValenceElectrons(ZIndex) - BO) / 2;
     }
 
     inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t> &neighborZs, const std::vector<sim::fun::BondType> &types)
@@ -973,6 +997,42 @@ namespace constants
         }
 
         return base;  // J/mol
+    }
+
+    inline float getAngleHarmonicConstant(uint8_t ZA, uint8_t ZB, uint8_t ZC)
+    {
+        float K = 100.f;
+
+        if (ZB == 6)
+        {
+            if (ZA == 1 && ZC == 1) K = 74.0f;   // H–C–H   (sp³)
+            if (ZA == 6 && ZC == 6) K = 126.0f;  // C–C–C   (alkane)
+            if (ZA == 6 && ZC == 1) K = 90.0f;   // C–C–H
+            if (ZA == 8 && ZC == 8) K = 140.0f;  // O–C–O   (carbonyl)
+            if (ZA == 7 && ZC == 7) K = 130.0f;  // N–C–N
+        }
+        if (ZB == 7)
+        {
+            if (ZA == 1 && ZC == 1) K = 88.0f;   // H–N–H   (ammonia)
+            if (ZA == 6 && ZC == 6) K = 110.0f;  // C–N–C
+        }
+        if (ZB == 8)
+        {
+            if (ZA == 1 && ZC == 1) K = 110.0f;  // H–O–H   (water)
+            if (ZA == 6 && ZC == 6) K = 130.0f;  // C–O–C   (ether)
+            K = 120.0f;
+        }
+        if (ZB == 15)
+        {
+            K = 120.0f;                          // P in phosphates
+        }
+        if (ZB == 16)
+        {
+            if (ZA == 8 && ZC == 8) K = 160.0f;  // O–S–O   (sulfate)
+            K = 140.0f;
+        }
+
+        return K * 1000.f;
     }
 
     inline float getBondHarmonicConstantFromEnergy(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)

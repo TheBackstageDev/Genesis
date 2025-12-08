@@ -34,8 +34,8 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 40.f;
-    sim::fun::universe universe(universeSize, 13.f, false);
+    size_t universeSize = 12.f;
+    sim::fun::universe universe(universeSize, 13.f, true);
 
     window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
     {
@@ -49,16 +49,28 @@ int main()
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
 
     auto water = sim::parseSMILES("O"); 
-    auto benzene = sim::parseSMILES("c1ccccc1");  
+    auto benzene = sim::parseSMILES("C1CCCCC1");  
     auto HydrochloricAcid = sim::parseSMILES("[Cl-].[H+]");  
-    auto stuff = sim::parseSMILES("O=C(O)[C@@H]3[C@@H](O)C[C@@]2(O)C[C@@H](O)C[C@@H](O)[C@H](O)CC[C@@H](O)C[C@@H](O)CC(=O)O[C@@H](C)[C@H](C)[C@H](O)[C@@H](C)C=CC=CC=CC=CC=CC=CC=C[C@H](O[C@@H]1O[C@H](C)[C@@H](O)[C@H](N)[C@@H]1O)C[C@@H]3O2");
-    auto stuff2 = sim::parseSMILES("C(F)12C(F)3C(F)4C(F)1C(F)5C(F)4C(F)3C(F)25");  
+    auto Amonia = sim::parseSMILES("N");  
+    auto Methane = sim::parseSMILES("C");  
+    auto stuff = sim::parseSMILES("N[C@@H](CCCNC(N)=N)C(=O)N1CCC[C@H]1C(=O)N2CCC[C@H]2C(=O)NC(CC3=CC=CC=C3)C(=O)NC(CC4=CC=CC=C4)C(=O)N[C@@H](CO)C(=O)N5CCC[C@H]5C(=O)N[C@@H](CC6=CC=CC=C6)C(=O)N[C@@H](CCCNC(N)=N)C(=O)O");
+    auto stuff2 = sim::parseSMILES("OC(=O)CC(O)(C(=O)O)CC(=O)O");  
 
-    //universe.createMolecule(HydrochloricAcid, {6, 5, 5}, {0.f, 0.f, 0.f});
-    //universe.createMolecule(water, {6, 2, 5}, {0.f, 0.1f, 0.f});
-    universe.createMolecule(stuff, {20, 20, 20}, {0.f, 0.f, 0.f});
-    //universe.createMolecule(stuff, {10, 10, 10}, {0.f, 0.f, 0.f});
-    //universe.createMolecule(benzene, {15, 15, 15}, {0.f, 0.f, 0.f});
+    auto H2 = sim::parseSMILES("HH"); 
+    auto O2 = sim::parseSMILES("O=O"); 
+    auto CO = sim::parseSMILES("[C-]#[O+]"); 
+
+    //universe.createMolecule(water, {5, 5, 5}, {0.f, 0.1f, 0.f});
+    universe.createMolecule(benzene, {5, 8, 5}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(HydrochloricAcid, {5, 8, 5}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(Amonia, {5, 12, 5}, {0.f, -0.1f, 0.f});
+    //universe.createMolecule(Methane, {5, 12, 5}, {0.f, -0.1f, 0.f});
+    //universe.createMolecule(O2, {5, 5, 5}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(H2, {3, 7, 5}, {0.f, -0.1f, 0.f});
+    //universe.createMolecule(H2, {7, 7, 5}, {0.f, -0.1f, 0.f});
+    //universe.createMolecule(stuff, {20, 20, 20}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(stuff2, {10, 10, 10}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(CO, {5, 5, 5}, {0.f, 0.f, 0.f});
 
     /* molecule_structure mol{};
     auto dna = sim::io::loadXYZ("src/resource/protein.xyz", mol.atoms, mol.bonds, mol.positions);
@@ -127,7 +139,7 @@ int main()
             auto end_time = std::chrono::steady_clock::now();
             auto duration = end_time - start_time;
             double delta_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            //std::cout << delta_time_ms << "ms" << std::endl;
+            std::cout << delta_time_ms << "ms" << std::endl;
         }
 
         if (window.stepFrame())

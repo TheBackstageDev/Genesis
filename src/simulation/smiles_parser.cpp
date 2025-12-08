@@ -397,7 +397,7 @@ namespace sim
                     ang.B = B;
                     ang.C = neigh[j];
                     ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
-                    ang.K   = ANGLE_K;
+                    ang.K   = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
                     angles.push_back(ang);
                 }
             }
@@ -984,8 +984,8 @@ namespace sim
         if (nAtoms.size() < 4) return;
         const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
-        constexpr float   repulse     = 4.0f;
-        constexpr float   k_spring    = 2.0f;
+        constexpr float   repulse     = 3.2f;
+        constexpr float   k_spring    = 5.0f;
         constexpr float   convergence = 0.01f;
 
         for (int32_t it = 0; it < max_iters; ++it)
