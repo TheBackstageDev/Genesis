@@ -12,12 +12,15 @@
 
 #include <algorithm>
 
-float targetTemp = 100.0f;
+float targetTemp = 83.8058f;
+float targetPressure = 0.f;
 
 void displayUI(core::window_t& window, sim::fun::universe& universe)
 {
     ImGui::Begin("Genesis Engine");
     ImGui::DragFloat("Target Temp (K)", &targetTemp, 0.1f, 1.f, 12000.f);
+    ImGui::DragFloat("Target Pressure (Bar)", &targetPressure, 0.1f, 0.f, 12000.f);
+    ImGui::Text("Current Pressure: %.1f Bar", universe.pressure());
     ImGui::Text("Current Temp: %.1f K", universe.temperature());
     ImGui::Text("Atoms: %zu", universe.numAtoms());
     ImGui::Text("Bonds: %zu", universe.numBonds());
@@ -34,8 +37,17 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 12.f;
-    sim::fun::universe universe(universeSize, 13.f, true);
+    size_t universeSize = 20.f;
+    sf::Vector3f box(universeSize, universeSize, universeSize);
+
+    sim::fun::universe_create_info create_info{};
+    create_info.has_gravity = true;
+    create_info.reactive = false;
+    create_info.wall_collision = true;
+    create_info.mag_gravity = 9.8f;
+    create_info.box = box;
+
+    sim::fun::universe universe(create_info);
 
     window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
     {
@@ -48,8 +60,8 @@ int main()
     std::uniform_real_distribution<> dis(2.f, universeSize - 2.f); 
     std::uniform_real_distribution<> ve(-5.f, 5.f); 
 
-    auto water = sim::parseSMILES("O"); 
-    auto benzene = sim::parseSMILES("C1CCCCC1");  
+    auto water = sim::parseSMILES("Ar"); 
+    auto benzene = sim::parseSMILES("c1ccccc1");  
     auto HydrochloricAcid = sim::parseSMILES("[Cl-].[H+]");  
     auto Amonia = sim::parseSMILES("N");  
     auto Methane = sim::parseSMILES("C");  
@@ -60,8 +72,8 @@ int main()
     auto O2 = sim::parseSMILES("O=O"); 
     auto CO = sim::parseSMILES("[C-]#[O+]"); 
 
-    //universe.createMolecule(water, {5, 5, 5}, {0.f, 0.1f, 0.f});
-    universe.createMolecule(benzene, {5, 8, 5}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(water, {3, 3, 3}, {0.f, 0.1f, 0.f});
+    //universe.createMolecule(benzene, {5, 8, 5}, {0.f, 0.f, 0.f});
     //universe.createMolecule(HydrochloricAcid, {5, 8, 5}, {0.f, 0.f, 0.f});
     //universe.createMolecule(Amonia, {5, 12, 5}, {0.f, -0.1f, 0.f});
     //universe.createMolecule(Methane, {5, 12, 5}, {0.f, -0.1f, 0.f});
@@ -79,8 +91,8 @@ int main()
 
     universe.createMolecule(mol, {20, 20, 20}, {0.f, 0.f, 0.0f}); */
 
-    size_t count = 0;
-    float minDistance = 4.f;
+    size_t count = 70;
+    float minDistance = 3.f;
 
     std::vector<sf::Vector3f> centers{universe.positions()};
 
@@ -135,7 +147,7 @@ int main()
         if (!window.isPaused())
         {
             auto start_time = std::chrono::steady_clock::now();
-            universe.update(targetTemp);
+            universe.update(targetTemp, targetPressure);
             auto end_time = std::chrono::steady_clock::now();
             auto duration = end_time - start_time;
             double delta_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -144,7 +156,7 @@ int main()
 
         if (window.stepFrame())
         {
-            universe.update(targetTemp);
+            universe.update(targetTemp, targetPressure);
             drawCharge = !drawCharge;
         }
 

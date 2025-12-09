@@ -22,25 +22,27 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.001f // ps
+#define DT 0.002f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
 
 #define JOULE_TO_CAL 1/4.164f
+#define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
 #define VERLET_SKIN 1.f
 #define CUTOFF 2.5f
-#define COULOMB_CUTOFF 11.f * MULT_FACTOR
+#define COULOMB_CUTOFF 12.f * MULT_FACTOR
 
-#define CELL_CUTOFF COULOMB_CUTOFF + VERLET_SKIN
+#define CELL_CUTOFF 10 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
 
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 2
+#define THERMOSTAT_INTERVAL 5
+#define BAROSTAT_INTERVAL 5
 
 #define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 340000.f        // Harmonic force constant
@@ -165,7 +167,7 @@ namespace constants
             case 15: return sf::Color(255, 165,   0);    // P  - Phosphorus   (Orange)
             case 16: return sf::Color(200, 200,   1);    // S  - Sulfur       (Yellow)
             case 17: return sf::Color( 50, 205,  50);    // Cl - Chlorine     (Green)
-            case 18: return sf::Color(128, 128, 128);    // Ar - Argon        (Dark Gray)
+            case 18: return sf::Color(115, 3, 192);    // Ar - Argon        (Dark Purple)
             case 19: return sf::Color(160,  82,  45);    // K  - Potassium    (Brown)
             case 20: return sf::Color(135, 206, 235);    // Ca - Calcium      (Sky Blue)
             case 21: return sf::Color(108, 108, 100);    // Sc - Scandium     (Gray)

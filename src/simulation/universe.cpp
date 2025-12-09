@@ -5,6 +5,7 @@
 #include <numeric>
 #include <unordered_set>
 #include <queue>
+#include <fstream>
 
 #include "constants.hpp"
 
@@ -13,11 +14,12 @@ namespace sim
     namespace fun
     {
 
-        universe::universe(float universeSize, float cell_size, bool react)
-            : boxSize(universeSize), cell_size(cell_size), react(react)
+        universe::universe(universe_create_info& create_info)
+            : box(create_info.box), react(create_info.reactive), 
+            gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
+            wall_collision(create_info.wall_collision), isothermal(create_info.isothermal)
         {
-            if (react)
-                initReaxParams();
+            if (react) initReaxParams();
         }
 
         universe::universe(const std::filesystem::path path)
@@ -28,13 +30,13 @@ namespace sim
         {
             const std::array<sf::Vector3f, 8> corners =
                 {{{0.f, 0.f, 0.f},
-                  {boxSize, 0.f, 0.f},
-                  {boxSize, boxSize, 0.f},
-                  {0.f, boxSize, 0.f},
-                  {0.f, 0.f, boxSize},
-                  {boxSize, 0.f, boxSize},
-                  {boxSize, boxSize, boxSize},
-                  {0.f, boxSize, boxSize}}};
+                  {box.x, 0.f, 0.f},
+                  {box.x, box.y, 0.f},
+                  {0.f, box.y, 0.f},
+                  {0.f, 0.f, box.z},
+                  {box.x, 0.f, box.z},
+                  {box.x, box.y, box.z},
+                  {0.f, box.y, box.z}}};
 
             const std::array<std::pair<int, int>, 12> edges =
                 {{
@@ -129,7 +131,7 @@ namespace sim
             states.blendMode = sf::BlendAlpha;
 
             constexpr int32_t GRID = 50;
-            float step = boxSize / GRID;
+            float step = box.length() / GRID;
 
             const float isovalue_pos = 1.f;
             const float isovalue_neg = -1.f;
@@ -427,13 +429,13 @@ namespace sim
             constexpr float WEAK_ENERGY = -5.0f;
 
             sf::Vector3f p = pos(H);
-            p.x -= boxSize * std::floor(p.x * (1.0f / boxSize));
-            p.y -= boxSize * std::floor(p.y * (1.0f / boxSize));
-            p.z -= boxSize * std::floor(p.z * (1.0f / boxSize));
+            p.x -= box.x * std::floor(p.x * (1.0f / box.x));
+            p.y -= box.y * std::floor(p.y * (1.0f / box.y));
+            p.z -= box.z * std::floor(p.z * (1.0f / box.z));
 
-            int32_t ix = static_cast<int32_t>(p.x * 1 / cell_size);
-            int32_t iy = static_cast<int32_t>(p.y * 1 / cell_size);
-            int32_t iz = static_cast<int32_t>(p.z * 1 / cell_size);
+            int32_t ix = static_cast<int32_t>(p.x * 1 / box.x);
+            int32_t iy = static_cast<int32_t>(p.y * 1 / box.y);
+            int32_t iz = static_cast<int32_t>(p.z * 1 / box.z);
 
             ix = ix >= static_cast<int32_t>(cx) ? static_cast<int32_t>(cx) - 1 : ix;
             iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy) - 1 : iy;
@@ -520,7 +522,7 @@ namespace sim
 
         void universe::drawDebug(core::window_t &window)
         {
-            if (cx == 0 || cell_size <= 0.f)
+            if (cx == 0 || box.x <= 0.f)
                 return;
 
             sf::VertexArray grid(sf::PrimitiveType::Lines, 0);
@@ -540,12 +542,12 @@ namespace sim
 
                         sf::Color color = has_atoms ? hotColor : cellColor;
 
-                        float x0 = ix * cell_size;
-                        float y0 = iy * cell_size;
-                        float z0 = iz * cell_size;
-                        float x1 = x0 + cell_size;
-                        float y1 = y0 + cell_size;
-                        float z1 = z0 + cell_size;
+                        float x0 = ix * box.x;
+                        float y0 = iy * box.y;
+                        float z0 = iz * box.z;
+                        float x1 = x0 + box.x;
+                        float y1 = y0 + box.y;
+                        float z1 = z0 + box.z;
 
                         // 8 corners of the cell
                         std::array<sf::Vector3f, 8> c = {{{x0, y0, z0}, {x1, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}}};
@@ -869,9 +871,49 @@ namespace sim
 
         void universe::boundCheck(size_t i)
         {
-            data.x[i] = std::fmod(data.x[i] + boxSize, boxSize);
-            data.y[i] = std::fmod(data.y[i] + boxSize, boxSize);
-            data.z[i] = std::fmod(data.z[i] + boxSize, boxSize);
+            float& x = data.x[i];
+            float& y = data.y[i];
+            float& z = data.z[i];
+
+            float& vx = data.vx[i];
+            float& vy = data.vy[i];
+            float& vz = data.vz[i];
+
+            if (wall_collision)
+            {
+                if (x < 0.0f) {
+                    x = 0.0f;
+                    vx = -vx;
+                }
+                else if (x > box.x) {
+                    x = box.x;
+                    vx = -vx;
+                }
+
+                if (y < 0.0f) {
+                    y = 0.0f;
+                    vy = -vy;
+                }
+                else if (y > box.y) {
+                    y = box.y;
+                    vy = -vy;
+                }
+
+                if (z < 0.0f) {
+                    z = 0.0f;
+                    vz = -vz;
+                }
+                else if (z > box.z) {
+                    z = box.z;
+                    vz = -vz;
+                }
+            }
+            else
+            {
+                x = std::fmod(std::fmod(x, box.x) + box.x, box.x);
+                y = std::fmod(std::fmod(y, box.y) + box.y, box.y);
+                z = std::fmod(std::fmod(z, box.z) + box.z, box.z);
+            }
         }
 
         float universe::ljPot(size_t i, size_t j)
@@ -1214,7 +1256,7 @@ namespace sim
 
         void universe::calcUnbondedForces()
         {
-            //size_t count = 0;
+            size_t count = 0;
             for (size_t ix = 0; ix < cx; ++ix)
                 for (size_t iy = 0; iy < cy; ++iy)
                     for (size_t iz = 0; iz < cz; ++iz)
@@ -1236,7 +1278,7 @@ namespace sim
 
                                 if (areBonded(i, j)) continue;
 
-                                //++count;
+                                ++count;
 
                                 sf::Vector3f cForce = coulombForce(i, j, dr);
                                 sf::Vector3f lForce = ljForce(i, j);
@@ -1244,12 +1286,16 @@ namespace sim
                                 sf::Vector3f total_force = cForce + lForce;
                                 add_force(i, total_force);
                                 add_force(j, -total_force);
+
+                                total_virial += dr.x * total_force.x +
+                                    dr.y * total_force.y +
+                                    dr.z * total_force.z;
                             }
                         }
 
-                        for (int32_t dz = -1; dz <= 1; ++dz)
+                        for (int32_t dx = 0; dx <= 1; ++dx)
                         for (int32_t dy = -1; dy <= 1; ++dy)
-                        for (int32_t dx = -1; dx <= 1; ++dx)
+                        for (int32_t dz = -1; dz <= 1; ++dz)
                         {
                             if (dx == 0 && dy == 0 && dz == 0) continue;
 
@@ -1259,7 +1305,7 @@ namespace sim
                             if (neighbor_id == cell_id) continue;
 
                             const auto& neighbor_cell = cells[neighbor_id];
-
+                            
                             for (size_t ii = 0; ii < cell.size(); ++ii)
                             {
                                 size_t i = cell[ii];
@@ -1276,7 +1322,7 @@ namespace sim
                                     if (r > CELL_CUTOFF) continue;
                                     if (areBonded(i, j)) continue;
                                     
-                                    //++count;
+                                    ++count;
 
                                     sf::Vector3f cForce = coulombForce(i, j, dr);
                                     sf::Vector3f lForce = ljForce(i, j);
@@ -1284,12 +1330,16 @@ namespace sim
                                     sf::Vector3f total_force = cForce + lForce;
                                     add_force(i, total_force);
                                     add_force(j, -total_force);
+
+                                    total_virial += dr.x * total_force.x +
+                                        dr.y * total_force.y +
+                                        dr.z * total_force.z;
                                 }
                             }
                         }
                     }
 
-            //std::cout << "Non Bonded Calcs: " << count << std::endl;
+            std::cout << "Non Bonded Calcs: " << count << std::endl;
         }
 
         std::vector<float> total_bo{};
@@ -1622,7 +1672,7 @@ namespace sim
             }
         }
 
-        void universe::update(float targetTemperature)
+        void universe::update(float targetTemperature, float targetPressure)
         {
             data.old_fx.resize(atoms.size());
             data.old_fy.resize(atoms.size());
@@ -1656,6 +1706,8 @@ namespace sim
             std::fill(data.fy.begin(), data.fy.end(), 0.f);
             std::fill(data.fz.begin(), data.fz.end(), 0.f);
 
+            total_virial = 0.0f;
+
             if (!react)
             {
                 calcBondedForces();
@@ -1668,18 +1720,68 @@ namespace sim
             {
                 sf::Vector3f accel = (old_force(i) + force(i)) * (0.5f * DT / atoms[i].mass);
                 add_vel(i, accel);
+
+                if (gravity) add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * DT));
             }
 
             buildCells();
             setTemperature(targetTemperature);
+            setPressure(targetPressure);
 
             ++timeStep;
         }
 
+        float universe::calculatePressure()
+        {
+            if (atoms.empty()) return 0.f;
+
+            float kinetic = calculateKineticEnergy();
+            float volume = box.x * box.y * box.z;
+            float temperature = (2.0f / 3.0f) * kinetic / atoms.size();
+
+            float P_ideal = atoms.size() * temperature / volume;
+
+            float P_virial = -total_virial / (3.0f * volume);
+
+            float pressure = P_ideal + P_virial;
+            return pressure;
+        }
+
+        void universe::setPressure(float Target_P_Bar)
+        {
+            if (Target_P_Bar <= 0.0f) return;
+            if (timeStep % BAROSTAT_INTERVAL != 0) return;
+
+            constexpr float beta_T = 4.5e-5f;
+            constexpr float tau_P  = 1.0f;
+
+            pres = calculatePressure();
+
+            float delta_P = Target_P_Bar - pres;
+            float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
+            
+            if (mu < 0.9f) mu = 0.9f;
+            if (mu > 1.1f) mu = 1.1f;
+
+            float scale = std::cbrt(mu);
+
+            box.x *= scale;
+            box.y *= scale;
+            box.z *= scale;
+
+            for (size_t i = 0; i < atoms.size(); ++i)
+            {
+                data.x[i] *= scale;
+                data.y[i] *= scale;
+                data.z[i] *= scale;
+            }
+        }
+
         void universe::setTemperature(float kelvin)
         {
-            if (timeStep % THERMOSTAT_INTERVAL == 0)
-            {
+            if (timeStep % THERMOSTAT_INTERVAL != 0)
+                return;
+
                 float avg_KE = calculateKineticEnergy() / atoms.size();
                 temp = (2.0f / 3.0f) * (avg_KE * KB);
                 float lambda = sqrtf(kelvin / (temp + 1e-5f));
@@ -1696,7 +1798,6 @@ namespace sim
                     data.vy[i] *= lambda;
                     data.vz[i] *= lambda;
                 }
-            }
         }
 
         // Energy Calculation
@@ -1712,11 +1813,11 @@ namespace sim
         void universe::buildCells()
         {
             const float cutoff = react ? REACTION_CUTOFF : CELL_CUTOFF;
-            if ((cutoff - cell_size) > EPSILON || timeStep == 0)
+            if ((cutoff - box.x) > EPSILON || timeStep == 0)
             {
-                cx = static_cast<size_t>(std::ceil(boxSize / cell_size));
-                cy = cx;
-                cz = cx;
+                cx = static_cast<size_t>(std::ceil(cutoff / box.x));
+                cy = static_cast<size_t>(std::ceil(cutoff / box.y));
+                cz = static_cast<size_t>(std::ceil(cutoff / box.z));
             }
 
             size_t ncells = cx * cy * cz;
@@ -1726,14 +1827,14 @@ namespace sim
                 for (auto &c : cells)
                     c.clear();
 
-            const float inv = 1.0f / cell_size;
+            const float inv = 1.0f / box.x;
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 sf::Vector3f p = pos(i);
-                p.x -= boxSize * std::floor(p.x / boxSize);
-                p.y -= boxSize * std::floor(p.y / boxSize);
-                p.z -= boxSize * std::floor(p.z / boxSize);
+                p.x -= cutoff * std::floor(p.x / cutoff);
+                p.y -= cutoff * std::floor(p.y / cutoff);
+                p.z -= cutoff * std::floor(p.z / cutoff);
 
                 int32_t ix = static_cast<int32_t>(p.x * inv);
                 int32_t iy = static_cast<int32_t>(p.y * inv);
@@ -1863,25 +1964,46 @@ namespace sim
         void universe::initReaxParams()
         {
             constants::reaxParams[1] = {
-                .p_boc1 = 1.2f,     .p_boc2 = 6.5f,    .p_boc3 = 0.0f,    .p_boc4 = 0.0f,    .p_boc5 = 0.0f,
-                .p_bo1  = -0.10f,   .p_bo2  = 6.0f,    .p_bo3  = -0.10f,  .p_bo4  = 6.0f,    .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1    = 0.0f,   .p_be2 = 1.0f,
-                .r0_sigma = 0.74f, .r0_pi = 0.00f,   .r0_pp = 0.00f,
-                .De_sigma = 109.0f, .De_pi = 0.0f,    .De_pp = 0.0f,
-                .gamma    = 1.00f,  .r_vdw = 1.85f,   .D_vdw = 0.015f,
+                .p_boc1 = 6.500f,
+                .p_boc2 = 6.500f,
+                .p_boc3 = 0.000f,
+                .p_boc4 = 0.000f,
+                .p_boc5 = 0.000f,
+
+                .p_bo1  = -0.040f,
+                .p_bo2  = 5.000f,
+                .p_bo3  = -0.040f,
+                .p_bo4  = 5.000f,
+                .p_bo5  =  0.000f,
+                .p_bo6  =  0.000f,
+
+                .p_be1  =  0.000f,
+                .p_be2  =  1.000f,
+
+                .r0_sigma = 0.960f,
+
+                .r0_pi    = 0.000f,
+                .r0_pp    = 0.000f,
+
+                .De_sigma = 103.50f,
+                .De_pi    =   0.0f,
+                .De_pp    =   0.0f,
+                
+                .gamma    = 1.100f,
+                .r_vdw    = 1.850f,
+                .D_vdw    = 0.015f,
             };
 
-            // C (Z = 6) – well-tested values from many ReaxFF papers
             constants::reaxParams[6] = {
-                .p_boc1 = 1.54f,   .p_boc2 = 6.5f,    .p_boc3 = 1.057f,  .p_boc4 = 1.0f,    .p_boc5 = 6.5f,
-                .p_bo1  = -0.20f,  .p_bo2  = 5.0f,    .p_bo3  = -0.10f,  .p_bo4  = 8.0f,    .p_bo5 = -0.20f, .p_bo6 = 6.0f,
-                .p_be1    = 0.0f,  .p_be2 = 1.0f,
-                .r0_sigma = 1.515f,.r0_pi = 1.350f,  .r0_pp = 1.200f,
-                .De_sigma = 95.0f, .De_pi = 115.0f,  .De_pp = 10.0f,
-                .gamma    = 1.60f, .r_vdw = 1.992f,  .D_vdw = 0.004f,
+                .p_boc1 = 1.540f,  .p_boc2 = 6.500f,
+                .p_bo1  = -0.200f, .p_bo2  = 5.000f,
+                .p_bo3  = -0.100f, .p_bo4  = 8.000f,
+                .p_bo5  = -0.200f, .p_bo6  = 6.000f,
+                .r0_sigma = 1.515f, .r0_pi = 1.350f, .r0_pp = 1.200f,
+                .De_sigma = 95.0f, .De_pi = 115.0f, .De_pp = 10.0f,
+                .gamma = 1.60f, .r_vdw = 1.992f, .D_vdw = 0.006f,
             };
 
-            // N (Z = 7)
             constants::reaxParams[7] = {
                 .p_boc1 = 2.0f,    .p_boc2 = 6.5f,    .p_boc3 = 1.2f,    .p_boc4 = 1.5f,    .p_boc5 = 7.0f,
                 .p_bo1  = -0.18f,  .p_bo2  = 6.0f,    .p_bo3  = -0.18f,  .p_bo4  = 7.0f,    .p_bo5 = -0.18f, .p_bo6 = 7.0f,
@@ -1992,10 +2114,24 @@ namespace sim
         void universe::saveScene(const std::filesystem::path path)
         {
             nlohmann::json scene{};
+
+            
         }
 
         void universe::loadScene(const std::filesystem::path path)
         {
+            nlohmann::json nScene{};
+
+            std::ifstream file(path);
+            if (!file.is_open() || path.extension() != ".json") 
+            {
+                std::cerr << "[Simulation] Cannot open: " << path << '\n';
+                return;
+            }
+
+            file >> nScene;
+
+            
         }
     } // namespace fun
 } // namespace sim

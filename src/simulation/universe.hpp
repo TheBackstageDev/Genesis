@@ -16,7 +16,7 @@ namespace sim
             alignas(32) std::vector<float> vx, vy, vz;
             alignas(32) std::vector<float> fx, fy, fz;
             alignas(32) std::vector<float> old_fx, old_fy, old_fz;
-            alignas(32) std::vector<float> q, bond_orders;
+            alignas(32) std::vector<float> q, bond_orders, temperature;
         };
 
         constexpr int32_t offsets[14][3] = 
@@ -26,10 +26,21 @@ namespace sim
             {1,-1,1}, {0,-1,1}, {-1,-1,1}, {-1,0,0}
         };
 
+        struct universe_create_info
+        {
+            bool has_gravity = false;
+            bool reactive = false;
+            bool wall_collision = false;
+            bool isothermal = true;
+
+            float mag_gravity = 9.8f;
+            sf::Vector3f box{CELL_CUTOFF, CELL_CUTOFF, CELL_CUTOFF};
+        };
+
         class universe
         {
         public:
-            universe(float universeSize = 10.f, float cell_size = CELL_CUTOFF, bool react = false);
+            universe(universe_create_info& create_info);
             universe(std::filesystem::path scene);
             ~universe() = default;
 
@@ -42,7 +53,7 @@ namespace sim
 
             void linkSubset(size_t subset, size_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
-            void update(float targetTemperature = 1.0f);
+            void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
             void draw(core::window_t &window, bool letter = false, bool lennardBall = true);
             void drawHydrogenBond(core::window_t& window, size_t H);
             void drawBonds(core::window_t& window);
@@ -65,6 +76,7 @@ namespace sim
             const subset& getSubset(size_t index) { return subsets[index]; }
 
             float temperature() const { return temp; }
+            float pressure() const { return pres; }
             float timestep() const { return timeStep; }
 
             _NODISCARD std::vector<sf::Vector3f> positions() const 
@@ -100,6 +112,8 @@ namespace sim
             void calcBondedForces();
             void calcUnbondedForces();
 
+            float calculatePressure();
+            void setPressure(float bar = 100);
             void setTemperature(float kelvin = 0.f);
             float calculateDihedral(const sf::Vector3f& pa, const sf::Vector3f& pb, const sf::Vector3f& pc, const sf::Vector3f& pd);
 
@@ -113,8 +127,6 @@ namespace sim
             void processReactivePair(size_t i, size_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
             void calcUnbondedForcesReactive();
             void handleReactiveForces();
-
-            float boxSize = 10.f;
 
             simData data;
             std::vector<std::vector<uint64_t>> bondedBits;
@@ -160,7 +172,7 @@ namespace sim
             // CellList
             std::vector<std::vector<size_t>> cells;
 
-            float cell_size = 0.f;
+            sf::Vector3f box{0.f, 0.f, 0.f};
             size_t cx = 0, cy = 0, cz = 0; // cell dimensions
 
             void buildCells();
@@ -172,16 +184,19 @@ namespace sim
                 return static_cast<size_t>(ix + cx * (iy + cy * iz));
             }
 
+            float total_virial = 0.f;
             float temp = 0;
-            float neighbourInterval = 0.f;
+            float pres = 0;
             size_t timeStep = 0;
 
             // Helper Funcs
             sf::Vector3f minImageVec(sf::Vector3f dr)
             {
-                dr.x -= boxSize * std::round(dr.x / boxSize);
-                dr.y -= boxSize * std::round(dr.y / boxSize);
-                dr.z -= boxSize * std::round(dr.z / boxSize);
+                if (wall_collision) return dr;
+
+                dr.x -= box.x * std::round(dr.x / box.x);
+                dr.y -= box.y * std::round(dr.y / box.y);
+                dr.z -= box.z * std::round(dr.z / box.z);
                 return dr;
             }
 
@@ -228,7 +243,12 @@ namespace sim
                 return SIZE_MAX;
             }
             
+            bool gravity = false;
             bool react = false;
+            bool isothermal = true;
+            bool wall_collision = false;
+
+            float mag_gravity = 9.8f;
 
             // Logging
             struct ReactionEvent 
