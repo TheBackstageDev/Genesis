@@ -3,6 +3,9 @@
 #include "fundamental_structures.hpp"
 #include <SFML/Graphics.hpp>
 
+#include <thread>
+#include <future>
+#include <atomic>
 #include <filesystem>
 #include <json.hpp>
 
@@ -32,6 +35,7 @@ namespace sim
             bool reactive = false;
             bool wall_collision = false;
             bool isothermal = true;
+            bool render_water = true;
 
             float mag_gravity = 9.8f;
             sf::Vector3f box{CELL_CUTOFF, CELL_CUTOFF, CELL_CUTOFF};
@@ -56,7 +60,7 @@ namespace sim
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
             void draw(core::window_t &window, bool letter = false, bool lennardBall = true);
             void drawHydrogenBond(core::window_t& window, size_t H);
-            void drawBonds(core::window_t& window);
+            void drawBonds(core::window_t& window, const std::vector<size_t>& no_draw);
             void drawReactiveBonds(core::window_t& window);
             void drawChargeField(core::window_t& window);
             void drawCylinder(core::window_t& window,
@@ -109,6 +113,9 @@ namespace sim
             void calcReactiveAngleForces();
             void calcLjForces();
             void calcElectrostaticForces();
+
+            void processCellUnbonded(size_t cellId);
+            void calcUnbondedForcesParallel();
             void calcBondedForces();
             void calcUnbondedForces();
 
@@ -184,7 +191,11 @@ namespace sim
                 return static_cast<size_t>(ix + cx * (iy + cy * iz));
             }
 
-            float total_virial = 0.f;
+            // multi-threading
+            std::vector<std::thread> workers;
+
+            std::atomic<float> total_virial{0.0f};
+            std::atomic<size_t> total_count{0};
             float temp = 0;
             float pres = 0;
             size_t timeStep = 0;
@@ -246,6 +257,7 @@ namespace sim
             bool gravity = false;
             bool react = false;
             bool isothermal = true;
+            bool render_water = true;
             bool wall_collision = false;
 
             float mag_gravity = 9.8f;

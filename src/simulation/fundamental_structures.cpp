@@ -49,10 +49,7 @@ namespace sim
             {
                 auto &font = window.getFont();
                 std::string name = constants::getAtomLetter(ZIndex);
-                sf::Text name_text;
-                name_text.setFont(font);
-                name_text.setString(name);
-                name_text.setCharacterSize(25.f);
+                sf::Text name_text(font, name, 25.f);
                 name_text.setScale({0.02f * rad, 0.02f * rad});
                 name_text.setFillColor({255,
                                         255,
@@ -67,10 +64,8 @@ namespace sim
                 // Charge
                 if (std::abs(q) > 1.f)
                 {
-                    sf::Text ion_text;
-                    ion_text.setFont(font);
-                    ion_text.setString(q > 0.0f ? "+" : "-");
-                    ion_text.setCharacterSize(14);
+                    sf::Text ion_text(font, q > 0.0f ? "+" : "-", 15.f);
+
                     ion_text.setScale({0.018f * rad, 0.018f * rad});
                     ion_text.setFillColor({255, 255, 255, static_cast<uint8_t>(alpha)});
 

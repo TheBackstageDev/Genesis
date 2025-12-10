@@ -829,6 +829,7 @@ namespace sim
         }
 
         // Hydrogen Placement
+        if (nSubsets.size() > 1)
         for (size_t s = 0; s < nSubsets.size(); ++s)
         {
             const def_subset &sub = nSubsets[s];
@@ -981,10 +982,41 @@ namespace sim
             }
         }
 
-        if (nAtoms.size() < 4) return;
+        const size_t nH = nSubsets[0].hydrogensIdx.size();
+
+        for (size_t i = 0; i < nH; ++i)
+        {
+            sf::Vector3f dir;
+
+            if (nH == 4)
+            {
+                const sf::Vector3f tetra[4] = {
+                    sf::Vector3f( 1,  1,  1).normalized(),
+                    sf::Vector3f( 1, -1, -1).normalized(),
+                    sf::Vector3f(-1,  1, -1).normalized(),
+                    sf::Vector3f(-1, -1,  1).normalized()
+                };
+                dir = tetra[i];
+            }
+            else
+            {
+                sf::Vector3f ref = (nH == 2) ? sf::Vector3f(1,0,0) : sf::Vector3f(0,0,1);
+
+                float angle = 2.0f * M_PI * i / nH;
+                dir = rotateDirection(ref, sf::Vector3f(0,0,1), angle);
+
+                float cosTheta = (nH == 2) ? std::cos(109.471f * RADIAN / 2.0f)
+                                        : std::cos(90.0f * RADIAN);
+                dir.z = (nH == 2) ? -std::sqrt(1.0f - cosTheta*cosTheta) : dir.z;
+                dir = dir.normalized();
+            }
+
+            positions[nSubsets[0].hydrogensIdx[i]] = positions[nSubsets[0].mainAtomIdx] + dir;
+        }
+
         const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
-        constexpr float   repulse     = 3.2f;
+        constexpr float   repulse     = 2.2f;
         constexpr float   k_spring    = 5.0f;
         constexpr float   convergence = 0.01f;
 
@@ -1006,7 +1038,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 2.f;
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.4f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;

@@ -14,12 +14,14 @@ namespace sim
     namespace fun
     {
 
-        universe::universe(universe_create_info& create_info)
-            : box(create_info.box), react(create_info.reactive), 
-            gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
-            wall_collision(create_info.wall_collision), isothermal(create_info.isothermal)
+        universe::universe(universe_create_info &create_info)
+            : box(create_info.box), react(create_info.reactive),
+              gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
+              wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
+              render_water(create_info.render_water)
         {
-            if (react) initReaxParams();
+            if (react)
+                initReaxParams();
         }
 
         universe::universe(const std::filesystem::path path)
@@ -93,13 +95,29 @@ namespace sim
 
             drawBox(window);
 
+            std::vector<size_t> no_draw{};
+
+            if (!render_water)
+                for (auto &m : molecules)
+                {
+                    if (m.water)
+                    {
+                        no_draw.emplace_back(m.atomIdx[0]);
+                        no_draw.emplace_back(m.atomIdx[1]);
+                        no_draw.emplace_back(m.atomIdx[2]);
+                    }
+                }
+
             if (!react)
-                drawBonds(window);
+                drawBonds(window, no_draw);
             else
                 drawReactiveBonds(window);
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
+                if (std::find(no_draw.begin(), no_draw.end(), drawOrder[i]) != no_draw.end())
+                    continue;
+
                 sf::Vector2f p = project(window, pos(drawOrder[i]));
                 if (p.x < -1000)
                     continue;
@@ -240,13 +258,16 @@ namespace sim
             window.getWindow().draw(billboards, states);
         }
 
-        void universe::drawBonds(core::window_t &window)
+        void universe::drawBonds(core::window_t &window, const std::vector<size_t> &no_draw)
         {
             sf::Vector2f dimensions = window.getWindow().getView().getSize();
 
             for (size_t b = 0; b < bonds.size(); ++b)
             {
                 const bond &bond = bonds[b];
+                if (std::find(no_draw.begin(), no_draw.end(), bond.centralAtom) != no_draw.end())
+                    continue;
+
                 const sf::Vector3f &pCentral = pos(bond.centralAtom); // pB
                 const sf::Vector3f &pBonded = pos(bond.bondedAtom);   // pA
 
@@ -768,6 +789,9 @@ namespace sim
                 rebuildBondTopology();
             }
 
+            if (structure.atoms.size() == 3 && structure.atoms[0].ZIndex == 8 && structure.atoms[1].ZIndex == 1 && structure.atoms[2].ZIndex == 1)
+                nMolecule.water = true;
+
             molecules.emplace_back(std::move(nMolecule));
         }
 
@@ -871,42 +895,52 @@ namespace sim
 
         void universe::boundCheck(size_t i)
         {
-            float& x = data.x[i];
-            float& y = data.y[i];
-            float& z = data.z[i];
+            float &x = data.x[i];
+            float &y = data.y[i];
+            float &z = data.z[i];
 
-            float& vx = data.vx[i];
-            float& vy = data.vy[i];
-            float& vz = data.vz[i];
+            float &vx = data.vx[i];
+            float &vy = data.vy[i];
+            float &vz = data.vz[i];
 
             if (wall_collision)
             {
-                if (x < 0.0f) {
+                if (x < 0.0f)
+                {
                     x = 0.0f;
                     vx = -vx;
                 }
-                else if (x > box.x) {
+                else if (x > box.x)
+                {
                     x = box.x;
                     vx = -vx;
                 }
 
-                if (y < 0.0f) {
+                if (y < 0.0f)
+                {
                     y = 0.0f;
                     vy = -vy;
                 }
-                else if (y > box.y) {
+                else if (y > box.y)
+                {
                     y = box.y;
                     vy = -vy;
                 }
 
-                if (z < 0.0f) {
+                if (z < 0.0f)
+                {
                     z = 0.0f;
                     vz = -vz;
                 }
-                else if (z > box.z) {
+                else if (z > box.z)
+                {
                     z = box.z;
                     vz = -vz;
                 }
+
+                vx *= 0.99f;
+                vy *= 0.99f;
+                vz *= 0.99f;
             }
             else
             {
@@ -1011,7 +1045,8 @@ namespace sim
                 size_t idx2 = bond.centralAtom;
                 sf::Vector3f r_vec = minImageVec(pos(idx2) - pos(idx1));
                 float dr = r_vec.length();
-                if (dr <= EPSILON) continue;
+                if (dr <= EPSILON)
+                    continue;
 
                 float delta_r = dr - bond.equilibriumLength;
                 float force_magnitude = bond.k * delta_r;
@@ -1050,7 +1085,8 @@ namespace sim
                 float sin_theta = 1.0f - cos_theta * cos_theta;
                 sin_theta = std::max(sin_theta, 0.0f);
                 sin_theta = std::sqrt(sin_theta);
-                if (sin_theta < 1e-6f) sin_theta = 1e-6f;
+                if (sin_theta < 1e-6f)
+                    sin_theta = 1e-6f;
 
                 float theta = std::acos(cos_theta);
                 float delta_theta = theta - ang.rad;
@@ -1122,8 +1158,11 @@ namespace sim
             sf::Vector3f v2 = pc - pb;
             sf::Vector3f v3 = pd - pc;
 
-            sf::Vector3f n1 = v1.cross(v2).normalized();
-            sf::Vector3f n2 = v2.cross(v3).normalized();
+            sf::Vector3f n1 = v1.cross(v2);
+            sf::Vector3f n2 = v2.cross(v3);
+
+            n1 = n1.length() == 0.f ? sf::Vector3f{0.f, 0.f, 0.f} : n1.normalized();
+            n2 = n2.length() == 0.f ? sf::Vector3f{0.f, 0.f, 0.f} : n2.normalized();
 
             float cosPhi = std::clamp(n1.dot(n2), -1.f, 1.f);
             float phi = std::acos(cosPhi);
@@ -1172,7 +1211,7 @@ namespace sim
 
                 sf::Vector3f axis = (pc - pb).normalized();
 
-                sf::Vector3f rA = (pa - pb.normalized());
+                sf::Vector3f rA = (pa - (pb.length() > 0.f ? pb.normalized() : sf::Vector3f{0.f, 0.f, 0.f}));
                 sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_magnitude;
 
                 sf::Vector3f rD = (pd - pc).normalized();
@@ -1254,15 +1293,62 @@ namespace sim
             calcDihedralForces();
         }
 
+        void universe::processCellUnbonded(size_t cellID)
+        {
+            thread_local size_t local_count = 0;
+            thread_local float local_virial = 0.f;
+
+            const auto &cell = cells[cellID];
+            thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
+
+            for (size_t ii = 0; ii < cell.size(); ++ii)
+            {
+                const size_t i = cell[ii];
+
+                for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                {
+                    const size_t j = cell[jj];
+                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+
+                    float r2 = dr.lengthSquared();
+                    if (r2 > CELL_CUTOFF)
+                        continue;
+
+                    if (areBonded(i, j))
+                        continue;
+
+                    sf::Vector3f cForce = coulombForce(i, j, dr);
+                    sf::Vector3f lForce = ljForce(i, j);
+
+                    sf::Vector3f total_force = cForce + lForce;
+                    local_forces[i] += total_force;
+                    local_forces[j] -= total_force;
+
+                    local_virial += dr.x * total_force.x +
+                                    dr.y * total_force.y +
+                                    dr.z * total_force.z;
+                }
+            }
+
+            total_virial += local_virial;
+            total_count += local_count;
+        }
+
+        void universe::calcUnbondedForcesParallel()
+        {
+            const int32_t n_threads = std::thread::hardware_concurrency();
+
+            std::vector<std::future<size_t>> futures;
+        }
+
         void universe::calcUnbondedForces()
         {
-            size_t count = 0;
             for (size_t ix = 0; ix < cx; ++ix)
                 for (size_t iy = 0; iy < cy; ++iy)
                     for (size_t iz = 0; iz < cz; ++iz)
                     {
                         size_t cell_id = getCellID(ix, iy, iz);
-                        const auto& cell = cells[cell_id];
+                        const auto &cell = cells[cell_id];
 
                         for (size_t ii = 0; ii < cell.size(); ++ii)
                         {
@@ -1274,11 +1360,13 @@ namespace sim
 
                                 sf::Vector3f dr = minImageVec(pos(j) - pos(i));
                                 float r2 = dr.lengthSquared();
-                                if (r2 > CELL_CUTOFF) continue;
+                                if (r2 > CELL_CUTOFF)
+                                    continue;
 
-                                if (areBonded(i, j)) continue;
+                                if (areBonded(i, j))
+                                    continue;
 
-                                ++count;
+                                ++total_count;
 
                                 sf::Vector3f cForce = coulombForce(i, j, dr);
                                 sf::Vector3f lForce = ljForce(i, j);
@@ -1288,58 +1376,65 @@ namespace sim
                                 add_force(j, -total_force);
 
                                 total_virial += dr.x * total_force.x +
-                                    dr.y * total_force.y +
-                                    dr.z * total_force.z;
+                                                dr.y * total_force.y +
+                                                dr.z * total_force.z;
                             }
                         }
 
                         for (int32_t dx = 0; dx <= 1; ++dx)
-                        for (int32_t dy = -1; dy <= 1; ++dy)
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                        {
-                            if (dx == 0 && dy == 0 && dz == 0) continue;
-
-                            int32_t n_ix = ix + dx; int32_t n_iy = iy + dy; int32_t n_iz = iz + dz;
-                            size_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
-
-                            if (neighbor_id == cell_id) continue;
-
-                            const auto& neighbor_cell = cells[neighbor_id];
-                            
-                            for (size_t ii = 0; ii < cell.size(); ++ii)
-                            {
-                                size_t i = cell[ii];
-
-                                for (size_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                            for (int32_t dy = -1; dy <= 1; ++dy)
+                                for (int32_t dz = -1; dz <= 1; ++dz)
                                 {
-                                    size_t j = neighbor_cell[jj];
+                                    if (dx == 0 && dy == 0 && dz == 0)
+                                        continue;
 
-                                    if (j <= i) continue;
-                                    
-                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                    float r = dr.length();
-                                    
-                                    if (r > CELL_CUTOFF) continue;
-                                    if (areBonded(i, j)) continue;
-                                    
-                                    ++count;
+                                    int32_t n_ix = ix + dx;
+                                    int32_t n_iy = iy + dy;
+                                    int32_t n_iz = iz + dz;
+                                    size_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
 
-                                    sf::Vector3f cForce = coulombForce(i, j, dr);
-                                    sf::Vector3f lForce = ljForce(i, j);
+                                    if (neighbor_id == cell_id)
+                                        continue;
 
-                                    sf::Vector3f total_force = cForce + lForce;
-                                    add_force(i, total_force);
-                                    add_force(j, -total_force);
+                                    const auto &neighbor_cell = cells[neighbor_id];
 
-                                    total_virial += dr.x * total_force.x +
-                                        dr.y * total_force.y +
-                                        dr.z * total_force.z;
+                                    for (size_t ii = 0; ii < cell.size(); ++ii)
+                                    {
+                                        size_t i = cell[ii];
+
+                                        for (size_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                                        {
+                                            size_t j = neighbor_cell[jj];
+
+                                            if (j <= i)
+                                                continue;
+
+                                            sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                                            float r = dr.length();
+
+                                            if (r > CELL_CUTOFF)
+                                                continue;
+                                            if (areBonded(i, j))
+                                                continue;
+
+                                            ++total_count;
+
+                                            sf::Vector3f cForce = coulombForce(i, j, dr);
+                                            sf::Vector3f lForce = ljForce(i, j);
+
+                                            sf::Vector3f total_force = cForce + lForce;
+                                            add_force(i, total_force);
+                                            add_force(j, -total_force);
+
+                                            total_virial += dr.x * total_force.x +
+                                                            dr.y * total_force.y +
+                                                            dr.z * total_force.z;
+                                        }
+                                    }
                                 }
-                            }
-                        }
                     }
 
-            std::cout << "Non Bonded Calcs: " << count << std::endl;
+            std::cout << "Non Bonded Calcs: " << total_count << std::endl;
         }
 
         std::vector<float> total_bo{};
@@ -1357,7 +1452,8 @@ namespace sim
         {
             sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
             float r = dr_vec.length();
-            if (r > REACTION_CUTOFF) return 0.0f;
+            if (r > REACTION_CUTOFF)
+                return 0.0f;
 
             uint8_t Zi = atoms[i].ZIndex;
             uint8_t Zj = atoms[j].ZIndex;
@@ -1384,26 +1480,28 @@ namespace sim
             return -(sqrt(parami.De_sigma * paramj.De_sigma) * bo_sigma + sqrt(parami.De_pi * paramj.De_pi) * bo_pi + sqrt(parami.De_pp * paramj.De_pp) * bo_pp);
         }
 
-        float taper7(float x) 
-        { 
-            if (x >= 1.f) return 0.f;
-            float x3 = x*x*x;
-            float x4 = x3*x;
-            float x5 = x4*x;
-            return 1.f - 10.f*x3 + 35.f*x4 - 50.f*x5 + 35.f*x3*x3*x3 - 10.f*x3*x3*x3*x3;
+        float taper7(float x)
+        {
+            if (x >= 1.f)
+                return 0.f;
+            float x3 = x * x * x;
+            float x4 = x3 * x;
+            float x5 = x4 * x;
+            return 1.f - 10.f * x3 + 35.f * x4 - 50.f * x5 + 35.f * x3 * x3 * x3 - 10.f * x3 * x3 * x3 * x3;
         }
 
         void universe::processReactivePair(size_t i, size_t j, float cutoff, float vis_thresh)
         {
             sf::Vector3f dr_vec = minImageVec(pos(j) - pos(i));
             float r = dr_vec.length();
-            if (r >= cutoff || r < EPSILON) return;
+            if (r >= cutoff || r < EPSILON)
+                return;
 
             uint8_t Zi = atoms[i].ZIndex;
             uint8_t Zj = atoms[j].ZIndex;
-           
-            auto& parami = constants::getParams(Zi);
-            auto& paramj = constants::getParams(Zj);
+
+            auto &parami = constants::getParams(Zi);
+            auto &paramj = constants::getParams(Zj);
             auto pair_param = constants::getPairReaxParams(Zi, Zj);
             float gamma_ij = std::sqrtf(parami.gamma * paramj.gamma);
             float r_vdw_ij = std::sqrtf(parami.r_vdw * paramj.r_vdw);
@@ -1438,12 +1536,12 @@ namespace sim
             float BO_sigma = std::exp(p_bo1_ij * std::pow(r / r0_sigma_ij, p_bo2_ij));
             float BO_pi = 0.0f;
             float BO_pp = 0.0f;
-            
+
             if (parami.r0_pi > 0.f && paramj.r0_pi > 0.f)
                 BO_pi = std::exp(p_bo3_ij * std::pow(r / r0_pi_ij, p_bo4_ij));
             if (parami.r0_pp > 0.f && paramj.r0_pp > 0.f)
                 BO_pp = std::exp(p_bo5_ij * std::pow(r / r0_pp_ij, p_bo6_ij));
-            
+
             float BO_uncorr = BO_sigma + BO_pi + BO_pp;
 
             float val_i = constants::getUsualBonds(Zi);
@@ -1471,11 +1569,11 @@ namespace sim
             float f4 = 1.0f;
             float f5 = 1.0f;
 
-            if (Delta_i > -1.0f && BO_pi > 0.f) 
+            if (Delta_i > -1.0f && BO_pi > 0.f)
                 f4 = 1.0f / (1.0f + std::exp(-p_boc5_ij * (p_boc4_ij + Delta_i)));
             if (Delta_j > -1.0f && BO_pi > 0.f)
                 f5 = 1.0f / (1.0f + std::exp(-p_boc5_ij * (p_boc4_ij + Delta_j)));
-            
+
             // Corrected bond orders
             float BO_sigma_corr = BO_sigma * f1;
             float BO_pi_corr = BO_pi * f1 * f1 * f4 * f5;
@@ -1505,8 +1603,10 @@ namespace sim
             if (BO_corr > 0.1f)
             {
                 BondType type = BondType::SINGLE;
-                if (BO_corr > 1.4f) type = BondType::DOUBLE;
-                if (BO_corr > 2.1f) type = BondType::TRIPLE;
+                if (BO_corr > 1.4f)
+                    type = BondType::DOUBLE;
+                if (BO_corr > 2.1f)
+                    type = BondType::TRIPLE;
                 reactive_bonds.emplace_back(i, j, BO_corr, type);
             }
 
@@ -1535,7 +1635,7 @@ namespace sim
             float x = r / REACTION_CUTOFF;
             float T = taper7(x);
             float dT_dr = (r < REACTION_CUTOFF) ? -7.0f * powf(1.0f - x, 6) / REACTION_CUTOFF : 0.0f;
-            
+
             // Coulomb
             float E_coul = coulomb_constant * data.q[i] * data.q[j] / S;
             float dE_coul_dr = coulomb_constant * data.q[i] * data.q[j] * (-r * r / powf(S, 4.f));
@@ -1546,7 +1646,7 @@ namespace sim
             sf::Vector3f F_bond = dE_bond_dr * unit;
             sf::Vector3f F_nonbond = dE_nonbond_dr * unit;
             sf::Vector3f F_total = F_bond + F_nonbond;
-            
+
             add_force(i, F_total);
             add_force(j, -F_total); // Newton's 3rd law
         }
@@ -1580,12 +1680,14 @@ namespace sim
                             {
                                 size_t j = currentCell[jj];
 
-                                if (j <= i) continue;
+                                if (j <= i)
+                                    continue;
 
                                 sf::Vector3f dr = minImageVec(pos(j) - pos(i));
                                 float r = dr.length();
 
-                                if (r >= REACTION_CUTOFF || r < 0.1f) continue;
+                                if (r >= REACTION_CUTOFF || r < 0.1f)
+                                    continue;
 
                                 float uncorr = calculateUncorrectedBondOrder(i, j);
 
@@ -1598,12 +1700,14 @@ namespace sim
                             for (int32_t dy = -1; dy <= 1; ++dy)
                                 for (int32_t dx = -1; dx <= 1; ++dx)
                                 {
-                                    if (dz == 0 && dy == 0 && dx == 0) continue;
+                                    if (dz == 0 && dy == 0 && dx == 0)
+                                        continue;
 
                                     int32_t n_ix = ix + dx, n_iy = iy + dy, n_iz = iz + dz;
                                     size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
-                                    if (neighbour_id == current_id) continue;
+                                    if (neighbour_id == current_id)
+                                        continue;
 
                                     auto &neighbourCell = cells[neighbour_id];
 
@@ -1614,12 +1718,14 @@ namespace sim
                                         {
                                             size_t j = neighbourCell[jj];
 
-                                            if (j <= i) continue;
+                                            if (j <= i)
+                                                continue;
 
                                             sf::Vector3f dr = minImageVec(pos(j) - pos(i));
                                             float r = dr.length();
 
-                                            if (r >= REACTION_CUTOFF || r < 0.1f) continue;
+                                            if (r >= REACTION_CUTOFF || r < 0.1f)
+                                                continue;
 
                                             float uncorr = calculateUncorrectedBondOrder(i, j);
 
@@ -1660,7 +1766,7 @@ namespace sim
                                     }
                                 }
                     }
-                            
+
             float sumQ = std::accumulate(data.q.begin(), data.q.end(), 0.f);
             if (sumQ > std::numeric_limits<float>::epsilon())
             {
@@ -1685,6 +1791,8 @@ namespace sim
             data.fy.assign(atoms.size(), 0.0f);
             data.fz.assign(atoms.size(), 0.0f);
 
+            total_virial = 0.0f;
+
             if (!react)
             {
                 calcBondedForces();
@@ -1693,10 +1801,15 @@ namespace sim
             else
                 handleReactiveForces();
 
+            setPressure(targetPressure);
+
             for (size_t i = 0; i < atoms.size(); ++i)
             {
                 sf::Vector3f a_old = old_force(i) / atoms[i].mass;
                 sf::Vector3f a_new = force(i) / atoms[i].mass;
+
+                if (gravity)
+                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * DT));
 
                 add_pos(i, vel(i) * DT + 0.5f * (a_old + a_new) * DT * DT);
                 boundCheck(i);
@@ -1705,8 +1818,6 @@ namespace sim
             std::fill(data.fx.begin(), data.fx.end(), 0.f);
             std::fill(data.fy.begin(), data.fy.end(), 0.f);
             std::fill(data.fz.begin(), data.fz.end(), 0.f);
-
-            total_virial = 0.0f;
 
             if (!react)
             {
@@ -1720,20 +1831,18 @@ namespace sim
             {
                 sf::Vector3f accel = (old_force(i) + force(i)) * (0.5f * DT / atoms[i].mass);
                 add_vel(i, accel);
-
-                if (gravity) add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * DT));
             }
 
             buildCells();
             setTemperature(targetTemperature);
-            setPressure(targetPressure);
 
             ++timeStep;
         }
 
         float universe::calculatePressure()
         {
-            if (atoms.empty()) return 0.f;
+            if (atoms.empty())
+                return 0.f;
 
             float kinetic = calculateKineticEnergy();
             float volume = box.x * box.y * box.z;
@@ -1749,30 +1858,27 @@ namespace sim
 
         void universe::setPressure(float Target_P_Bar)
         {
-            if (Target_P_Bar <= 0.0f) return;
-            if (timeStep % BAROSTAT_INTERVAL != 0) return;
+            if (Target_P_Bar <= 0.0f)
+                return;
+            if (timeStep % BAROSTAT_INTERVAL != 0)
+                return;
 
             constexpr float beta_T = 4.5e-5f;
-            constexpr float tau_P  = 1.0f;
+            constexpr float tau_P = 1.0f;
 
             pres = calculatePressure();
 
             float delta_P = Target_P_Bar - pres;
             float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
-            
-            if (mu < 0.9f) mu = 0.9f;
-            if (mu > 1.1f) mu = 1.1f;
+
+            mu = std::clamp(mu, 0.8f, 1.2f);
 
             float scale = std::cbrt(mu);
 
-            box.x *= scale;
-            box.y *= scale;
             box.z *= scale;
 
             for (size_t i = 0; i < atoms.size(); ++i)
             {
-                data.x[i] *= scale;
-                data.y[i] *= scale;
                 data.z[i] *= scale;
             }
         }
@@ -1782,22 +1888,22 @@ namespace sim
             if (timeStep % THERMOSTAT_INTERVAL != 0)
                 return;
 
-                float avg_KE = calculateKineticEnergy() / atoms.size();
-                temp = (2.0f / 3.0f) * (avg_KE * KB);
-                float lambda = sqrtf(kelvin / (temp + 1e-5f));
+            float avg_KE = calculateKineticEnergy() / atoms.size();
+            temp = (2.0f / 3.0f) * (avg_KE * KB);
+            float lambda = sqrtf(kelvin / (temp + 1e-5f));
 
-                if (timeStep > 100)
-                {
-                    constexpr float tau = 0.6f;
-                    lambda = 1.0f + (lambda - 1.0f) / tau;
-                }
+            if (timeStep > 100)
+            {
+                constexpr float tau = 0.6f;
+                lambda = 1.0f + (lambda - 1.0f) / tau;
+            }
 
-                for (size_t i = 0; i < data.vx.size(); ++i)
-                {
-                    data.vx[i] *= lambda;
-                    data.vy[i] *= lambda;
-                    data.vz[i] *= lambda;
-                }
+            for (size_t i = 0; i < data.vx.size(); ++i)
+            {
+                data.vx[i] *= lambda;
+                data.vy[i] *= lambda;
+                data.vz[i] *= lambda;
+            }
         }
 
         // Energy Calculation
@@ -1925,8 +2031,10 @@ namespace sim
 
             for (int32_t i = 0; i < subsetIdx.size(); ++i)
             {
-                size_t centralAtom = subsets[subsetIdx[i]].mainAtomIdx;
+                auto &s = subsets[subsetIdx[i]];
+                size_t centralAtom = s.mainAtomIdx;
                 ++ZIndices[atoms[centralAtom].ZIndex];
+                ZIndices[1] += s.hydrogenIdx.size();
             }
 
             std::unordered_map<size_t, std::string> prefixes{
@@ -1951,7 +2059,11 @@ namespace sim
                 {
                     if (ZIndices[i] <= 0)
                         continue;
-                    name += prefixes[ZIndices[i]] + constants::getAtomName(i) + " ";
+                    std::string name = constants::getAtomName(i);
+                    std::transform(name.begin(), name.end(), name.begin(), [](uint8_t c)
+                                   { return std::tolower(c); });
+
+                    name += prefixes[ZIndices[i]] + name + " ";
                 }
             }
             else // organic nomeclature
@@ -1970,143 +2082,223 @@ namespace sim
                 .p_boc4 = 0.000f,
                 .p_boc5 = 0.000f,
 
-                .p_bo1  = -0.040f,
-                .p_bo2  = 5.000f,
-                .p_bo3  = -0.040f,
-                .p_bo4  = 5.000f,
-                .p_bo5  =  0.000f,
-                .p_bo6  =  0.000f,
+                .p_bo1 = -0.040f,
+                .p_bo2 = 5.000f,
+                .p_bo3 = -0.040f,
+                .p_bo4 = 5.000f,
+                .p_bo5 = 0.000f,
+                .p_bo6 = 0.000f,
 
-                .p_be1  =  0.000f,
-                .p_be2  =  1.000f,
+                .p_be1 = 0.000f,
+                .p_be2 = 1.000f,
 
                 .r0_sigma = 0.960f,
 
-                .r0_pi    = 0.000f,
-                .r0_pp    = 0.000f,
+                .r0_pi = 0.000f,
+                .r0_pp = 0.000f,
 
                 .De_sigma = 103.50f,
-                .De_pi    =   0.0f,
-                .De_pp    =   0.0f,
-                
-                .gamma    = 1.100f,
-                .r_vdw    = 1.850f,
-                .D_vdw    = 0.015f,
+                .De_pi = 0.0f,
+                .De_pp = 0.0f,
+
+                .gamma = 1.100f,
+                .r_vdw = 1.850f,
+                .D_vdw = 0.015f,
             };
 
             constants::reaxParams[6] = {
-                .p_boc1 = 1.540f,  .p_boc2 = 6.500f,
-                .p_bo1  = -0.200f, .p_bo2  = 5.000f,
-                .p_bo3  = -0.100f, .p_bo4  = 8.000f,
-                .p_bo5  = -0.200f, .p_bo6  = 6.000f,
-                .r0_sigma = 1.515f, .r0_pi = 1.350f, .r0_pp = 1.200f,
-                .De_sigma = 95.0f, .De_pi = 115.0f, .De_pp = 10.0f,
-                .gamma = 1.60f, .r_vdw = 1.992f, .D_vdw = 0.006f,
+                .p_boc1 = 1.540f,
+                .p_boc2 = 6.500f,
+                .p_bo1 = -0.200f,
+                .p_bo2 = 5.000f,
+                .p_bo3 = -0.100f,
+                .p_bo4 = 8.000f,
+                .p_bo5 = -0.200f,
+                .p_bo6 = 6.000f,
+                .r0_sigma = 1.515f,
+                .r0_pi = 1.350f,
+                .r0_pp = 1.200f,
+                .De_sigma = 95.0f,
+                .De_pi = 115.0f,
+                .De_pp = 10.0f,
+                .gamma = 1.60f,
+                .r_vdw = 1.992f,
+                .D_vdw = 0.006f,
             };
 
             constants::reaxParams[7] = {
-                .p_boc1 = 2.0f,    .p_boc2 = 6.5f,    .p_boc3 = 1.2f,    .p_boc4 = 1.5f,    .p_boc5 = 7.0f,
-                .p_bo1  = -0.18f,  .p_bo2  = 6.0f,    .p_bo3  = -0.18f,  .p_bo4  = 7.0f,    .p_bo5 = -0.18f, .p_bo6 = 7.0f,
-                .p_be1    = 0.1f,  .p_be2 = 1.0f,
-                .r0_sigma = 1.45f, .r0_pi = 1.30f,   .r0_pp = 1.10f,
-                .De_sigma = 45.0f, .De_pi = 105.0f,  .De_pp = 140.0f,
-                .gamma    = 1.85f, .r_vdw = 1.95f,   .D_vdw = 0.012f,
+                .p_boc1 = 2.0f,
+                .p_boc2 = 6.5f,
+                .p_boc3 = 1.2f,
+                .p_boc4 = 1.5f,
+                .p_boc5 = 7.0f,
+                .p_bo1 = -0.18f,
+                .p_bo2 = 6.0f,
+                .p_bo3 = -0.18f,
+                .p_bo4 = 7.0f,
+                .p_bo5 = -0.18f,
+                .p_bo6 = 7.0f,
+                .p_be1 = 0.1f,
+                .p_be2 = 1.0f,
+                .r0_sigma = 1.45f,
+                .r0_pi = 1.30f,
+                .r0_pp = 1.10f,
+                .De_sigma = 45.0f,
+                .De_pi = 105.0f,
+                .De_pp = 140.0f,
+                .gamma = 1.85f,
+                .r_vdw = 1.95f,
+                .D_vdw = 0.012f,
             };
 
             // O (Z = 8)
             constants::reaxParams[8] = {
-                .p_boc1 = 2.0f,    .p_boc2 = 7.0f,    .p_boc3 = 1.0f,    .p_boc4 = 2.0f,    .p_boc5 = 7.0f,
-                .p_bo1  = -0.15f,  .p_bo2  = 6.5f,    .p_bo3  = -0.15f,  .p_bo4  = 7.0f,    .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1    = 0.2f,  .p_be2 = 1.0f,
-                .r0_sigma = 1.42f, .r0_pi = 1.20f,   .r0_pp = 0.0f,
-                .De_sigma = 40.0f, .De_pi = 110.0f,  .De_pp = 0.0f,
-                .gamma    = 2.40f, .r_vdw = 1.82f,   .D_vdw = 0.018f,
+                .p_boc1 = 2.0f,
+                .p_boc2 = 7.0f,
+                .p_boc3 = 1.0f,
+                .p_boc4 = 2.0f,
+                .p_boc5 = 7.0f,
+                .p_bo1 = -0.15f,
+                .p_bo2 = 6.5f,
+                .p_bo3 = -0.15f,
+                .p_bo4 = 7.0f,
+                .p_bo5 = 0.0f,
+                .p_bo6 = 0.0f,
+                .p_be1 = 0.2f,
+                .p_be2 = 1.0f,
+                .r0_sigma = 1.42f,
+                .r0_pi = 1.20f,
+                .r0_pp = 0.0f,
+                .De_sigma = 40.0f,
+                .De_pi = 110.0f,
+                .De_pp = 0.0f,
+                .gamma = 2.40f,
+                .r_vdw = 1.82f,
+                .D_vdw = 0.018f,
             };
 
             // F (Z = 9)
             constants::reaxParams[9] = {
-                .p_boc1 = 3.0f, .p_boc2 = 7.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f,
-                .p_bo1 = -0.15f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1 = 0.0f, .p_be2 = 1.0f,
-                .r0_sigma = 1.35f, .r0_pi = 0.0f, .r0_pp = 0.0f,
-                .De_sigma = 110.0f, .De_pi = 0.0f, .De_pp = 0.0f,
-                .gamma = 2.90f, .r_vdw = 1.750f, .D_vdw = 0.080f,
+                .p_boc1 = 3.0f,
+                .p_boc2 = 7.5f,
+                .p_boc3 = 0.0f,
+                .p_boc4 = 0.0f,
+                .p_boc5 = 0.0f,
+                .p_bo1 = -0.15f,
+                .p_bo2 = 7.0f,
+                .p_bo3 = 0.0f,
+                .p_bo4 = 0.0f,
+                .p_bo5 = 0.0f,
+                .p_bo6 = 0.0f,
+                .p_be1 = 0.0f,
+                .p_be2 = 1.0f,
+                .r0_sigma = 1.35f,
+                .r0_pi = 0.0f,
+                .r0_pp = 0.0f,
+                .De_sigma = 110.0f,
+                .De_pi = 0.0f,
+                .De_pp = 0.0f,
+                .gamma = 2.90f,
+                .r_vdw = 1.750f,
+                .D_vdw = 0.080f,
             };
 
             // Na (Z = 11)
             constants::reaxParams[11] = {
-                .p_boc1 = 1.0f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f,
-                .p_bo1 = -0.08f, .p_bo2 = 7.5f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1 = 0.0f, .p_be2 = 1.0f,
-                .r0_sigma = 2.30f, .r0_pi = 0.0f, .r0_pp = 0.0f,
-                .De_sigma = 20.0f, .De_pi = 0.0f, .De_pp = 0.0f,
-                .gamma = 1.20f, .r_vdw = 2.300f, .D_vdw = 0.020f,
+                .p_boc1 = 1.0f,
+                .p_boc2 = 8.0f,
+                .p_boc3 = 0.0f,
+                .p_boc4 = 0.0f,
+                .p_boc5 = 0.0f,
+                .p_bo1 = -0.08f,
+                .p_bo2 = 7.5f,
+                .p_bo3 = 0.0f,
+                .p_bo4 = 0.0f,
+                .p_bo5 = 0.0f,
+                .p_bo6 = 0.0f,
+                .p_be1 = 0.0f,
+                .p_be2 = 1.0f,
+                .r0_sigma = 2.30f,
+                .r0_pi = 0.0f,
+                .r0_pp = 0.0f,
+                .De_sigma = 20.0f,
+                .De_pi = 0.0f,
+                .De_pp = 0.0f,
+                .gamma = 1.20f,
+                .r_vdw = 2.300f,
+                .D_vdw = 0.020f,
             };
 
             // 12 = Magnesium
             constants::reaxParams[12] = {
-                .p_boc1 = 1.2f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f,
-                .p_bo1 = -0.1f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .r0_sigma = 2.20f, .r0_pi = 0.0f, .r0_pp = 0.0f,
-                .De_sigma = 30.0f, .De_pi = 0.0f, .De_pp = 0.0f,
-                .gamma = 1.300f, .r_vdw = 2.200f, .D_vdw = 0.030f
-            };
+                .p_boc1 = 1.2f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.1f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.20f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 30.0f, .De_pi = 0.0f, .De_pp = 0.0f, .gamma = 1.300f, .r_vdw = 2.200f, .D_vdw = 0.030f};
 
             // 13 = Aluminium
             constants::reaxParams[13] = {
-                .p_boc1 = 1.5f, .p_boc2 = 7.5f, .p_boc3 = 7.5f, .p_boc4 = 8.0f, .p_boc5 = 7.5f,
-                .p_bo1 = -0.12f, .p_bo2 = 6.5f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .r0_sigma = 2.60f, .r0_pi = 0.0f, .r0_pp = 0.0f,
-                .De_sigma = 70.0f, .De_pi = 0.0f, .De_pp = 0.0f,
-                .gamma = 1.400f, .r_vdw = 2.600f, .D_vdw = 0.050f
-            };
+                .p_boc1 = 1.5f, .p_boc2 = 7.5f, .p_boc3 = 7.5f, .p_boc4 = 8.0f, .p_boc5 = 7.5f, .p_bo1 = -0.12f, .p_bo2 = 6.5f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.60f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 70.0f, .De_pi = 0.0f, .De_pp = 0.0f, .gamma = 1.400f, .r_vdw = 2.600f, .D_vdw = 0.050f};
 
             // 14 = Silicon
             constants::reaxParams[14] = {
-                .p_boc1 = 1.8f, .p_boc2 = 6.8f, .p_boc3 = 6.8f, .p_boc4 = 7.5f, .p_boc5 = 6.8f,
-                .p_bo1 = -0.15f, .p_bo2 = 6.0f, .p_bo3 = -0.15f, .p_bo4 = 6.5f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1 = 0.0f, .p_be2 = 1.0f,
-                .r0_sigma = 2.35f, .r0_pi = 2.10f, .r0_pp = 0.0f,
-                .De_sigma = 75.0f, .De_pi = 50.0f, .De_pp = 0.0f,
-                .gamma = 1.60f, .r_vdw = 2.350f, .D_vdw = 0.075f,
+                .p_boc1 = 1.8f,
+                .p_boc2 = 6.8f,
+                .p_boc3 = 6.8f,
+                .p_boc4 = 7.5f,
+                .p_boc5 = 6.8f,
+                .p_bo1 = -0.15f,
+                .p_bo2 = 6.0f,
+                .p_bo3 = -0.15f,
+                .p_bo4 = 6.5f,
+                .p_bo5 = 0.0f,
+                .p_bo6 = 0.0f,
+                .p_be1 = 0.0f,
+                .p_be2 = 1.0f,
+                .r0_sigma = 2.35f,
+                .r0_pi = 2.10f,
+                .r0_pp = 0.0f,
+                .De_sigma = 75.0f,
+                .De_pi = 50.0f,
+                .De_pp = 0.0f,
+                .gamma = 1.60f,
+                .r_vdw = 2.350f,
+                .D_vdw = 0.075f,
             };
 
             // 15 = Phosphorus
             constants::reaxParams[15] = {
-                .p_boc1 = 2.0f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f,
-                .p_bo1 = -0.16f, .p_bo2 = 6.5f, .p_bo3 = -0.16f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1 = 0.15f, .p_be2 = 1.0f,
-                .r0_sigma = 2.20f, .r0_pi = 1.90f, .r0_pp = 0.0f,
-                .De_sigma = 60.0f, .De_pi = 80.0f, .De_pp = 0.0f,
-                .gamma = 1.800f, .r_vdw = 2.200f, .D_vdw = 0.060f
-            };
+                .p_boc1 = 2.0f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.16f, .p_bo2 = 6.5f, .p_bo3 = -0.16f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .p_be1 = 0.15f, .p_be2 = 1.0f, .r0_sigma = 2.20f, .r0_pi = 1.90f, .r0_pp = 0.0f, .De_sigma = 60.0f, .De_pi = 80.0f, .De_pp = 0.0f, .gamma = 1.800f, .r_vdw = 2.200f, .D_vdw = 0.060f};
 
             // 16 = Sulfur
             constants::reaxParams[16] = {
-                .p_boc1 = 1.8f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f,
-                .p_bo1 = -0.15f, .p_bo2 = 6.5f, .p_bo3 = -0.15f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .r0_sigma = 2.05f, .r0_pi = 1.80f, .r0_pp = 0.0f,
-                .De_sigma = 65.0f, .De_pi = 90.0f, .De_pp = 0.0f,
-                .gamma = 2.000f, .r_vdw = 2.050f, .D_vdw = 0.090f
-            };
+                .p_boc1 = 1.8f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.15f, .p_bo2 = 6.5f, .p_bo3 = -0.15f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.05f, .r0_pi = 1.80f, .r0_pp = 0.0f, .De_sigma = 65.0f, .De_pi = 90.0f, .De_pp = 0.0f, .gamma = 2.000f, .r_vdw = 2.050f, .D_vdw = 0.090f};
 
             // 17 = Chlorine
             constants::reaxParams[17] = {
-                .p_boc1 = 2.5f, .p_boc2 = 7.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f,
-                .p_bo1 = -0.14f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .r0_sigma = 1.80f, .r0_pi = 0.0f, .r0_pp = 0.0f,
-                .De_sigma = 60.0f, .De_pi = 0.0f, .De_pp = 0.0f,
-                .gamma = 2.300f, .r_vdw = 1.980f, .D_vdw = 0.100f
-            };
+                .p_boc1 = 2.5f, .p_boc2 = 7.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.14f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 1.80f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 60.0f, .De_pi = 0.0f, .De_pp = 0.0f, .gamma = 2.300f, .r_vdw = 1.980f, .D_vdw = 0.100f};
 
             // 26 = Iron
             constants::reaxParams[26] = {
-                .p_boc1 = 1.0f, .p_boc2 = 8.0f, .p_boc3 = 8.0f, .p_boc4 = 9.0f, .p_boc5 = 8.0f,
-                .p_bo1 = -0.10f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f,
-                .p_be1 = 0.0f, .p_be2 = 1.0f,
-                .r0_sigma = 2.50f, .r0_pi = 0.0f, .r0_pp = 0.0f,
-                .De_sigma = 100.0f, .De_pi = 0.0f, .De_pp = 0.0f,
-                .gamma = 1.40f, .r_vdw = 2.500f, .D_vdw = 0.200f,
+                .p_boc1 = 1.0f,
+                .p_boc2 = 8.0f,
+                .p_boc3 = 8.0f,
+                .p_boc4 = 9.0f,
+                .p_boc5 = 8.0f,
+                .p_bo1 = -0.10f,
+                .p_bo2 = 7.0f,
+                .p_bo3 = 0.0f,
+                .p_bo4 = 0.0f,
+                .p_bo5 = 0.0f,
+                .p_bo6 = 0.0f,
+                .p_be1 = 0.0f,
+                .p_be2 = 1.0f,
+                .r0_sigma = 2.50f,
+                .r0_pi = 0.0f,
+                .r0_pp = 0.0f,
+                .De_sigma = 100.0f,
+                .De_pi = 0.0f,
+                .De_pp = 0.0f,
+                .gamma = 1.40f,
+                .r_vdw = 2.500f,
+                .D_vdw = 0.200f,
             };
         }
         // loading and saving scenes
@@ -2114,8 +2306,6 @@ namespace sim
         void universe::saveScene(const std::filesystem::path path)
         {
             nlohmann::json scene{};
-
-            
         }
 
         void universe::loadScene(const std::filesystem::path path)
@@ -2123,15 +2313,13 @@ namespace sim
             nlohmann::json nScene{};
 
             std::ifstream file(path);
-            if (!file.is_open() || path.extension() != ".json") 
+            if (!file.is_open() || path.extension() != ".json")
             {
                 std::cerr << "[Simulation] Cannot open: " << path << '\n';
                 return;
             }
 
             file >> nScene;
-
-            
         }
     } // namespace fun
 } // namespace sim

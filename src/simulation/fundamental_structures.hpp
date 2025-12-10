@@ -120,6 +120,8 @@ namespace sim
 
             std::vector<size_t> dihedrals;
             std::vector<size_t> angles;
+
+            bool water = false;
         };
 
         struct atom

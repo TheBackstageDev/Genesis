@@ -53,7 +53,6 @@ namespace core
         sf::View uiView;
 
         sf::Font arial;
-        sf::Text timeStepText;
 
         bool paused = true;
         bool step = false;
