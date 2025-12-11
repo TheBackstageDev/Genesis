@@ -37,7 +37,7 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 20.f;
+    size_t universeSize = 100.f;
     sf::Vector3f box(universeSize, universeSize, universeSize);
 
     sim::fun::universe_create_info create_info{};
@@ -96,7 +96,7 @@ int main()
     //universe.createMolecule(stuff2, {5, 9, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff2, {5, 13, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff2, {5, 17, 10}, {0.f, 0.f, 0.f});
-    //universe.createMolecule(stuff3, {5, 17, 10}, {0.f, 0.f, 0.f});
+    universe.createMolecule(stuff3, {5, 17, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(CO, {5, 5, 5}, {0.f, 0.f, 0.f});
 
     /* molecule_structure mol{};
@@ -106,9 +106,9 @@ int main()
 
     universe.createMolecule(mol, {20, 20, 20}, {0.f, 0.f, 0.0f}); */
 
-    size_t count = 300;
-    float minDistance = 3.1f;
-    float minDistanceAtm = 2.5f;
+    size_t count = 0;
+    float minDistance = 3.5f;
+    float minDistanceAtm = 3.5f;
 
     std::vector<sf::Vector3f> centers{universe.positions()};
 

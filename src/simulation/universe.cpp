@@ -1293,13 +1293,19 @@ namespace sim
             calcDihedralForces();
         }
 
-        void universe::processCellUnbonded(size_t cellID)
+        std::vector<sf::Vector3f> universe::processCellUnbonded(size_t ix, size_t iy, size_t iz)
         {
             thread_local size_t local_count = 0;
             thread_local float local_virial = 0.f;
 
+            size_t cellID = getCellID(ix, iy, iz);
             const auto &cell = cells[cellID];
             thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
+
+            if (local_forces.size() != atoms.size()) 
+                local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
+
+            std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0,0,0});
 
             for (size_t ii = 0; ii < cell.size(); ++ii)
             {
@@ -1330,15 +1336,104 @@ namespace sim
                 }
             }
 
-            total_virial += local_virial;
-            total_count += local_count;
+            for (int32_t dx = 0; dx <= 1; ++dx)
+                for (int32_t dy = -1; dy <= 1; ++dy)
+                    for (int32_t dz = -1; dz <= 1; ++dz)
+                    {
+                        if (dx == 0 && dy == 0 && dz == 0)
+                            continue;
+
+                        int32_t n_ix = ix + dx;
+                        int32_t n_iy = iy + dy;
+                        int32_t n_iz = iz + dz;
+                        size_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
+
+                        if (neighbor_id == cellID)
+                            continue;
+
+                        const auto &neighbor_cell = cells[neighbor_id];
+
+                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        {
+                            size_t i = cell[ii];
+
+                            for (size_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                            {
+                                size_t j = neighbor_cell[jj];
+
+                                if (j <= i)
+                                    continue;
+
+                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                                float r = dr.length();
+
+                                if (r > CELL_CUTOFF)
+                                    continue;
+
+                                if (areBonded(i, j))
+                                    continue;
+
+                                ++local_count;
+
+                                sf::Vector3f cForce = coulombForce(i, j, dr);
+                                sf::Vector3f lForce = ljForce(i, j);
+
+                                sf::Vector3f total_force = cForce + lForce;
+                                local_forces[i] += total_force;
+                                local_forces[j] -= total_force;
+
+                                local_virial += dr.x * total_force.x +
+                                                dr.y * total_force.y +
+                                                dr.z * total_force.z;
+                            }
+                        }
+                    }
+
+            total_virial.fetch_add(local_virial, std::memory_order_relaxed);
+            total_count.fetch_add(local_count, std::memory_order_relaxed);
+
+            return local_forces;
         }
 
         void universe::calcUnbondedForcesParallel()
         {
             const int32_t n_threads = std::thread::hardware_concurrency();
 
-            std::vector<std::future<size_t>> futures;
+            std::vector<std::future<std::vector<sf::Vector3f>>> futures;
+
+            auto worker = [this](size_t start_flat, size_t end_flat) -> std::vector<sf::Vector3f>
+            {
+                std::vector<sf::Vector3f> thread_forces(atoms.size(), {0,0,0});
+
+                for (size_t flat = start_flat; flat < end_flat; ++flat) 
+                {
+                    size_t iz = flat % cz;
+                    size_t iy = (flat / cz) % cy;
+                    size_t ix = flat / (cz * cy);
+
+                    auto cell_forces = processCellUnbonded(ix, iy, iz);
+                    for (size_t i = 0; i < atoms.size(); ++i) 
+                        thread_forces[i] += cell_forces[i];
+                }
+                return thread_forces;
+            };
+
+            for (int t = 0; t < n_threads; ++t) 
+            {
+                size_t start = (cells.size() * t) / n_threads;
+                size_t end   = (cells.size() * (t + 1)) / n_threads;
+
+                futures.push_back(std::async(std::launch::async, worker, start, end));
+            }
+
+            for (auto &fut : futures)
+            {
+                std::vector<sf::Vector3f> local_f = fut.get();
+                for (size_t i = 0; i < atoms.size(); ++i)
+                    add_force(i, local_f[i]);
+            }
+
+            std::cout << "Non Bonded Calcs: " << total_count.load() << std::endl;
         }
 
         void universe::calcUnbondedForces()
@@ -1433,8 +1528,6 @@ namespace sim
                                     }
                                 }
                     }
-
-            std::cout << "Non Bonded Calcs: " << total_count << std::endl;
         }
 
         std::vector<float> total_bo{};
@@ -1796,7 +1889,7 @@ namespace sim
             if (!react)
             {
                 calcBondedForces();
-                calcUnbondedForces();
+                calcUnbondedForcesParallel();
             }
             else
                 handleReactiveForces();
@@ -1822,7 +1915,7 @@ namespace sim
             if (!react)
             {
                 calcBondedForces();
-                calcUnbondedForces();
+                calcUnbondedForcesParallel();
             }
             else
                 handleReactiveForces();

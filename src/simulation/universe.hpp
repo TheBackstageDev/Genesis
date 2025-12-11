@@ -114,7 +114,7 @@ namespace sim
             void calcLjForces();
             void calcElectrostaticForces();
 
-            void processCellUnbonded(size_t cellId);
+            std::vector<sf::Vector3f> processCellUnbonded(size_t ix, size_t iy, size_t iz);
             void calcUnbondedForcesParallel();
             void calcBondedForces();
             void calcUnbondedForces();
