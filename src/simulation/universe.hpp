@@ -116,6 +116,9 @@ namespace sim
 
             std::vector<sf::Vector3f> processCellUnbonded(size_t ix, size_t iy, size_t iz);
             void calcUnbondedForcesParallel();
+            void calcBondedForcesParallel();
+
+            // Deprecated
             void calcBondedForces();
             void calcUnbondedForces();
 

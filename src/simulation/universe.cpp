@@ -1395,6 +1395,139 @@ namespace sim
             return local_forces;
         }
 
+        void universe::calcBondedForcesParallel()
+        {
+            const int32_t n_threads = std::max(1, static_cast<int32_t>(std::thread::hardware_concurrency()));
+            std::vector<std::future<std::vector<sf::Vector3f>>> futures;
+
+            auto make_task = [this](auto&& func) {
+                return [this, func](size_t start, size_t end) -> std::vector<sf::Vector3f> {
+                    thread_local std::vector<sf::Vector3f> local_forces;
+                    if (local_forces.size() != atoms.size()) {
+                        local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
+                    }
+                    std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0,0,0});
+
+                    func(start, end, local_forces);
+
+                    return local_forces; 
+                };
+            };
+
+            auto bond_func = [this](size_t start, size_t end, std::vector<sf::Vector3f>& lf) 
+            {
+                for (size_t i = start; i < end; ++i) {
+                    const bond& b = bonds[i];
+                    size_t a = b.bondedAtom;
+                    size_t c = b.centralAtom;
+
+                    sf::Vector3f dr = minImageVec(pos(c) - pos(a));
+                    float len = dr.length();
+                    if (len <= EPSILON) continue;
+
+                    float dl = len - b.equilibriumLength;
+                    sf::Vector3f force = (b.k * dl / len) * dr;
+
+                    lf[a] += force;
+                    lf[c] -= force;
+                }
+            };
+
+            for (int32_t t = 0; t < n_threads; ++t) 
+            {
+                size_t start = bonds.size() * t / n_threads;
+                size_t end   = bonds.size() * (t + 1) / n_threads;
+                futures.emplace_back(std::async(std::launch::async, make_task(bond_func), start, end));
+            }
+
+            auto angle_func = [this](size_t start, size_t end, std::vector<sf::Vector3f>& lf) 
+            {
+                for (size_t a = start; a < end; ++a) {
+                    const angle& ang = angles[a];
+                    size_t i = ang.A, j = ang.B, k = ang.C;
+
+                    sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
+                    sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
+                    float len_ji = r_ji.length();
+                    float len_jk = r_jk.length();
+                    if (len_ji < EPSILON || len_jk < EPSILON) continue;
+
+                    sf::Vector3f u_ji = r_ji / len_ji;
+                    sf::Vector3f u_jk = r_jk / len_jk;
+                    float cos_theta = std::clamp(u_ji.dot(u_jk), -1.0f, 1.0f);
+                    float sin_theta = std::sqrt(std::max(1.0f - cos_theta * cos_theta, 0.0f));
+                    if (sin_theta < 1e-6f) sin_theta = 1e-6f;
+
+                    float theta = std::acos(cos_theta);
+                    float delta_theta = theta - ang.rad;
+
+                    sf::Vector3f dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
+                    sf::Vector3f dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
+
+                    sf::Vector3f F_i = -ang.K * delta_theta * dtheta_dri;
+                    sf::Vector3f F_k = -ang.K * delta_theta * dtheta_drk;
+                    sf::Vector3f F_j = -F_i - F_k;
+
+                    lf[i] += F_i;
+                    lf[j] += F_j;
+                    lf[k] += F_k;
+                }
+            };
+
+            for (int32_t t = 0; t < n_threads; ++t) 
+            {
+                size_t start = angles.size() * t / n_threads;
+                size_t end   = angles.size() * (t + 1) / n_threads;
+                futures.emplace_back(std::async(std::launch::async, make_task(angle_func), start, end));
+            }
+
+            auto dihedral_func = [this](size_t start, size_t end, std::vector<sf::Vector3f>& lf) 
+            {
+                for (size_t d = start; d < end; ++d) {
+                    const dihedral_angle& da = dihedral_angles[d];
+                    float phi = calculateDihedral(pos(da.A), pos(da.B), pos(da.C), pos(da.D));
+
+                    float target = da.rad;
+                    if (target == 0.0f && da.periodicity == 1) {
+                        int32_t chi = atoms[da.B].chirality ? atoms[da.B].chirality : atoms[da.C].chirality;
+                        if (chi == 1)  target = (phi < M_PI) ? 1.047f : 5.236f;
+                        if (chi == 2)  target = (phi < M_PI) ? 5.236f : 1.047f;
+                    }
+
+                    float diff = phi - target;
+                    while (diff > M_PI) diff -= 2.0f * M_PI;
+                    while (diff < -M_PI) diff += 2.0f * M_PI;
+
+                    float torque = -da.K * da.periodicity * std::sin(da.periodicity * phi);
+
+                    sf::Vector3f axis = (pos(da.C) - pos(da.B)).normalized();
+                    sf::Vector3f rA = pos(da.A) - pos(da.B);
+                    sf::Vector3f rD = pos(da.D) - pos(da.C);
+
+                    sf::Vector3f tA = axis.cross(rA).normalized() * torque;
+                    sf::Vector3f tD = axis.cross(rD).normalized() * (-torque);
+
+                    lf[da.A] += tA * 0.5f;
+                    lf[da.B] += tA * 0.5f - tD * 0.5f;
+                    lf[da.C] += tD * 0.5f;
+                    lf[da.D] -= tD * 0.5f;
+                }
+            };
+
+            for (int32_t t = 0; t < n_threads; ++t) 
+            {
+                size_t start = dihedral_angles.size() * t / n_threads;
+                size_t end   = dihedral_angles.size() * (t + 1) / n_threads;
+                futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
+            }
+
+            for (auto& fut : futures) {
+                auto local_f = fut.get();
+                for (size_t i = 0; i < atoms.size(); ++i) 
+                    add_force(i, local_f[i]);
+            }
+        }
+
         void universe::calcUnbondedForcesParallel()
         {
             const int32_t n_threads = std::thread::hardware_concurrency();
@@ -1418,7 +1551,7 @@ namespace sim
                 return thread_forces;
             };
 
-            for (int t = 0; t < n_threads; ++t) 
+            for (int32_t t = 0; t < n_threads; ++t) 
             {
                 size_t start = (cells.size() * t) / n_threads;
                 size_t end   = (cells.size() * (t + 1)) / n_threads;
@@ -1888,7 +2021,7 @@ namespace sim
 
             if (!react)
             {
-                calcBondedForces();
+                calcBondedForcesParallel();
                 calcUnbondedForcesParallel();
             }
             else
@@ -1914,7 +2047,7 @@ namespace sim
 
             if (!react)
             {
-                calcBondedForces();
+                calcBondedForcesParallel();
                 calcUnbondedForcesParallel();
             }
             else
