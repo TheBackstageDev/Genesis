@@ -37,7 +37,7 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 100.f;
+    size_t universeSize = 30.f;
     sf::Vector3f box(universeSize, universeSize, universeSize);
 
     sim::fun::universe_create_info create_info{};
@@ -83,7 +83,7 @@ int main()
     auto CO2 = sim::parseSMILES("O=C=O"); 
     auto CO = sim::parseSMILES("[C-]#[O+]"); 
 
-    //universe.createMolecule(water, {3, 3, 3}, {0.f, 0.1f, 0.f});
+    //universe.createMolecule(water, {30, 50, 7}, {0.f, 0.0f, 0.f});
     //universe.createMolecule(benzene, {5, 8, 20}, {0.f, 0.f, 0.f});
     //universe.createMolecule(HydrochloricAcid, {5, 8, 5}, {0.f, 0.f, 0.f});
     //universe.createMolecule(Amonia, {5, 12, 5}, {0.f, -0.1f, 0.f});
@@ -96,7 +96,7 @@ int main()
     //universe.createMolecule(stuff2, {5, 9, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff2, {5, 13, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff2, {5, 17, 10}, {0.f, 0.f, 0.f});
-    universe.createMolecule(stuff3, {5, 17, 10}, {0.f, 0.f, 0.f});
+    //universe.createMolecule(stuff3, {5, 17, 3}, {0.f, 0.f, 0.f});
     //universe.createMolecule(CO, {5, 5, 5}, {0.f, 0.f, 0.f});
 
     /* molecule_structure mol{};
@@ -106,7 +106,7 @@ int main()
 
     universe.createMolecule(mol, {20, 20, 20}, {0.f, 0.f, 0.0f}); */
 
-    size_t count = 0;
+    size_t count = 300;
     float minDistance = 3.5f;
     float minDistanceAtm = 3.5f;
 

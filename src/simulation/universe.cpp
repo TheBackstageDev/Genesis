@@ -1295,8 +1295,8 @@ namespace sim
 
         std::vector<sf::Vector3f> universe::processCellUnbonded(size_t ix, size_t iy, size_t iz)
         {
-            thread_local size_t local_count = 0;
-            thread_local float local_virial = 0.f;
+            size_t local_count = 0;
+            float local_virial = 0.f;
 
             size_t cellID = getCellID(ix, iy, iz);
             const auto &cell = cells[cellID];
