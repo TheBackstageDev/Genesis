@@ -17,7 +17,7 @@ namespace core
     class window_t
     {
     public:
-        window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize = 60.f, uint32_t framerate = 60);
+        window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize = 50.f, uint32_t framerate = 60);
         ~window_t();
 
         bool pollEvents(); 

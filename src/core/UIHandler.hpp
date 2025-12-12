@@ -38,6 +38,7 @@ namespace core
     {
     public:
         void drawVideoControls();
+        void drawMenu();
 
         bool isrewinding() { return rewinding; }
     private:

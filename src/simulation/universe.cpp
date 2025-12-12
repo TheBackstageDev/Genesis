@@ -446,7 +446,7 @@ namespace sim
             sf::Vector2f pH = project(window, pos(H));
 
             constexpr float MAX_HA_DISTANCE = 2.8f;
-            constexpr float MIN_COS_ANGLE = 0.9f;
+            constexpr float MIN_COS_ANGLE = 0.8f;
             constexpr float STRONG_ENERGY = -300.0f;
             constexpr float WEAK_ENERGY = -5.0f;
 
@@ -1399,7 +1399,7 @@ namespace sim
 
         void universe::calcBondedForcesParallel()
         {
-            const int32_t n_threads = std::max(1, 1);
+            const uint32_t n_threads = std::max(1u, std::thread::hardware_concurrency());
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
 
             auto make_task = [this](auto&& func) {
@@ -2033,6 +2033,7 @@ namespace sim
                 handleReactiveForces();
 
             setPressure(targetPressure);
+            setTemperature(targetTemperature);
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -2066,10 +2067,9 @@ namespace sim
             }
 
             buildCells();
-            setTemperature(targetTemperature);
 
-            if (timeStep % 2 == 0)
-                saveFrame();
+            /* if (timeStep % 2 == 0)
+                saveFrame(); */
 
             ++timeStep;
         }
@@ -2949,6 +2949,8 @@ namespace sim
                     molecules.emplace_back(std::move(m));
                 }
             }
+
+            rebuildBondTopology();
 
             std::cout << "[Simulation] Successfully loaded scene: " << path.filename()
               << " (" << atoms.size() << " atoms, "
