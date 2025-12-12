@@ -809,7 +809,7 @@ namespace constants
 
         case sim::fun::BondType::DOUBLE:
             if (BONDED(6,6))       base = 1.34f;  // C=C
-            else if (BONDED(6,7))  base = 1.27f;  // C=N
+            else if (BONDED(6,7))  base = 1.31f;  // C=N
             else if (BONDED(6,8))  base = 1.22f;  // C=O
             else if (BONDED(6,16)) base = 1.61f;  // C=S
             else if (BONDED(7,7))  base = 1.24f;  // N=N
@@ -922,7 +922,7 @@ namespace constants
             case sim::fun::BondType::DOUBLE:
                 if (Z1 == 6 && Z2 == 6) base = 614.0f;     // C=C
                 if (Z1 == 6 && Z2 == 8) base = 799.0f;     // C=O (carbonyl)
-                if (Z1 == 6 && Z2 == 7) base = 615.0f;     // C=N
+                if (Z1 == 6 && Z2 == 7) base = 607.0f;     // C=N
                 if (Z1 == 7 && Z2 == 8) base = 607.0f;     // N=O
                 if (Z1 == 8 && Z2 == 8) base = 498.0f;     // O=O (molecular oxygen)
                 if (Z1 == 6 && Z2 == 16) base = 536.0f;    // C=S
@@ -1018,38 +1018,89 @@ namespace constants
 
     inline float getAngleHarmonicConstant(uint8_t ZA, uint8_t ZB, uint8_t ZC)
     {
-        float K = 100.f;
+        float K = 300.0f;
 
-        if (ZB == 6)
+    #define ANY(a, b) ((ZA == (a) && ZC == (b)) || (ZA == (b) && ZC == (a)))
+
+        if (ZB == 6)          // ───── CARBON ─────
         {
-            if (ZA == 1 && ZC == 1) K = 74.0f;   // H–C–H   (sp³)
-            if (ZA == 6 && ZC == 6) K = 126.0f;  // C–C–C   (alkane)
-            if (ZA == 6 && ZC == 1) K = 90.0f;   // C–C–H
-            if (ZA == 8 && ZC == 8) K = 140.0f;  // O–C–O   (carbonyl)
-            if (ZA == 7 && ZC == 7) K = 130.0f;  // N–C–N
+            if      (ANY(1, 1)) K = 310.0f;   // H-C-H        sp³
+            else if (ANY(1, 6)) K = 360.0f;   // H-C-C        sp³
+            else if (ANY(6, 6)) K = 520.0f;   // C-C-C        alkane
+            else if (ANY(1, 7)) K = 350.0f;   // H-C-N
+            else if (ANY(1, 8)) K = 380.0f;   // H-C-O
+            else if (ANY(1, 9)) K = 400.0f;   // H-C-F
+            else if (ANY(1,17)) K = 420.0f;   // H-C-Cl
+            else if (ANY(6, 8)) K = 670.0f;   // C-C=O        carbonyl
+            else if (ANY(8, 8)) K = 670.0f;   // O=C-O        carboxyl, ester
+            else if (ANY(6, 7)) K = 550.0f;   // C-C-N
+            else if (ANY(7, 8)) K = 650.0f;   // N-C=O        amide (not peptide)
+            else if (ANY(6,16)) K = 580.0f;   // C-C-S
+            else if (ANY(7, 7)) K = 600.0f;   // N-C-N        guanidinium-like
         }
-        if (ZB == 7)
+        else if (ZB == 7)     // ───── NITROGEN ─────
         {
-            if (ZA == 1 && ZC == 1) K = 88.0f;   // H–N–H   (ammonia)
-            if (ZA == 6 && ZC == 6) K = 110.0f;  // C–N–C
+            if      (ANY(1, 1)) K = 370.0f;   // H-N-H        ammonia, amines
+            else if (ANY(1, 6)) K = 380.0f;   // H-N-C
+            else if (ANY(6, 6)) K = 460.0f;   // C-N-C        tertiary amine
+            else if (ANY(6, 8)) K = 850.0f;   // C-N-C=O      PEPTIDE BOND (super stiff)
+            else if (ANY(1, 8)) K = 400.0f;   // H-N-O
+            else if (ANY(6, 7)) K = 700.0f;   // C-N-C        imine, guanidine
+            else if (ANY(7, 7)) K = 750.0f;   // N-N-N        (azides, rare)
+            else if (ANY(6, 7)) K = 680.0f;   // C-N=C        imidazole, His
+            else if (ANY(7, 6)) K = 720.0f;   // N=C-N        imidazole ring, arginine
         }
-        if (ZB == 8)
+        else if (ZB == 8)     // ───── OXYGEN ─────
         {
-            if (ZA == 1 && ZC == 1) K = 110.0f;  // H–O–H   (water)
-            if (ZA == 6 && ZC == 6) K = 130.0f;  // C–O–C   (ether)
-            K = 120.0f;
+            if      (ANY(1, 1)) K = 460.0f;   // H-O-H        water
+            else if (ANY(1, 6)) K = 460.0f;   // H-O-C        alcohols
+            else if (ANY(6, 6)) K = 545.0f;   // C-O-C        ethers
+            else if (ANY(1,15)) K = 450.0f;   // H-O-P        phosphoric acid
+            else if (ANY(8,16)) K = 700.0f;   // O-S-O        sulfate (extra stiff)
         }
-        if (ZB == 15)
+        else if (ZB == 15)    // ───── PHOSPHORUS ─────
         {
-            K = 120.0f;                          // P in phosphates
+            if      (ANY(8, 8)) K = 585.0f;   // O-P-O        phosphate
+            else if (ANY(6, 8)) K = 550.0f;   // C-O-P
+            else if (ANY(7, 8)) K = 580.0f;   // N-P-O
+            else if (ANY(1, 8)) K = 500.0f;   // H-O-P
+            else K = 520.0f;
         }
-        if (ZB == 16)
+        else if (ZB == 16)    // ───── SULFUR ─────
         {
-            if (ZA == 8 && ZC == 8) K = 160.0f;  // O–S–O   (sulfate)
-            K = 140.0f;
+            if      (ANY(1, 1)) K = 420.0f;   // H-S-H        thiols
+            else if (ANY(6, 6)) K = 545.0f;   // C-S-C        disulfide, Met
+            else if (ANY(8, 8)) K = 670.0f;   // O=S=O        sulfate
+            else if (ANY(6, 8)) K = 620.0f;   // C-S=O
+            else if (ANY(16,16)) K = 800.0f;  // S-S-S        (elemental sulfur, rare)
+        }
+        else if (ZB == 14)    // Silicon
+        {
+            if      (ANY(6, 6)) K = 450.0f;
+            else if (ANY(8, 8)) K = 550.0f;
+            else if (ANY(1, 8)) K = 480.0f;
+        }
+        else if (ZB == 5)     // Boron
+        {
+            if      (ANY(8, 8)) K = 600.0f;   // O-B-O
+            else K = 550.0f;
         }
 
-        return K * 1000.f;
+        else if (ZB == 6 && ANY(7, 7)) K = 700.0f;  // N=C(N)
+        else if (ZB == 7 && ANY(6, 6)) K = 720.0f;  // N=C-N
+        else if (ZB == 7 && ANY(6, 8)) K = 900.0f;  // C=N-C=O
+
+        // Halogens
+        else if (ZB == 9  || ZB == 17 || ZB == 35 || ZB == 53)
+            K = 600.0f;
+
+        // Metals
+        else if (ZB == 12 || ZB == 20 || ZB == 26 || ZB == 29 || ZB == 30) // Mg, Ca, Fe, Cu, Zn
+            K = 350.0f;
+
+    #undef ANY
+
+        return K;
     }
 
     inline float getBondHarmonicConstantFromEnergy(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)

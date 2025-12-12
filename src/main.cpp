@@ -13,7 +13,7 @@
 #include <algorithm>
 
 float targetTemp = 300.f;
-float targetPressure = 30.f;
+float targetPressure = 1.f;
 
 void displayUI(core::window_t& window, sim::fun::universe& universe)
 {
@@ -52,8 +52,15 @@ int main()
     create_info.mag_gravity = 9.8f;
     create_info.box = box;
 
-    //sim::fun::universe universe(create_info);
-    sim::fun::universe universe("src/scenes/2025_12_1219_46.json");
+    sim::fun::universe universe(create_info);
+    //sim::fun::universe universe("src/scenes/2025_12_1219_46.json");
+
+    molecule_structure mol{};
+    bool result = sim::io::loadXYZ("src/resource/trp_cage.xyz", mol.atoms, mol.bonds, mol.positions);
+    sim::organizeSubsets(mol.subsets, mol.atoms, mol.bonds);
+    sim::organizeAngles(mol.subsets, mol.atoms, mol.bonds, mol.dihedral_angles, mol.angles);
+
+    universe.createMolecule(mol, {25, 25, 25}, {0.f, 0.f, 0.0f});
 
     bool drawCharge = false;
     sf::Clock deltaClock;

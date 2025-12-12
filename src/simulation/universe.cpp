@@ -559,17 +559,17 @@ namespace sim
                 for (int32_t iy = 0; iy < cy; ++iy)
                     for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        int32_t cell_id = ix + cx * (iy + cy * iz);
+                        int32_t cell_id = getCellID(ix, iy, iz);
                         bool has_atoms = !cells[cell_id].empty();
 
                         sf::Color color = has_atoms ? hotColor : cellColor;
 
-                        float x0 = ix * box.x;
-                        float y0 = iy * box.y;
-                        float z0 = iz * box.z;
-                        float x1 = x0 + box.x;
-                        float y1 = y0 + box.y;
-                        float z1 = z0 + box.z;
+                        float x0 = ix * CELL_CUTOFF;
+                        float y0 = iy * CELL_CUTOFF;
+                        float z0 = iz * CELL_CUTOFF;
+                        float x1 = x0 + CELL_CUTOFF;
+                        float y1 = y0 + CELL_CUTOFF;
+                        float z1 = z0 + CELL_CUTOFF;
 
                         // 8 corners of the cell
                         std::array<sf::Vector3f, 8> c = {{{x0, y0, z0}, {x1, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}}};
@@ -1543,6 +1543,13 @@ namespace sim
 
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
 
+            std::vector<uint32_t> work(cells.size());
+            for (int32_t c = 0; c < cells.size(); ++c) 
+            {
+                uint32_t n = cells[c].size();
+                work[c] = n * n;
+            }
+
             auto worker = [this](int32_t start_flat, int32_t end_flat) -> std::vector<sf::Vector3f>
             {
                 std::vector<sf::Vector3f> thread_forces(atoms.size(), {0,0,0});
@@ -2106,7 +2113,7 @@ namespace sim
             float delta_P = Target_P_Bar - pres;
             float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
 
-            mu = std::clamp(mu, 0.8f, 1.2f);
+            mu = std::clamp(mu, 0.5f, 1.5f);
 
             float scale = std::cbrt(mu);
 

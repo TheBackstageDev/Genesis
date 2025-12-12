@@ -157,6 +157,9 @@ namespace sim::io
             }
         }
 
+        for (auto& pos : positions)
+            pos *= 1.2f;
+
         return true;
     }
 } // namespace sim::io
