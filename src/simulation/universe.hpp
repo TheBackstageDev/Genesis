@@ -3,6 +3,8 @@
 #include "fundamental_structures.hpp"
 #include <SFML/Graphics.hpp>
 
+#include "core/UIHandler.hpp"
+
 #include <thread>
 #include <future>
 #include <atomic>
@@ -29,6 +31,11 @@ namespace sim
             {1,-1,1}, {0,-1,1}, {-1,-1,1}, {-1,0,0}
         };
 
+        struct logging_flags
+        {
+            bool log_reactions = true;
+        };
+
         struct universe_create_info
         {
             bool has_gravity = false;
@@ -36,6 +43,7 @@ namespace sim
             bool wall_collision = false;
             bool isothermal = true;
             bool render_water = true;
+            logging_flags log_flags;
 
             float mag_gravity = 9.8f;
             sf::Vector3f box{CELL_CUTOFF, CELL_CUTOFF, CELL_CUTOFF};
@@ -48,23 +56,23 @@ namespace sim
             universe(std::filesystem::path scene);
             ~universe() = default;
 
-            size_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
-            size_t createSubset(const def_subset& nSub, const size_t baseAtom, const size_t baseSubset);
+            int32_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
+            int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
             void createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel = {0.f, 0.f, 0.f});
 
-            void createBond(size_t idx1, size_t idx2, BondType type = BondType::SINGLE);
+            void createBond(int32_t idx1, int32_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges(subset& mol);
 
-            void linkSubset(size_t subset, size_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
+            void linkSubset(int32_t subset, int32_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
             void draw(core::window_t &window, bool letter = false, bool lennardBall = true);
-            void drawHydrogenBond(core::window_t& window, size_t H);
-            void drawBonds(core::window_t& window, const std::vector<size_t>& no_draw);
+            void drawHydrogenBond(core::window_t& window, int32_t H);
+            void drawBonds(core::window_t& window, const std::vector<int32_t>& no_draw);
             void drawReactiveBonds(core::window_t& window);
             void drawChargeField(core::window_t& window);
             void drawCylinder(core::window_t& window,
-                                        size_t i, size_t j,
+                                        int32_t i, int32_t j,
                                         int32_t segments = 20,
                                         float radius = 0.12f,
                                         sf::Color color = sf::Color::White);
@@ -74,10 +82,13 @@ namespace sim
             void saveScene(const std::filesystem::path path);
             void loadScene(const std::filesystem::path path);
 
-            size_t numBonds() { return bonds.size(); }
-            size_t numAtoms() { return atoms.size(); }
-            size_t numMolecules() { return molecules.size(); }
-            const subset& getSubset(size_t index) { return subsets[index]; }
+            void saveAsVideo(const std::filesystem::path path);
+            void saveFrame();
+
+            int32_t numBonds() { return bonds.size(); }
+            int32_t numAtoms() { return atoms.size(); }
+            int32_t numMolecules() { return molecules.size(); }
+            const subset& getSubset(int32_t index) { return subsets[index]; }
 
             float temperature() const { return temp; }
             float pressure() const { return pres; }
@@ -96,15 +107,15 @@ namespace sim
                 return positions;
             }
 
-            void log(size_t step = 100);
-            void handleCamera(bool leftDown, bool rightDown, const sf::Vector2i& mousePos, float wheelDelta, const std::vector<sf::Keyboard::Key>& keys);
+            // UI
+            void handleCamera();
         private:
-            void boundCheck(size_t i);
+            void boundCheck(uint32_t i);
 
-            float ljPot(size_t i, size_t j);
+            float ljPot(uint32_t i, uint32_t j);
             float wolfForce(float r, float qi_qj); 
-            sf::Vector3f ljForce(size_t i, size_t j);
-            sf::Vector3f coulombForce(size_t i, size_t j, sf::Vector3f& dr_vec);
+            sf::Vector3f ljForce(uint32_t i, uint32_t j);
+            sf::Vector3f coulombForce(uint32_t i, uint32_t j, sf::Vector3f& dr_vec);
 
             void calcBondForces();
             void calcAngleForces();
@@ -114,13 +125,12 @@ namespace sim
             void calcLjForces();
             void calcElectrostaticForces();
 
-            std::vector<sf::Vector3f> processCellUnbonded(size_t ix, size_t iy, size_t iz);
+            std::vector<sf::Vector3f> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz);
             void calcUnbondedForcesParallel();
             void calcBondedForcesParallel();
 
-            // Deprecated
-            void calcBondedForces();
-            void calcUnbondedForces();
+            void calcBondedForces(); // deprecated
+            void calcUnbondedForces(); // deprecated
 
             float calculatePressure();
             void setPressure(float bar = 100);
@@ -129,18 +139,18 @@ namespace sim
 
             // Energies
             float calculateKineticEnergy();
-            float calculateAtomTemperature(size_t i);
-            float calculateBondEnergy(size_t i, size_t j, float bo_sigma, float bo_pi, float bo_pp);
+            float calculateAtomTemperature(int32_t i);
+            float calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp);
 
             // Reactions
-            float calculateUncorrectedBondOrder(size_t i, size_t j);
-            void processReactivePair(size_t i, size_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
+            float calculateUncorrectedBondOrder(int32_t i, int32_t j);
+            void processReactivePair(int32_t i, int32_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
             void calcUnbondedForcesReactive();
             void handleReactiveForces();
 
             simData data;
             std::vector<std::vector<uint64_t>> bondedBits;
-            void markBonded(size_t i, size_t j)
+            void markBonded(uint32_t i, uint32_t j)
             {
                 if (i >= bondedBits.size()) bondedBits.resize(atoms.size());
                 if (j >= bondedBits.size()) bondedBits.resize(atoms.size());
@@ -156,49 +166,33 @@ namespace sim
                 bondedBits[j][word_j] |= (1ull << bit_j);
             }
 
-            float getBondOrder(size_t i, size_t j) const
-            {
-                if (i > j) std::swap(i, j);
-                uint64_t key = (uint64_t(i) << 32) | j;
-                return data.bond_orders[key];
-            }
-
-            float getBondOrderKey(size_t i, size_t j) const
-            {
-                if (i > j) std::swap(i, j);
-                return (uint64_t(i) << 32) | j; 
-            }
-
             std::vector<atom> atoms;
-            std::vector<bond> bonds;
             std::vector<subset> subsets;
             std::vector<molecule> molecules;
-
+            
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
             
+            std::vector<bond> bonds;
             std::vector<reactive_bond> reactive_bonds;
 
             // CellList
-            std::vector<std::vector<size_t>> cells;
+            std::vector<std::vector<uint32_t>> cells;
 
             sf::Vector3f box{0.f, 0.f, 0.f};
-            size_t cx = 0, cy = 0, cz = 0; // cell dimensions
+            uint32_t cx = 0, cy = 0, cz = 0; // cell dimensions
 
             void buildCells();
-            size_t getCellID(int32_t ix, int32_t iy, int32_t iz)
+            int32_t getCellID(int32_t ix, int32_t iy, int32_t iz)
             {
                 ix = (ix % (int32_t)cx + (int32_t)cx) % (int32_t)cx;
                 iy = (iy % (int32_t)cy + (int32_t)cy) % (int32_t)cy;
                 iz = (iz % (int32_t)cz + (int32_t)cz) % (int32_t)cz;
-                return static_cast<size_t>(ix + cx * (iy + cy * iz));
+                return static_cast<int32_t>(ix + cx * (iy + cy * iz));
             }
 
-            // multi-threading
-            std::vector<std::thread> workers;
-
             std::atomic<float> total_virial{0.0f};
-            std::atomic<size_t> total_count{0};
+
             float temp = 0;
             float pres = 0;
             size_t timeStep = 0;
@@ -214,18 +208,7 @@ namespace sim
                 return dr;
             }
 
-            std::vector<size_t> getAllSubsetAtoms(size_t s)
-            {
-                const subset& sub = subsets[s];
-                std::vector<size_t> indices;
-                indices.reserve(sub.connectedIdx.size() + sub.hydrogenIdx.size() + 1);
-                indices.push_back(sub.mainAtomIdx);
-                indices.insert(indices.end(), sub.connectedIdx.begin(), sub.connectedIdx.end());
-                indices.insert(indices.end(), sub.hydrogenIdx.begin(), sub.hydrogenIdx.end());
-                return indices;
-            }
-
-            inline bool areBonded(size_t i, size_t j) const
+            inline bool areBonded(uint32_t i, uint32_t j) const
             {
                 if (i >= bondedBits.size() || j >= bondedBits[i].size() * 64) return false;
                 size_t word = j / 64;
@@ -235,7 +218,7 @@ namespace sim
             
             void rebuildBondTopology()
             {
-                size_t N = atoms.size();
+                int32_t N = atoms.size();
 
                 for (const auto& b : bonds)
                 {
@@ -243,9 +226,9 @@ namespace sim
                 }
             }
 
-            size_t getBond(size_t i, size_t j)
+            uint32_t getBond(uint32_t i, uint32_t j)
             {
-                for (size_t b = 0; b < bonds.size(); ++b)
+                for (int32_t b = 0; b < bonds.size(); ++b)
                 {
                     const bond& bond = bonds[b];
                     if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
@@ -254,14 +237,17 @@ namespace sim
                     }
                 }
 
-                return SIZE_MAX;
+                return UINT32_MAX;
             }
             
+            // Flags
+
             bool gravity = false;
             bool react = false;
             bool isothermal = true;
             bool render_water = true;
             bool wall_collision = false;
+            logging_flags log_flags;
 
             float mag_gravity = 9.8f;
 
@@ -269,39 +255,46 @@ namespace sim
             struct ReactionEvent 
             {
                 enum Type { BOND_FORM, BOND_BREAK, PROTON_TRANSFER } type;
-                size_t atom1, atom2;
+                uint32_t atom1, atom2;
                 float old_bo, new_bo;
                 float time;
             };
 
-            std::vector<ReactionEvent> reaction_log{};
+            std::vector<ReactionEvent> reactionLog{};
+            std::vector<std::vector<float>> positionxLog{};
+            std::vector<std::vector<float>> positionyLog{};
+            std::vector<std::vector<float>> positionzLog{};
+            std::map<uint32_t, float> energyLog{};
+            std::vector<float> temperatureLog{};
 
             // Camera
-            sf::Vector2i lastMouse;
+            ImVec2 lastMouse;
             sf::Vector2f project(core::window_t& window, const sf::Vector3f& p) const;
             core::camera_t cam;
 
             // Other
-            std::string moleculeName(const std::vector<size_t>& subsetIdx);
+            core::UIHandler uihandler{};
+
+            std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
             void drawBox(core::window_t& window);
 
-            inline float& bo(size_t i, size_t j) 
+            inline float& bo(uint32_t i, uint32_t j) 
             {
                 if (i > j) std::swap(i, j);
                 return data.bond_orders[i * atoms.size() + j];
             }
-            inline float bo(size_t i, size_t j) const 
+            inline float bo(uint32_t i, uint32_t j) const 
             {
                 if (i > j) std::swap(i, j);
                 return data.bond_orders[i * atoms.size() + j];
             }
-            inline sf::Vector3f pos(size_t i) const   { return {data.x[i], data.y[i], data.z[i]}; }
-            inline sf::Vector3f vel(size_t i) const   { return {data.vx[i], data.vy[i], data.vz[i]}; }
-            inline sf::Vector3f old_force(size_t i) const { return {data.old_fx[i], data.old_fy[i], data.old_fz[i]}; }
-            inline sf::Vector3f force(size_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
-            inline void add_force(size_t i, sf::Vector3f f) { data.fx[i] += f.x, data.fy[i] += f.y, data.fz[i] += f.z; }
-            inline void add_pos(size_t i, sf::Vector3f p) { data.x[i] += p.x, data.y[i] += p.y, data.z[i] += p.z; }
-            inline void add_vel(size_t i, sf::Vector3f v) { data.vx[i] += v.x, data.vy[i] += v.y, data.vz[i] += v.z; }
+            inline sf::Vector3f pos(uint32_t i) const   { return {data.x[i], data.y[i], data.z[i]}; }
+            inline sf::Vector3f vel(uint32_t i) const   { return {data.vx[i], data.vy[i], data.vz[i]}; }
+            inline sf::Vector3f old_force(uint32_t i) const { return {data.old_fx[i], data.old_fy[i], data.old_fz[i]}; }
+            inline sf::Vector3f force(uint32_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
+            inline void add_force(uint32_t i, sf::Vector3f f) { data.fx[i] += f.x, data.fy[i] += f.y, data.fz[i] += f.z; }
+            inline void add_pos(uint32_t i, sf::Vector3f p) { data.x[i] += p.x, data.y[i] += p.y, data.z[i] += p.z; }
+            inline void add_vel(uint32_t i, sf::Vector3f v) { data.vx[i] += v.x, data.vy[i] += v.y, data.vz[i] += v.z; }
 
             inline void emplace_vel(sf::Vector3f v) { data.vx.emplace_back(v.x); data.vy.emplace_back(v.y); data.vz.emplace_back(v.z); }
             inline void emplace_pos(sf::Vector3f p) { data.x.emplace_back(p.x); data.y.emplace_back(p.y); data.z.emplace_back(p.z); }
@@ -310,3 +303,4 @@ namespace sim
         };
     } // namespace fun
 } // namespace sim
+

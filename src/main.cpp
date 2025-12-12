@@ -37,34 +37,33 @@ int main()
         throw std::runtime_error("Failed to init imgui!");
     }
 
-    size_t universeSize = 30.f;
+    size_t universeSize = 50.f;
     sf::Vector3f box(universeSize, universeSize, universeSize);
 
+    sim::fun::logging_flags log_flags{};
+    log_flags.log_reactions = true;
+
     sim::fun::universe_create_info create_info{};
-    create_info.has_gravity = true;
+    create_info.has_gravity = false;
     create_info.reactive = false;
-    create_info.wall_collision = true;
+    create_info.wall_collision = false;
     create_info.render_water = true;
+    create_info.log_flags = log_flags;
     create_info.mag_gravity = 9.8f;
     create_info.box = box;
 
     sim::fun::universe universe(create_info);
-
-    window.setCameraCallback([&](bool left, bool right, const sf::Vector2i& mouse, float wheel, const std::vector<sf::Keyboard::Key>& keys)
-    {
-        universe.handleCamera(left, right, mouse, wheel, keys);
-    });
+    //sim::fun::universe universe("src/scenes/2025_12_1203_42.json");
 
     std::random_device rd;
     std::mt19937 gen(rd());
 
     std::uniform_real_distribution<> disx(3.f, box.x - 3.f); 
     std::uniform_real_distribution<> disy(3.f, box.y - 3.f); 
-    std::uniform_real_distribution<> disz(3.f, box.z / 2.f);
+    std::uniform_real_distribution<> disz(3.f, box.z);
     std::uniform_real_distribution<> disz_gas(box.z / 2.f + 2.f, box.z - 2.f);
 
     std::uniform_real_distribution<> atmosphere(0.f, 1.f);
-
     std::uniform_real_distribution<> ve(-0.f, 0.f); 
 
     auto water = sim::parseSMILES("O"); 
@@ -72,9 +71,10 @@ int main()
     auto HydrochloricAcid = sim::parseSMILES("[Cl-].[H+]");  
     auto Amonia = sim::parseSMILES("N");  
     auto Methane = sim::parseSMILES("C");  
-    auto stuff = sim::parseSMILES("N[C@@H](CCCNC(N)=N)C(=O)N1CCC[C@H]1C(=O)N2CCC[C@H]2C(=O)NC(CC3=CC=CC=C3)C(=O)NC(CC4=CC=CC=C4)C(=O)N[C@@H](CO)C(=O)N5CCC[C@H]5C(=O)N[C@@H](CC6=CC=CC=C6)C(=O)N[C@@H](CCCNC(N)=N)C(=O)O");
-    auto stuff2 = sim::parseSMILES("CCCCCCCCCCCCOS(=O)(=O)[O-]");  
-    auto stuff3 = sim::parseSMILES("C1=CC2=CC3=CC4=C5C6=C3C7=C2C(=C1)C8=C9C7=C1C6=C2C3=C6C1=C1C9=C(C=CC1=CC6=CC1=C3C3=C6C(=C1)C=C1C=CC=C7C1=C6C1=C6C3=C2C5=C2C6=C3C(=CC2=C4)C=CC2=C3C1=C7C=C2)C=C8");
+    //auto stuff = sim::parseSMILES("N[C@@H](CCCNC(N)=N)C(=O)N1CCC[C@H]1C(=O)N2CCC[C@H]2C(=O)NC(CC3=CC=CC=C3)C(=O)NC(CC4=CC=CC=C4)C(=O)N[C@@H](CO)C(=O)N5CCC[C@H]5C(=O)N[C@@H](CC6=CC=CC=C6)C(=O)N[C@@H](CCCNC(N)=N)C(=O)O");
+    //auto stuff2 = sim::parseSMILES("CCCCCCCCCCCCOS(=O)(=O)[O-]");  
+    //auto stuff3 = sim::parseSMILES("C1=CC2=CC3=CC4=C5C6=C3C7=C2C(=C1)C8=C9C7=C1C6=C2C3=C6C1=C1C9=C(C=CC1=CC6=CC1=C3C3=C6C(=C1)C=C1C=CC=C7C1=C6C1=C6C3=C2C5=C2C6=C3C(=CC2=C4)C=CC2=C3C1=C7C=C2)C=C8");
+    auto stuff4 = sim::parseSMILES("OCC1OC(OC2C(CO)OC(OC3C(CO)OC(OC4C(CO)OC(OC5C(CO)OC(OC6C(CO)OC(OC7C(CO)OC(OC8C(CO)OC(OC9C(CO)OC(OC%10C(CO)O)C(O)C(O)C%10O)C(O)C(O)C9O)C(O)C(O)C8O)C(O)C(O)C7O)C(O)C(O)C6O)C(O)C(O)C5O)C(O)C(O)C4O)C(O)C(O)C3O)C(O)C(O)C2O)C(O)C(O)C1O");  
 
     auto H2 = sim::parseSMILES("HH"); 
     auto N2 = sim::parseSMILES("N#N"); 
@@ -97,18 +97,19 @@ int main()
     //universe.createMolecule(stuff2, {5, 13, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff2, {5, 17, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(stuff3, {5, 17, 3}, {0.f, 0.f, 0.f});
+    universe.createMolecule(stuff4, {10, 10, 10}, {0.f, 0.f, 0.f});
     //universe.createMolecule(CO, {5, 5, 5}, {0.f, 0.f, 0.f});
 
     /* molecule_structure mol{};
-    auto dna = sim::io::loadXYZ("src/resource/protein.xyz", mol.atoms, mol.bonds, mol.positions);
+    bool result = sim::io::loadXYZ("src/resource/car.xyz", mol.atoms, mol.bonds, mol.positions);
     sim::organizeSubsets(mol.subsets, mol.atoms, mol.bonds);
     sim::organizeAngles(mol.subsets, mol.atoms, mol.bonds, mol.dihedral_angles, mol.angles);
 
-    universe.createMolecule(mol, {20, 20, 20}, {0.f, 0.f, 0.0f}); */
+    universe.createMolecule(mol, {20, 20, 2}, {0.f, 0.f, 0.0f}); */
 
-    size_t count = 300;
-    float minDistance = 3.5f;
-    float minDistanceAtm = 3.5f;
+    size_t count = 0;
+    float minDistance = 3.2f;
+    float minDistanceAtm = 2.8f;
 
     std::vector<sf::Vector3f> centers{universe.positions()};
 
@@ -149,7 +150,7 @@ int main()
         }
     }
 
-    for (size_t i = 0; i < count; ++i)
+    /* for (size_t i = 0; i < count; ++i)
     {
         sf::Vector3f pos;
         sf::Vector3f vel;
@@ -199,7 +200,7 @@ int main()
             centers.push_back(pos);
             universe.createMolecule(air_particle, pos);
         }
-    }
+    } */
 
     bool drawCharge = false;
     sf::Clock deltaClock;
@@ -223,7 +224,8 @@ int main()
         if (window.stepFrame())
         {
             universe.update(targetTemp, targetPressure);
-            drawCharge = !drawCharge;
+            universe.saveScene("src/scenes");
+            universe.saveAsVideo("src/scenes/videos");
         }
 
         window.clear();
@@ -233,6 +235,8 @@ int main()
         if (drawCharge) universe.drawChargeField(window);
 
         displayUI(window, universe);
+        universe.handleCamera();
+
         ImGui::SFML::Render(window.getWindow());
         window.display();
     }

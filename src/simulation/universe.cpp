@@ -18,7 +18,7 @@ namespace sim
             : box(create_info.box), react(create_info.reactive),
               gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
-              render_water(create_info.render_water)
+              render_water(create_info.render_water), log_flags(create_info.log_flags)
         {
             if (react)
                 initReaxParams();
@@ -26,6 +26,7 @@ namespace sim
 
         universe::universe(const std::filesystem::path path)
         {
+            loadScene(path);
         }
 
         void universe::drawBox(core::window_t &window)
@@ -56,7 +57,7 @@ namespace sim
             sf::VertexArray lines(sf::PrimitiveType::Lines, edges.size() * 2);
             sf::Color edgeColor(200, 200, 200, 180);
 
-            size_t idx = 0;
+            int32_t idx = 0;
             for (const auto &[i, j] : edges)
             {
                 sf::Vector2f p1 = project(window, corners[i]);
@@ -85,26 +86,26 @@ namespace sim
 
         void universe::draw(core::window_t &window, bool letter, bool lennardBall)
         {
-            std::vector<size_t> drawOrder(atoms.size());
+            std::vector<int32_t> drawOrder(atoms.size());
             std::iota(drawOrder.begin(), drawOrder.end(), 0);
             sf::Vector3f eye = cam.eye();
 
             std::sort(drawOrder.begin(), drawOrder.end(),
-                      [&](size_t a, size_t b)
+                      [&](int32_t a, int32_t b)
                       { return (pos(a) - eye).lengthSquared() > (pos(b) - eye).lengthSquared(); });
 
             drawBox(window);
 
-            std::vector<size_t> no_draw{};
+            std::vector<int32_t> no_draw{};
 
             if (!render_water)
                 for (auto &m : molecules)
                 {
-                    if (m.water)
+                    if (m.exclude)
                     {
-                        no_draw.emplace_back(m.atomIdx[0]);
-                        no_draw.emplace_back(m.atomIdx[1]);
-                        no_draw.emplace_back(m.atomIdx[2]);
+                        no_draw.emplace_back(m.angleBegin);
+                        no_draw.emplace_back(m.angleBegin + 1);
+                        no_draw.emplace_back(m.angleBegin + 2);
                     }
                 }
 
@@ -113,7 +114,7 @@ namespace sim
             else
                 drawReactiveBonds(window);
 
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < atoms.size(); ++i)
             {
                 if (std::find(no_draw.begin(), no_draw.end(), drawOrder[i]) != no_draw.end())
                     continue;
@@ -181,10 +182,10 @@ namespace sim
 
                         float density = 0.0f;
 
-                        for (size_t d = 0; d < 14; ++d)
+                        for (int32_t d = 0; d < 14; ++d)
                         {
                             auto &cell = cells[getCellID(ix + offsets[d][0], iy + offsets[d][1], iz + offsets[d][2])];
-                            for (size_t i = 0; i < cell.size(); ++i)
+                            for (int32_t i = 0; i < cell.size(); ++i)
                             {
                                 sf::Vector3f dr = minImageVec(worldPos - pos(cell[i]));
                                 float r2 = dr.lengthSquared();
@@ -238,7 +239,7 @@ namespace sim
             sf::VertexArray billboards(sf::PrimitiveType::Triangles);
             billboards.resize(blobs.size() * 6);
 
-            size_t idx = 0;
+            int32_t idx = 0;
             for (const auto &b : blobs)
             {
                 sf::Vector2f p = b.screenPos;
@@ -258,11 +259,11 @@ namespace sim
             window.getWindow().draw(billboards, states);
         }
 
-        void universe::drawBonds(core::window_t &window, const std::vector<size_t> &no_draw)
+        void universe::drawBonds(core::window_t &window, const std::vector<int32_t> &no_draw)
         {
             sf::Vector2f dimensions = window.getWindow().getView().getSize();
 
-            for (size_t b = 0; b < bonds.size(); ++b)
+            for (int32_t b = 0; b < bonds.size(); ++b)
             {
                 const bond &bond = bonds[b];
                 if (std::find(no_draw.begin(), no_draw.end(), bond.centralAtom) != no_draw.end())
@@ -313,7 +314,7 @@ namespace sim
         }
 
         void universe::drawCylinder(core::window_t &window,
-                                    size_t i, size_t j,
+                                    int32_t i, int32_t j,
                                     int32_t segments,
                                     float radius,
                                     sf::Color color)
@@ -422,7 +423,7 @@ namespace sim
             }
         }
 
-        void universe::drawHydrogenBond(core::window_t &window, size_t H)
+        void universe::drawHydrogenBond(core::window_t &window, int32_t H)
         {
             if (timeStep == 0 || cells.size() == 0)
                 return;
@@ -430,7 +431,7 @@ namespace sim
             if (data.q[H] > -0.2f && data.q[H] < 0.2f)
                 return;
 
-            size_t D = SIZE_MAX;
+            int32_t D = SIZE_MAX;
             for (const auto &b : bonds)
             {
                 if (b.bondedAtom == H)
@@ -462,18 +463,18 @@ namespace sim
             iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy) - 1 : iy;
             iz = iz >= static_cast<int32_t>(cz) ? static_cast<int32_t>(cz) - 1 : iz;
 
-            for (size_t d = 0; d < 14; ++d)
+            for (int32_t d = 0; d < 14; ++d)
             {
                 int32_t iix = ix + offsets[d][0];
                 int32_t iiy = iy + offsets[d][1];
                 int32_t iiz = iz + offsets[d][2];
 
-                int32_t cell_id = iix + cx * (iiy + cy * iiz);
+                uint32_t cell_id = iix + cx * (iiy + cy * iiz);
 
                 if (cell_id < -1 || cell_id >= (cx * cy * cz))
                     continue;
 
-                for (size_t A : cells[cell_id])
+                for (uint32_t A : cells[cell_id])
                 {
                     if (A == D || A == H)
                         continue;
@@ -552,13 +553,13 @@ namespace sim
             sf::Color cellColor(100, 149, 237, 60);
             sf::Color hotColor(255, 69, 0, 120);
 
-            size_t vert_idx = 0;
+            int32_t vert_idx = 0;
 
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
+            for (int32_t ix = 0; ix < cx; ++ix)
+                for (int32_t iy = 0; iy < cy; ++iy)
+                    for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t cell_id = ix + cx * (iy + cy * iz);
+                        int32_t cell_id = ix + cx * (iy + cy * iz);
                         bool has_atoms = !cells[cell_id].empty();
 
                         sf::Color color = has_atoms ? hotColor : cellColor;
@@ -607,11 +608,7 @@ namespace sim
             window.getWindow().draw(grid);
         }
 
-        void universe::log(size_t step)
-        {
-        }
-
-        size_t universe::createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron, int32_t chirality)
+        int32_t universe::createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron, int32_t chirality)
         {
             atom newAtom{};
             newAtom.ZIndex = ZIndex;
@@ -636,11 +633,12 @@ namespace sim
             data.fy.resize(atoms.size());
             data.fz.resize(atoms.size());
             data.bond_orders.resize(atoms.size());
+            data.temperature.resize(atoms.size());
 
             return atoms.size() - 1;
         }
 
-        void universe::createBond(size_t idx1, size_t idx2, BondType type)
+        void universe::createBond(int32_t idx1, int32_t idx2, BondType type)
         {
             if (idx1 >= atoms.size() || idx2 >= atoms.size() || idx1 == idx2)
                 return;
@@ -684,113 +682,116 @@ namespace sim
             bonds.emplace_back(std::move(nBond));
         }
 
-        size_t universe::createSubset(const def_subset &nSub, const size_t baseAtom, const size_t baseSubset)
+        int32_t universe::createSubset(const def_subset &nSub, const int32_t baseAtom, const int32_t baseSubset)
         {
             subset nSubset{};
             nSubset.mainAtomIdx = nSub.mainAtomIdx + baseAtom;
             nSubset.bondedSubsetIdx = nSub.bondedSubset == SIZE_MAX ? SIZE_MAX : nSub.bondedSubset + baseSubset;
             nSubset.bondingSubsetIdx = nSub.bondingSubset == SIZE_MAX ? SIZE_MAX : nSub.bondingSubset + baseSubset;
 
-            std::vector<size_t> connected{nSub.connectedIdx};
-            std::vector<size_t> hydrogens{nSub.hydrogensIdx};
             std::vector<uint8_t> neighbourZs;
             neighbourZs.reserve(nSub.connectedIdx.size() + nSub.hydrogensIdx.size());
 
-            for (size_t i = 0; i < connected.size(); ++i)
+            for (int32_t i = 0; i < nSub.connectedIdx.size(); ++i)
             {
-                const size_t bondedAtom = connected[i];
-
-                connected[i] += baseAtom;
+                const int32_t bondedAtom = nSub.connectedIdx[i] + baseAtom;
                 neighbourZs.emplace_back(atoms[bondedAtom].ZIndex);
             }
 
-            for (size_t h = 0; h < hydrogens.size(); ++h)
+            for (int32_t h = 0; h < nSub.hydrogensIdx.size(); ++h)
             {
-                const size_t bondedAtom = hydrogens[h];
-
-                hydrogens[h] += baseAtom;
                 neighbourZs.emplace_back(1);
             }
 
-            nSubset.connectedIdx = std::move(connected);
-            nSubset.hydrogenIdx = std::move(hydrogens);
-            subsets.emplace_back(std::move(nSubset));
+            if (nSub.hydrogensIdx.size() > 0)
+            {
+                nSubset.hydrogenBegin = nSub.hydrogensIdx[0] + baseAtom;
+                nSubset.hydrogenCount = nSub.hydrogensIdx.size();
+            }
+            if (nSub.connectedIdx.size() > 0)
+            {
+                nSubset.connectedBegin = nSub.connectedIdx[0] + baseAtom;
+                nSubset.connectedCount = nSub.connectedIdx.size();
+            }
 
+            subsets.emplace_back(std::move(nSubset));
             return subsets.size() - 1; // Index
         }
 
         void universe::createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel)
         {
-            size_t baseAtomIndex = atoms.size();
+            int32_t baseAtomIndex = atoms.size();
 
             molecule nMolecule{};
 
-            for (size_t i = 0; i < structure.atoms.size(); ++i)
+            for (int32_t i = 0; i < structure.atoms.size(); ++i)
             {
                 const def_atom &a = structure.atoms[i];
                 if (pos.z != 0)
                     structure.positions[i].z += 0.01f * i;
                 createAtom(structure.positions[i] + pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
                 data.q[i] += structure.atoms[i].charge;
-
-                nMolecule.atomIdx.emplace_back(baseAtomIndex + i);
             }
+
+            nMolecule.atomBegin = baseAtomIndex;
+            nMolecule.atomCount = structure.atoms.size();
 
             if (!react)
             {
-                size_t baseBondIndex = bonds.size();
-                for (size_t b = 0; b < structure.bonds.size(); ++b)
+                int32_t baseBondIndex = bonds.size();
+                for (int32_t b = 0; b < structure.bonds.size(); ++b)
                 {
                     const def_bond &db = structure.bonds[b];
-                    size_t central = baseAtomIndex + db.centralAtomIdx;
-                    size_t bonded = baseAtomIndex + db.bondingAtomIdx;
+                    int32_t central = baseAtomIndex + db.centralAtomIdx;
+                    int32_t bonded = baseAtomIndex + db.bondingAtomIdx;
                     createBond(bonded, central, db.type);
-                    nMolecule.bondIdx.emplace_back(baseBondIndex + b);
                 }
-            }
 
-            size_t baseSubset = subsets.size();
-            for (size_t s = 0; s < structure.subsets.size(); ++s)
-            {
-                createSubset(structure.subsets[s], baseAtomIndex, baseSubset);
-                nMolecule.subsetIdx.emplace_back(baseSubset + s);
-            }
+                nMolecule.bondBegin = baseBondIndex;
+                nMolecule.bondCount = structure.bonds.size();
+                
+                int32_t baseSubset = subsets.size();
+                for (int32_t s = 0; s < structure.subsets.size(); ++s)
+                    createSubset(structure.subsets[s], baseAtomIndex, baseSubset);
 
-            size_t baseAngle = angles.size();
-            for (size_t a = 0; a < structure.angles.size(); ++a)
-            {
-                angle angle = structure.angles[a];
-                angle.A += baseAtomIndex;
-                angle.B += baseAtomIndex;
-                angle.C += baseAtomIndex;
+                nMolecule.subsetBegin = baseSubset;
+                nMolecule.subsetCount = structure.subsets.size();
 
-                angles.emplace_back(angle);
-                nMolecule.angles.emplace_back(baseAngle + a);
-            }
-
-            size_t baseDihedral = dihedral_angles.size();
-            for (size_t a = 0; a < structure.dihedral_angles.size(); ++a)
-            {
-                dihedral_angle angle = structure.dihedral_angles[a];
-                angle.A += baseAtomIndex;
-                angle.B += baseAtomIndex;
-                angle.C += baseAtomIndex;
-                angle.D += baseAtomIndex;
-
-                dihedral_angles.emplace_back(angle);
-                nMolecule.dihedrals.emplace_back(baseDihedral + a);
-            }
-
-            nMolecule.name = moleculeName(nMolecule.subsetIdx);
-
-            if (!react)
-            {
                 balanceMolecularCharges(subsets[baseSubset]);
                 rebuildBondTopology();
-            }
 
-            if (structure.atoms.size() == 3 && structure.atoms[0].ZIndex == 8 && structure.atoms[1].ZIndex == 1 && structure.atoms[2].ZIndex == 1)
-                nMolecule.water = true;
+                int32_t baseAngle = angles.size();
+                for (int32_t a = 0; a < structure.angles.size(); ++a)
+                {
+                    angle angle = structure.angles[a];
+                    angle.A += baseAtomIndex;
+                    angle.B += baseAtomIndex;
+                    angle.C += baseAtomIndex;
+    
+                    angles.emplace_back(angle);
+                }
+    
+                nMolecule.angleBegin = baseAngle;
+                nMolecule.angleCount = structure.angles.size();
+    
+                int32_t baseDihedral = dihedral_angles.size();
+                for (int32_t a = 0; a < structure.dihedral_angles.size(); ++a)
+                {
+                    dihedral_angle angle = structure.dihedral_angles[a];
+                    angle.A += baseAtomIndex;
+                    angle.B += baseAtomIndex;
+                    angle.C += baseAtomIndex;
+                    angle.D += baseAtomIndex;
+    
+                    dihedral_angles.emplace_back(angle);
+                }
+    
+                nMolecule.dihedralBegin = baseDihedral;
+                nMolecule.dihedralCount = structure.dihedral_angles.size();
+    
+                if (structure.atoms.size() == 3 && structure.atoms[0].ZIndex == 8 && structure.atoms[1].ZIndex == 1 && structure.atoms[2].ZIndex == 1)
+                    nMolecule.exclude = true;
+            }
 
             molecules.emplace_back(std::move(nMolecule));
         }
@@ -802,27 +803,33 @@ namespace sim
             if (it == subsets.end())
                 return;
 
-            size_t startIdx = std::distance(subsets.begin(), it);
+            int32_t startIdx = std::distance(subsets.begin(), it);
 
-            std::vector<size_t> atomsToBalance;
-            std::unordered_set<size_t> visited;
-            std::queue<size_t> q;
+            std::vector<int32_t> atomsToBalance;
+            std::unordered_set<int32_t> visited;
+            std::queue<int32_t> q;
             q.push(startIdx);
             visited.insert(startIdx);
 
             while (!q.empty())
             {
-                size_t currentIdx = q.front();
+                int32_t currentIdx = q.front();
                 q.pop();
                 const auto &currentSubset = subsets[currentIdx];
 
                 atomsToBalance.push_back(currentSubset.mainAtomIdx);
-                atomsToBalance.insert(atomsToBalance.end(),
-                                      currentSubset.connectedIdx.begin(), currentSubset.connectedIdx.end());
-                atomsToBalance.insert(atomsToBalance.end(),
-                                      currentSubset.hydrogenIdx.begin(), currentSubset.hydrogenIdx.end());
+                
+                for(int32_t i = 0; i < currentSubset.connectedCount; ++i)
+                {
+                    atomsToBalance.emplace_back(currentSubset.connectedBegin + i);
+                }
 
-                size_t nextIdx = currentSubset.bondedSubsetIdx;
+                for(int32_t i = 0; i < currentSubset.hydrogenCount; ++i)
+                {
+                    atomsToBalance.emplace_back(currentSubset.hydrogenCount + i);
+                }
+
+                int32_t nextIdx = currentSubset.bondedSubsetIdx;
                 if (nextIdx < subsets.size() && nextIdx != SIZE_MAX && visited.insert(nextIdx).second)
                 {
                     q.push(nextIdx);
@@ -836,11 +843,11 @@ namespace sim
             auto last = std::unique(atomsToBalance.begin(), atomsToBalance.end());
             atomsToBalance.erase(last, atomsToBalance.end());
 
-            std::vector<std::vector<size_t>> neighborLists(atoms.size());
+            std::vector<std::vector<int32_t>> neighborLists(atoms.size());
             for (const auto &bond : bonds)
             {
-                size_t a = bond.bondedAtom;
-                size_t b = bond.centralAtom;
+                int32_t a = bond.bondedAtom;
+                int32_t b = bond.centralAtom;
                 bool aIn = std::binary_search(atomsToBalance.begin(), atomsToBalance.end(), a);
                 bool bIn = std::binary_search(atomsToBalance.begin(), atomsToBalance.end(), b);
                 if (aIn && bIn)
@@ -856,9 +863,9 @@ namespace sim
                 return;
 
             std::vector<float> valenceDeficit(atomsToBalance.size(), 0.0f);
-            for (size_t i = 0; i < atomsToBalance.size(); ++i)
+            for (int32_t i = 0; i < atomsToBalance.size(); ++i)
             {
-                size_t idx = atomsToBalance[i];
+                int32_t idx = atomsToBalance[i];
                 uint8_t usualValence = constants::getUsualBonds(atoms[idx].ZIndex);
                 int deficit = usualValence - static_cast<int>(atoms[idx].bondCount);
                 valenceDeficit[i] = static_cast<float>(deficit);
@@ -874,7 +881,7 @@ namespace sim
 
             if (totalDeficit > 0.5f)
             {
-                for (size_t i = 0; i < atomsToBalance.size(); ++i)
+                for (int32_t i = 0; i < atomsToBalance.size(); ++i)
                 {
                     if (valenceDeficit[i] > 0)
                     {
@@ -886,14 +893,14 @@ namespace sim
             else
             {
                 float adjustment = chargeToDistribute / atomsToBalance.size();
-                for (size_t idx : atomsToBalance)
+                for (int32_t idx : atomsToBalance)
                 {
                     data.q[idx] += adjustment;
                 }
             }
         }
 
-        void universe::boundCheck(size_t i)
+        void universe::boundCheck(uint32_t i)
         {
             float &x = data.x[i];
             float &y = data.y[i];
@@ -950,7 +957,7 @@ namespace sim
             }
         }
 
-        float universe::ljPot(size_t i, size_t j)
+        float universe::ljPot(uint32_t i, uint32_t j)
         {
             float potential = 0.f;
 
@@ -971,7 +978,7 @@ namespace sim
             return potential;
         }
 
-        sf::Vector3f universe::ljForce(size_t i, size_t j)
+        sf::Vector3f universe::ljForce(uint32_t i, uint32_t j)
         {
             const atom &a1 = atoms[i];
             const atom &a2 = atoms[j];
@@ -1020,7 +1027,7 @@ namespace sim
             return force;
         }
 
-        sf::Vector3f universe::coulombForce(size_t i, size_t j, sf::Vector3f &dr_vec)
+        sf::Vector3f universe::coulombForce(uint32_t i, uint32_t j, sf::Vector3f &dr_vec)
         {
             float dr = dr_vec.length();
 
@@ -1037,12 +1044,12 @@ namespace sim
 
         void universe::calcBondForces()
         {
-            for (size_t i = 0; i < bonds.size(); ++i)
+            for (int32_t i = 0; i < bonds.size(); ++i)
             {
                 bond &bond = bonds[i];
 
-                size_t idx1 = bond.bondedAtom;
-                size_t idx2 = bond.centralAtom;
+                int32_t idx1 = bond.bondedAtom;
+                int32_t idx2 = bond.centralAtom;
                 sf::Vector3f r_vec = minImageVec(pos(idx2) - pos(idx1));
                 float dr = r_vec.length();
                 if (dr <= EPSILON)
@@ -1061,13 +1068,13 @@ namespace sim
 
         void universe::calcAngleForces()
         {
-            // size_t count = 0;
+            // int32_t count = 0;
 
             for (const angle &ang : angles)
             {
-                size_t i = ang.A; // left atom
-                size_t j = ang.B; // central atom
-                size_t k = ang.C; // right atom
+                int32_t i = ang.A; // left atom
+                int32_t j = ang.B; // central atom
+                int32_t k = ang.C; // right atom
 
                 sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
                 sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
@@ -1110,15 +1117,15 @@ namespace sim
 
         void universe::calcLjForces()
         {
-            // size_t count = 0;
+            // int32_t count = 0;
 
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
+            for (int32_t ix = 0; ix < cx; ++ix)
+                for (int32_t iy = 0; iy < cy; ++iy)
+                    for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t cell_id = ix + cx * (iy + cy * iz);
+                        int32_t cell_id = ix + cx * (iy + cy * iz);
 
-                        const std::vector<size_t> &cell = cells[cell_id];
+                        const std::vector<uint32_t> &cell = cells[cell_id];
 
                         for (int32_t dz = -1; dz <= 1; ++dz)
                             for (int32_t dy = -1; dy <= 1; ++dy)
@@ -1127,16 +1134,16 @@ namespace sim
                                     int32_t n_ix = (ix + dx + cx) % cx;
                                     int32_t n_iy = (iy + dy + cy) % cy;
                                     int32_t n_iz = (iz + dz + cz) % cz;
-                                    size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+                                    int32_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
-                                    const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
+                                    const std::vector<uint32_t> &neighbour_cell = cells[neighbour_id];
 
-                                    for (size_t ii = 0; ii < cell.size(); ++ii)
+                                    for (int32_t ii = 0; ii < cell.size(); ++ii)
                                     {
-                                        const size_t &i = cell[ii];
-                                        for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                                        const int32_t &i = cell[ii];
+                                        for (int32_t jj = 0; jj < neighbour_cell.size(); ++jj)
                                         {
-                                            const size_t &j = neighbour_cell[jj];
+                                            const int32_t &j = neighbour_cell[jj];
 
                                             if (j <= i)
                                                 continue;
@@ -1177,7 +1184,7 @@ namespace sim
 
         void universe::calcDihedralForces()
         {
-            for (size_t d = 0; d < dihedral_angles.size(); ++d)
+            for (int32_t d = 0; d < dihedral_angles.size(); ++d)
             {
                 const dihedral_angle &d_angle = dihedral_angles[d];
 
@@ -1226,22 +1233,22 @@ namespace sim
 
         void universe::calcElectrostaticForces()
         {
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
+            for (int32_t ix = 0; ix < cx; ++ix)
+                for (int32_t iy = 0; iy < cy; ++iy)
+                    for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t cell_id = getCellID(ix, iy, iz);
+                        int32_t cell_id = getCellID(ix, iy, iz);
 
-                        const std::vector<size_t> &cell = cells[cell_id];
+                        const std::vector<uint32_t> &cell = cells[cell_id];
 
-                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        for (int32_t ii = 0; ii < cell.size(); ++ii)
                         {
-                            size_t i = cell[ii];
+                            uint32_t i = cell[ii];
                             if (data.q[i] == 0.f)
                                 continue;
-                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                            for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
                             {
-                                const size_t &j = cell[jj];
+                                const uint32_t &j = cell[jj];
 
                                 if (j <= i)
                                     continue;
@@ -1256,21 +1263,21 @@ namespace sim
                             }
                         }
 
-                        for (size_t d = 1; d < 14; ++d)
+                        for (int32_t d = 1; d < 14; ++d)
                         {
                             int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
-                            size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+                            int32_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
-                            const std::vector<size_t> &neighbour_cell = cells[neighbour_id];
+                            const std::vector<uint32_t> &neighbour_cell = cells[neighbour_id];
 
-                            for (size_t ii = 0; ii < cell.size(); ++ii)
+                            for (int32_t ii = 0; ii < cell.size(); ++ii)
                             {
-                                const size_t &i = cell[ii];
+                                const uint32_t &i = cell[ii];
                                 if (data.q[i] == 0.f)
                                     continue;
-                                for (size_t jj = 0; jj < neighbour_cell.size(); ++jj)
+                                for (int32_t jj = 0; jj < neighbour_cell.size(); ++jj)
                                 {
-                                    const size_t &j = neighbour_cell[jj];
+                                    const uint32_t &j = neighbour_cell[jj];
 
                                     if (data.q[j] == 0.f)
                                         continue;
@@ -1293,12 +1300,11 @@ namespace sim
             calcDihedralForces();
         }
 
-        std::vector<sf::Vector3f> universe::processCellUnbonded(size_t ix, size_t iy, size_t iz)
+        std::vector<sf::Vector3f> universe::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz)
         {
-            size_t local_count = 0;
             float local_virial = 0.f;
 
-            size_t cellID = getCellID(ix, iy, iz);
+            int32_t cellID = getCellID(ix, iy, iz);
             const auto &cell = cells[cellID];
             thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
 
@@ -1307,13 +1313,13 @@ namespace sim
 
             std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0,0,0});
 
-            for (size_t ii = 0; ii < cell.size(); ++ii)
+            for (int32_t ii = 0; ii < cell.size(); ++ii)
             {
-                const size_t i = cell[ii];
+                const int32_t i = cell[ii];
 
-                for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
                 {
-                    const size_t j = cell[jj];
+                    const int32_t j = cell[jj];
                     sf::Vector3f dr = minImageVec(pos(j) - pos(i));
 
                     float r2 = dr.lengthSquared();
@@ -1346,20 +1352,20 @@ namespace sim
                         int32_t n_ix = ix + dx;
                         int32_t n_iy = iy + dy;
                         int32_t n_iz = iz + dz;
-                        size_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
+                        int32_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
 
                         if (neighbor_id == cellID)
                             continue;
 
                         const auto &neighbor_cell = cells[neighbor_id];
 
-                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        for (int32_t ii = 0; ii < cell.size(); ++ii)
                         {
-                            size_t i = cell[ii];
+                            int32_t i = cell[ii];
 
-                            for (size_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                            for (int32_t jj = 0; jj < neighbor_cell.size(); ++jj)
                             {
-                                size_t j = neighbor_cell[jj];
+                                int32_t j = neighbor_cell[jj];
 
                                 if (j <= i)
                                     continue;
@@ -1372,8 +1378,6 @@ namespace sim
 
                                 if (areBonded(i, j))
                                     continue;
-
-                                ++local_count;
 
                                 sf::Vector3f cForce = coulombForce(i, j, dr);
                                 sf::Vector3f lForce = ljForce(i, j);
@@ -1390,20 +1394,19 @@ namespace sim
                     }
 
             total_virial.fetch_add(local_virial, std::memory_order_relaxed);
-            total_count.fetch_add(local_count, std::memory_order_relaxed);
-
             return local_forces;
         }
 
         void universe::calcBondedForcesParallel()
         {
-            const int32_t n_threads = std::max(1, static_cast<int32_t>(std::thread::hardware_concurrency()));
+            const int32_t n_threads = std::max(1, 1);
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
 
             auto make_task = [this](auto&& func) {
-                return [this, func](size_t start, size_t end) -> std::vector<sf::Vector3f> {
+                return [this, func](int32_t start, int32_t end) -> std::vector<sf::Vector3f> {
                     thread_local std::vector<sf::Vector3f> local_forces;
-                    if (local_forces.size() != atoms.size()) {
+                    if (local_forces.size() != atoms.size()) 
+                    {
                         local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
                     }
                     std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0,0,0});
@@ -1414,12 +1417,13 @@ namespace sim
                 };
             };
 
-            auto bond_func = [this](size_t start, size_t end, std::vector<sf::Vector3f>& lf) 
+            auto bond_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf) 
             {
-                for (size_t i = start; i < end; ++i) {
+                for (int32_t i = start; i < end; ++i) 
+                {
                     const bond& b = bonds[i];
-                    size_t a = b.bondedAtom;
-                    size_t c = b.centralAtom;
+                    int32_t a = b.bondedAtom;
+                    int32_t c = b.centralAtom;
 
                     sf::Vector3f dr = minImageVec(pos(c) - pos(a));
                     float len = dr.length();
@@ -1435,16 +1439,17 @@ namespace sim
 
             for (int32_t t = 0; t < n_threads; ++t) 
             {
-                size_t start = bonds.size() * t / n_threads;
-                size_t end   = bonds.size() * (t + 1) / n_threads;
+                int32_t start = bonds.size() * t / n_threads;
+                int32_t end   = bonds.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(bond_func), start, end));
             }
 
-            auto angle_func = [this](size_t start, size_t end, std::vector<sf::Vector3f>& lf) 
+            auto angle_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf) 
             {
-                for (size_t a = start; a < end; ++a) {
+                for (int32_t a = start; a < end; ++a) 
+                {
                     const angle& ang = angles[a];
-                    size_t i = ang.A, j = ang.B, k = ang.C;
+                    int32_t i = ang.A, j = ang.B, k = ang.C;
 
                     sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
                     sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
@@ -1476,14 +1481,14 @@ namespace sim
 
             for (int32_t t = 0; t < n_threads; ++t) 
             {
-                size_t start = angles.size() * t / n_threads;
-                size_t end   = angles.size() * (t + 1) / n_threads;
+                int32_t start = angles.size() * t / n_threads;
+                int32_t end   = angles.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(angle_func), start, end));
             }
 
-            auto dihedral_func = [this](size_t start, size_t end, std::vector<sf::Vector3f>& lf) 
+            auto dihedral_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf) 
             {
-                for (size_t d = start; d < end; ++d) {
+                for (int32_t d = start; d < end; ++d) {
                     const dihedral_angle& da = dihedral_angles[d];
                     float phi = calculateDihedral(pos(da.A), pos(da.B), pos(da.C), pos(da.D));
 
@@ -1500,12 +1505,16 @@ namespace sim
 
                     float torque = -da.K * da.periodicity * std::sin(da.periodicity * phi);
 
-                    sf::Vector3f axis = (pos(da.C) - pos(da.B)).normalized();
+                    sf::Vector3f axis = pos(da.C) - pos(da.B);
+                    axis = axis.length() == 0.f ? axis : axis.normalized();
+
                     sf::Vector3f rA = pos(da.A) - pos(da.B);
                     sf::Vector3f rD = pos(da.D) - pos(da.C);
 
-                    sf::Vector3f tA = axis.cross(rA).normalized() * torque;
-                    sf::Vector3f tD = axis.cross(rD).normalized() * (-torque);
+                    sf::Vector3f ra = axis.cross(rA);
+                    sf::Vector3f rd = axis.cross(rD);
+                    sf::Vector3f tA = ra.length() == 0.f ? axis : ra.normalized() * torque;
+                    sf::Vector3f tD = rd.length() == 0.f ? axis : rd.normalized() * -torque;
 
                     lf[da.A] += tA * 0.5f;
                     lf[da.B] += tA * 0.5f - tD * 0.5f;
@@ -1516,14 +1525,14 @@ namespace sim
 
             for (int32_t t = 0; t < n_threads; ++t) 
             {
-                size_t start = dihedral_angles.size() * t / n_threads;
-                size_t end   = dihedral_angles.size() * (t + 1) / n_threads;
+                int32_t start = dihedral_angles.size() * t / n_threads;
+                int32_t end   = dihedral_angles.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
             }
 
             for (auto& fut : futures) {
                 auto local_f = fut.get();
-                for (size_t i = 0; i < atoms.size(); ++i) 
+                for (int32_t i = 0; i < atoms.size(); ++i) 
                     add_force(i, local_f[i]);
             }
         }
@@ -1534,18 +1543,18 @@ namespace sim
 
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
 
-            auto worker = [this](size_t start_flat, size_t end_flat) -> std::vector<sf::Vector3f>
+            auto worker = [this](int32_t start_flat, int32_t end_flat) -> std::vector<sf::Vector3f>
             {
                 std::vector<sf::Vector3f> thread_forces(atoms.size(), {0,0,0});
 
-                for (size_t flat = start_flat; flat < end_flat; ++flat) 
+                for (int32_t flat = start_flat; flat < end_flat; ++flat) 
                 {
-                    size_t iz = flat % cz;
-                    size_t iy = (flat / cz) % cy;
-                    size_t ix = flat / (cz * cy);
+                    int32_t iz = flat % cz;
+                    int32_t iy = (flat / cz) % cy;
+                    int32_t ix = flat / (cz * cy);
 
                     auto cell_forces = processCellUnbonded(ix, iy, iz);
-                    for (size_t i = 0; i < atoms.size(); ++i) 
+                    for (int32_t i = 0; i < atoms.size(); ++i) 
                         thread_forces[i] += cell_forces[i];
                 }
                 return thread_forces;
@@ -1553,8 +1562,8 @@ namespace sim
 
             for (int32_t t = 0; t < n_threads; ++t) 
             {
-                size_t start = (cells.size() * t) / n_threads;
-                size_t end   = (cells.size() * (t + 1)) / n_threads;
+                int32_t start = (cells.size() * t) / n_threads;
+                int32_t end   = (cells.size() * (t + 1)) / n_threads;
 
                 futures.push_back(std::async(std::launch::async, worker, start, end));
             }
@@ -1562,29 +1571,27 @@ namespace sim
             for (auto &fut : futures)
             {
                 std::vector<sf::Vector3f> local_f = fut.get();
-                for (size_t i = 0; i < atoms.size(); ++i)
+                for (int32_t i = 0; i < atoms.size(); ++i)
                     add_force(i, local_f[i]);
             }
-
-            std::cout << "Non Bonded Calcs: " << total_count.load() << std::endl;
         }
 
         void universe::calcUnbondedForces()
         {
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
+            for (int32_t ix = 0; ix < cx; ++ix)
+                for (int32_t iy = 0; iy < cy; ++iy)
+                    for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t cell_id = getCellID(ix, iy, iz);
+                        int32_t cell_id = getCellID(ix, iy, iz);
                         const auto &cell = cells[cell_id];
 
-                        for (size_t ii = 0; ii < cell.size(); ++ii)
+                        for (int32_t ii = 0; ii < cell.size(); ++ii)
                         {
-                            size_t i = cell[ii];
+                            int32_t i = cell[ii];
 
-                            for (size_t jj = ii + 1; jj < cell.size(); ++jj)
+                            for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
                             {
-                                size_t j = cell[jj];
+                                int32_t j = cell[jj];
 
                                 sf::Vector3f dr = minImageVec(pos(j) - pos(i));
                                 float r2 = dr.lengthSquared();
@@ -1593,8 +1600,6 @@ namespace sim
 
                                 if (areBonded(i, j))
                                     continue;
-
-                                ++total_count;
 
                                 sf::Vector3f cForce = coulombForce(i, j, dr);
                                 sf::Vector3f lForce = ljForce(i, j);
@@ -1619,20 +1624,20 @@ namespace sim
                                     int32_t n_ix = ix + dx;
                                     int32_t n_iy = iy + dy;
                                     int32_t n_iz = iz + dz;
-                                    size_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
+                                    int32_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
 
                                     if (neighbor_id == cell_id)
                                         continue;
 
                                     const auto &neighbor_cell = cells[neighbor_id];
 
-                                    for (size_t ii = 0; ii < cell.size(); ++ii)
+                                    for (int32_t ii = 0; ii < cell.size(); ++ii)
                                     {
-                                        size_t i = cell[ii];
+                                        int32_t i = cell[ii];
 
-                                        for (size_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                                        for (int32_t jj = 0; jj < neighbor_cell.size(); ++jj)
                                         {
-                                            size_t j = neighbor_cell[jj];
+                                            int32_t j = neighbor_cell[jj];
 
                                             if (j <= i)
                                                 continue;
@@ -1644,8 +1649,6 @@ namespace sim
                                                 continue;
                                             if (areBonded(i, j))
                                                 continue;
-
-                                            ++total_count;
 
                                             sf::Vector3f cForce = coulombForce(i, j, dr);
                                             sf::Vector3f lForce = ljForce(i, j);
@@ -1674,7 +1677,7 @@ namespace sim
             return 1.f - powf(x, 7);
         }
 
-        float universe::calculateUncorrectedBondOrder(size_t i, size_t j)
+        float universe::calculateUncorrectedBondOrder(int32_t i, int32_t j)
         {
             sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
             float r = dr_vec.length();
@@ -1698,7 +1701,7 @@ namespace sim
             return bo_sigma + bo_pi + bo_pp;
         }
 
-        float universe::calculateBondEnergy(size_t i, size_t j, float bo_sigma, float bo_pi, float bo_pp)
+        float universe::calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp)
         {
             auto &parami = constants::getParams(atoms[i].ZIndex);
             auto &paramj = constants::getParams(atoms[j].ZIndex);
@@ -1716,7 +1719,7 @@ namespace sim
             return 1.f - 10.f * x3 + 35.f * x4 - 50.f * x5 + 35.f * x3 * x3 * x3 - 10.f * x3 * x3 * x3 * x3;
         }
 
-        void universe::processReactivePair(size_t i, size_t j, float cutoff, float vis_thresh)
+        void universe::processReactivePair(int32_t i, int32_t j, float cutoff, float vis_thresh)
         {
             sf::Vector3f dr_vec = minImageVec(pos(j) - pos(i));
             float r = dr_vec.length();
@@ -1892,19 +1895,19 @@ namespace sim
                 std::fill(data.q.begin(), data.q.end(), 0.0f);
             }
 
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
+            for (int32_t ix = 0; ix < cx; ++ix)
+                for (int32_t iy = 0; iy < cy; ++iy)
+                    for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t current_id = getCellID(ix, iy, iz);
+                        int32_t current_id = getCellID(ix, iy, iz);
                         auto &currentCell = cells[current_id];
 
-                        for (size_t ii = 0; ii < currentCell.size(); ++ii)
+                        for (int32_t ii = 0; ii < currentCell.size(); ++ii)
                         {
-                            size_t i = currentCell[ii];
-                            for (size_t jj = ii + 1; jj < currentCell.size(); ++jj)
+                            int32_t i = currentCell[ii];
+                            for (int32_t jj = ii + 1; jj < currentCell.size(); ++jj)
                             {
-                                size_t j = currentCell[jj];
+                                int32_t j = currentCell[jj];
 
                                 if (j <= i)
                                     continue;
@@ -1930,19 +1933,19 @@ namespace sim
                                         continue;
 
                                     int32_t n_ix = ix + dx, n_iy = iy + dy, n_iz = iz + dz;
-                                    size_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
+                                    int32_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
 
                                     if (neighbour_id == current_id)
                                         continue;
 
                                     auto &neighbourCell = cells[neighbour_id];
 
-                                    for (size_t ii = 0; ii < currentCell.size(); ++ii)
+                                    for (int32_t ii = 0; ii < currentCell.size(); ++ii)
                                     {
-                                        size_t i = currentCell[ii];
-                                        for (size_t jj = 0; jj < neighbourCell.size(); ++jj)
+                                        int32_t i = currentCell[ii];
+                                        for (int32_t jj = 0; jj < neighbourCell.size(); ++jj)
                                         {
-                                            size_t j = neighbourCell[jj];
+                                            int32_t j = neighbourCell[jj];
 
                                             if (j <= i)
                                                 continue;
@@ -1962,11 +1965,11 @@ namespace sim
                                 }
                     }
 
-            for (size_t ix = 0; ix < cx; ++ix)
-                for (size_t iy = 0; iy < cy; ++iy)
-                    for (size_t iz = 0; iz < cz; ++iz)
+            for (int32_t ix = 0; ix < cx; ++ix)
+                for (int32_t iy = 0; iy < cy; ++iy)
+                    for (int32_t iz = 0; iz < cz; ++iz)
                     {
-                        size_t current_id = getCellID(ix, iy, iz);
+                        int32_t current_id = getCellID(ix, iy, iz);
                         auto &currentCell = cells[current_id];
 
                         for (int32_t dz = -1; dz <= 1; ++dz)
@@ -1974,15 +1977,15 @@ namespace sim
                                 for (int32_t dx = -1; dx <= 1; ++dx)
                                 {
                                     int32_t x = ix + dx, y = iy + dy, z = iz + dz;
-                                    size_t neighbour_id = getCellID(x, y, z);
+                                    int32_t neighbour_id = getCellID(x, y, z);
                                     auto &neighbourCell = cells[neighbour_id];
 
-                                    for (size_t ii = 0; ii < currentCell.size(); ++ii)
+                                    for (int32_t ii = 0; ii < currentCell.size(); ++ii)
                                     {
-                                        size_t i = currentCell[ii];
-                                        for (size_t jj = 0; jj < neighbourCell.size(); ++jj)
+                                        int32_t i = currentCell[ii];
+                                        for (int32_t jj = 0; jj < neighbourCell.size(); ++jj)
                                         {
-                                            size_t j = neighbourCell[jj];
+                                            int32_t j = neighbourCell[jj];
 
                                             if (j <= i)
                                                 continue;
@@ -2006,16 +2009,18 @@ namespace sim
 
         void universe::update(float targetTemperature, float targetPressure)
         {
-            data.old_fx.resize(atoms.size());
-            data.old_fy.resize(atoms.size());
-            data.old_fz.resize(atoms.size());
+            int32_t N = atoms.size();
+            
+            data.old_fx.resize(N);
+            data.old_fy.resize(N);
+            data.old_fz.resize(N);
             std::swap(data.fx, data.old_fx);
             std::swap(data.fy, data.old_fy);
             std::swap(data.fz, data.old_fz);
 
-            data.fx.assign(atoms.size(), 0.0f);
-            data.fy.assign(atoms.size(), 0.0f);
-            data.fz.assign(atoms.size(), 0.0f);
+            data.fx.assign(N, 0.0f);
+            data.fy.assign(N, 0.0f);
+            data.fz.assign(N, 0.0f);
 
             total_virial = 0.0f;
 
@@ -2029,7 +2034,7 @@ namespace sim
 
             setPressure(targetPressure);
 
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < N; ++i)
             {
                 sf::Vector3f a_old = old_force(i) / atoms[i].mass;
                 sf::Vector3f a_new = force(i) / atoms[i].mass;
@@ -2037,7 +2042,8 @@ namespace sim
                 if (gravity)
                     add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * DT));
 
-                add_pos(i, vel(i) * DT + 0.5f * (a_old + a_new) * DT * DT);
+                sf::Vector3f dPos = vel(i) * DT + 0.5f * (a_old + a_new) * DT * DT;
+                add_pos(i, dPos);
                 boundCheck(i);
             }
 
@@ -2053,7 +2059,7 @@ namespace sim
             else
                 handleReactiveForces();
 
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < N; ++i)
             {
                 sf::Vector3f accel = (old_force(i) + force(i)) * (0.5f * DT / atoms[i].mass);
                 add_vel(i, accel);
@@ -2061,6 +2067,9 @@ namespace sim
 
             buildCells();
             setTemperature(targetTemperature);
+
+            if (timeStep % 2 == 0)
+                saveFrame();
 
             ++timeStep;
         }
@@ -2103,7 +2112,7 @@ namespace sim
 
             box.z *= scale;
 
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < atoms.size(); ++i)
             {
                 data.z[i] *= scale;
             }
@@ -2124,7 +2133,7 @@ namespace sim
                 lambda = 1.0f + (lambda - 1.0f) / tau;
             }
 
-            for (size_t i = 0; i < data.vx.size(); ++i)
+            for (int32_t i = 0; i < data.vx.size(); ++i)
             {
                 data.vx[i] *= lambda;
                 data.vy[i] *= lambda;
@@ -2136,7 +2145,7 @@ namespace sim
         float universe::calculateKineticEnergy()
         {
             float kinetic_energy = 0.0f;
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < atoms.size(); ++i)
                 kinetic_energy += 0.5f * atoms[i].mass * vel(i).lengthSquared();
 
             return kinetic_energy;
@@ -2147,12 +2156,12 @@ namespace sim
             const float cutoff = react ? REACTION_CUTOFF : CELL_CUTOFF;
             if ((cutoff - box.x) > EPSILON || timeStep == 0)
             {
-                cx = static_cast<size_t>(std::ceil(cutoff / box.x));
-                cy = static_cast<size_t>(std::ceil(cutoff / box.y));
-                cz = static_cast<size_t>(std::ceil(cutoff / box.z));
+                cx = static_cast<int32_t>(std::ceil(cutoff / box.x));
+                cy = static_cast<int32_t>(std::ceil(cutoff / box.y));
+                cz = static_cast<int32_t>(std::ceil(cutoff / box.z));
             }
 
-            size_t ncells = cx * cy * cz;
+            int32_t ncells = cx * cy * cz;
             if (cells.size() != ncells)
                 cells.assign(ncells, {});
             else
@@ -2161,7 +2170,7 @@ namespace sim
 
             const float inv = 1.0f / box.x;
 
-            for (size_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < atoms.size(); ++i)
             {
                 sf::Vector3f p = pos(i);
                 p.x -= cutoff * std::floor(p.x / cutoff);
@@ -2176,12 +2185,12 @@ namespace sim
                 iy = std::clamp(iy, 0, (int32_t)cy - 1);
                 iz = std::clamp(iz, 0, (int32_t)cz - 1);
 
-                size_t id = static_cast<size_t>(ix) + cx * (static_cast<size_t>(iy) + cy * static_cast<size_t>(iz));
+                int32_t id = static_cast<int32_t>(ix) + cx * (static_cast<int32_t>(iy) + cy * static_cast<int32_t>(iz));
                 cells[id].emplace_back(i);
             }
         }
 
-        float universe::calculateAtomTemperature(size_t i)
+        float universe::calculateAtomTemperature(int32_t i)
         {
             float ke = 0.5f * atoms[i].mass * vel(i).lengthSquared();
             return (2.0f / 3.0f) * ke * KB;
@@ -2194,76 +2203,82 @@ namespace sim
             return cam.project(p, size.x, size.y);
         }
 
-        void universe::handleCamera(bool leftDown, bool rightDown, const sf::Vector2i &mousePos, float wheelDelta, const std::vector<sf::Keyboard::Key> &keys)
+        void universe::handleCamera()
         {
-            if (leftDown)
+            ImGuiIO& io = ImGui::GetIO();
+
+            if (io.WantCaptureMouse || io.WantCaptureKeyboard)
+                return;
+
+            if (ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+                return;
+
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             {
-                sf::Vector2i delta = mousePos - lastMouse;
-                cam.azimuth -= delta.x * 0.3f;
-                cam.elevation = std::clamp(cam.elevation - delta.y * 0.3f,
-                                           -89.f, 89.f);
+                ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f);
+                
+                cam.azimuth   -= dragDelta.x * 0.25f;   // yaw
+                cam.elevation = std::clamp(cam.elevation - dragDelta.y * 0.25f, -89.0f, 89.0f); // pitch
+
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
             }
 
-            sf::Vector3f forward = cam.distance == 0.f ? sf::Vector3f(1.f, 0.f, 0.f) : (cam.target - cam.eye()).normalized();
-            sf::Vector3f right = forward.cross({0, 0, 1}).normalized();
-            sf::Vector3f up = right.cross(forward);
-
-            if (rightDown)
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
             {
-                sf::Vector2i delta = mousePos - lastMouse;
-                cam.target += sf::Vector3f{right.x * delta.x, right.y, right.z} * cam.distance * 0.002f +
-                              sf::Vector3f{up.x, up.y * delta.y, up.z} * cam.distance * 0.002f;
+                ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 0.0f);
+
+                sf::Vector3f forward = (cam.target - cam.eye()).normalized();
+                sf::Vector3f right   = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
+                sf::Vector3f up      = right.cross(forward).normalized();
+
+                float panSpeed = cam.distance * 0.002f;
+
+                cam.target += right * (-dragDelta.x * panSpeed);
+                cam.target += up    * ( dragDelta.y * panSpeed);
+
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
             }
 
-            if (wheelDelta != 0.0f)
+            float wheel = ImGui::GetIO().MouseWheel;
+            if (wheel != 0.0f)
             {
-                float base_speed = 1.5f;
-                float speed = base_speed * (cam.distance / 50.0f);
-
-                if (wheelDelta > 0)
-                {
-                    cam.distance *= std::pow(0.9f, speed * wheelDelta);
-                }
-                else
-                {
-                    cam.distance *= std::pow(1.1f, speed * -wheelDelta);
-                }
-                cam.distance = std::clamp(cam.distance, 10.0f, 500.0f);
+                const float zoomSpeed = 6.0f;
+                float factor = (wheel > 0) ? (1.0f / 1.1f) : 1.1f;
+                cam.distance = std::clamp(cam.distance * std::pow(factor, zoomSpeed * std::abs(wheel)),
+                                        5.0f, 1000.0f);
             }
 
-            for (auto k : keys)
-            {
-                if (k == sf::Keyboard::Key::W)
-                    cam.target += forward * 0.5f;
-                if (k == sf::Keyboard::Key::S)
-                    cam.target -= forward * 0.5f;
-                if (k == sf::Keyboard::Key::A)
-                    cam.target -= right * 0.5f;
-                if (k == sf::Keyboard::Key::D)
-                    cam.target += right * 0.5f;
-                if (k == sf::Keyboard::Key::Q)
-                    cam.target -= up * 0.5f; // Down
-                if (k == sf::Keyboard::Key::E)
-                    cam.target += up * 0.5f; // Up
-            }
+            ImVec2 ioMousePos = ImGui::GetMousePos();
+            (void)ioMousePos; // silence unused warning
 
-            lastMouse = mousePos;
+            sf::Vector3f forward = (cam.target - cam.eye()).normalized();
+            sf::Vector3f right   = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
+            sf::Vector3f up      = right.cross(forward).normalized();
+
+            float moveSpeed = 0.5f;
+
+            if (ImGui::IsKeyDown(ImGuiKey_W)) cam.target += forward * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_S)) cam.target -= forward * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_A)) cam.target -= right   * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_D)) cam.target += right   * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_Q)) cam.target -= up      * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_E)) cam.target += up      * moveSpeed;
         }
 
         // TO DO
-        std::string universe::moleculeName(const std::vector<size_t> &subsetIdx)
+        std::string universe::moleculeName(const std::vector<uint32_t> &subsetIdx)
         {
-            std::map<uint8_t, size_t> ZIndices;
+            std::map<uint8_t, int32_t> ZIndices;
 
             for (int32_t i = 0; i < subsetIdx.size(); ++i)
             {
                 auto &s = subsets[subsetIdx[i]];
-                size_t centralAtom = s.mainAtomIdx;
+                int32_t centralAtom = s.mainAtomIdx;
                 ++ZIndices[atoms[centralAtom].ZIndex];
-                ZIndices[1] += s.hydrogenIdx.size();
+                ZIndices[1] += s.connectedCount;
             }
 
-            std::unordered_map<size_t, std::string> prefixes{
+            std::unordered_map<int32_t, std::string> prefixes{
                 {1, "mono"},
                 {2, "di"},
                 {3, "tri"},
@@ -2529,9 +2544,209 @@ namespace sim
         }
         // loading and saving scenes
 
+        void universe::saveFrame()
+        {
+            positionxLog.emplace_back(data.x);
+            positionyLog.emplace_back(data.y);
+            positionzLog.emplace_back(data.z);
+
+            temperatureLog.emplace_back(temp);
+        }
+
+        // Helper
+        std::string formatTime()
+        {
+            const auto now = std::chrono::system_clock::now();
+            
+            std::string time_str = std::format("{:%Y_%m_%d%H_%M}", now);
+            return time_str;
+        }
+
+        void universe::saveAsVideo(const std::filesystem::path path)
+        {
+            nlohmann::json video{};
+
+            for (int32_t i = 0; i < positionxLog.size(); ++i)
+            {
+                video["posx"].emplace_back(positionxLog[i]);
+                video["posy"].emplace_back(positionyLog[i]);
+                video["posz"].emplace_back(positionzLog[i]);
+
+                video["temperature"].emplace_back(temperatureLog[i]);
+            }
+
+            video["metadata"] = 
+            {
+                {"title", formatTime()},
+                {"description", "Molecular dynamics trajectory"},
+                {"atoms", atoms.size()},
+                {"frames", positionxLog.size()},
+                {"box", {box.x, box.y, box.z}}
+            };
+
+            try
+            {
+                if (!std::filesystem::is_directory(path))
+                    std::filesystem::create_directory(path);
+
+                std::filesystem::path filepath(path.string() + "/" + formatTime() + ".json");
+                std::ofstream file(filepath);
+                file.flush();
+                file << video.dump();
+                file.close();
+
+                std::cout << "[Recorder] Saved trajectory with " << video["metadata"]["frames"] << " frames to " << path << '\n';
+            }
+            catch(std::exception& e)
+            {
+                std::cout << "[Recorder] Failed to save trajectory: " << e.what() << std::endl;
+                return;
+            }
+
+            positionxLog.clear();
+            positionyLog.clear();
+            positionzLog.clear();
+
+            temperatureLog.clear();
+            energyLog.clear();
+        }
+
         void universe::saveScene(const std::filesystem::path path)
         {
+            if (!std::filesystem::is_directory(path))
+                std::filesystem::create_directory(path);
+
             nlohmann::json scene{};
+
+            for (int32_t x = 0; x < data.x.size(); ++x)
+            {
+                scene["posx"].emplace_back(data.x[x]);
+                scene["posy"].emplace_back(data.y[x]);
+                scene["posz"].emplace_back(data.z[x]);
+
+                scene["velx"].emplace_back(data.vx[x]);
+                scene["vely"].emplace_back(data.vy[x]);
+                scene["velz"].emplace_back(data.vz[x]);
+
+                scene["charge"].emplace_back(data.q[x]);
+                scene["temperature"].emplace_back(data.temperature[x]);
+                scene["bondOrder"].emplace_back(data.bond_orders[x]);
+
+                scene["ZIndex"].emplace_back(atoms[x].ZIndex);
+                scene["neutrons"].emplace_back(atoms[x].NCount);
+                scene["electrons"].emplace_back(atoms[x].electrons);
+                scene["boundCount"].emplace_back(atoms[x].bondCount);
+                scene["chirality"].emplace_back(atoms[x].chirality);
+            }
+
+            for (int32_t b = 0; b < bonds.size(); ++b)
+            {
+                auto& bond = bonds[b];
+                nlohmann::json b_json{};
+                b_json["central"] = bond.centralAtom;
+                b_json["bonded"] = bond.bondedAtom;
+                b_json["equilibrium"] = bond.equilibriumLength;
+                b_json["type"] = static_cast<uint8_t>(bond.type);
+                b_json["k"] = bond.k;
+
+                scene["bonds"].emplace_back(b_json);
+            }
+
+            for (int32_t a = 0; a < angles.size(); ++a)
+            {
+                auto& angle = angles[a];
+                nlohmann::json a_json{};
+                a_json["A"] = angle.A;
+                a_json["B"] = angle.B;
+                a_json["C"] = angle.C;
+                a_json["K"] = angle.K;
+                a_json["rad"] = angle.rad;
+
+                scene["angles"].emplace_back(a_json);
+            }
+
+            for (int32_t d = 0; d < dihedral_angles.size(); ++d)
+            {
+                auto& dihedral = dihedral_angles[d];
+                nlohmann::json d_json{};
+
+                d_json["A"] = dihedral.A;
+                d_json["B"] = dihedral.B;
+                d_json["C"] = dihedral.C;
+                d_json["D"] = dihedral.D;
+                d_json["K"] = dihedral.K;
+                d_json["periodicity"] = dihedral.periodicity;
+                d_json["rad"] = dihedral.rad;
+
+                scene["dihedrals"].emplace_back(d_json);
+            }
+
+            for (int32_t s = 0; s < subsets.size(); ++s)
+            {
+                auto& subset = subsets[s];
+                nlohmann::json s_json{};
+
+                s_json["mainAtom"] = subset.mainAtomIdx;
+                s_json["bonded"] = subset.bondedSubsetIdx;
+                s_json["bonding"] = subset.bondingSubsetIdx;
+                s_json["connected_begin"] = subset.connectedBegin;
+                s_json["connected_count"] = subset.connectedCount;
+                s_json["hydrogen_begin"] = subset.hydrogenBegin;
+                s_json["hydrogen_count"] = subset.hydrogenCount;
+                
+                scene["subsets"].emplace_back(s_json);
+            }
+
+            for (int32_t m = 0; m < molecules.size(); ++m)
+            {
+                auto& molecule = molecules[m];
+                nlohmann::json m_json{};
+
+                m_json["atomBegin"] = molecule.atomBegin;
+                m_json["atomCount"] = molecule.atomCount;
+                m_json["bondBegin"] = molecule.bondBegin;
+                m_json["bondCount"] = molecule.bondCount;
+                m_json["angleBegin"] = molecule.angleBegin;
+                m_json["angleCount"] = molecule.angleCount;
+                m_json["dihedralBegin"] = molecule.dihedralBegin;
+                m_json["dihedralCount"] = molecule.dihedralCount;
+                m_json["subsetBegin"] = molecule.subsetBegin;
+                m_json["subsetCount"] = molecule.subsetCount;
+                m_json["exclude"] = molecule.exclude;
+
+                scene["molecules"].emplace_back(m_json);
+            }
+
+            scene["gravity"] = gravity;
+            scene["react"] = react;
+            scene["isothermal"] = isothermal;
+            scene["render_water"] = render_water;
+            scene["wall_collision"] = wall_collision;
+            scene["mag_gravity"] = mag_gravity;
+            scene["boxx"] = box.x;
+            scene["boxy"] = box.y;
+            scene["boxz"] = box.z;
+
+            try 
+            {
+                std::filesystem::path filepath{path.string() + "/" + formatTime() + ".json"};
+                std::ofstream file(filepath);
+                if (!file.is_open())
+                {
+                    std::cerr << "[Save] Failed to create file: " << filepath << "\n";
+                    return;
+                }
+
+                file << scene.dump();
+                file.flush();
+                file.close();
+
+                std::cout << "[Save] Successfully saved: " << filepath << "\n";
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[Save] Exception while saving: " << e.what() << "\n";
+            }
         }
 
         void universe::loadScene(const std::filesystem::path path)
@@ -2545,7 +2760,201 @@ namespace sim
                 return;
             }
 
-            file >> nScene;
+            nlohmann::json scene;
+            try
+            {
+                file >> scene;
+            }
+            catch (const nlohmann::json::parse_error& e)
+            {
+                std::cerr << "[Simulation] JSON parse error: " << e.what() << '\n';
+                return;
+            }
+
+            atoms.clear();
+            bonds.clear();
+            angles.clear();
+            dihedral_angles.clear();
+            subsets.clear();
+            molecules.clear();
+            reactive_bonds.clear();
+            data.x.clear();
+            data.y.clear();
+            data.z.clear();
+            data.vx.clear();
+            data.vy.clear();
+            data.vz.clear();
+            data.q.clear();
+            data.temperature.clear();
+            data.bond_orders.clear();
+
+            box.x = scene.value("boxx", 50.0f);
+            box.y = scene.value("boxy", 50.0f);
+            box.z = scene.value("boxz", 50.0f);
+
+            gravity = scene.value("gravity", false);
+            react = scene.value("react", false);
+            isothermal = scene.value("isothermal", true);
+            render_water = scene.value("render_water", true);
+            wall_collision = scene.value("wall_collision", false);
+            mag_gravity = scene.value("mag_gravity", 9.81f);
+
+            if (react)
+                initReaxParams();
+
+            const auto& posx = scene["posx"];
+            const auto& posy = scene["posy"];
+            const auto& posz = scene["posz"];
+            const auto& velx = scene["velx"];
+            const auto& vely = scene["vely"];
+            const auto& velz = scene["velz"];
+            const auto& charges = scene["charge"];
+            const auto& ZIndices = scene["ZIndex"];
+            const auto& neutrons = scene["neutrons"];
+            const auto& electrons = scene["electrons"];
+            const auto& bondCounts = scene["boundCount"];
+            const auto& chiralities = scene["chirality"];
+            const auto& temperatures = scene["temperature"];
+            const auto& bondorders = scene["bondOrder"];
+
+            int32_t N = posx.size();
+
+            atoms.reserve(N);
+            data.x.reserve(N);
+            data.y.reserve(N);
+            data.z.reserve(N);
+            data.vx.reserve(N);
+            data.vy.reserve(N);
+            data.vz.reserve(N);
+            data.q.reserve(N);
+            data.temperature.reserve(N);
+            data.bond_orders.reserve(N);
+
+            for (int32_t i = 0; i < N; ++i)
+            {
+                uint8_t Z = ZIndices[i];
+                auto [sigma, epsilon] = constants::getAtomConstants(Z);
+                float radius = sigma / 1.3f;
+                uint8_t nNeutrons = neutrons[i];
+
+                atom newAtom{};
+                newAtom.ZIndex = Z;
+                newAtom.sigma = sigma;
+                newAtom.epsilon = epsilon;
+                newAtom.radius = radius;
+                newAtom.electrons = electrons[i];
+                newAtom.NCount = nNeutrons;
+                newAtom.mass = Z * MASS_PROTON + nNeutrons * MASS_NEUTRON + electrons[i] * MASS_ELECTRON;
+                newAtom.chirality = chiralities[i];
+                newAtom.bondCount = bondCounts[i];
+
+                atoms.emplace_back(std::move(newAtom));
+
+                emplace_pos(sf::Vector3f(posx[i], posy[i], posz[i]));
+                emplace_vel(sf::Vector3f(velx[i], vely[i], velz[i]));
+
+                data.q.emplace_back(charges[i]);
+                data.temperature.emplace_back(temperatures[i]);
+                data.bond_orders.emplace_back(bondorders[i]);
+            }
+
+            data.fx.assign(N, 0.0f);
+            data.fy.assign(N, 0.0f);
+            data.fz.assign(N, 0.0f);
+            data.old_fx.assign(N, 0.0f);
+            data.old_fy.assign(N, 0.0f);
+            data.old_fz.assign(N, 0.0f);
+
+            if (scene.contains("bonds"))
+            {
+                for (const auto& b_json : scene["bonds"])
+                {
+                    bond b{};
+                    b.centralAtom = b_json["central"];
+                    b.bondedAtom = b_json["bonded"];
+                    b.equilibriumLength = b_json["equilibrium"];
+                    b.type = static_cast<BondType>(b_json["type"]);
+                    b.k = b_json["k"];
+                    bonds.emplace_back(b);
+                }
+            }
+
+            if (scene.contains("angles"))
+            {
+                for (const auto& a_json : scene["angles"])
+                {
+                    angle a{};
+                    a.A = a_json["A"];
+                    a.B = a_json["B"];
+                    a.C = a_json["C"];
+                    a.K = a_json["K"];
+                    a.rad = a_json["rad"];
+                    angles.emplace_back(a);
+                }
+            }
+
+            if (scene.contains("dihedrals"))
+            {
+                for (const auto& d_json : scene["dihedrals"])
+                {
+                    dihedral_angle d{};
+                    d.A = d_json["A"];
+                    d.B = d_json["B"];
+                    d.C = d_json["C"];
+                    d.D = d_json["D"];
+                    d.K = d_json["K"];
+                    d.periodicity = d_json["periodicity"];
+                    d.rad = d_json["rad"];
+                    dihedral_angles.emplace_back(d);
+                }
+            }
+
+            if (scene.contains("subsets"))
+            {
+                for (const auto& s_json : scene["subsets"])
+                {
+                    subset s{};
+                    s.mainAtomIdx = s_json["mainAtom"];
+                    s.bondedSubsetIdx = s_json.value("bonded", UINT32_MAX);
+                    s.bondingSubsetIdx = s_json.value("bonding", UINT32_MAX);
+
+                    s.connectedBegin = s_json.value("connected_begin", UINT32_MAX);
+                    s.connectedCount = s_json.value("connected_count", UINT32_MAX);
+                    s.hydrogenCount = s_json.value("hydrogen_count", UINT32_MAX);
+                    s.hydrogenBegin = s_json.value("hydrogen_begin", UINT32_MAX);
+
+                    subsets.emplace_back(s);
+                }
+            }
+
+            if (scene.contains("molecules"))
+            {
+                for (const auto& m_json : scene["molecules"])
+                {
+                    molecule m{};
+
+                    m.atomBegin     = m_json["atomBegin"];
+                    m.atomCount     = m_json["atomCount"];
+                    m.bondBegin     = m_json["bondBegin"];
+                    m.bondCount     = m_json["bondCount"];
+                    m.angleBegin    = m_json["angleBegin"];
+                    m.angleCount    = m_json["angleCount"];
+                    m.dihedralBegin = m_json["dihedralBegin"];
+                    m.dihedralCount = m_json["dihedralCount"];
+                    m.subsetBegin   = m_json["subsetBegin"];
+                    m.subsetCount   = m_json["subsetCount"];
+                    m.exclude       = m_json.value("exclude", false);
+
+                    m.exclude = m_json.value("exclude", false);
+                    molecules.emplace_back(std::move(m));
+                }
+            }
+
+            std::cout << "[Simulation] Successfully loaded scene: " << path.filename()
+              << " (" << atoms.size() << " atoms, "
+              << molecules.size() << " molecules)\n";
         }
+        
+
     } // namespace fun
 } // namespace sim

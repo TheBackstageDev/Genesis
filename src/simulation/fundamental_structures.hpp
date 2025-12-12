@@ -20,19 +20,23 @@ namespace sim
     {
         struct angle
         {
-            size_t A, B, C; // atom idx
+            uint32_t A, B, C; // atom idx
 
             float K; // spring constant
             float rad; // angle in radians
+
+            int32_t padding[3];
         };
 
         struct dihedral_angle
         {
-            size_t A, B, C, D; // atom idx
+            uint32_t A, B, C, D; // atom idx
 
             float K; // spring constant
             float rad; // angle in radians
             int32_t periodicity; // 1, 2, 3
+
+            int32_t padding;
         };
 
         struct def_atom
@@ -50,21 +54,23 @@ namespace sim
 
         struct def_bond 
         {
-            size_t bondingAtomIdx;   
-            size_t centralAtomIdx;  
+            uint32_t bondingAtomIdx;   
+            uint32_t centralAtomIdx;  
 
             sim::fun::BondType type;
+            
+            int32_t padding;
         };
 
         struct def_subset 
         {
-            size_t mainAtomIdx;      
-            size_t bondedSubset = SIZE_MAX;
-            size_t bondingSubset = SIZE_MAX;
+            uint32_t mainAtomIdx;      
+            uint32_t bondedSubset = UINT32_MAX;
+            uint32_t bondingSubset = UINT32_MAX;
             float idealAngle;
 
-            std::vector<size_t> hydrogensIdx;
-            std::vector<size_t> connectedIdx; // any connection other than hydrogen 
+            std::vector<uint32_t> hydrogensIdx;
+            std::vector<uint32_t> connectedIdx; // any connection other than hydrogen 
         };
 
         struct molecule_structure 
@@ -80,13 +86,13 @@ namespace sim
         // for vizualization and debugging
         struct hydrogen_bond
         {
-            size_t H, A, D;
+            uint32_t H, A, D;
             float strength = 0.f;
         };
 
         struct reactive_bond
         {
-            size_t i, j;
+            uint32_t i, j;
             float bo;
             BondType type = BondType::NONE;
         };
@@ -101,27 +107,41 @@ namespace sim
             BondType type;
         };
 
-        struct subset
+        struct alignas(32) subset
         {
-            size_t mainAtomIdx;              
-            size_t bondedSubsetIdx = SIZE_MAX;       // Index of the last subset (optional, max(size_t) if none)
-            size_t bondingSubsetIdx = SIZE_MAX;      // Index of the next subset (optional, max(size_t) if none)
+            uint32_t mainAtomIdx;              
+            uint32_t bondedSubsetIdx   = UINT32_MAX;       // Index of the last subset (optional, max(uint32_t) if none)
+            uint32_t bondingSubsetIdx  = UINT32_MAX;      // Index of the next subset (optional, max(uint32_t) if none)
             
-            std::vector<size_t> hydrogenIdx;
-            std::vector<size_t> connectedIdx; // non hydrogen connected to the main atom
+            uint32_t hydrogenBegin     = UINT32_MAX;
+            uint32_t hydrogenCount     = UINT32_MAX;
+            
+            uint32_t connectedBegin    = UINT32_MAX;
+            uint32_t connectedCount    = UINT32_MAX;
+
+            int32_t padding;
         };
 
-        struct molecule
+        struct alignas(64) molecule
         {
-            std::string name = "Unknown"; // For Visualization
-            std::vector<size_t> subsetIdx;
-            std::vector<size_t> atomIdx;
-            std::vector<size_t> bondIdx;
+            uint32_t subsetBegin = UINT32_MAX;
+            uint32_t subsetCount = UINT32_MAX;
 
-            std::vector<size_t> dihedrals;
-            std::vector<size_t> angles;
+            uint32_t atomBegin = UINT32_MAX;
+            uint32_t atomCount = UINT32_MAX;
 
-            bool water = false;
+            uint32_t bondBegin = UINT32_MAX;
+            uint32_t bondCount = UINT32_MAX;
+
+            uint32_t angleBegin = UINT32_MAX;
+            uint32_t angleCount = UINT32_MAX;
+
+            uint32_t dihedralBegin = UINT32_MAX;
+            uint32_t dihedralCount = UINT32_MAX;
+
+            int32_t padding[6];
+
+            bool exclude = false;
         };
 
         struct atom
@@ -132,13 +152,13 @@ namespace sim
             float epsilon; // LJ 
             float sigma; // LJ
 
-            int8_t electrons;
-
+            uint8_t electrons;
             uint8_t ZIndex;
             uint8_t NCount; // neutrons
-            int8_t bondCount;
+            uint8_t bondCount;
 
             int32_t chirality;
+            int8_t padding[12];
             void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, bool letterMode, bool lennardBall);
         };
     } // namespace fun

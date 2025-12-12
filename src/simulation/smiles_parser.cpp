@@ -19,22 +19,22 @@ namespace sim
         if (molecule.empty())
             return nStructure;
 
-        size_t prevAtom = SIZE_MAX;
+        uint32_t prevAtom = SIZE_MAX;
         BondType bondType = BondType::SINGLE; // Current Bond
 
-        std::stack<size_t> branchStack;
-        std::vector<size_t> branchAtoms;
+        std::stack<uint32_t> branchStack;
+        std::vector<uint32_t> branchAtoms;
 
-        std::unordered_map<int32_t, size_t> ringOpen;                // ring number > atom index
-        std::unordered_map<size_t, std::vector<size_t>> ringIndices; // atom indices
-        std::unordered_map<size_t, std::vector<size_t>> ringBondIndices;
+        std::unordered_map<int32_t, uint32_t> ringOpen;                // ring number > atom index
+        std::unordered_map<uint32_t, std::vector<uint32_t>> ringIndices; // atom indices
+        std::unordered_map<uint32_t, std::vector<uint32_t>> ringBondIndices;
 
-        std::vector<std::vector<size_t>> rings;
+        std::vector<std::vector<uint32_t>> rings;
 
         std::string currentMolecule = molecule;
         bool newMolecule = false;
 
-        for (size_t i = 0; i < currentMolecule.size(); ++i)
+        for (uint32_t i = 0; i < currentMolecule.size(); ++i)
         {
             const uint8_t c = currentMolecule[i];
 
@@ -71,8 +71,8 @@ namespace sim
 
                 if (ringOpen.count(ringID))
                 {
-                    size_t openAtom = ringOpen[ringID];
-                    size_t closeAtom = prevAtom;
+                    uint32_t openAtom = ringOpen[ringID];
+                    uint32_t closeAtom = prevAtom;
                     def_bond nBond{};
                     nBond.centralAtomIdx = closeAtom;
                     nBond.bondingAtomIdx = openAtom;
@@ -125,7 +125,7 @@ namespace sim
 
             if (c == '[')
             {
-                size_t j = i + 1;
+                uint32_t j = i + 1;
                 std::string atomStr;
                 while (j < currentMolecule.size() && currentMolecule[j] != ']') atomStr += currentMolecule[j++];
                 if (j >= currentMolecule.size() || currentMolecule[j] != ']') { i = j; continue; }
@@ -133,7 +133,7 @@ namespace sim
                 std::string symbol;
                 int isotope = 0, charge = 0;
                 char chirality = 0;
-                size_t k = 0;
+                uint32_t k = 0;
 
                 if (std::isdigit(atomStr[k]))
                     isotope = std::stoi(atomStr.substr(k), &k) - 1;
@@ -159,7 +159,7 @@ namespace sim
                     if (k < atomStr.size() && atomStr[k] == '@') { chirality = '@@'; ++k; }
                 }
 
-                size_t Hcount = 0;
+                uint32_t Hcount = 0;
                 if (k < atomStr.size() && atomStr[k] == 'H')
                 {
                     ++k;
@@ -191,7 +191,7 @@ namespace sim
                 nAtom.nHydrogens = Hcount;
                 nAtoms.emplace_back(std::move(nAtom));
 
-                size_t currentAtom = nAtoms.size() - 1;
+                uint32_t currentAtom = nAtoms.size() - 1;
 
                 if (prevAtom != SIZE_MAX)
                 {
@@ -253,7 +253,7 @@ namespace sim
 
                 nAtoms.emplace_back(std::move(nAtom));
 
-                size_t currentAtom = nAtoms.size() - 1;
+                uint32_t currentAtom = nAtoms.size() - 1;
 
                 if (prevAtom != SIZE_MAX)
                 {   
@@ -297,19 +297,19 @@ namespace sim
             }
         }
 
-        for (size_t ringIdx = 0; ringIdx < rings.size(); ++ringIdx) {
+        for (uint32_t ringIdx = 0; ringIdx < rings.size(); ++ringIdx) {
             const auto& ring = rings[ringIdx];
             if (ring.size() < 3) continue;
 
             bool isAromatic = true;
-            for (size_t a : ring)
+            for (uint32_t a : ring)
                 if (!nAtoms[a].aromatic) { isAromatic = false; break; }
             if (!isAromatic) continue;
 
             bool doubleBond = true;
-            for (size_t i = 0; i < ring.size(); ++i) {
-                size_t a = ring[i];
-                size_t b = ring[(i + 1) % ring.size()];
+            for (uint32_t i = 0; i < ring.size(); ++i) {
+                uint32_t a = ring[i];
+                uint32_t b = ring[(i + 1) % ring.size()];
 
                 auto bondIt = std::find_if(nBonds.begin(), nBonds.end(),
                     [&](const def_bond& bb) {
@@ -349,48 +349,48 @@ namespace sim
     }
 
     struct pair_hash {
-        size_t operator() (const std::pair<int64_t, int64_t>& p) const {
-            return (size_t)(p.first << 32) | p.second;
+        uint32_t operator() (const std::pair<int64_t, int64_t>& p) const {
+            return (uint32_t)(p.first << 32) | p.second;
         }
     };
 
     void sim::organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
                             std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles)
     {
-        std::unordered_map<std::pair<size_t, size_t>, def_bond, pair_hash> bond_map;
+        std::unordered_map<std::pair<uint32_t, uint32_t>, def_bond, pair_hash> bond_map;
         for (const auto& b : nBonds) 
         {
-            size_t i = b.centralAtomIdx;
-            size_t j = b.bondingAtomIdx;
+            uint32_t i = b.centralAtomIdx;
+            uint32_t j = b.bondingAtomIdx;
             if (i > j) std::swap(i,j);
             bond_map[{i, j}] = b;
         }
 
         for (def_subset& sub : nSubsets) 
         {
-            const size_t B = sub.mainAtomIdx;
+            const uint32_t B = sub.mainAtomIdx;
 
             if (sub.connectedIdx.size() + sub.hydrogensIdx.size() < 2) continue;
 
             std::vector<uint8_t> Z(sub.connectedIdx.size() + sub.hydrogensIdx.size());
             std::vector<BondType> type(sub.connectedIdx.size() + sub.hydrogensIdx.size(), BondType::SINGLE);
 
-            std::vector<size_t> neigh = sub.connectedIdx;
+            std::vector<uint32_t> neigh = sub.connectedIdx;
             neigh.insert(neigh.end(), sub.hydrogensIdx.begin(), sub.hydrogensIdx.end());
-            for (size_t i = 0; i < neigh.size(); ++i) 
+            for (uint32_t i = 0; i < neigh.size(); ++i) 
             {
-                const size_t A = neigh[i];
+                const uint32_t A = neigh[i];
                 Z[i] = nAtoms[A].ZIndex;
 
-                size_t a = B, b = A;
+                uint32_t a = B, b = A;
                 if (a > b) std::swap(a,b);
                 auto it = bond_map.find({a,b});
                 if (it != bond_map.end()) type[i] = it->second.type;
             }
 
-            for (size_t i = 0; i < neigh.size(); ++i) 
+            for (uint32_t i = 0; i < neigh.size(); ++i) 
             {
-                for (size_t j = i + 1; j < neigh.size(); ++j) 
+                for (uint32_t j = i + 1; j < neigh.size(); ++j) 
                 {
                     angle ang;
                     ang.A = neigh[i];
@@ -402,10 +402,10 @@ namespace sim
                 }
             }
 
-            for (size_t c_idx = 0; c_idx < neigh.size(); ++c_idx) {
-                const size_t C = neigh[c_idx];
+            for (uint32_t c_idx = 0; c_idx < neigh.size(); ++c_idx) {
+                const uint32_t C = neigh[c_idx];
 
-                size_t a = B, b = C;
+                uint32_t a = B, b = C;
                 if (a > b) std::swap(a, b);
                 const def_bond* bc_bond = nullptr;
                 auto it = bond_map.find({a, b});
@@ -416,18 +416,18 @@ namespace sim
 
                 const auto& neigh_B = neigh; 
 
-                std::vector<size_t> neigh_C;
+                std::vector<uint32_t> neigh_C;
                 for (const auto& bond : nBonds) 
                 {
                     if (bond.centralAtomIdx == C) neigh_C.push_back(bond.bondingAtomIdx);
                     else if (bond.bondingAtomIdx == C) neigh_C.push_back(bond.centralAtomIdx);
                 }
 
-                for (size_t A : neigh_B) 
+                for (uint32_t A : neigh_B) 
                 {
                     if (A == C) continue;
 
-                    for (size_t D : neigh_C) 
+                    for (uint32_t D : neigh_C) 
                     {
                         if (D == B) continue;
                         if (nAtoms[A].ZIndex == 1 && nAtoms[D].ZIndex == 1) continue;
@@ -469,9 +469,9 @@ namespace sim
 
     void sim::organizeSubsets(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
     {
-        std::unordered_map<size_t, std::vector<size_t>> atomBonds; // atomIndex > atomsIndices
+        std::unordered_map<uint32_t, std::vector<uint32_t>> atomBonds; // atomIndex > atomsIndices
 
-        for (size_t b = 0; b < nBonds.size(); ++b)
+        for (uint32_t b = 0; b < nBonds.size(); ++b)
         {
             const def_bond &bond = nBonds[b];
 
@@ -500,7 +500,7 @@ namespace sim
         }
 
         nSubsets.reserve(nAtoms.size()); // upper bound
-        for (size_t a = 0; a < nAtoms.size(); ++a)
+        for (uint32_t a = 0; a < nAtoms.size(); ++a)
         {
             const def_atom &atom = nAtoms[a];
 
@@ -510,9 +510,9 @@ namespace sim
             def_subset nSubset{};
             nSubset.mainAtomIdx = a;
 
-            std::vector<size_t> connected = atomBonds[a];
+            std::vector<uint32_t> connected = atomBonds[a];
 
-            for (size_t i = 0; i < connected.size(); ++i)
+            for (uint32_t i = 0; i < connected.size(); ++i)
             {
                 if (nAtoms[connected[i]].ZIndex == 1)
                     nSubset.hydrogensIdx.emplace_back(connected[i]);
@@ -523,19 +523,19 @@ namespace sim
             nSubsets.emplace_back(std::move(nSubset));
         }
 
-        std::unordered_map<size_t, size_t> atomToSubset;
-        for (size_t s = 0; s < nSubsets.size(); ++s)
+        std::unordered_map<uint32_t, uint32_t> atomToSubset;
+        for (uint32_t s = 0; s < nSubsets.size(); ++s)
             atomToSubset[nSubsets[s].mainAtomIdx] = s;
 
-        for (size_t s = 0; s < nSubsets.size(); ++s)
+        for (uint32_t s = 0; s < nSubsets.size(); ++s)
         {
-            size_t main = nSubsets[s].mainAtomIdx;
+            uint32_t main = nSubsets[s].mainAtomIdx;
 
             for (const auto &bond : nBonds)
             {
                 if (bond.centralAtomIdx != main)
                     continue;
-                size_t neigh = bond.bondingAtomIdx;
+                uint32_t neigh = bond.bondingAtomIdx;
 
                 if (nAtoms[neigh].ZIndex == 1)
                     continue;
@@ -544,7 +544,7 @@ namespace sim
                 if (it == atomToSubset.end())
                     continue;
 
-                size_t neighSubset = it->second;
+                uint32_t neighSubset = it->second;
 
                 nSubsets[s].bondingSubset = neighSubset;
                 nSubsets[neighSubset].bondedSubset = s;
@@ -554,9 +554,9 @@ namespace sim
 
     void sim::addImplicitHydrogens(std::vector<def_atom> &nAtoms, std::vector<def_bond> &nBonds)
     {
-        size_t originalSize = nAtoms.size();
+        uint32_t originalSize = nAtoms.size();
 
-        for (size_t i = 0; i < originalSize; ++i)
+        for (uint32_t i = 0; i < originalSize; ++i)
         {
             const def_atom &a = nAtoms[i];
             if (a.ZIndex == 1)
@@ -576,7 +576,7 @@ namespace sim
             for (int32_t h = 0; h < numHydrogen; ++h)
             {
                 nAtoms.emplace_back(def_atom{1, 1, 0, 1});
-                size_t hIdx = nAtoms.size() - 1;
+                uint32_t hIdx = nAtoms.size() - 1;
 
                 def_bond hBond{};
                 hBond.centralAtomIdx = i;
@@ -589,7 +589,7 @@ namespace sim
         }
     }
 
-    void sim::positionAtoms(const std::string &SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>> &rings,
+    void sim::positionAtoms(const std::string &SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<uint32_t>> &rings,
                             const std::vector<def_atom> &nAtoms, const std::vector<def_subset> &nSubsets,
                             std::vector<sf::Vector3f> &positions, std::vector<angle>& angles)
     {
@@ -597,25 +597,25 @@ namespace sim
         if (nAtoms.empty())
             return;
 
-        std::unordered_map<size_t, size_t> atomToSubset;
-        for (size_t s = 0; s < nSubsets.size(); ++s)
+        std::unordered_map<uint32_t, uint32_t> atomToSubset;
+        for (uint32_t s = 0; s < nSubsets.size(); ++s)
             atomToSubset[nSubsets[s].mainAtomIdx] = s;
 
-        std::unordered_map<size_t, float> ringDir;
-        std::unordered_map<int32_t, std::vector<size_t>> ringBonds; 
-        std::unordered_map<int32_t, size_t> ringOpen; 
-        std::vector<size_t> branchStack;
+        std::unordered_map<uint32_t, float> ringDir;
+        std::unordered_map<int32_t, std::vector<uint32_t>> ringBonds; 
+        std::unordered_map<int32_t, uint32_t> ringOpen; 
+        std::vector<uint32_t> branchStack;
 
         BondType curBond = BondType::SINGLE;
         sf::Vector3f pos(0,0,0), dir(1,0,0);
         std::stack<sf::Vector3f> posStk, dirStk;
-        std::stack<size_t> atomStk;     
+        std::stack<uint32_t> atomStk;     
         
-        std::unordered_map<size_t,bool> flipMap;
-        size_t atomIdx = 0;             
-        size_t prevAtom = SIZE_MAX;
+        std::unordered_map<uint32_t,bool> flipMap;
+        uint32_t atomIdx = 0;             
+        uint32_t prevAtom = SIZE_MAX;
 
-        auto place = [&](size_t idx, const sf::Vector3f& p){
+        auto place = [&](uint32_t idx, const sf::Vector3f& p){
             positions[idx] = p; pos = p;
             pos.z += 0.001f * idx;
         };
@@ -631,10 +631,10 @@ namespace sim
         {
             if (ring.size() < 3) continue;
             float turn = 360.f / ring.size() * RADIAN;
-            for (size_t a : ring) ringDir[a] = turn;
+            for (uint32_t a : ring) ringDir[a] = turn;
         }
 
-        for (size_t i = 0; i < SMILES.size(); ++i)
+        for (uint32_t i = 0; i < SMILES.size(); ++i)
         {
             char c = SMILES[i];
             if (isspace(c)) continue;
@@ -654,31 +654,31 @@ namespace sim
             // ----- branches -----
             if (c=='(')
             {
-                if (prevAtom != SIZE_MAX)
+                if (prevAtom != UINT32_MAX)
                 {
                     atomStk.push(prevAtom);
                     posStk.push(pos);
                     dirStk.push(dir);
 
-                    size_t A = prevAtom;
-                    size_t B = SIZE_MAX;
-                    size_t C = SIZE_MAX;
+                    uint32_t A = prevAtom;
+                    uint32_t B = UINT32_MAX;
+                    uint32_t C = UINT32_MAX;
 
                     for (const auto& bond : nBonds)
                     {
                         if (bond.centralAtomIdx == A && bond.bondingAtomIdx != prevAtom)
                         {
-                            if (B == SIZE_MAX) B = bond.bondingAtomIdx;
-                            else if (C == SIZE_MAX) { C = bond.bondingAtomIdx; break; }
+                            if (B == UINT32_MAX) B = bond.bondingAtomIdx;
+                            else if (C == UINT32_MAX) { C = bond.bondingAtomIdx; break; }
                         }
                         else if (bond.bondingAtomIdx == A && bond.centralAtomIdx != prevAtom)
                         {
-                            if (B == SIZE_MAX) B = bond.centralAtomIdx;
-                            else if (C == SIZE_MAX) { C = bond.centralAtomIdx; break; }
+                            if (B == UINT32_MAX) B = bond.centralAtomIdx;
+                            else if (C == UINT32_MAX) { C = bond.centralAtomIdx; break; }
                         }
                     }
 
-                    if (B != SIZE_MAX && C != SIZE_MAX)
+                    if (B != UINT32_MAX && C != UINT32_MAX)
                     {
                         sf::Vector3f v1 = positions[A] - positions[B];
                         sf::Vector3f v2 = positions[A] - positions[C];
@@ -691,7 +691,7 @@ namespace sim
                             dir = newDir;
                         }
                     }
-                    else if (B != SIZE_MAX)
+                    else if (B != UINT32_MAX)
                     {
                         if (ringDir.count(A))
                         {
@@ -753,7 +753,7 @@ namespace sim
 
                     if (ringDir.count(prevAtom))
                     {
-                        auto ring_it = std::find_if(rings.begin(), rings.end(), [&](const std::vector<size_t>& atoms) {
+                        auto ring_it = std::find_if(rings.begin(), rings.end(), [&](const std::vector<uint32_t>& atoms) {
                             return std::find(atoms.begin(), atoms.end(), prevAtom) != atoms.end();
                         });
 
@@ -786,14 +786,14 @@ namespace sim
 
                 if (ringOpen.count(ringID))
                 {
-                    size_t openAtom  = ringOpen[ringID];
+                    uint32_t openAtom  = ringOpen[ringID];
                     
                     bool isFused = false;
-                    for (size_t i = 1; i <= rings.size(); ++i)
+                    for (uint32_t i = 1; i <= rings.size(); ++i)
                     {
                         if (ringID != i)
                         {
-                            for (const size_t& atomID : rings[i - 1])
+                            for (const uint32_t& atomID : rings[i - 1])
                             {
                                 if (atomID == prevAtom)
                                 {
@@ -830,11 +830,11 @@ namespace sim
 
         // Hydrogen Placement
         if (nSubsets.size() > 1)
-        for (size_t s = 0; s < nSubsets.size(); ++s)
+        for (uint32_t s = 0; s < nSubsets.size(); ++s)
         {
             const def_subset &sub = nSubsets[s];
-            const std::vector<size_t> hydrogens = sub.hydrogensIdx;
-            const size_t centralAtom = sub.mainAtomIdx;
+            const std::vector<uint32_t> hydrogens = sub.hydrogensIdx;
+            const uint32_t centralAtom = sub.mainAtomIdx;
 
             const def_atom& atom = nAtoms[centralAtom];
             const uint8_t Z = atom.ZIndex;
@@ -843,20 +843,20 @@ namespace sim
             sf::Vector3f axis(1,0,0);
             if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX)
             {
-                const size_t c1 = nSubsets[sub.bondedSubset].mainAtomIdx;
-                const size_t c2 = nSubsets[sub.bondingSubset].mainAtomIdx;
+                const uint32_t c1 = nSubsets[sub.bondedSubset].mainAtomIdx;
+                const uint32_t c2 = nSubsets[sub.bondingSubset].mainAtomIdx;
                 const sf::Vector3f v1 = (positions[centralAtom] - positions[c1]).normalized();
                 const sf::Vector3f v2 = (positions[centralAtom] - positions[c2]).normalized();
                 axis = (v1 + v2).length() == 0.f ? axis : (v1 + v2).normalized();
             }
             else if (sub.bondingSubset != SIZE_MAX)
             {
-                const size_t prev = nSubsets[sub.bondingSubset].mainAtomIdx;
+                const uint32_t prev = nSubsets[sub.bondingSubset].mainAtomIdx;
                 axis = (positions[centralAtom] - positions[prev]).normalized();
             }
             else if (sub.bondedSubset != SIZE_MAX)
             {
-                const size_t next = nSubsets[sub.bondedSubset].mainAtomIdx;
+                const uint32_t next = nSubsets[sub.bondedSubset].mainAtomIdx;
                 axis = (positions[centralAtom] - positions[next]).normalized();
             }
 
@@ -871,16 +871,16 @@ namespace sim
             }
 
             std::vector<sf::Vector3f> neighDirs;
-            for (size_t neighIdx : sub.connectedIdx)
+            for (uint32_t neighIdx : sub.connectedIdx)
             {
                 sf::Vector3f dir = (positions[neighIdx] - positions[centralAtom]).normalized();
                 neighDirs.push_back(dir);
             }
 
-            const size_t nH = sub.hydrogensIdx.size();
-            for (size_t h = 0; h < nH; ++h)
+            const uint32_t nH = sub.hydrogensIdx.size();
+            for (uint32_t h = 0; h < nH; ++h)
             {
-                const size_t hIdx = sub.hydrogensIdx[h];
+                const uint32_t hIdx = sub.hydrogensIdx[h];
                 positions[hIdx] = positions[centralAtom];
 
                 sf::Vector3f dir = baseDir; 
@@ -910,8 +910,8 @@ namespace sim
                     std::vector<sf::Vector3f> assigned = {neighDirs[0], neighDirs[1], neighDirs[2]};
                     sf::Vector3f Hdir = tet[3];
 
-                    std::vector<std::pair<int32_t, size_t>> priority;
-                    for (size_t i = 0; i < 3; ++i)
+                    std::vector<std::pair<int32_t, uint32_t>> priority;
+                    for (uint32_t i = 0; i < 3; ++i)
                     {
                         int pri = nAtoms[sub.connectedIdx[i]].ZIndex;
                         priority.emplace_back(pri, i);
@@ -982,9 +982,9 @@ namespace sim
             }
         }
 
-        const size_t nH = nSubsets[0].hydrogensIdx.size();
+        const uint32_t nH = nSubsets[0].hydrogensIdx.size();
 
-        for (size_t i = 0; i < nH; ++i)
+        for (uint32_t i = 0; i < nH; ++i)
         {
             sf::Vector3f dir;
 
@@ -1025,8 +1025,8 @@ namespace sim
             std::vector<sf::Vector3f> forces(positions.size(), sf::Vector3f(0.f, 0.f, 0.f));
             float maxF = 0.f;
 
-            for (size_t i = 0; i < positions.size(); ++i)
-            for (size_t j = i + 1; j < positions.size(); ++j)
+            for (uint32_t i = 0; i < positions.size(); ++i)
+            for (uint32_t j = i + 1; j < positions.size(); ++j)
             {
                 sf::Vector3f dr = positions[j] - positions[i];
                 float dist = dr.length();
@@ -1038,7 +1038,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.4f;
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 2.5f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;
@@ -1062,8 +1062,8 @@ namespace sim
 
             for (const auto& b : nBonds)
             {
-                size_t c = b.centralAtomIdx;
-                size_t a = b.bondingAtomIdx;
+                uint32_t c = b.centralAtomIdx;
+                uint32_t a = b.bondingAtomIdx;
 
                 sf::Vector3f dr = positions[a] - positions[c];
                 float dist = dr.length();
@@ -1082,7 +1082,7 @@ namespace sim
                 forces[a] -= F;
             }
 
-            for (size_t i = 0; i < positions.size(); ++i)
+            for (uint32_t i = 0; i < positions.size(); ++i)
             {
                 sf::Vector3f delta = forces[i] * dt;
                 positions[i] += delta;
