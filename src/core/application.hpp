@@ -4,6 +4,7 @@
 #include <imgui/imgui-SFML.h>
 
 #include "core/window.hpp"
+#include "core/UIHandler.hpp"
 
 #include <memory>
 
@@ -17,6 +18,11 @@ namespace core
 
         void run();
     private:
+    
+        application_state current_state{application_state::APP_STATE_MENU};
+        options app_options{};
+    
+        UIHandler ui{app_options};
         std::unique_ptr<core::window_t> window;
     };
 } // namespace core

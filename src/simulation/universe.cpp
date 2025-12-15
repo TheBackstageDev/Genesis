@@ -14,7 +14,7 @@ namespace sim
     namespace fun
     {
 
-        universe::universe(universe_create_info &create_info)
+        universe::universe(const universe_create_info &create_info)
             : box(create_info.box), react(create_info.reactive),
               gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
@@ -22,6 +22,8 @@ namespace sim
         {
             if (react)
                 initReaxParams();
+
+            cam.target = {box.x / 2.f, box.y / 2.f, box.z / 2.f};
         }
 
         universe::universe(const std::filesystem::path path)
@@ -819,11 +821,13 @@ namespace sim
 
                 atomsToBalance.push_back(currentSubset.mainAtomIdx);
                 
+                if (currentSubset.connectedCount != UINT32_MAX)
                 for(int32_t i = 0; i < currentSubset.connectedCount; ++i)
                 {
                     atomsToBalance.emplace_back(currentSubset.connectedBegin + i);
                 }
 
+                if (currentSubset.hydrogenCount != UINT32_MAX)
                 for(int32_t i = 0; i < currentSubset.hydrogenCount; ++i)
                 {
                     atomsToBalance.emplace_back(currentSubset.hydrogenCount + i);
@@ -1539,6 +1543,7 @@ namespace sim
 
         void universe::calcUnbondedForcesParallel()
         {
+            // NOTE: eventually distribute cells with more work over threads instead of evenly giving to all threads, threads with no work are gonna be dismissed.
             const int32_t n_threads = std::thread::hardware_concurrency();
 
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
@@ -1673,17 +1678,6 @@ namespace sim
                     }
         }
 
-        std::vector<float> total_bo{};
-        std::vector<float> total_bo_uncorrected{};
-
-        float taper(float r, float cutoff)
-        {
-            if (r >= cutoff)
-                return 0.0f;
-            float x = r / cutoff;
-            return 1.f - powf(x, 7);
-        }
-
         float universe::calculateUncorrectedBondOrder(int32_t i, int32_t j)
         {
             sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
@@ -1716,302 +1710,14 @@ namespace sim
             return -(sqrt(parami.De_sigma * paramj.De_sigma) * bo_sigma + sqrt(parami.De_pi * paramj.De_pi) * bo_pi + sqrt(parami.De_pp * paramj.De_pp) * bo_pp);
         }
 
-        float taper7(float x)
-        {
-            if (x >= 1.f)
-                return 0.f;
-            float x3 = x * x * x;
-            float x4 = x3 * x;
-            float x5 = x4 * x;
-            return 1.f - 10.f * x3 + 35.f * x4 - 50.f * x5 + 35.f * x3 * x3 * x3 - 10.f * x3 * x3 * x3 * x3;
-        }
-
         void universe::processReactivePair(int32_t i, int32_t j, float cutoff, float vis_thresh)
         {
-            sf::Vector3f dr_vec = minImageVec(pos(j) - pos(i));
-            float r = dr_vec.length();
-            if (r >= cutoff || r < EPSILON)
-                return;
 
-            uint8_t Zi = atoms[i].ZIndex;
-            uint8_t Zj = atoms[j].ZIndex;
-
-            auto &parami = constants::getParams(Zi);
-            auto &paramj = constants::getParams(Zj);
-            auto pair_param = constants::getPairReaxParams(Zi, Zj);
-            float gamma_ij = std::sqrtf(parami.gamma * paramj.gamma);
-            float r_vdw_ij = std::sqrtf(parami.r_vdw * paramj.r_vdw);
-            float D_ij = std::sqrtf(parami.D_vdw * paramj.D_vdw);
-            float gamma3_ij = powf(1.0f / gamma_ij, 3.f);
-            float S = std::cbrtf(r * r * r + gamma3_ij);
-            float S_vdw = std::cbrtf(1.f + powf(gamma_ij * r, 3.f));
-            constexpr float alpha = 12.f;
-            constexpr float coulomb_constant = COULOMB_K * JOULE_TO_CAL;
-
-            // Average parameters for pair
-            float p_bo1_ij = 0.5f * (parami.p_bo1 + paramj.p_bo1);
-            float p_bo2_ij = 0.5f * (parami.p_bo2 + paramj.p_bo2);
-            float p_bo3_ij = 0.5f * (parami.p_bo3 + paramj.p_bo3);
-            float p_bo4_ij = 0.5f * (parami.p_bo4 + paramj.p_bo4);
-            float p_bo5_ij = 0.5f * (parami.p_bo5 + paramj.p_bo5);
-            float p_bo6_ij = 0.5f * (parami.p_bo6 + paramj.p_bo6);
-            float p_boc1_ij = 0.5f * (parami.p_boc1 + paramj.p_boc1);
-            float p_boc2_ij = 0.5f * (parami.p_boc2 + paramj.p_boc2);
-            float p_boc3_ij = 0.5f * (parami.p_boc3 + paramj.p_boc3);
-            float p_boc4_ij = 0.5f * (parami.p_boc4 + paramj.p_boc4);
-            float p_boc5_ij = 0.5f * (parami.p_boc5 + paramj.p_boc5);
-            float p_be1_ij = 0.5f * (parami.p_be1 + paramj.p_be1);
-            float p_be2_ij = 0.5f * (parami.p_be2 + paramj.p_be2);
-            float r0_sigma_ij = 0.5f * (parami.r0_sigma + paramj.r0_sigma);
-            float r0_pi_ij = 0.5f * (parami.r0_pi + paramj.r0_pi);
-            float r0_pp_ij = 0.5f * (parami.r0_pp + paramj.r0_pp);
-            float De_sig = std::sqrtf(parami.De_sigma * paramj.De_sigma);
-            float De_pi = std::sqrtf(parami.De_pi * paramj.De_pi);
-            float De_pp = std::sqrtf(parami.De_pp * paramj.De_pp);
-
-            float BO_sigma = std::exp(p_bo1_ij * std::pow(r / r0_sigma_ij, p_bo2_ij));
-            float BO_pi = 0.0f;
-            float BO_pp = 0.0f;
-
-            if (parami.r0_pi > 0.f && paramj.r0_pi > 0.f)
-                BO_pi = std::exp(p_bo3_ij * std::pow(r / r0_pi_ij, p_bo4_ij));
-            if (parami.r0_pp > 0.f && paramj.r0_pp > 0.f)
-                BO_pp = std::exp(p_bo5_ij * std::pow(r / r0_pp_ij, p_bo6_ij));
-
-            float BO_uncorr = BO_sigma + BO_pi + BO_pp;
-
-            float val_i = constants::getUsualBonds(Zi);
-            float val_j = constants::getUsualBonds(Zj);
-            float lonePairs_i = constants::lonePairsBO(Zi, total_bo_uncorrected[i]);
-            float lonePairs_j = constants::lonePairsBO(Zj, total_bo_uncorrected[j]);
-
-            float Delta_i = total_bo_uncorrected[i] - val_i + lonePairs_i;
-            float Delta_j = total_bo_uncorrected[j] - val_j + lonePairs_j;
-
-            float Delta_boc_i = Delta_i;
-            float Delta_boc_j = Delta_j;
-
-            float f1 = 1.0f;
-            if (Delta_i > 0.0f || Delta_j > 0.0f)
-            {
-                float f1_i = (Delta_i > 0.0f) ? 1.0f / (1.0f + std::exp(p_boc1_ij * Delta_i)) : 1.0f;
-                float f1_j = (Delta_j > 0.0f) ? 1.0f / (1.0f + std::exp(p_boc1_ij * Delta_j)) : 1.0f;
-                f1 = 0.5f * (f1_i + f1_j);
-            }
-
-            float f2 = std::exp(-p_boc1_ij * Delta_i) + std::exp(-p_boc1_ij * Delta_j);
-            float f3 = -1.0f / p_boc2_ij * std::log(0.5f * (std::exp(-p_boc2_ij * Delta_i) + std::exp(-p_boc2_ij * Delta_j)));
-
-            float f4 = 1.0f;
-            float f5 = 1.0f;
-
-            if (Delta_i > -1.0f && BO_pi > 0.f)
-                f4 = 1.0f / (1.0f + std::exp(-p_boc5_ij * (p_boc4_ij + Delta_i)));
-            if (Delta_j > -1.0f && BO_pi > 0.f)
-                f5 = 1.0f / (1.0f + std::exp(-p_boc5_ij * (p_boc4_ij + Delta_j)));
-
-            // Corrected bond orders
-            float BO_sigma_corr = BO_sigma * f1;
-            float BO_pi_corr = BO_pi * f1 * f1 * f4 * f5;
-            float BO_pp_corr = BO_pp * f1 * f1 * f4 * f5;
-            float BO_corr = BO_sigma_corr + BO_pi_corr + BO_pp_corr;
-            total_bo[i] += BO_corr;
-            total_bo[j] += BO_corr;
-
-            float dE_bond_dr = 0.0f;
-            if (BO_corr > 1e-4f)
-            {
-                // Uncorrected derivatives
-                float dBO_sigma_dr = BO_sigma * (p_bo1_ij * p_bo2_ij) * std::pow(r / r0_sigma_ij, p_bo2_ij - 1.0f) / (r0_sigma_ij + 1e-9f);
-                float dBO_pi_dr = (BO_pi > 1e-12f) ? BO_pi * (p_bo3_ij * p_bo4_ij) * std::pow(r / r0_pi_ij, p_bo4_ij - 1.0f) / (r0_pi_ij + 1e-9f) : 0.0f;
-                float dBO_pp_dr = (BO_pp > 1e-12f) ? BO_pp * (p_bo5_ij * p_bo6_ij) * std::pow(r / r0_pp_ij, p_bo6_ij - 1.0f) / (r0_pp_ij + 1e-9f) : 0.0f;
-
-                float dBO_sigma_corr_dr = dBO_sigma_dr * f1;
-                float dBO_pi_corr_dr = dBO_pi_dr * f1 * f1 * f4 * f5;
-                float dBO_pp_corr_dr = dBO_pp_dr * f1 * f1 * f4 * f5;
-
-                float pow_bo_sigma = std::pow(BO_sigma_corr, p_be2_ij);
-                float exp_term = std::exp(p_be1_ij * (1.0f - pow_bo_sigma));
-                float dE_sigma_dBO = -De_sig * exp_term - De_sig * BO_sigma_corr * exp_term * p_be1_ij * (-p_be2_ij) * std::pow(BO_sigma_corr, p_be2_ij - 1.0f);
-                dE_bond_dr = dE_sigma_dBO * dBO_sigma_corr_dr - De_pi * dBO_pi_corr_dr - De_pp * dBO_pp_corr_dr;
-            }
-
-            if (BO_corr > 0.1f)
-            {
-                BondType type = BondType::SINGLE;
-                if (BO_corr > 1.4f)
-                    type = BondType::DOUBLE;
-                if (BO_corr > 2.1f)
-                    type = BondType::TRIPLE;
-                reactive_bonds.emplace_back(i, j, BO_corr, type);
-            }
-
-            // Van der Waals
-            float rho = r / (S_vdw * r_vdw_ij); // Use S_vdw or S
-            float exp12 = std::expf(alpha * (1.f - rho));
-            float exp6 = std::expf(alpha / 2.f * (1.f - rho));
-            float E_vdW = D_ij * (exp12 - 2.f * exp6);
-
-            float E_core = 0.0f, dE_core_dr = 0.0f;
-            constexpr float R_CORE = 0.8f;
-            if (r < R_CORE)
-            {
-                float ratio = r / R_CORE;
-                float f = 1.0f - ratio;
-                E_core = 4000.0f * f * f;
-                dE_core_dr = -4000.0f * f / R_CORE;
-            }
-
-            // Full drho/dr
-            float dS_vdw_dr = powf(gamma_ij, 3.f) * r * r / (S_vdw * S_vdw);
-            float drho_dr = 1.0f / (S_vdw * r_vdw_ij) - rho / S_vdw * dS_vdw_dr;
-            float dE_vdW_dr = D_ij * alpha * drho_dr * (exp6 - exp12) + dE_core_dr;
-
-            // Taper
-            float x = r / REACTION_CUTOFF;
-            float T = taper7(x);
-            float dT_dr = (r < REACTION_CUTOFF) ? -7.0f * powf(1.0f - x, 6) / REACTION_CUTOFF : 0.0f;
-
-            // Coulomb
-            float E_coul = coulomb_constant * data.q[i] * data.q[j] / S;
-            float dE_coul_dr = coulomb_constant * data.q[i] * data.q[j] * (-r * r / powf(S, 4.f));
-            float E_nonbond = T * (E_vdW + E_coul);
-            float dE_nonbond_dr = dT_dr * (E_vdW + E_coul) + T * (dE_vdW_dr + dE_coul_dr);
-
-            sf::Vector3f unit = dr_vec / r;
-            sf::Vector3f F_bond = dE_bond_dr * unit;
-            sf::Vector3f F_nonbond = dE_nonbond_dr * unit;
-            sf::Vector3f F_total = F_bond + F_nonbond;
-
-            add_force(i, F_total);
-            add_force(j, -F_total); // Newton's 3rd law
         }
 
         void universe::handleReactiveForces()
         {
-            reactive_bonds.clear();
-
-            total_bo.resize(atoms.size());
-            total_bo_uncorrected.resize(atoms.size());
-            std::fill(total_bo.begin(), total_bo.end(), 0.0f);
-            std::fill(total_bo_uncorrected.begin(), total_bo_uncorrected.end(), 0.0f);
-
-            if (timeStep % REACTION_UPDATE_Q == 0)
-            {
-                data.q.resize(atoms.size());
-                std::fill(data.q.begin(), data.q.end(), 0.0f);
-            }
-
-            for (int32_t ix = 0; ix < cx; ++ix)
-                for (int32_t iy = 0; iy < cy; ++iy)
-                    for (int32_t iz = 0; iz < cz; ++iz)
-                    {
-                        int32_t current_id = getCellID(ix, iy, iz);
-                        auto &currentCell = cells[current_id];
-
-                        for (int32_t ii = 0; ii < currentCell.size(); ++ii)
-                        {
-                            int32_t i = currentCell[ii];
-                            for (int32_t jj = ii + 1; jj < currentCell.size(); ++jj)
-                            {
-                                int32_t j = currentCell[jj];
-
-                                if (j <= i)
-                                    continue;
-
-                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                float r = dr.length();
-
-                                if (r >= REACTION_CUTOFF || r < 0.1f)
-                                    continue;
-
-                                float uncorr = calculateUncorrectedBondOrder(i, j);
-
-                                total_bo_uncorrected[i] += uncorr * 0.5f;
-                                total_bo_uncorrected[j] += uncorr * 0.5f;
-                            }
-                        }
-
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                            for (int32_t dy = -1; dy <= 1; ++dy)
-                                for (int32_t dx = -1; dx <= 1; ++dx)
-                                {
-                                    if (dz == 0 && dy == 0 && dx == 0)
-                                        continue;
-
-                                    int32_t n_ix = ix + dx, n_iy = iy + dy, n_iz = iz + dz;
-                                    int32_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
-
-                                    if (neighbour_id == current_id)
-                                        continue;
-
-                                    auto &neighbourCell = cells[neighbour_id];
-
-                                    for (int32_t ii = 0; ii < currentCell.size(); ++ii)
-                                    {
-                                        int32_t i = currentCell[ii];
-                                        for (int32_t jj = 0; jj < neighbourCell.size(); ++jj)
-                                        {
-                                            int32_t j = neighbourCell[jj];
-
-                                            if (j <= i)
-                                                continue;
-
-                                            sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                            float r = dr.length();
-
-                                            if (r >= REACTION_CUTOFF || r < 0.1f)
-                                                continue;
-
-                                            float uncorr = calculateUncorrectedBondOrder(i, j);
-
-                                            total_bo_uncorrected[i] += uncorr * 0.5f;
-                                            total_bo_uncorrected[j] += uncorr * 0.5f;
-                                        }
-                                    }
-                                }
-                    }
-
-            for (int32_t ix = 0; ix < cx; ++ix)
-                for (int32_t iy = 0; iy < cy; ++iy)
-                    for (int32_t iz = 0; iz < cz; ++iz)
-                    {
-                        int32_t current_id = getCellID(ix, iy, iz);
-                        auto &currentCell = cells[current_id];
-
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                            for (int32_t dy = -1; dy <= 1; ++dy)
-                                for (int32_t dx = -1; dx <= 1; ++dx)
-                                {
-                                    int32_t x = ix + dx, y = iy + dy, z = iz + dz;
-                                    int32_t neighbour_id = getCellID(x, y, z);
-                                    auto &neighbourCell = cells[neighbour_id];
-
-                                    for (int32_t ii = 0; ii < currentCell.size(); ++ii)
-                                    {
-                                        int32_t i = currentCell[ii];
-                                        for (int32_t jj = 0; jj < neighbourCell.size(); ++jj)
-                                        {
-                                            int32_t j = neighbourCell[jj];
-
-                                            if (j <= i)
-                                                continue;
-
-                                            processReactivePair(i, j, REACTION_CUTOFF);
-                                        }
-                                    }
-                                }
-                    }
-
-            float sumQ = std::accumulate(data.q.begin(), data.q.end(), 0.f);
-            if (sumQ > std::numeric_limits<float>::epsilon())
-            {
-                float correction = -sumQ / static_cast<float>(data.q.size());
-                for (float &q : data.q)
-                {
-                    q += correction;
-                }
-            }
+  
         }
 
         void universe::update(float targetTemperature, float targetPressure)
@@ -2129,6 +1835,8 @@ namespace sim
         {
             if (timeStep % THERMOSTAT_INTERVAL != 0)
                 return;
+
+            if (atoms.size() == 0) return;
 
             float avg_KE = calculateKineticEnergy() / atoms.size();
             temp = (2.0f / 3.0f) * (avg_KE * KB);
@@ -2758,8 +2466,6 @@ namespace sim
 
         void universe::loadScene(const std::filesystem::path path)
         {
-            nlohmann::json nScene{};
-
             std::ifstream file(path);
             if (!file.is_open() || path.extension() != ".json")
             {

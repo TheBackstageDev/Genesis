@@ -1,0 +1,69 @@
+{
+  "Menu": 
+  {
+    "title": "GENESIS",
+    "subtitle": "Simulador de Dinâmica Molecular",
+    "button_tutorials": "Tutoriais",
+    "button_scenarios": "Cenários",
+    "button_sandbox": "Modo Sandbox",
+    "button_challenges": "Desafios",
+    "button_options": "Opções",
+    "button_achievements": "Conquistas",
+    "button_quit": "Sair",
+    "info_version": "Versão 0.1-alpha",
+    "info_author": "Feito por Gabriel Viegas",
+
+    "Options":
+    {
+      "title": "Menu de Opções",
+      "tab_graphics": "Gráficos",
+      "tab_render_mode": "Modo de Renderização:",
+      "tab_target_fps": "Fps Alvo",
+      
+      "tab_audio": "Audio",
+      "tab_audio_master": "Volume Mestre",
+      "tab_audio_background": "Música de Fundo",
+      "tab_audio_effects": "Efeitos Sonoros",
+
+      "tab_language": "Idioma",
+      "tab_exit": "Fechar Menu de Opções",
+
+      "render_modes":
+      {
+        "ball_and_stick": "Bola e Palito",
+        "letter_and_stick": "Letra e Palito",
+        "space_filling": "Preenchedor de Espaço (WIP)"
+      }
+    },
+
+    "Sandbox_Creation":
+    {
+      "title": "Menu de Criação Sandbox",
+
+      "header_physics": "Física e Termodinâmica",
+      "gravity_enabled": "Gravidade ativa",
+      "gravity_magnitude": "Constante da Gravidade",
+      "wall_collision": "Colisão com Parede",
+      "isothermal": "Isotérmico",
+      "reactive": "Modo Reativo (Não Lançado)",
+
+      "header_box": "Caixa de Simulação",
+      "box_dimensions": "Dimensões da Caixa (Angstroms)",
+      "box_cubic": "Caixa Cúbica (Equal Sides)",
+
+      "header_visual": "Visualização",
+      "render_water": "Renderizar Água (H2O)",
+
+      "header_logging": "Registro",
+      "log_reactions": "Registrar Reações",
+
+      "button_create": "Criar Universo (De Bolso)",
+      "button_cancel": "Cancelar"
+    },
+
+    "Scene_Selection":
+    {
+      "title": "Seleção de Cenários"
+    }
+  }
+}

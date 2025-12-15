@@ -19,21 +19,18 @@ namespace core
         uiView.setCenter({width / 2.0f, height / 2.0f});
         uiView.setViewport(sf::FloatRect({0.f, 0.f}, {1.f, 1.f}));
 
-        if (!arial.openFromFile("src/resource/ARIAL.ttf"))
+        if (!arial.openFromFile("src/resource/fonts/Orbitron-Regular.ttf"))
         {
-            std::cerr << "Failed to load font. UI and letter mode may not display correctly.\n";
+            std::cerr << "Failed to load font. letter mode may not display correctly.\n";
         }
     }
 
     window_t::~window_t()
     {
-    
     }
 
     bool window_t::pollEvents()
     {
-        step = false;
-
         for (std::optional<sf::Event> optEvent = window.pollEvent(); optEvent.has_value(); optEvent = window.pollEvent())
         {
             const sf::Event& event = *optEvent;
@@ -69,28 +66,6 @@ namespace core
                 view.setCenter(sf::Vector2f(boxSizeAspect / 2.0f, boxSizeAspect / 2.0f));
                 view.setSize(sf::Vector2f(boxSizeAspect, boxSizeAspect));
                 window.setView(view);
-            }
-            if (event.is<sf::Event::KeyPressed>())
-            {
-                const auto& key = event.getIf<sf::Event::KeyPressed>()->code;
-                if (key == sf::Keyboard::Key::Space)
-                    paused = !paused;
-                if (key == sf::Keyboard::Key::F)
-                    step = true;
-            }
-            if (event.is<sf::Event::MouseWheelScrolled>())
-            {
-                float zoomFactor = 1.0f - event.getIf<sf::Event::MouseWheelScrolled>()->delta * ZOOM_SPEED;
-                sf::Vector2f currentSize = view.getSize();
-                sf::Vector2f newSize = currentSize * zoomFactor;
-    
-                float minSize = MIN_ZOOM * window.getSize().x;
-                float maxSize = MAX_ZOOM * window.getSize().x;
-                if (newSize.x >= minSize && newSize.x <= maxSize)
-                {
-                    view.zoom(zoomFactor);
-                    window.setView(view);
-                }
             }
         }
 

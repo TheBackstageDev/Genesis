@@ -1082,7 +1082,7 @@ namespace constants
         }
         else if (ZB == 5)     // Boron
         {
-            if      (ANY(8, 8)) K = 600.0f;   // O-B-O
+            if (ANY(8, 8)) K = 600.0f;   // O-B-O
             else K = 550.0f;
         }
 

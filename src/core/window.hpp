@@ -23,8 +23,6 @@ namespace core
         bool pollEvents(); 
 
         bool isOpen() const { return window.isOpen(); }
-        bool isPaused() const { return paused; }
-        bool stepFrame() const { return step; }
 
         void refresh()
         {
@@ -51,8 +49,5 @@ namespace core
         sf::View uiView;
 
         sf::Font arial;
-
-        bool paused = true;
-        bool step = false;
     };
 } // namespace core

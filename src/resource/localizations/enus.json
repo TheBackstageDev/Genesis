@@ -1,0 +1,87 @@
+{
+  "Menu": 
+  {
+    "title": "GENESIS",
+    "subtitle": "Molecular Dynamics Simulator",
+    "button_tutorials": "Tutorials",
+    "button_scenarios": "Scenarios",
+    "button_sandbox": "Sandbox Mode",
+    "button_challenges": "Challenges",
+    "button_options": "Options",
+    "button_achievements": "Achievements",
+    "button_quit": "Exit",
+    "info_version": "Version 0.1-alpha",
+    "info_author": "Made by Gabriel Viegas",
+
+    "Options":
+    {
+      "title": "Options Menu",
+      "tab_graphics": "Graphics",
+      "tab_render_mode": "Render Mode:",
+      "tab_target_fps": "Target Fps",
+      
+      "tab_audio": "Audio",
+      "tab_audio_master": "Master Volume",
+      "tab_audio_background": "Background Music",
+      "tab_audio_effects": "Sound Effects",
+
+      "tab_language": "Localization",
+
+      "tab_exit": "Close Options Menu",
+
+      "render_modes":
+      {
+        "ball_and_stick": "Ball And Stick",
+        "letter_and_stick": "Letter And Stick",
+        "space_filling": "Space Filling (WIP)"
+      }
+    },
+
+    "Sandbox_Creation":
+    {
+      "title": "Sandbox Creation Menu",
+
+      "header_physics": "Physics and Thermodynamics",
+      "gravity_enabled": "Gravity enabled",
+      "gravity_magnitude": "Gravity magnitude",
+      "wall_collision": "Wall collision",
+      "isothermal": "Isothermal",
+      "reactive": "Reactive Mode (Not Released)",
+
+      "header_box": "Simulation Box",
+      "box_dimensions": "Box Dimensions (Angstroms)",
+      "box_cubic": "Cubic Box (Equal Sides)",
+
+      "header_visual": "Visualization",
+      "render_water": "Render Water (H2O)",
+
+      "header_logging": "Logging",
+      "log_reactions": "Log Reactions",
+
+      "button_create": "Create (pocket) Universe",
+      "button_cancel": "Cancel"
+    },
+
+    "Scene_Selection":
+    {
+      "title": "Scene Selection"
+    }
+  },
+
+  "Simulation": 
+  {
+    "pause_menu":
+    {
+      "title": "Pause Menu",
+      "button_resume": "Resume Simulation",
+      "button_restart": "Restart Simulation",
+      "button_options": "Options",
+      "button_exit_menu": "Exit to Menu",
+      "warning": "Warning! All unsaved Progress will be lost!",
+      "true_exit": "Exit",
+      "cancel": "Cancel",
+      "button_exit_desktop": "Exit to Desktop",
+      "hint_esc": "Press ESC again to resume"
+    }
+  }
+}

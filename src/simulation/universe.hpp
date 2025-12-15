@@ -3,8 +3,6 @@
 #include "fundamental_structures.hpp"
 #include <SFML/Graphics.hpp>
 
-#include "core/UIHandler.hpp"
-
 #include <thread>
 #include <future>
 #include <atomic>
@@ -52,9 +50,8 @@ namespace sim
         class universe
         {
         public:
-            universe(universe_create_info& create_info);
+            universe(const universe_create_info& create_info);
             universe(std::filesystem::path scene);
-            ~universe() = default;
 
             int32_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
@@ -107,8 +104,9 @@ namespace sim
                 return positions;
             }
 
-            // UI
+            // cam
             void handleCamera();
+            core::camera_t& camera() { return cam; }
         private:
             void boundCheck(uint32_t i);
 
@@ -273,8 +271,6 @@ namespace sim
             core::camera_t cam;
 
             // Other
-            core::UIHandler uihandler{};
-
             std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
             void drawBox(core::window_t& window);
 
