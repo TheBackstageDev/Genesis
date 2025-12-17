@@ -22,7 +22,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.001f // ps
+#define DT 0.0005f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
@@ -51,7 +51,7 @@ namespace constants
 
 #define REACTION_INTERVAL 3 // time steps
 #define REACTION_CUTOFF 10.f * MULT_FACTOR
-#define REACTION_UPDATE_Q 1
+#define REACTION_UPDATE_Q 2
 #define REACTION_CUT_BO 0.3f
 
 #define COUNT_ATOMS 118
@@ -144,6 +144,21 @@ namespace constants
         1.60f,  // Rf 1.60, Db 1.60, Sg 1.60, Bh 1.60, Hs 1.60, Mt 1.50,
         1.50f,  // Ds 1.40, Rg 1.35, Cn 1.30, Nh 1.30, Fl 1.30, Mc 1.30, Lv 1.30,
         1.30f,  // Ts 1.30, Og 1.30
+    };
+
+    constexpr float VDW_RADII[119] = {
+        0.00f, 1.20f, 1.40f, 1.82f, 1.53f, 1.92f, 1.70f, 1.55f, 1.52f, 1.47f,
+        1.54f, 2.27f, 1.73f, 1.84f, 2.10f, 1.80f, 1.80f, 1.75f, 1.88f, 2.75f,
+        2.31f, 2.30f, 2.20f, 2.15f, 2.10f, 2.05f, 2.00f, 1.95f, 1.90f, 1.85f,
+        1.80f, 2.02f, 2.11f, 1.85f, 1.90f, 1.85f, 2.02f, 3.03f, 2.49f, 2.40f,
+        2.35f, 2.30f, 2.25f, 2.20f, 2.15f, 2.10f, 2.05f, 2.02f, 1.98f, 1.93f,
+        2.17f, 2.06f, 2.06f, 1.98f, 2.16f, 3.43f, 2.98f, 2.70f, 2.65f, 2.60f,
+        2.55f, 2.50f, 2.45f, 2.40f, 2.35f, 2.30f, 2.25f, 2.20f, 2.15f, 2.10f,
+        2.50f, 2.45f, 2.40f, 2.35f, 2.30f, 2.25f, 2.20f, 2.15f, 2.10f, 2.05f,
+        2.00f, 1.95f, 1.90f, 1.85f, 1.80f, 1.75f, 1.70f, 1.65f, 1.60f, 1.55f,
+        1.50f, 1.45f, 1.40f, 1.35f, 1.30f, 1.25f, 1.20f, 1.15f, 1.10f, 1.05f,
+        1.00f, 0.95f, 0.90f, 0.85f, 0.80f, 0.75f, 0.70f, 0.65f, 0.60f, 0.55f,
+        0.50f, 0.45f, 0.40f, 0.35f, 0.30f, 0.25f, 0.20f, 0.15f, 0.10f
     };
 
     inline sf::Color getElementColor(uint8_t Z)
@@ -1100,7 +1115,7 @@ namespace constants
 
     #undef ANY
 
-        return K;
+        return K * 1000.f;
     }
 
     inline float getBondHarmonicConstantFromEnergy(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)

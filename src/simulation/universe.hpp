@@ -18,7 +18,6 @@ namespace sim
             alignas(32) std::vector<float> x, y, z;
             alignas(32) std::vector<float> vx, vy, vz;
             alignas(32) std::vector<float> fx, fy, fz;
-            alignas(32) std::vector<float> old_fx, old_fy, old_fz;
             alignas(32) std::vector<float> q, bond_orders, temperature;
         };
 
@@ -63,24 +62,45 @@ namespace sim
             void linkSubset(int32_t subset, int32_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
-            void draw(core::window_t &window, bool letter = false, bool lennardBall = true);
-            void drawHydrogenBond(core::window_t& window, int32_t H);
-            void drawBonds(core::window_t& window, const std::vector<int32_t>& no_draw);
-            void drawReactiveBonds(core::window_t& window);
-            void drawChargeField(core::window_t& window);
-            void drawCylinder(core::window_t& window,
-                                        int32_t i, int32_t j,
-                                        int32_t segments = 20,
-                                        float radius = 0.12f,
-                                        sf::Color color = sf::Color::White);
+            void draw(core::window_t &window, sf::RenderTarget& target, bool letter = false, bool lennardBall = true, bool spaceFilling = false, bool universeBox = true);
+            void drawHydrogenBond(core::window_t &window, sf::RenderTarget& target, int32_t H);
+            void drawBonds(core::window_t &window, sf::RenderTarget& target, const std::vector<int32_t>& no_draw);
+            void drawRings(core::window_t &window, sf::RenderTarget& target);
+            void drawChargeField(core::window_t &window, sf::RenderTarget& target);
 
             void drawDebug(core::window_t& window);
+
+            // Scenario stuff
+            void highlightAtom(core::window_t& window, size_t i);
+            void highlightBond(core::window_t& window, size_t i, size_t j);
 
             void saveScene(const std::filesystem::path path);
             void loadScene(const std::filesystem::path path);
 
             void saveAsVideo(const std::filesystem::path path);
             void saveFrame();
+
+            void clear()
+            {
+                data.x.clear();
+                data.y.clear();
+                data.z.clear();
+                data.vx.clear();
+                data.vy.clear();
+                data.vz.clear();
+                data.fx.clear();
+                data.fy.clear();
+                data.fz.clear();
+                data.q.clear();
+                data.temperature.clear();
+                data.bond_orders.clear();
+
+                molecules.clear();
+                atoms.clear();
+                bonds.clear();
+                subsets.clear();
+                rings.clear();
+            }
 
             int32_t numBonds() { return bonds.size(); }
             int32_t numAtoms() { return atoms.size(); }
@@ -103,6 +123,8 @@ namespace sim
 
                 return positions;
             }
+
+            void setRenderMode();
 
             // cam
             void handleCamera();
@@ -167,12 +189,16 @@ namespace sim
             std::vector<atom> atoms;
             std::vector<subset> subsets;
             std::vector<molecule> molecules;
+
+            std::vector<bool> frozen_atoms;
             
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
             
             std::vector<bond> bonds;
             std::vector<reactive_bond> reactive_bonds;
+
+            std::vector<std::vector<uint32_t>> rings; // for drawing on non-reactive mode;
 
             // CellList
             std::vector<std::vector<uint32_t>> cells;
@@ -286,7 +312,6 @@ namespace sim
             }
             inline sf::Vector3f pos(uint32_t i) const   { return {data.x[i], data.y[i], data.z[i]}; }
             inline sf::Vector3f vel(uint32_t i) const   { return {data.vx[i], data.vy[i], data.vz[i]}; }
-            inline sf::Vector3f old_force(uint32_t i) const { return {data.old_fx[i], data.old_fy[i], data.old_fz[i]}; }
             inline sf::Vector3f force(uint32_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
             inline void add_force(uint32_t i, sf::Vector3f f) { data.fx[i] += f.x, data.fy[i] += f.y, data.fz[i] += f.z; }
             inline void add_pos(uint32_t i, sf::Vector3f p) { data.x[i] += p.x, data.y[i] += p.y, data.z[i] += p.z; }

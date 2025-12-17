@@ -68,8 +68,64 @@
     }
   },
 
+  "Compounds":
+  {
+    "compound_names": 
+    [
+      "Water",
+      "Carbon Dioxide",
+      "Methane",
+      "Ethane",
+      "Ethanol",
+      "Benzene",
+      "Nitrogen",
+      "C20 Fullerene"
+    ],
+
+    "compound_types":
+    [
+      "ORGANIC",
+      "BIOMOLECULE",
+      "INORGANIC",
+      "ION",
+      "NANOMATERIAL",
+      "POLYMER"
+    ],
+
+    "compound_descriptions":
+    {
+      "Water": "Water (H2O) is vital for organisms and Earth's systems, being the 'universal solvent', dissolving substances for biological functions, regulating climate with its heat capacity, cycling through solid, liquid, and gas, and shaping landscapes while sustaining ecosystems.",
+      "Carbon Dioxide": "Carbon dioxide (CO2) is a compound made of one carbon atom bonded to two oxygen atoms, naturally present in the atmosphere and essential to life processes. It plays a key role in photosynthesis. is a greenhouse gas.",
+      "Methane": "Methane (CH4), composed of one carbon atom bonded to four hydrogen atoms, is the primary component of natural gas and a key energy source. It is a potent greenhouse gas.",
+      "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
+      "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
+      "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
+      "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
+      "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C₆₀"
+    }
+  },
+
   "Simulation": 
   {
+    "universe_ui":
+    {
+      "stats_title": "Universe Stats",
+      "temperature": "Temperature (K):",
+      "pressure": "Pressure (Bar):",
+      "time": "Time (Ps):",
+
+      "tooltip_resume": "Resume Simulation",
+      "tooltip_pause": "Pause Simulation",
+      "tooltip_screenshot": "Take a screenshot",
+      "tooltip_compound_selector": "Add Compound",
+
+      "compound_selector":
+      {
+        "title": "Compound Selector",
+        "button_add": "Add Compound",
+        "molar_weight": "M.W"
+      }
+    },
     "pause_menu":
     {
       "title": "Pause Menu",

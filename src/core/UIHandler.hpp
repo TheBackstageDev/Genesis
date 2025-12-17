@@ -68,6 +68,29 @@ namespace core
         bool is_locked = true;
     };
 
+    enum class compound_type : uint32_t
+    {
+        ORGANIC,
+        BIOMOLECULE,
+        INORGANIC,
+        ION,
+        NANOMATERIAL,
+        POLYMER,
+        COUNT
+    };
+
+    struct compound_preset_info
+    {
+        std::string name;
+        std::string SMILES;
+        std::string formula;
+        float molecular_weight = 0.0f;
+
+        compound_type type;
+        sim::fun::molecule_structure structure;
+        uint32_t id = 0;
+    };
+
     // All options other than BALL_AND_STICK and Letter Mode are WIP
     enum class simulation_render_mode
     {
@@ -102,7 +125,7 @@ namespace core
     class UIHandler
     {
     public:
-        UIHandler(options& app_options);
+        UIHandler(options& app_options, window_t& window);
 
         void set_language(localization new_lang) { lang = new_lang; write_localization_json(lang); }
 
@@ -144,8 +167,16 @@ namespace core
         nlohmann::json localization_json{};
 
         void write_localization_json(localization lang);
+        void initImages(window_t& window);
 
         // Menu
+
+        sf::Texture placeholder_texture;
+        uint32_t placeholder_texture_id = 0;
+
+        std::vector<sf::Texture> thumb_textures;
+
+        const float image_size = 200.f;
 
         int32_t currentDisplayScenario = 0;
         float currentDisplayTime = 0.0f;
@@ -169,13 +200,30 @@ namespace core
 
         // Universe
 
+        float target_temperature = 300.f;
+        float target_pressure = 0.f;
+        
+        void runUniverse();
         void drawUniverseUI();
+        
+        uint32_t selectedCompound = UINT32_MAX;
         void drawCompoundSelector();
+        void drawCompoundView(const compound_preset_info& compound);
+        void drawCompoundFulLView();
 
         void pauseMenu();
 
+        void initCompoundPresetsImages(window_t& window);
+        void initCompoundPresets();
+        std::vector<compound_preset_info> compound_presets{};
+
+        bool compoundSelector = false;
+        bool showHUD = true;
+
         bool pauseMenuOpen = false;
         bool exitDesktop = false;
+
+        bool paused_simulation = false;
 
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;

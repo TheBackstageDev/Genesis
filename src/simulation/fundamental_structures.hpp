@@ -79,6 +79,7 @@ namespace sim
             std::vector<def_subset> subsets;
             std::vector<def_bond> bonds;
             std::vector<angle> angles;
+            std::vector<std::vector<uint32_t>> rings_aromatic; // for drawing
             std::vector<dihedral_angle> dihedral_angles;
             std::vector<sf::Vector3f> positions;
         };
@@ -159,7 +160,7 @@ namespace sim
 
             int32_t chirality;
             int8_t padding[12];
-            void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, bool letterMode, bool lennardBall);
+            void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, bool letterMode, bool lennardBall, bool spaceFilling);
         };
     } // namespace fun
 } // namespace sim

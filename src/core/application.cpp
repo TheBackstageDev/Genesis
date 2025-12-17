@@ -11,8 +11,10 @@ namespace core
         if (!ImGui::SFML::Init(window->getWindow(), false))
             throw std::runtime_error("Error! failed to init Imgui");
 
-        ui.set_language(app_options.lang);
-        ui.setApplicationStateCallback([&](application_state newState)
+        ui = std::make_unique<UIHandler>(app_options, *window.get());
+
+        ui->set_language(app_options.lang);
+        ui->setApplicationStateCallback([&](application_state newState)
         {
             current_state = newState;
         });
@@ -30,12 +32,15 @@ namespace core
         ImFont* bold   = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Bold.ttf", size);
         ImFont* black  = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Black.ttf", size);
 
-        ui.set_regular_font(regular);
-        ui.set_medium_font(medium);
-        ui.set_bold_font(bold);
-        ui.set_black_font(black);
+        ui->set_regular_font(regular);
+        ui->set_medium_font(medium);
+        ui->set_bold_font(bold);
+        ui->set_black_font(black);
 
-        ImGui::SFML::UpdateFontTexture();
+        if (!ImGui::SFML::UpdateFontTexture())
+        {
+            throw std::exception("[APPLICATION]: IMGUI SFML Couldn't update it's fonts");
+        }
     }
 
     application::~application()
@@ -56,9 +61,9 @@ namespace core
             window->clear();
             
             if (current_state == application_state::APP_STATE_MENU)
-                ui.drawMenu();
+                ui->drawMenu();
             if (current_state == application_state::APP_STATE_SIMULATION)
-                ui.drawUniverse(*window.get());
+                ui->drawUniverse(*window.get());
             
             ImGui::SFML::Render(window->getWindow());
             window->display();

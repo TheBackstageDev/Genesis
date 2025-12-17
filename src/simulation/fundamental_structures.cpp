@@ -20,12 +20,21 @@ namespace sim
 
     namespace fun
     {
-        void atom::draw(float temperature, sf::Vector2f &pos, float camDistance, float q, core::window_t &window, bool letter, bool lennardBall)
+        void atom::draw(float temperature, sf::Vector2f &pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, bool letter, bool lennardBall, bool spaceFilling)
         {
             sf::Color atomColor = constants::getElementColor(ZIndex);
 
+            float vdw_r = radius;
+
+            if (spaceFilling)
+            {
+                vdw_r = constants::VDW_RADII[ZIndex] * 3;
+
+                vdw_r *= (1.0f + temperature * 0.001f);
+            }
+
             float minDist = 20.0f;
-            float maxDist = 200.0f;
+            float maxDist = 300.0f;
             float alpha = 255.0f;
 
             if (camDistance > minDist)
@@ -35,14 +44,14 @@ namespace sim
                 alpha = 255.0f * (1.0f - t);
             }
 
-            float rad = radius / camDistance * 10.f;
+            float rad = vdw_r / camDistance * 10.f;
             if (lennardBall)
             {
                 sf::CircleShape cloud(rad);
                 cloud.setOrigin({rad, rad});
                 cloud.setPosition(pos);
                 cloud.setFillColor(sf::Color(atomColor.r, atomColor.g, atomColor.b, alpha));
-                window.draw(cloud);
+                target.draw(cloud);
             }
 
             if (letter)
@@ -59,7 +68,7 @@ namespace sim
                 sf::FloatRect b = name_text.getLocalBounds();
                 name_text.setOrigin(b.getCenter());
                 name_text.setPosition(pos);
-                window.draw(name_text);
+                target.draw(name_text);
 
                 // Charge
                 if (std::abs(q) > 1.f)
@@ -75,7 +84,7 @@ namespace sim
                     float offsetScale = rad * 0.5f;
                     ion_text.setPosition(pos + sf::Vector2f(offsetScale, -offsetScale));
 
-                    window.draw(ion_text);
+                    target.draw(ion_text);
                 }
             }
         }

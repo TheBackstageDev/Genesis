@@ -35,6 +35,7 @@ namespace core
         {
             const sf::Event& event = *optEvent;
             ImGui::SFML::ProcessEvent(window, event);
+            
             if (event.is<sf::Event::Closed>())
             {
                 window.close();

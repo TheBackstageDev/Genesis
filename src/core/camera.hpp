@@ -9,9 +9,9 @@ namespace core
     struct camera_t
     {
         sf::Vector3f target{0, 0, 0};      // look-at point
-        float distance = 1.f;            // eye distance from target
-        float azimuth = 2.f;              // horizontal angle (deg)
-        float elevation = 20.f;            // vertical angle (deg)
+        float distance = 30.f;            // eye distance from target
+        float azimuth = 45.f;              // horizontal angle (deg)
+        float elevation = 25.f;            // vertical angle (deg)
         float fov = 50.f;                  // field of view (deg)
         float nearPlane = 1.f;
         float farPlane = 1000.f;
@@ -33,6 +33,9 @@ namespace core
         void rotateElevation(float deltaDegrees) {
             elevation += deltaDegrees;
             elevation = std::clamp(elevation, -89.f, 89.f);
+
+            if (elevation == 89.f)
+                elevation = -89.f;
         }
 
         void rotateAroundTarget(float azimuthDelta, float elevationDelta, float sensitivity = 1.f) {

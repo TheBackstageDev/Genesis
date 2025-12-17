@@ -305,28 +305,30 @@ namespace sim
             for (uint32_t a : ring)
                 if (!nAtoms[a].aromatic) { isAromatic = false; break; }
             if (!isAromatic) continue;
-
+            
             bool doubleBond = true;
             for (uint32_t i = 0; i < ring.size(); ++i) {
                 uint32_t a = ring[i];
                 uint32_t b = ring[(i + 1) % ring.size()];
-
+                
                 auto bondIt = std::find_if(nBonds.begin(), nBonds.end(),
-                    [&](const def_bond& bb) {
-                        return (bb.centralAtomIdx == a && bb.bondingAtomIdx == b) ||
-                            (bb.centralAtomIdx == b && bb.bondingAtomIdx == a);
-                    });
-
+                [&](const def_bond& bb) {
+                    return (bb.centralAtomIdx == a && bb.bondingAtomIdx == b) ||
+                    (bb.centralAtomIdx == b && bb.bondingAtomIdx == a);
+                });
+                
                 if (bondIt != nBonds.end()) 
-                    bondIt->type = doubleBond ? BondType::DOUBLE : BondType::SINGLE;
-
+                bondIt->type = doubleBond ? BondType::DOUBLE : BondType::SINGLE;
+                
                 if (doubleBond)
                 {
                     ++nAtoms[a].nBonds;
                     ++nAtoms[b].nBonds;
                 }
-
+                
                 doubleBond = !doubleBond;
+
+                nStructure.rings_aromatic.emplace_back(std::move(ring));
             }
         }
 
@@ -575,7 +577,7 @@ namespace sim
 
             for (int32_t h = 0; h < numHydrogen; ++h)
             {
-                nAtoms.emplace_back(def_atom{1, 1, 0, 1});
+                nAtoms.emplace_back(def_atom{1, 0, 0, 1});
                 uint32_t hIdx = nAtoms.size() - 1;
 
                 def_bond hBond{};
@@ -1014,7 +1016,7 @@ namespace sim
             positions[nSubsets[0].hydrogensIdx[i]] = positions[nSubsets[0].mainAtomIdx] + dir;
         }
 
-        const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
+        const int32_t max_iters = 30 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
         constexpr float   repulse     = 2.2f;
         constexpr float   k_spring    = 5.0f;
@@ -1038,7 +1040,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 2.5f;
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.2f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;

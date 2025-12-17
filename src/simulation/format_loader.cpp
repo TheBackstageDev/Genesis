@@ -8,62 +8,73 @@ namespace sim::io
 {
     inline fun::BondType estimateBondType(uint8_t z1, uint8_t z2, float distance)
     {
-        if (z1 > z2) std::swap(z1, z2);
-
         if (z1 == 1 || z2 == 1) return fun::BondType::SINGLE;
 
-        if (z1 == 6 && z2 == 6) 
+        if (z1 == 6 && z2 == 6)
         {
             if (distance < 1.26f) return fun::BondType::TRIPLE;     // C≡C
-            if (distance < 1.4f) return fun::BondType::DOUBLE;     // C=C
-
+            if (distance < 1.38f) return fun::BondType::DOUBLE;     // C=C (slightly relaxed for aromatics)
             return fun::BondType::SINGLE;
         }
-
-        if ((z1 == 6 && z2 == 8) || (z1 == 8 && z2 == 6)) 
+        if ((z1 == 6 && z2 == 8) || (z1 == 8 && z2 == 6))
         {
-            if (distance < 1.30f) return fun::BondType::DOUBLE;     // C=O
+            if (distance < 1.28f) return fun::BondType::DOUBLE;     // C=O (e.g., in bases)
             return fun::BondType::SINGLE;
         }
-
-        if ((z1 == 6 && z2 == 7) || (z1 == 7 && z2 == 6)) 
+        if ((z1 == 6 && z2 == 7) || (z1 == 7 && z2 == 6))
         {
             if (distance < 1.26f) return fun::BondType::TRIPLE;     // C≡N
             if (distance < 1.32f) return fun::BondType::DOUBLE;     // C=N
             return fun::BondType::SINGLE;
         }
-
-        if ((z1 == 7 && z2 == 8) || (z1 == 8 && z2 == 7)) 
+        if ((z1 == 7 && z2 == 8) || (z1 == 8 && z2 == 7))
         {
             if (distance < 1.30f) return fun::BondType::DOUBLE;     // N=O
             return fun::BondType::SINGLE;
         }
-
-        if ((z1 == 6 && z2 == 16) || (z1 == 16 && z2 == 6)) 
+        if ((z1 == 6 && z2 == 16) || (z1 == 16 && z2 == 6))
         {
             if (distance < 1.70f) return fun::BondType::DOUBLE;     // C=S
             return fun::BondType::SINGLE;
+        }
+
+        if ((z1 == 15 && z2 == 8) || (z1 == 8 && z2 == 15))  // P-O
+        {
+            if (distance < 1.52f) return fun::BondType::DOUBLE;     // P=O 
+            return fun::BondType::SINGLE;                           // P-O
+        }
+
+        if ((z1 == 6 && z2 == 7) || (z1 == 7 && z2 == 6))
+        {
+            if (distance < 1.37f) return fun::BondType::DOUBLE; 
+        }
+        if ((z1 == 6 && z2 == 6))
+        {
+            if (distance < 1.42f) return fun::BondType::DOUBLE;     // Aromatic C=C in bases
+        }
+        if ((z1 == 6 && z2 == 8) || (z1 == 8 && z2 == 6))
+        {
+            if (distance < 1.32f) return fun::BondType::DOUBLE;
         }
 
         float r_single = constants::getBondLength(z1, z2, fun::BondType::SINGLE);
         float r_double = constants::getBondLength(z1, z2, fun::BondType::DOUBLE);
         float r_triple = constants::getBondLength(z1, z2, fun::BondType::TRIPLE);
 
-        // Fallback
         if (r_single <= 0.1f) r_single = (constants::covalent_radius[z1] + constants::covalent_radius[z2]) * 1.05f;
         if (r_double <= 0.1f) r_double = r_single * 0.87f;
         if (r_triple <= 0.1f) r_triple = r_single * 0.78f;
 
         constexpr float pauling_const = 0.30f;
+
         if (distance >= r_single + 0.3f) return fun::BondType::SINGLE;
         if (distance <= r_triple - 0.1f) return fun::BondType::TRIPLE;
 
         float order = std::exp((r_single - distance) / pauling_const);
-
         order = std::clamp(order, 1.0f, 3.0f);
+
         if (order > 2.7f)  return fun::BondType::TRIPLE;
         if (order > 1.7f)  return fun::BondType::DOUBLE;
-
         return fun::BondType::SINGLE;
     }
 
@@ -118,7 +129,7 @@ namespace sim::io
             positions.emplace_back(x, y, z);
         }
 
-        constexpr float tolerance = 0.45f;
+        constexpr float tolerance = 0.35f;
 
         bonds.clear();
         for (size_t i = 0; i < atoms.size(); ++i)
@@ -156,10 +167,6 @@ namespace sim::io
                 }
             }
         }
-
-        for (auto& pos : positions)
-            pos *= 1.2f;
-
         return true;
     }
 } // namespace sim::io

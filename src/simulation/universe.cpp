@@ -22,8 +22,6 @@ namespace sim
         {
             if (react)
                 initReaxParams();
-
-            cam.target = {box.x / 2.f, box.y / 2.f, box.z / 2.f};
         }
 
         universe::universe(const std::filesystem::path path)
@@ -86,7 +84,7 @@ namespace sim
             window.getWindow().draw(lines);
         }
 
-        void universe::draw(core::window_t &window, bool letter, bool lennardBall)
+        void universe::draw(core::window_t &window, sf::RenderTarget& target, bool letter, bool lennardBall, bool spaceFilling, bool universeBox)
         {
             std::vector<int32_t> drawOrder(atoms.size());
             std::iota(drawOrder.begin(), drawOrder.end(), 0);
@@ -96,7 +94,8 @@ namespace sim
                       [&](int32_t a, int32_t b)
                       { return (pos(a) - eye).lengthSquared() > (pos(b) - eye).lengthSquared(); });
 
-            drawBox(window);
+            if (universeBox)
+                drawBox(window);
 
             std::vector<int32_t> no_draw{};
 
@@ -111,10 +110,11 @@ namespace sim
                     }
                 }
 
-            if (!react)
-                drawBonds(window, no_draw);
-            else
-                drawReactiveBonds(window);
+            if (!react && !spaceFilling)
+            {
+                drawBonds(window, target, no_draw);
+                //drawRings(window, target);
+            }
 
             for (int32_t i = 0; i < atoms.size(); ++i)
             {
@@ -127,12 +127,12 @@ namespace sim
 
                 float temp = calculateAtomTemperature(drawOrder[i]);
                 if (atoms[drawOrder[i]].ZIndex == 1)
-                    drawHydrogenBond(window, drawOrder[i]);
+                    drawHydrogenBond(window, target, drawOrder[i]);
 
                 float camDistance = (pos(drawOrder[i]) - cam.eye()).length();
 
                 float T = calculateAtomTemperature(i);
-                atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, letter, lennardBall);
+                atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, target, letter, lennardBall, spaceFilling);
             }
         }
 
@@ -143,7 +143,7 @@ namespace sim
             return x * x * (3.0f - 2.0f * x);
         }
 
-        void universe::drawChargeField(core::window_t &window)
+        void universe::drawChargeField(core::window_t &window, sf::RenderTarget& target)
         {
             if (!(cx > 0 && cy > 0 && cz > 0))
                 return;
@@ -258,10 +258,10 @@ namespace sim
 
                 idx += 6;
             }
-            window.getWindow().draw(billboards, states);
+            target.draw(billboards, states);
         }
 
-        void universe::drawBonds(core::window_t &window, const std::vector<int32_t> &no_draw)
+        void universe::drawBonds(core::window_t &window, sf::RenderTarget& target, const std::vector<int32_t> &no_draw)
         {
             sf::Vector2f dimensions = window.getWindow().getView().getSize();
 
@@ -286,15 +286,17 @@ namespace sim
 
                 sf::Vector2f dir = s2 - s1;
                 float len = dir.length();
-                if (len < 2.0f)
+                if (len < 0.5f)
                     continue;
                 dir /= len;
 
                 sf::Vector2f perp{-dir.y, dir.x};
 
                 uint8_t lines = static_cast<uint8_t>(bond.type);
-                float shrink = 2.f;   // pixels
-                float spacing = 10.f; // pixels between lines
+                float distance = (pCentral - cam.eye()).length();
+
+                float shrink = 5.f / distance;   // pixels
+                float spacing = 10.f / distance; // pixels between lines
 
                 std::vector<sf::Vertex> verts;
                 verts.reserve(lines * 2);
@@ -302,7 +304,8 @@ namespace sim
                 for (int32_t i = 0; i < lines; ++i)
                 {
                     float offset = spacing * (i - (lines - 1) * 0.5f);
-                    sf::Vector2f off = perp * offset / (pCentral - cam.eye()).length();
+
+                    sf::Vector2f off = perp * offset;
 
                     sf::Vector2f start = s1 + dir * shrink + off;
                     sf::Vector2f end = s2 - dir * shrink + off;
@@ -311,121 +314,106 @@ namespace sim
                     verts.emplace_back(end, sf::Color::White);
                 }
 
-                window.getWindow().draw(verts.data(), verts.size(), sf::PrimitiveType::Lines);
+                target.draw(verts.data(), verts.size(), sf::PrimitiveType::Lines);
             }
         }
 
-        void universe::drawCylinder(core::window_t &window,
-                                    int32_t i, int32_t j,
-                                    int32_t segments,
-                                    float radius,
-                                    sf::Color color)
+        void universe::highlightAtom(core::window_t& window, size_t i)
         {
-            const sf::Vector3f a = pos(i);
-            const sf::Vector3f b = pos(j);
+            const atom &a = atoms[i];
 
-            sf::Vector3f dir = b - a;
-            float length = dir.length();
-            if (length < 0.01f)
-                return;
-            dir /= length;
+            constexpr uint32_t pointCount = 60;
+            constexpr float thickness = 4.0f;
 
-            sf::Vector2f s1 = project(window, a);
-            sf::Vector2f s2 = project(window, b);
-            if (s1.x < -9999 || s2.x < -9999)
-                return;
+            float ringRadius = a.radius * 1.2f;
 
-            sf::Vector3f up = (std::abs(dir.z) < 0.9f)
-                                  ? sf::Vector3f(0, 0, 1)
-                                  : sf::Vector3f(0, 1, 0);
-            sf::Vector3f right = dir.cross(up).normalized();
-            up = right.cross(dir).normalized();
+            sf::Vector3f worldPos = pos(i);
+            sf::Vector2f currentPos = project(window, worldPos);
 
-            sf::VertexArray cylinder(sf::PrimitiveType::TriangleStrip, (segments + 1) * 2);
+            float distance = (pos(i) - cam.eye()).length();
 
-            for (int32_t k = 0; k <= segments; ++k)
-            {
-                float angle = 2.0f * M_PI * k / segments;
-                float c = std::cos(angle);
-                float s = std::sin(angle);
+            sf::CircleShape circle(ringRadius / distance);
+            circle.setPosition(currentPos - sf::Vector2f(ringRadius / distance, ringRadius / distance));
+            circle.setFillColor(sf::Color::Transparent);
+            circle.setOutlineColor(sf::Color::White);
+            circle.setOutlineThickness(thickness);
+            circle.setPointCount(pointCount);
 
-                sf::Vector3f offset = (right * c + up * s) * radius;
-
-                sf::Vector3f p1 = a + offset;
-                sf::Vector3f p2 = b + offset;
-
-                sf::Vector2f screen1 = project(window, p1);
-                sf::Vector2f screen2 = project(window, p2);
-
-                if (screen1.x < -1000.f || screen2.x < -1000.f)
-                    continue;
-
-                float depth1 = (p1 - cam.eye()).length();
-                float depth2 = (p2 - cam.eye()).length();
-                float avg_depth = (depth1 + depth2) * 0.5f;
-
-                uint8_t alpha = static_cast<uint8_t>(255 * std::exp(-avg_depth * 0.003f));
-                color.a = alpha;
-
-                cylinder[k * 2 + 0] = sf::Vertex(screen1, color);
-                cylinder[k * 2 + 1] = sf::Vertex(screen2, color);
-            }
-
-            window.getWindow().draw(cylinder);
+            window.getWindow().draw(circle);
         }
 
-        void universe::drawReactiveBonds(core::window_t &window)
+        void universe::drawRings(core::window_t &window, sf::RenderTarget& target)
         {
-            for (auto &bond : reactive_bonds)
+            constexpr float visualRadius = 0.5f;
+            constexpr float visualThickness = 0.1f;
+            constexpr uint32_t segments = 60;
+
+            for (const auto& ring : rings)
             {
-                sf::Vector2f dimensions = window.getWindow().getView().getSize();
+                if (ring.size() < 3) continue;
 
-                const sf::Vector3f &pCentral = pos(bond.i); // pB
-                const sf::Vector3f &pBonded = pos(bond.j);  // pA
+                sf::Vector3f center(0.0f, 0.0f, 0.0f);
+                for (uint32_t idx : ring) center += pos(idx);
+                center /= static_cast<float>(ring.size());
 
-                sf::Vector2f s1 = cam.project(pCentral, dimensions.x, dimensions.y); // center
-                sf::Vector2f s2 = cam.project(pBonded, dimensions.x, dimensions.y);  // end
-
-                if (s1.x <= -9999 || s2.x <= -9999)
-                    continue;
-                if ((pCentral - pBonded).length() > 8.f)
-                    continue;
-                if ((pCentral - cam.eye()).length() > 200.f)
-                    continue;
-
-                sf::Vector2f dir = (s2 - s1).normalized();
-                float len = dir.length();
-                dir /= len;
-
-                sf::Vector2f perp{-dir.y, dir.x};
-
-                if (bond.type != BondType::PARTIAL)
+                sf::Vector3f normal(0.0f, 0.0f, 0.0f);
+                float radius3D = 0.0f;
+                sf::Vector3f first = pos(ring[0]);
+                for (size_t i = 0; i < ring.size(); ++i)
                 {
-                    uint8_t lines = static_cast<uint8_t>(bond.type);
-                    float shrink = 2.f;   // pixels
-                    float spacing = 10.f; // pixels between lines
+                    sf::Vector3f p1 = pos(ring[i]);
+                    sf::Vector3f p2 = pos(ring[(i + 1) % ring.size()]);
+                    radius3D += (p1 - center).length();
 
-                    std::vector<sf::Vertex> verts;
-                    verts.reserve(lines * 2);
-
-                    for (int32_t i = 0; i < lines; ++i)
-                    {
-                        float offset = spacing * (i - (lines - 1) * 0.5f);
-                        sf::Vector2f off = perp * offset / (pCentral - cam.eye()).length();
-
-                        sf::Vector2f start = s1 + dir * shrink + off;
-                        sf::Vector2f end = s2 - dir * shrink + off;
-
-                        verts.emplace_back(start, sf::Color::White);
-                        verts.emplace_back(end, sf::Color::White);
-                    }
-
-                    window.getWindow().draw(verts.data(), verts.size(), sf::PrimitiveType::Lines);
+                    normal.x += (p1.y - p2.y) * (p1.z + p2.z);
+                    normal.y += (p1.z - p2.z) * (p1.x + p2.x);
+                    normal.z += (p1.x - p2.x) * (p1.y + p2.y);
                 }
+                radius3D /= static_cast<float>(ring.size());
+                if (normal.lengthSquared() > 0.0f) normal /= normal.length();
+                else normal = sf::Vector3f(0.0f, 0.0f, 1.0f); 
+
+                float distance = (center - cam.eye()).length();
+                if (distance < 0.1f) continue;
+
+                float scaledRadius = visualRadius * radius3D;
+                float scaledHalfThick = visualThickness * 0.5f;
+
+                sf::Vector2f screenCenter = project(window, center);
+
+                if (screenCenter.x < -1000.f) continue;
+
+                sf::Vector3f arb = (std::abs(normal.x) > 0.5f) ? sf::Vector3f(0,1,0) : sf::Vector3f(1,0,0);
+
+                sf::Vector3f u = normal.cross(arb);
+                if (u.lengthSquared() > 0.0f) u /= u.length();
+                sf::Vector3f v = normal.cross(u);
+
+                sf::VertexArray verts(sf::PrimitiveType::TriangleStrip, 2 * (segments + 1));
+                for (uint32_t i = 0; i <= segments; ++i)
+                {
+                    float angle = 2.0f * static_cast<float>(M_PI) * i / segments;
+                    float c = std::cos(angle);
+                    float s = std::sin(angle);
+                    sf::Vector3f dir = u * c + v * s;
+
+                    // Outer
+                    sf::Vector3f outer3D = center + dir * (radius3D + 0.1f * scaledHalfThick);
+                    sf::Vector2f outer2D = project(window, outer3D) - screenCenter;
+                    verts[2 * i].position = screenCenter + outer2D * (scaledRadius / radius3D);
+                    verts[2 * i].color = sf::Color::White;
+
+                    // Inner
+                    sf::Vector3f inner3D = center + dir * (radius3D - scaledHalfThick);
+                    sf::Vector2f inner2D = project(window, inner3D) - screenCenter;
+                    verts[2 * i + 1].position = screenCenter + inner2D * (scaledRadius / radius3D);
+                    verts[2 * i + 1].color = sf::Color::White;
+                }
+
+                target.draw(verts);
             }
         }
-
-        void universe::drawHydrogenBond(core::window_t &window, int32_t H)
+        void universe::drawHydrogenBond(core::window_t &window, sf::RenderTarget& target, int32_t H)
         {
             if (timeStep == 0 || cells.size() == 0)
                 return;
@@ -622,7 +610,7 @@ namespace sim
 
             newAtom.sigma = constants.first;
             newAtom.epsilon = constants.second;
-            newAtom.radius = constants.first / 1.3f;
+            newAtom.radius = constants::VDW_RADII[ZIndex] * 1.5f;
             newAtom.electrons = numElectron;
             newAtom.NCount = numNeutrons;
             newAtom.mass = ZIndex * MASS_PROTON + numNeutrons * MASS_NEUTRON + numElectron * MASS_ELECTRON;
@@ -636,6 +624,8 @@ namespace sim
             data.fz.resize(atoms.size());
             data.bond_orders.resize(atoms.size());
             data.temperature.resize(atoms.size());
+
+            frozen_atoms.emplace_back(false);
 
             return atoms.size() - 1;
         }
@@ -726,11 +716,22 @@ namespace sim
 
             molecule nMolecule{};
 
+            sf::Vector3f centroid{0.f, 0.f, 0.f};
+            for (const auto& p : structure.positions)
+            {
+                centroid += p;
+            }
+            centroid /= static_cast<float>(structure.positions.size());
+
+            for (auto& p : structure.positions)
+            {
+                p -= centroid;
+            }
+
             for (int32_t i = 0; i < structure.atoms.size(); ++i)
             {
                 const def_atom &a = structure.atoms[i];
-                if (pos.z != 0)
-                    structure.positions[i].z += 0.01f * i;
+
                 createAtom(structure.positions[i] + pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
                 data.q[i] += structure.atoms[i].charge;
             }
@@ -751,7 +752,7 @@ namespace sim
 
                 nMolecule.bondBegin = baseBondIndex;
                 nMolecule.bondCount = structure.bonds.size();
-                
+
                 int32_t baseSubset = subsets.size();
                 for (int32_t s = 0; s < structure.subsets.size(); ++s)
                     createSubset(structure.subsets[s], baseAtomIndex, baseSubset);
@@ -759,7 +760,9 @@ namespace sim
                 nMolecule.subsetBegin = baseSubset;
                 nMolecule.subsetCount = structure.subsets.size();
 
-                balanceMolecularCharges(subsets[baseSubset]);
+                if (nMolecule.subsetCount > 0)
+                    balanceMolecularCharges(subsets[baseSubset]);
+
                 rebuildBondTopology();
 
                 int32_t baseAngle = angles.size();
@@ -769,13 +772,15 @@ namespace sim
                     angle.A += baseAtomIndex;
                     angle.B += baseAtomIndex;
                     angle.C += baseAtomIndex;
-    
+
                     angles.emplace_back(angle);
                 }
-    
+
+                rings.insert(rings.end(), structure.rings_aromatic.begin(), structure.rings_aromatic.end());
+
                 nMolecule.angleBegin = baseAngle;
                 nMolecule.angleCount = structure.angles.size();
-    
+
                 int32_t baseDihedral = dihedral_angles.size();
                 for (int32_t a = 0; a < structure.dihedral_angles.size(); ++a)
                 {
@@ -784,13 +789,13 @@ namespace sim
                     angle.B += baseAtomIndex;
                     angle.C += baseAtomIndex;
                     angle.D += baseAtomIndex;
-    
+
                     dihedral_angles.emplace_back(angle);
                 }
-    
+
                 nMolecule.dihedralBegin = baseDihedral;
                 nMolecule.dihedralCount = structure.dihedral_angles.size();
-    
+
                 if (structure.atoms.size() == 3 && structure.atoms[0].ZIndex == 8 && structure.atoms[1].ZIndex == 1 && structure.atoms[2].ZIndex == 1)
                     nMolecule.exclude = true;
             }
@@ -820,18 +825,18 @@ namespace sim
                 const auto &currentSubset = subsets[currentIdx];
 
                 atomsToBalance.push_back(currentSubset.mainAtomIdx);
-                
+
                 if (currentSubset.connectedCount != UINT32_MAX)
-                for(int32_t i = 0; i < currentSubset.connectedCount; ++i)
-                {
-                    atomsToBalance.emplace_back(currentSubset.connectedBegin + i);
-                }
+                    for (int32_t i = 0; i < currentSubset.connectedCount; ++i)
+                    {
+                        atomsToBalance.emplace_back(currentSubset.connectedBegin + i);
+                    }
 
                 if (currentSubset.hydrogenCount != UINT32_MAX)
-                for(int32_t i = 0; i < currentSubset.hydrogenCount; ++i)
-                {
-                    atomsToBalance.emplace_back(currentSubset.hydrogenCount + i);
-                }
+                    for (int32_t i = 0; i < currentSubset.hydrogenCount; ++i)
+                    {
+                        atomsToBalance.emplace_back(currentSubset.hydrogenCount + i);
+                    }
 
                 int32_t nextIdx = currentSubset.bondedSubsetIdx;
                 if (nextIdx < subsets.size() && nextIdx != SIZE_MAX && visited.insert(nextIdx).second)
@@ -1312,10 +1317,10 @@ namespace sim
             const auto &cell = cells[cellID];
             thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
 
-            if (local_forces.size() != atoms.size()) 
+            if (local_forces.size() != atoms.size())
                 local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
 
-            std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0,0,0});
+            std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
 
             for (int32_t ii = 0; ii < cell.size(); ++ii)
             {
@@ -1406,32 +1411,35 @@ namespace sim
             const uint32_t n_threads = std::max(1u, std::thread::hardware_concurrency());
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
 
-            auto make_task = [this](auto&& func) {
-                return [this, func](int32_t start, int32_t end) -> std::vector<sf::Vector3f> {
+            auto make_task = [this](auto &&func)
+            {
+                return [this, func](int32_t start, int32_t end) -> std::vector<sf::Vector3f>
+                {
                     thread_local std::vector<sf::Vector3f> local_forces;
-                    if (local_forces.size() != atoms.size()) 
+                    if (local_forces.size() != atoms.size())
                     {
                         local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
                     }
-                    std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0,0,0});
+                    std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
 
                     func(start, end, local_forces);
 
-                    return local_forces; 
+                    return local_forces;
                 };
             };
 
-            auto bond_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf) 
+            auto bond_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
             {
-                for (int32_t i = start; i < end; ++i) 
+                for (int32_t i = start; i < end; ++i)
                 {
-                    const bond& b = bonds[i];
+                    const bond &b = bonds[i];
                     int32_t a = b.bondedAtom;
                     int32_t c = b.centralAtom;
 
                     sf::Vector3f dr = minImageVec(pos(c) - pos(a));
                     float len = dr.length();
-                    if (len <= EPSILON) continue;
+                    if (len <= EPSILON)
+                        continue;
 
                     float dl = len - b.equilibriumLength;
                     sf::Vector3f force = (b.k * dl / len) * dr;
@@ -1441,31 +1449,33 @@ namespace sim
                 }
             };
 
-            for (int32_t t = 0; t < n_threads; ++t) 
+            for (int32_t t = 0; t < n_threads; ++t)
             {
                 int32_t start = bonds.size() * t / n_threads;
-                int32_t end   = bonds.size() * (t + 1) / n_threads;
+                int32_t end = bonds.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(bond_func), start, end));
             }
 
-            auto angle_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf) 
+            auto angle_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
             {
-                for (int32_t a = start; a < end; ++a) 
+                for (int32_t a = start; a < end; ++a)
                 {
-                    const angle& ang = angles[a];
+                    const angle &ang = angles[a];
                     int32_t i = ang.A, j = ang.B, k = ang.C;
 
                     sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
                     sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
                     float len_ji = r_ji.length();
                     float len_jk = r_jk.length();
-                    if (len_ji < EPSILON || len_jk < EPSILON) continue;
+                    if (len_ji < EPSILON || len_jk < EPSILON)
+                        continue;
 
                     sf::Vector3f u_ji = r_ji / len_ji;
                     sf::Vector3f u_jk = r_jk / len_jk;
                     float cos_theta = std::clamp(u_ji.dot(u_jk), -1.0f, 1.0f);
                     float sin_theta = std::sqrt(std::max(1.0f - cos_theta * cos_theta, 0.0f));
-                    if (sin_theta < 1e-6f) sin_theta = 1e-6f;
+                    if (sin_theta < 1e-6f)
+                        sin_theta = 1e-6f;
 
                     float theta = std::acos(cos_theta);
                     float delta_theta = theta - ang.rad;
@@ -1483,29 +1493,35 @@ namespace sim
                 }
             };
 
-            for (int32_t t = 0; t < n_threads; ++t) 
+            for (int32_t t = 0; t < n_threads; ++t)
             {
                 int32_t start = angles.size() * t / n_threads;
-                int32_t end   = angles.size() * (t + 1) / n_threads;
+                int32_t end = angles.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(angle_func), start, end));
             }
 
-            auto dihedral_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf) 
+            auto dihedral_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
             {
-                for (int32_t d = start; d < end; ++d) {
-                    const dihedral_angle& da = dihedral_angles[d];
+                for (int32_t d = start; d < end; ++d)
+                {
+                    const dihedral_angle &da = dihedral_angles[d];
                     float phi = calculateDihedral(pos(da.A), pos(da.B), pos(da.C), pos(da.D));
 
                     float target = da.rad;
-                    if (target == 0.0f && da.periodicity == 1) {
+                    if (target == 0.0f && da.periodicity == 1)
+                    {
                         int32_t chi = atoms[da.B].chirality ? atoms[da.B].chirality : atoms[da.C].chirality;
-                        if (chi == 1)  target = (phi < M_PI) ? 1.047f : 5.236f;
-                        if (chi == 2)  target = (phi < M_PI) ? 5.236f : 1.047f;
+                        if (chi == 1)
+                            target = (phi < M_PI) ? 1.047f : 5.236f;
+                        if (chi == 2)
+                            target = (phi < M_PI) ? 5.236f : 1.047f;
                     }
 
                     float diff = phi - target;
-                    while (diff > M_PI) diff -= 2.0f * M_PI;
-                    while (diff < -M_PI) diff += 2.0f * M_PI;
+                    while (diff > M_PI)
+                        diff -= 2.0f * M_PI;
+                    while (diff < -M_PI)
+                        diff += 2.0f * M_PI;
 
                     float torque = -da.K * da.periodicity * std::sin(da.periodicity * phi);
 
@@ -1527,16 +1543,17 @@ namespace sim
                 }
             };
 
-            for (int32_t t = 0; t < n_threads; ++t) 
+            for (int32_t t = 0; t < n_threads; ++t)
             {
                 int32_t start = dihedral_angles.size() * t / n_threads;
-                int32_t end   = dihedral_angles.size() * (t + 1) / n_threads;
+                int32_t end = dihedral_angles.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
             }
 
-            for (auto& fut : futures) {
+            for (auto &fut : futures)
+            {
                 auto local_f = fut.get();
-                for (int32_t i = 0; i < atoms.size(); ++i) 
+                for (int32_t i = 0; i < atoms.size(); ++i)
                     add_force(i, local_f[i]);
             }
         }
@@ -1549,7 +1566,7 @@ namespace sim
             std::vector<std::future<std::vector<sf::Vector3f>>> futures;
 
             std::vector<uint32_t> work(cells.size());
-            for (int32_t c = 0; c < cells.size(); ++c) 
+            for (int32_t c = 0; c < cells.size(); ++c)
             {
                 uint32_t n = cells[c].size();
                 work[c] = n * n;
@@ -1557,25 +1574,25 @@ namespace sim
 
             auto worker = [this](int32_t start_flat, int32_t end_flat) -> std::vector<sf::Vector3f>
             {
-                std::vector<sf::Vector3f> thread_forces(atoms.size(), {0,0,0});
+                std::vector<sf::Vector3f> thread_forces(atoms.size(), {0, 0, 0});
 
-                for (int32_t flat = start_flat; flat < end_flat; ++flat) 
+                for (int32_t flat = start_flat; flat < end_flat; ++flat)
                 {
                     int32_t iz = flat % cz;
                     int32_t iy = (flat / cz) % cy;
                     int32_t ix = flat / (cz * cy);
 
                     auto cell_forces = processCellUnbonded(ix, iy, iz);
-                    for (int32_t i = 0; i < atoms.size(); ++i) 
+                    for (int32_t i = 0; i < atoms.size(); ++i)
                         thread_forces[i] += cell_forces[i];
                 }
                 return thread_forces;
             };
 
-            for (int32_t t = 0; t < n_threads; ++t) 
+            for (int32_t t = 0; t < n_threads; ++t)
             {
                 int32_t start = (cells.size() * t) / n_threads;
-                int32_t end   = (cells.size() * (t + 1)) / n_threads;
+                int32_t end = (cells.size() * (t + 1)) / n_threads;
 
                 futures.push_back(std::async(std::launch::async, worker, start, end));
             }
@@ -1712,24 +1729,18 @@ namespace sim
 
         void universe::processReactivePair(int32_t i, int32_t j, float cutoff, float vis_thresh)
         {
-
         }
 
         void universe::handleReactiveForces()
         {
-  
         }
 
         void universe::update(float targetTemperature, float targetPressure)
         {
             int32_t N = atoms.size();
-            
-            data.old_fx.resize(N);
-            data.old_fy.resize(N);
-            data.old_fz.resize(N);
-            std::swap(data.fx, data.old_fx);
-            std::swap(data.fy, data.old_fy);
-            std::swap(data.fz, data.old_fz);
+
+            if (N == 0)
+                return;
 
             data.fx.assign(N, 0.0f);
             data.fy.assign(N, 0.0f);
@@ -1750,20 +1761,23 @@ namespace sim
 
             for (int32_t i = 0; i < N; ++i)
             {
-                sf::Vector3f a_old = old_force(i) / atoms[i].mass;
-                sf::Vector3f a_new = force(i) / atoms[i].mass;
+                sf::Vector3f accel = force(i) / atoms[i].mass;
+                add_vel(i, accel * (0.5f * DT));
 
                 if (gravity)
-                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * DT));
+                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * DT));
+            }
 
-                sf::Vector3f dPos = vel(i) * DT + 0.5f * (a_old + a_new) * DT * DT;
+            for (int32_t i = 0; i < N; ++i)
+            {
+                sf::Vector3f dPos = vel(i) * DT;
                 add_pos(i, dPos);
                 boundCheck(i);
             }
 
-            std::fill(data.fx.begin(), data.fx.end(), 0.f);
-            std::fill(data.fy.begin(), data.fy.end(), 0.f);
-            std::fill(data.fz.begin(), data.fz.end(), 0.f);
+            data.fx.assign(N, 0.0f);
+            data.fy.assign(N, 0.0f);
+            data.fz.assign(N, 0.0f);
 
             if (!react)
             {
@@ -1773,10 +1787,12 @@ namespace sim
             else
                 handleReactiveForces();
 
-            for (int32_t i = 0; i < N; ++i)
-            {
-                sf::Vector3f accel = (old_force(i) + force(i)) * (0.5f * DT / atoms[i].mass);
-                add_vel(i, accel);
+            for (int32_t i = 0; i < N; ++i) {
+                sf::Vector3f accel = force(i) / atoms[i].mass;
+                add_vel(i, accel * (0.5f * DT));
+
+                if (gravity)
+                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * DT));
             }
 
             buildCells();
@@ -1836,7 +1852,8 @@ namespace sim
             if (timeStep % THERMOSTAT_INTERVAL != 0)
                 return;
 
-            if (atoms.size() == 0) return;
+            if (atoms.size() == 0)
+                return;
 
             float avg_KE = calculateKineticEnergy() / atoms.size();
             temp = (2.0f / 3.0f) * (avg_KE * KB);
@@ -1920,7 +1937,7 @@ namespace sim
 
         void universe::handleCamera()
         {
-            ImGuiIO& io = ImGui::GetIO();
+            ImGuiIO &io = ImGui::GetIO();
 
             if (io.WantCaptureMouse || io.WantCaptureKeyboard)
                 return;
@@ -1931,8 +1948,8 @@ namespace sim
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             {
                 ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f);
-                
-                cam.azimuth   -= dragDelta.x * 0.25f;   // yaw
+
+                cam.azimuth -= dragDelta.x * 0.25f;                                             // yaw
                 cam.elevation = std::clamp(cam.elevation - dragDelta.y * 0.25f, -89.0f, 89.0f); // pitch
 
                 ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
@@ -1943,13 +1960,13 @@ namespace sim
                 ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 0.0f);
 
                 sf::Vector3f forward = (cam.target - cam.eye()).normalized();
-                sf::Vector3f right   = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
-                sf::Vector3f up      = right.cross(forward).normalized();
+                sf::Vector3f right = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
+                sf::Vector3f up = right.cross(forward).normalized();
 
                 float panSpeed = cam.distance * 0.002f;
 
                 cam.target += right * (-dragDelta.x * panSpeed);
-                cam.target += up    * ( dragDelta.y * panSpeed);
+                cam.target += up * (dragDelta.y * panSpeed);
 
                 ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
             }
@@ -1960,24 +1977,30 @@ namespace sim
                 const float zoomSpeed = 6.0f;
                 float factor = (wheel > 0) ? (1.0f / 1.1f) : 1.1f;
                 cam.distance = std::clamp(cam.distance * std::pow(factor, zoomSpeed * std::abs(wheel)),
-                                        5.0f, 1000.0f);
+                                          5.0f, 1000.0f);
             }
 
             ImVec2 ioMousePos = ImGui::GetMousePos();
             (void)ioMousePos; // silence unused warning
 
             sf::Vector3f forward = (cam.target - cam.eye()).normalized();
-            sf::Vector3f right   = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
-            sf::Vector3f up      = right.cross(forward).normalized();
+            sf::Vector3f right = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
+            sf::Vector3f up = right.cross(forward).normalized();
 
             float moveSpeed = 0.5f;
 
-            if (ImGui::IsKeyDown(ImGuiKey_W)) cam.target += forward * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_S)) cam.target -= forward * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_A)) cam.target -= right   * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_D)) cam.target += right   * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_Q)) cam.target -= up      * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_E)) cam.target += up      * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_W))
+                cam.target += forward * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_S))
+                cam.target -= forward * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_A))
+                cam.target -= right * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_D))
+                cam.target += right * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_Q))
+                cam.target -= up * moveSpeed;
+            if (ImGui::IsKeyDown(ImGuiKey_E))
+                cam.target += up * moveSpeed;
         }
 
         // TO DO
@@ -2272,7 +2295,7 @@ namespace sim
         std::string formatTime()
         {
             const auto now = std::chrono::system_clock::now();
-            
+
             std::string time_str = std::format("{:%Y_%m_%d%H_%M}", now);
             return time_str;
         }
@@ -2290,14 +2313,13 @@ namespace sim
                 video["temperature"].emplace_back(temperatureLog[i]);
             }
 
-            video["metadata"] = 
-            {
-                {"title", formatTime()},
-                {"description", "Molecular dynamics trajectory"},
-                {"atoms", atoms.size()},
-                {"frames", positionxLog.size()},
-                {"box", {box.x, box.y, box.z}}
-            };
+            video["metadata"] =
+                {
+                    {"title", formatTime()},
+                    {"description", "Molecular dynamics trajectory"},
+                    {"atoms", atoms.size()},
+                    {"frames", positionxLog.size()},
+                    {"box", {box.x, box.y, box.z}}};
 
             try
             {
@@ -2312,7 +2334,7 @@ namespace sim
 
                 std::cout << "[Recorder] Saved trajectory with " << video["metadata"]["frames"] << " frames to " << path << '\n';
             }
-            catch(std::exception& e)
+            catch (std::exception &e)
             {
                 std::cout << "[Recorder] Failed to save trajectory: " << e.what() << std::endl;
                 return;
@@ -2356,7 +2378,7 @@ namespace sim
 
             for (int32_t b = 0; b < bonds.size(); ++b)
             {
-                auto& bond = bonds[b];
+                auto &bond = bonds[b];
                 nlohmann::json b_json{};
                 b_json["central"] = bond.centralAtom;
                 b_json["bonded"] = bond.bondedAtom;
@@ -2369,7 +2391,7 @@ namespace sim
 
             for (int32_t a = 0; a < angles.size(); ++a)
             {
-                auto& angle = angles[a];
+                auto &angle = angles[a];
                 nlohmann::json a_json{};
                 a_json["A"] = angle.A;
                 a_json["B"] = angle.B;
@@ -2382,7 +2404,7 @@ namespace sim
 
             for (int32_t d = 0; d < dihedral_angles.size(); ++d)
             {
-                auto& dihedral = dihedral_angles[d];
+                auto &dihedral = dihedral_angles[d];
                 nlohmann::json d_json{};
 
                 d_json["A"] = dihedral.A;
@@ -2398,7 +2420,7 @@ namespace sim
 
             for (int32_t s = 0; s < subsets.size(); ++s)
             {
-                auto& subset = subsets[s];
+                auto &subset = subsets[s];
                 nlohmann::json s_json{};
 
                 s_json["mainAtom"] = subset.mainAtomIdx;
@@ -2408,13 +2430,13 @@ namespace sim
                 s_json["connected_count"] = subset.connectedCount;
                 s_json["hydrogen_begin"] = subset.hydrogenBegin;
                 s_json["hydrogen_count"] = subset.hydrogenCount;
-                
+
                 scene["subsets"].emplace_back(s_json);
             }
 
             for (int32_t m = 0; m < molecules.size(); ++m)
             {
-                auto& molecule = molecules[m];
+                auto &molecule = molecules[m];
                 nlohmann::json m_json{};
 
                 m_json["atomBegin"] = molecule.atomBegin;
@@ -2442,7 +2464,7 @@ namespace sim
             scene["boxy"] = box.y;
             scene["boxz"] = box.z;
 
-            try 
+            try
             {
                 std::filesystem::path filepath{path.string() + "/" + formatTime() + ".json"};
                 std::ofstream file(filepath);
@@ -2458,7 +2480,7 @@ namespace sim
 
                 std::cout << "[Save] Successfully saved: " << filepath << "\n";
             }
-            catch (const std::exception& e)
+            catch (const std::exception &e)
             {
                 std::cerr << "[Save] Exception while saving: " << e.what() << "\n";
             }
@@ -2478,7 +2500,7 @@ namespace sim
             {
                 file >> scene;
             }
-            catch (const nlohmann::json::parse_error& e)
+            catch (const nlohmann::json::parse_error &e)
             {
                 std::cerr << "[Simulation] JSON parse error: " << e.what() << '\n';
                 return;
@@ -2515,20 +2537,20 @@ namespace sim
             if (react)
                 initReaxParams();
 
-            const auto& posx = scene["posx"];
-            const auto& posy = scene["posy"];
-            const auto& posz = scene["posz"];
-            const auto& velx = scene["velx"];
-            const auto& vely = scene["vely"];
-            const auto& velz = scene["velz"];
-            const auto& charges = scene["charge"];
-            const auto& ZIndices = scene["ZIndex"];
-            const auto& neutrons = scene["neutrons"];
-            const auto& electrons = scene["electrons"];
-            const auto& bondCounts = scene["boundCount"];
-            const auto& chiralities = scene["chirality"];
-            const auto& temperatures = scene["temperature"];
-            const auto& bondorders = scene["bondOrder"];
+            const auto &posx = scene["posx"];
+            const auto &posy = scene["posy"];
+            const auto &posz = scene["posz"];
+            const auto &velx = scene["velx"];
+            const auto &vely = scene["vely"];
+            const auto &velz = scene["velz"];
+            const auto &charges = scene["charge"];
+            const auto &ZIndices = scene["ZIndex"];
+            const auto &neutrons = scene["neutrons"];
+            const auto &electrons = scene["electrons"];
+            const auto &bondCounts = scene["boundCount"];
+            const auto &chiralities = scene["chirality"];
+            const auto &temperatures = scene["temperature"];
+            const auto &bondorders = scene["bondOrder"];
 
             int32_t N = posx.size();
 
@@ -2574,13 +2596,10 @@ namespace sim
             data.fx.assign(N, 0.0f);
             data.fy.assign(N, 0.0f);
             data.fz.assign(N, 0.0f);
-            data.old_fx.assign(N, 0.0f);
-            data.old_fy.assign(N, 0.0f);
-            data.old_fz.assign(N, 0.0f);
 
             if (scene.contains("bonds"))
             {
-                for (const auto& b_json : scene["bonds"])
+                for (const auto &b_json : scene["bonds"])
                 {
                     bond b{};
                     b.centralAtom = b_json["central"];
@@ -2594,7 +2613,7 @@ namespace sim
 
             if (scene.contains("angles"))
             {
-                for (const auto& a_json : scene["angles"])
+                for (const auto &a_json : scene["angles"])
                 {
                     angle a{};
                     a.A = a_json["A"];
@@ -2608,7 +2627,7 @@ namespace sim
 
             if (scene.contains("dihedrals"))
             {
-                for (const auto& d_json : scene["dihedrals"])
+                for (const auto &d_json : scene["dihedrals"])
                 {
                     dihedral_angle d{};
                     d.A = d_json["A"];
@@ -2624,7 +2643,7 @@ namespace sim
 
             if (scene.contains("subsets"))
             {
-                for (const auto& s_json : scene["subsets"])
+                for (const auto &s_json : scene["subsets"])
                 {
                     subset s{};
                     s.mainAtomIdx = s_json["mainAtom"];
@@ -2642,21 +2661,21 @@ namespace sim
 
             if (scene.contains("molecules"))
             {
-                for (const auto& m_json : scene["molecules"])
+                for (const auto &m_json : scene["molecules"])
                 {
                     molecule m{};
 
-                    m.atomBegin     = m_json["atomBegin"];
-                    m.atomCount     = m_json["atomCount"];
-                    m.bondBegin     = m_json["bondBegin"];
-                    m.bondCount     = m_json["bondCount"];
-                    m.angleBegin    = m_json["angleBegin"];
-                    m.angleCount    = m_json["angleCount"];
+                    m.atomBegin = m_json["atomBegin"];
+                    m.atomCount = m_json["atomCount"];
+                    m.bondBegin = m_json["bondBegin"];
+                    m.bondCount = m_json["bondCount"];
+                    m.angleBegin = m_json["angleBegin"];
+                    m.angleCount = m_json["angleCount"];
                     m.dihedralBegin = m_json["dihedralBegin"];
                     m.dihedralCount = m_json["dihedralCount"];
-                    m.subsetBegin   = m_json["subsetBegin"];
-                    m.subsetCount   = m_json["subsetCount"];
-                    m.exclude       = m_json.value("exclude", false);
+                    m.subsetBegin = m_json["subsetBegin"];
+                    m.subsetCount = m_json["subsetCount"];
+                    m.exclude = m_json.value("exclude", false);
 
                     m.exclude = m_json.value("exclude", false);
                     molecules.emplace_back(std::move(m));
@@ -2666,10 +2685,9 @@ namespace sim
             rebuildBondTopology();
 
             std::cout << "[Simulation] Successfully loaded scene: " << path.filename()
-              << " (" << atoms.size() << " atoms, "
-              << molecules.size() << " molecules)\n";
+                      << " (" << atoms.size() << " atoms, "
+                      << molecules.size() << " molecules)\n";
         }
-        
 
     } // namespace fun
 } // namespace sim
