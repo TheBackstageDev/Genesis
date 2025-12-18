@@ -73,13 +73,27 @@
     "compound_names": 
     [
       "Water",
+      "Ammonia",
       "Carbon Dioxide",
+      "Formaldehyde",
       "Methane",
       "Ethane",
       "Ethanol",
       "Benzene",
       "Nitrogen",
-      "C20 Fullerene"
+      "C20 Fullerene",
+      "Acetic Acid",
+      "Isobutyric Acid",
+      "Butyric acid",
+      "Alanine",
+      "Beta-D-Glucose",
+      "Palmitic Acid",
+      "Aspirin",
+      "Caffeine",
+      "Polystyrene (short chain)",
+      "PMMA (short chain)",
+      "Sulfate",
+      "Nitrate"
     ],
 
     "compound_types":
@@ -101,7 +115,21 @@
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
       "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
-      "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C₆₀"
+      "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C60",
+      "Ammonia": "Ammonia (NH3) is an inorganic compound of nitrogen and hydrogen, a colorless gas with a pungent odor. It is essential in fertilizers, serves as a building block for many chemicals, and plays a role in biological processes like protein metabolism.",
+      "Formaldehyde": "Formaldehyde (CH2O) is the simplest aldehyde, a colorless, pungent gas that readily polymerizes. It is widely used in resins, disinfectants, preservatives, and as a precursor in chemical synthesis, though it is toxic and carcinogenic in high exposure.",
+      "Acetic Acid": "Acetic acid (CH3COOH) is a carboxylic acid, the main component of vinegar, giving it a sour taste and pungent smell. It is a key industrial chemical used in producing plastics, solvents, and foods, and plays a role in metabolism.",
+      "Isobutyric Acid": "Isobutyric acid ((CH3)2CHCOOH), also known as 2-methylpropanoic acid, is a branched short-chain fatty acid with a rancid butter-like odor. It occurs naturally in some foods and is used in flavors, perfumes, and as a chemical intermediate.",
+      "Butyric acid": "Butyric acid (CH3CH2CH2COOH) is a short-chain fatty acid with a rancid butter odor, found in dairy products and produced by gut bacteria. It contributes to flavors in foods and has roles in energy metabolism and health.",
+      "Alanine": "Alanine (C3H7NO2) is a non-essential alpha-amino acid with a methyl side chain, used in protein biosynthesis. It plays key roles in metabolism, including the glucose-alanine cycle, and serves as an energy source for muscles and the brain.",
+      "Beta-D-Glucose": "Beta-D-glucose (C6H12O6) is a monosaccharide and the beta anomer of glucose, a primary energy source in biology. It forms the building block of cellulose in plants and is crucial in carbohydrate metabolism and energy production.",
+      "Palmitic Acid": "Palmitic acid (C16H32O2) is a saturated long-chain fatty acid, abundant in palm oil, animal fats, and human tissues. It is a major component of cell membranes and used in soaps, cosmetics, and food production.",
+      "Aspirin": "Aspirin (C9H8O4), or acetylsalicylic acid, is a synthetic derivative of salicylic acid used as an analgesic, anti-inflammatory, antipyretic, and antiplatelet agent. It inhibits cyclooxygenase enzymes to reduce pain, fever, and blood clotting.",
+      "Caffeine": "Caffeine (C8H10N4O2) is a methylxanthine alkaloid, a bitter white crystalline compound acting as a central nervous system stimulant. Found in coffee, tea, and cocoa, it blocks adenosine receptors to promote alertness.",
+      "Polystyrene (short chain)": "Polystyrene (short chain, (C8H8)n) is a synthetic aromatic hydrocarbon polymer derived from styrene monomers. In short chains, it forms oligomers used in coatings, adhesives, and as precursors for longer-chain materials like packaging and insulation.",
+      "PMMA (short chain)": "PMMA (short chain, poly(methyl methacrylate), (C5H8O2)n) is a transparent thermoplastic polymer from methyl methacrylate monomers. Short chains yield oligomers used in coatings, adhesives, and optical applications, known for clarity and weather resistance.",
+      "Sulfate": "Sulfate (SO4(-2)) is a polyatomic anion with a central sulfur atom bonded to four oxygen atoms in tetrahedral geometry. It forms many salts, essential in biology, industry (e.g., detergents, fertilizers), and as a nutrient in ecosystems.",
+      "Nitrate": "Nitrate (NO3(-)) is a polyatomic anion with a central nitrogen atom bonded to three oxygen atoms in trigonal planar geometry. It is key in fertilizers, explosives, and biological processes, serving as a nitrogen source for plants."
     }
   },
 
@@ -113,6 +141,8 @@
       "temperature": "Temperature (K):",
       "pressure": "Pressure (Bar):",
       "time": "Time (Ps):",
+      "slider_temperature": "Target Temperature",
+      "slider_pressure": "Target Pressure",
 
       "tooltip_resume": "Resume Simulation",
       "tooltip_pause": "Pause Simulation",
@@ -123,7 +153,19 @@
       {
         "title": "Compound Selector",
         "button_add": "Add Compound",
-        "molar_weight": "M.W"
+        "molar_weight": "M.W",
+        "formula": "Formula",
+
+        "tooltip_fullview": "Open detailed view",
+        
+        "full_view":
+        {
+          "close": "Close",
+          "preview": "Chem Chards TM",
+          "preview_subtext": "Click and Drag to rotate (Comming Soon)",
+          "description": "Description",
+          "add_simulation": "Add to the Simulation"
+        }
       }
     },
     "pause_menu":

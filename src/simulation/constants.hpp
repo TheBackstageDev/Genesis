@@ -773,6 +773,7 @@ namespace constants
 
             // Nitrogen
             else if (BONDED(7,7))  base = 1.45f;    // N–N
+            else if (BONDED(7,8))  base = 1.43f;    // N–O
             else if (BONDED(7,1))  base = 1.01f;    // N–H
             else if (BONDED(7,15)) base = 1.75f;    // N–P
             else if (BONDED(7,16)) base = 1.74f;    // N–S
@@ -1058,7 +1059,7 @@ namespace constants
             if      (ANY(1, 1)) K = 370.0f;   // H-N-H        ammonia, amines
             else if (ANY(1, 6)) K = 380.0f;   // H-N-C
             else if (ANY(6, 6)) K = 460.0f;   // C-N-C        tertiary amine
-            else if (ANY(6, 8)) K = 850.0f;   // C-N-C=O      PEPTIDE BOND (super stiff)
+            else if (ANY(6, 8)) K = 850.0f;   // C-N-C=O      PEPTIDE BOND
             else if (ANY(1, 8)) K = 400.0f;   // H-N-O
             else if (ANY(6, 7)) K = 700.0f;   // C-N-C        imine, guanidine
             else if (ANY(7, 7)) K = 750.0f;   // N-N-N        (azides, rare)

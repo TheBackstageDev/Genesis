@@ -25,12 +25,26 @@ namespace core
         io.Fonts->AddFontDefault();
         constexpr float size = 18.5f;
 
-        ImFont* regular = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Regular.ttf", size);
+        ImFontGlyphRangesBuilder builder; 
+
+        builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+        ImWchar subscript_range[] = { 0x2080, 0x209F, 0 };
+        builder.AddRanges(subscript_range);
+        builder.AddText("H₂O CO₂ Na⁺ Cl⁻ → Δ µ ° ± ∞, ™®©℠ sus™ amongAI®");
+        builder.AddChar(0x2122);  // ™
+        builder.AddChar(0x00AE);  // ®
+        builder.AddChar(0x2120);  // ℠
+        builder.AddChar(0x00A9);  // © 
+
+        ImVector<ImWchar> ranges;
+        builder.BuildRanges(&ranges);
+
+        ImFont* regular = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Regular.ttf", size, nullptr, ranges.Data);
         if (regular == nullptr) throw std::runtime_error("Failed to load Orbitron-Regular.ttf");
 
-        ImFont* medium = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Medium.ttf", size);
-        ImFont* bold   = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Bold.ttf", size);
-        ImFont* black  = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Black.ttf", size);
+        ImFont* medium = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Medium.ttf", size, nullptr, ranges.Data);
+        ImFont* bold   = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Bold.ttf", size, nullptr, ranges.Data);
+        ImFont* black  = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Black.ttf", size, nullptr, ranges.Data);
 
         ui->set_regular_font(regular);
         ui->set_medium_font(medium);

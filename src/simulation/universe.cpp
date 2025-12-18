@@ -131,7 +131,7 @@ namespace sim
 
                 float camDistance = (pos(drawOrder[i]) - cam.eye()).length();
 
-                float T = calculateAtomTemperature(i);
+                float T = calculateAtomTemperature(drawOrder[i]);
                 atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, target, letter, lennardBall, spaceFilling);
             }
         }
@@ -436,7 +436,7 @@ namespace sim
             sf::Vector2f pH = project(window, pos(H));
 
             constexpr float MAX_HA_DISTANCE = 2.8f;
-            constexpr float MIN_COS_ANGLE = 0.8f;
+            constexpr float MIN_COS_ANGLE = 0.7f;
             constexpr float STRONG_ENERGY = -300.0f;
             constexpr float WEAK_ENERGY = -5.0f;
 

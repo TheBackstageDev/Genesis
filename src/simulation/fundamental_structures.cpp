@@ -29,8 +29,6 @@ namespace sim
             if (spaceFilling)
             {
                 vdw_r = constants::VDW_RADII[ZIndex] * 3;
-
-                vdw_r *= (1.0f + temperature * 0.001f);
             }
 
             float minDist = 20.0f;

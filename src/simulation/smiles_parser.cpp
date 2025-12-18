@@ -1040,7 +1040,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.2f;
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.4f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;
@@ -1049,7 +1049,7 @@ namespace sim
                     forces[j] += F;
                 }
 
-                if (dist < COULOMB_CUTOFF)
+                if (dist < COULOMB_CUTOFF && dist < r0)
                 {
                     float qq = nAtoms[i].charge * nAtoms[j].charge;
                     if (qq != 0.f)

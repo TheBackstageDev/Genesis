@@ -69,16 +69,30 @@
 
   "Compounds":
   {
-    "compound_names": 
+    "compound_names":
     [
       "Água",
-      "Dioxido de Carbono",
-      "Methano",
-      "Ethano",
-      "Ethanol",
+      "Amônia",
+      "Dióxido de Carbono",
+      "formaldeído",
+      "Metano",
+      "Etano",
+      "Etanol",
       "Benzeno",
       "Nitrogênio",
-      "C20 Fullereno"
+      "C20 Fulereno",
+      "Ácido Acético",
+      "Ácido Isobutírico",
+      "Ácido Butírico",
+      "Alanina",
+      "Beta-D-Glicose",
+      "Ácido Palmítico",
+      "Aspirina",
+      "Cafeína",
+      "Poliestireno (cadeia curta)",
+      "PMMA (cadeia curta)",
+      "Sulfato",
+      "Nitrato"
     ],
 
     "compound_types":
@@ -93,14 +107,28 @@
 
     "compound_descriptions":
     {
-      "Water": "Water (H2O) is vital for organisms and Earth's systems, being the 'universal solvent', dissolving substances for biological functions, regulating climate with its heat capacity, cycling through solid, liquid, and gas, and shaping landscapes while sustaining ecosystems.",
-      "Carbon Dioxide": "Carbon dioxide (CO2) is a compound made of one carbon atom bonded to two oxygen atoms, naturally present in the atmosphere and essential to life processes. It plays a key role in photosynthesis. is a greenhouse gas.",
-      "Methane": "Methane (CH4), composed of one carbon atom bonded to four hydrogen atoms, is the primary component of natural gas and a key energy source. It is a potent greenhouse gas.",
-      "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
-      "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
-      "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
-      "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
-      "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C₆₀"
+      "Water": "A água (H2O) é vital para os organismos e os sistemas da Terra, sendo o 'solvente universal', dissolvendo substâncias para funções biológicas, regulando o clima com sua capacidade térmica, circulando entre sólido, líquido e gás, e moldando paisagens enquanto sustenta ecossistemas.",
+      "Carbon Dioxide": "O dióxido de carbono (CO2) é um composto formado por um átomo de carbono ligado a dois átomos de oxigênio, presente naturalmente na atmosfera e essencial para processos vitais. Ele desempenha um papel fundamental na fotossíntese e é um gás de efeito estufa.",
+      "Methane": "O metano (CH4), composto por um átomo de carbono ligado a quatro átomos de hidrogênio, é o principal componente do gás natural e uma importante fonte de energia. É um potente gás de efeito estufa.",
+      "Ethane": "O etano (C2H6) é um hidrocarboneto saturado da série dos alcanos, composto por dois átomos de carbono ligados por ligação simples e cercados por seis átomos de hidrogênio. É um gás incolor e inodoro em condições padrão e ocorre naturalmente no petróleo e no gás natural.",
+      "Ethanol": "O etanol (C2H5OH) é um composto orgânico constituído por dois átomos de carbono, seis de hidrogênio e um de oxigênio, classificado como um álcool simples. É um líquido volátil, inflamável, com odor característico, amplamente usado como solvente, combustível e na produção de bebidas alcoólicas.",
+      "Benzene": "O benzeno (C6H6) é um hidrocarboneto aromático formado por seis átomos de carbono dispostos em anel com ligações duplas alternadas, estabilizado por ressonância. É um líquido incolor, volátil, com odor doce, amplamente usado como precursor na produção de plásticos, resinas, fibras sintéticas e inúmeros compostos químicos.",
+      "Nitrogen": "O nitrogênio (N2) é uma molécula diatômica composta por dois átomos de nitrogênio unidos por uma forte ligação tripla, tornando-o quimicamente estável e inerte na maioria das condições. É um gás incolor e inodoro que constitui cerca de 78% da atmosfera terrestre.",
+      "C20 Fullerene": "O fulereno C20 é o menor fulereno, formado por 20 átomos de carbono em uma estrutura em forma de gaiola dodecaédrica. Sua alta tensão o torna menos estável que fulerenos maiores, como o C60.",
+      "Ammonia": "A amônia (NH3) é um composto inorgânico de nitrogênio e hidrogênio, um gás incolor com odor forte e pungente. É essencial em fertilizantes, serve como bloco de construção para muitos produtos químicos e desempenha papel em processos biológicos como o metabolismo de proteínas.",
+      "Formaldehyde": "O formaldeído (CH2O) é o aldeído mais simples, um gás incolor e pungente que polimeriza facilmente. É amplamente usado em resinas, desinfetantes, conservantes e como precursor em síntese química, embora seja tóxico e carcinogênico em altas exposições.",
+      "Acetic Acid": "O ácido acético (CH3COOH) é um ácido carboxílico, principal componente do vinagre, conferindo-lhe sabor azedo e odor forte. É um importante produto químico industrial usado na produção de plásticos, solventes e alimentos, além de desempenhar papel no metabolismo.",
+      "Isobutyric Acid": "O ácido isobutírico ((CH3)2CHCOOH), também conhecido como ácido 2-metilpropanoico, é um ácido graxo de cadeia curta ramificado com odor rancoso semelhante a manteiga. Ocorre naturalmente em alguns alimentos e é usado em aromatizantes, perfumes e como intermediário químico.",
+      "Butyric acid": "O ácido butírico (CH3CH2CH2COOH) é um ácido graxo de cadeia curta com odor rancoso de manteiga ou vômito, encontrado em produtos lácteos e produzido por bactérias intestinais. Contribui para sabores em alimentos e tem funções no metabolismo energético e na saúde.",
+      "Alanine": "A alanina (C3H7NO2) é um alpha-aminoácido não essencial com cadeia lateral metil, usado na biossíntese de proteínas. Desempenha papéis importantes no metabolismo, incluindo o ciclo glicose-alanina, e serve como fonte de energia para músculos e cérebro.",
+      "Beta-D-Glucose": "A beta-D-glicose (C6H12O6) é um monossacarídeo e o anômero beta da glicose, principal fonte de energia na biologia. Forma o bloco de construção da celulose nas plantas e é crucial no metabolismo de carboidratos e na produção de energia.",
+      "Palmitic Acid": "O ácido palmítico (C16H32O2) é um ácido graxo saturado de cadeia longa, abundante no óleo de palma, gorduras animais e tecidos humanos. É um componente principal das membranas celulares e usado em sabões, cosméticos e produção de alimentos.",
+      "Aspirin": "A aspirina (C9H8O4), ou ácido acetilsalicílico, é um derivado sintético do ácido salicílico usado como analgésico, anti-inflamatório, antipirético e antiagregante plaquetário. Inibe enzimas ciclo-oxigenases para reduzir dor, febre e coagulação sanguínea.",
+      "Caffeine": "A cafeína (C8H10N4O2) é um alcaloide metilxantina, composto cristalino branco e amargo que atua como estimulante do sistema nervoso central. Encontrada no café, chá e cacau, bloqueia receptores de adenosina para promover alerta.",
+      "Polystyrene (short chain)": "O poliestireno (cadeia curta, (C8H8)n) é um polímero aromático sintético derivado de monômeros de estireno. Em cadeias curtas, forma oligômeros usados em revestimentos, adesivos e como precursores para materiais de cadeia longa como embalagens e isolantes.",
+      "PMMA (short chain)": "O PMMA (cadeia curta, poli(metacrilato de metila), (C5H8O2)n) é um termoplástico transparente derivado de monômeros de metacrilato de metila. Cadeias curtas produzem oligômeros usados em revestimentos, adesivos e aplicações ópticas, conhecidos pela clareza e resistência às intempéries.",
+      "Sulfate": "O sulfato (SO4(-2)) é um ânion poliatômico com um átomo central de enxofre ligado a quatro átomos de oxigênio em geometria tetraédrica. Forma muitos sais, essencial na biologia, indústria (ex.: detergentes, fertilizantes) e como nutriente em ecossistemas.",
+      "Nitrate": "O nitrato (NO3(-)) é um ânion poliatômico com um átomo central de nitrogênio ligado a três átomos de oxigênio em geometria trigonal planar. É fundamental em fertilizantes, explosivos e processos biológicos, servindo como fonte de nitrogênio para plantas."
     }
   },
 
@@ -112,6 +140,8 @@
       "temperature": "Temperatura (K):",
       "pressure": "Pressão (Bar):",
       "time": "Tempo (Ps):",
+      "slider_temperature": "Temperatura Alvo",
+      "slider_pressure": "Pressão Alvo",
 
       "tooltip_resume": "Resumir a Simulação",
       "tooltip_pause": "Pausar a Simulação",
@@ -122,7 +152,19 @@
       {
         "title": "Selecionador de Compostos",
         "button_add": "Adicionar Composto",
-        "molar_weight": "M.M"
+        "molar_weight": "M.M",
+        "formula": "Formula",
+
+        "tooltip_fullview": "Abra a visão detalhada",
+
+        "full_view":
+        {
+          "close": "Fechar",
+          "preview": "Chem Chards TM",
+          "preview_subtext": "Clique e Arraste para rodar (Vindo em Breve!)",
+          "description": "Descrição",
+          "add_simulation": "Adicionar para a Simulação"
+        }
       }
     },
     "pause_menu":

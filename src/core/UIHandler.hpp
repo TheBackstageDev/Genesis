@@ -79,6 +79,37 @@ namespace core
         COUNT
     };
 
+    inline ImVec4 getMoleculeTypeColor(compound_type _type)
+    {
+        using type = compound_type;
+
+        switch(_type)
+        {
+        case type::ORGANIC:      return ImVec4(0.080f, 0.380f, 0.120f, 1.0f);  // Dark Green      #146824
+        case type::INORGANIC:    return ImVec4(0.040f, 0.220f, 0.450f, 1.0f);  // Deep Blue       #0A3780
+        case type::BIOMOLECULE:  return ImVec4(0.650f, 0.300f, 0.000f, 1.0f);  // Burnt Orange    #A64D00
+        case type::ION:          return ImVec4(0.380f, 0.080f, 0.450f, 1.0f);  // Deep Purple     #611475
+        case type::NANOMATERIAL: return ImVec4(0.300f, 0.300f, 0.300f, 1.0f);  // Dark Gray       #4D4D4D
+        case type::POLYMER:      return ImVec4(0.650f, 0.100f, 0.080f, 1.0f);  // Dark Red        #A61A14
+        default:                 return ImVec4(0.200f, 0.200f, 0.200f, 1.0f);  // Neutral dark
+        }
+    }
+
+    inline ImVec4 getMoleculeTypeColorBorder(compound_type _type)
+    {
+        using type = compound_type;
+        switch(_type)
+        {
+        case type::ORGANIC:      return ImVec4(0.294f, 0.686f, 0.314f, 1.0f);  // #4CAF50 Vibrant Green
+        case type::INORGANIC:    return ImVec4(0.129f, 0.588f, 0.953f, 1.0f);  // #2196F3 Cool Blue
+        case type::BIOMOLECULE:  return ImVec4(1.000f, 0.596f, 0.000f, 1.0f);  // #FF9800 Warm Orange
+        case type::ION:          return ImVec4(0.612f, 0.153f, 0.690f, 1.0f);  // #9C27B0 Electric Purple
+        case type::NANOMATERIAL: return ImVec4(0.620f, 0.620f, 0.620f, 1.0f);  // #9E9E9E Sleek Gray
+        case type::POLYMER:      return ImVec4(0.957f, 0.263f, 0.212f, 1.0f);  // #F44336 Deep Red
+        default:                 return ImVec4(0.600f, 0.600f, 0.600f, 1.0f);
+        }
+    }
+
     struct compound_preset_info
     {
         std::string name;
@@ -165,6 +196,7 @@ namespace core
         localization lang{localization::EN_US};
         options& app_options;
         nlohmann::json localization_json{};
+        nlohmann::json default_json{};
 
         void write_localization_json(localization lang);
         void initImages(window_t& window);
@@ -175,6 +207,8 @@ namespace core
         uint32_t placeholder_texture_id = 0;
 
         std::vector<sf::Texture> thumb_textures;
+
+        std::unordered_map<std::string, sf::Texture> icon_textures;
 
         const float image_size = 200.f;
 
@@ -207,6 +241,9 @@ namespace core
         void drawUniverseUI();
         
         uint32_t selectedCompound = UINT32_MAX;
+        bool compoundFullView = false;
+        bool newCompoundClicked = false;
+
         void drawCompoundSelector();
         void drawCompoundView(const compound_preset_info& compound);
         void drawCompoundFulLView();

@@ -8,22 +8,65 @@
 
 namespace core
 {
+    // Helper
+
+    std::filesystem::path getLocalizationFile(localization lang)
+    {
+        std::filesystem::path localization_path = "src/resource/localizations";
+        switch (lang)
+        {
+        case localization::EN_US:
+            return localization_path / "enus.json";
+        case localization::PT_BR:
+            return localization_path / "ptbr.json";
+        default:
+            return localization_path / "enus.json";
+        }
+    }
+
     UIHandler::UIHandler(options &app_options, window_t& window)
         : app_options(app_options)
     {
         write_localization_json(lang);
-        initCompoundPresets();
+        std::filesystem::path path = getLocalizationFile(localization::EN_US);
+        std::ifstream file(path);
+        if (!file.is_open())
+        {
+            std::cerr << "[UI Handler] Cannot open: " << path << '\n';
+            return;
+        }
 
+        try
+        {
+            file >> default_json;
+        }
+        catch (const nlohmann::json::parse_error &e)
+        {
+            std::cerr << "[UI Handler] JSON parse error: " << e.what() << '\n';
+            return;
+        }
+
+        initCompoundPresets();
         initImages(window);
     }
 
     void UIHandler::initImages(window_t& window)
     {
-        // PlaceHolder
-
         sf::Image placeholder_image;
         placeholder_image.createMaskFromColor(sf::Color(80, 80, 90), 255); // Dark gray
         placeholder_texture_id = placeholder_texture.getNativeHandle();
+
+        std::filesystem::path icons = "src/resource/images/icons";
+        std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
+
+        sf::Texture magnifying_texture{};
+        magnifying_texture.resize(sf::Vector2u(64, 64));
+        if (!magnifying_texture.loadFromFile(magnifying_glass))
+        {
+            std::cerr << "[UI HANDLER]: Magnifying Glass icon couldn't load!";
+        } 
+
+        icon_textures.emplace("magnifying_texture", std::move(magnifying_texture));
 
         initCompoundPresetsImages(window);
     }
@@ -37,13 +80,14 @@ namespace core
         display_info.wall_collision = false;
         
         display_universe = std::make_unique<sim::fun::universe>(display_info);
-        display_universe->camera().target = {0.f, 0.f, 0.f};
-        display_universe->camera().distance = 0.f;
-        display_universe->camera().azimuth = 200.f;
-        display_universe->camera().elevation = 25.f;
-        display_universe->camera().fov = 60.f;
-        display_universe->camera().nearPlane = 0.1f;
-        display_universe->camera().farPlane = 500.f;
+        auto& cam = display_universe->camera();
+        cam.target = {0.f, 0.f, 0.f};
+        cam.distance = 0.f;
+        cam.azimuth = 200.f;
+        cam.elevation = 25.f;
+        cam.fov = 60.f;
+        cam.nearPlane = 0.1f;
+        cam.farPlane = 500.f;
 
         for (auto &compound : compound_presets)
         {
@@ -51,7 +95,16 @@ namespace core
             display_universe->clear();
             display_universe->createMolecule(compound.structure, {0.f, 0.f, 0.f});
 
-            display_universe->camera().distance = 1.f * compound.structure.atoms.size();
+            float max_radius = 0.f;
+            for (const auto& pos : compound.structure.positions)
+            {
+                float r = pos.length();
+                if (r > max_radius) max_radius = r;
+            }
+
+            float molecule_radius = max_radius + 2.f;  
+            cam.distance = molecule_radius;     
+            cam.distance = std::max(cam.distance, 20.f);
 
             window.clear();
             display_universe->draw(window, window.getWindow(), true, true, true, false);
@@ -67,50 +120,72 @@ namespace core
 
     void UIHandler::initCompoundPresets()
     {
-        auto &compounds = localization_json["Compounds"];
-        auto &compound_names = compounds["compound_names"];
-        auto &compound_descriptions = compounds["compound_descriptions"];
+        auto& compounds = localization_json["Compounds"];
+        auto& compound_names = compounds["compound_names"];
 
         compound_presets.clear();
 
-        constexpr int32_t num_small_molecules = 8;
-        std::array<std::string, num_small_molecules> smilesToParse{"O", "O=C=O", "C", "CC", "CCO", "c1ccccc1", "N#N", "C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91"};
-        std::array<std::string, num_small_molecules> formulas{"H2O", "CO2", "CH4", "C2H6", "C2H5OH", "C6H6", "N2", "C20"};
+        constexpr int32_t num_compounds = 22;
+
+        std::array<std::string, num_compounds> smilesToParse = {
+            "O",        
+            "N",
+            "O=C=O",         
+            "C=O",
+            "C",                
+            "CC",               
+            "CCO",
+            "c1ccccc1",          
+            "N#N",       
+            "C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91", 
+            "CC(=O)O",        
+            "CC(C)C(=O)O",      
+            "O=C(O)CCC",
+            "NC(C)C(=O)O",    
+            "C1C(C(C(C(O1)O)O)O)O",
+            "CCCCCCCCCCCCCCCC(=O)O", 
+            "CC(=O)OC1=CC=CC=C1C(=O)O",     
+            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+            "c1ccccc1CCc2ccccc2CC",
+            "C(C(=O)OC)C",
+            "[O-]S(=O)(=O)[O-]",
+            "[O-][N+](=O)[O-]"
+        };
+
+        std::array<std::string, num_compounds> formulas = {
+            "H2O", "NH3", "CO2", "CH2O", "CH4", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
+            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2",
+            "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4^-2", "NO3-"
+        };
 
         using type = compound_type;
-        std::array<type, num_small_molecules> types{type::INORGANIC, type::INORGANIC, type::ORGANIC, type::ORGANIC, type::ORGANIC, type::ORGANIC, type::INORGANIC, type::NANOMATERIAL};
+        std::array<type, num_compounds> types = {
+            type::INORGANIC, type::INORGANIC, type::INORGANIC, type::ORGANIC, type::ORGANIC, type::ORGANIC, type::ORGANIC,
+            type::ORGANIC, type::INORGANIC, type::NANOMATERIAL,
+            type::ORGANIC, type::ORGANIC, type::ORGANIC, type::BIOMOLECULE, type::BIOMOLECULE,
+            type::BIOMOLECULE, type::ORGANIC, type::ORGANIC, type::POLYMER, type::POLYMER, type::ION, type::ION
+        };
 
-        for (int32_t i = 0; i < num_small_molecules; ++i)
+        for (int32_t i = 0; i < num_compounds; ++i)
         {
             compound_preset_info nInfo{};
-            nInfo.name = compound_names[i];
+            nInfo.name = compound_names[i].get<std::string>();
             nInfo.id = i;
             nInfo.type = types[i];
             nInfo.formula = formulas[i];
             nInfo.SMILES = smilesToParse[i];
             nInfo.structure = sim::parseSMILES(nInfo.SMILES);
 
-            for (int32_t i = 0; i < nInfo.structure.atoms.size(); ++i)
-                nInfo.molecular_weight += nInfo.structure.atoms[i].NIndex * MASS_NEUTRON + nInfo.structure.atoms[i].ZIndex * MASS_PROTON;
+            nInfo.molecular_weight = 0.0f;
+            for (const auto& atom : nInfo.structure.atoms)
+            {
+                float mass = atom.ZIndex * MASS_PROTON + atom.NIndex * MASS_NEUTRON;
+                nInfo.molecular_weight += mass;
+            }
 
             compound_presets.emplace_back(std::move(nInfo));
         }
-    }
 
-    // Helper
-
-    std::filesystem::path getLocalizationFile(localization lang)
-    {
-        std::filesystem::path localization_path = "src/resource/localizations";
-        switch (lang)
-        {
-        case localization::EN_US:
-            return localization_path / "enus.json";
-        case localization::PT_BR:
-            return localization_path / "ptbr.json";
-        default:
-            return localization_path / "enus.json";
-        }
     }
 
     void UIHandler::write_localization_json(localization lang)
@@ -290,6 +365,9 @@ namespace core
 
             setState(application_state::APP_STATE_SIMULATION);
 
+            target_pressure = 0.f;
+            target_temperature = 300.f;
+
             /* sim::fun::molecule_structure structure{};
             sim::io::loadXYZ("src/resource/molecules/presets/dna.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
@@ -329,7 +407,7 @@ namespace core
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowPos(ImVec2(viewport_size.x / 2.f - 200, viewport_size.y / 3.f), ImGuiCond_Appearing);
 
-        ImGui::Begin("Options", &optionsOpen, ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("Options", &optionsOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse);
         ImGui::BeginTabBar(options["title"].get<std::string>().c_str(), ImGuiTabBarFlags_NoCloseWithMiddleMouseButton);
         if (ImGui::BeginTabItem(options["tab_graphics"].get<std::string>().c_str()))
         {
@@ -344,10 +422,11 @@ namespace core
             space_filling = options["render_modes"]["space_filling"].get<std::string>();
 
             const char *modes[] =
-                {
-                    ball_and_stick.c_str(),
-                    letter_and_stick.c_str(),
-                    space_filling.c_str()};
+            {
+                ball_and_stick.c_str(),
+                letter_and_stick.c_str(),
+                space_filling.c_str()
+            };
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
             if (ImGui::Combo("##render_mode", &current_mode, modes, IM_ARRAYSIZE(modes)))
@@ -430,7 +509,7 @@ namespace core
 
         ImGui::Begin("HUD", &showHUD, hud_flags);
         ImGui::Columns(2, "HUDColumns", false);
-        ImGui::SetColumnWidth(0, io.DisplaySize.x * 0.4f);
+        ImGui::SetColumnWidth(0, io.DisplaySize.x * 0.2f);
 
         ImGui::TextColored(ImVec4(0.7f, 0.8f, 1.0f, 1.0f), "%s", sim_ui["stats_title"].get<std::string>().c_str());
         ImGui::Separator();
@@ -439,6 +518,13 @@ namespace core
         ImGui::Text("%s %.2f ps", sim_ui["time"].get<std::string>().c_str(), simulation_universe->timestep() * DT);
 
         ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(150.f);
+        ImGui::DragFloat(sim_ui["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.01f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SetNextItemWidth(150.f);
+        ImGui::DragFloat(sim_ui["slider_pressure"].get<std::string>().c_str(), &target_pressure, 1.0f, 0.01f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+
+        ImGui::SameLine();
 
         float button_width = 120.0f;
         float button_height = 35.0f;
@@ -488,7 +574,7 @@ namespace core
 
     constexpr float padding = 20.0f;
     constexpr float row_height = 200.f;
-    constexpr float row_width = 200.f;
+    constexpr float row_width = 210.f;
 
     void UIHandler::drawCompoundView(const compound_preset_info &compound)
     {
@@ -505,6 +591,31 @@ namespace core
 
         ImGui::Image(thumb_textures[compound.id], ImVec2(image_size, image_size));
         ImGui::PopStyleVar();
+
+        ImGui::SameLine(11.f);
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg,        ImVec4(0.8f, 0.8f, 0.8f, 0.0f)); 
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.1f));  
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  ImVec4(1.0f, 1.0f, 1.0f, 0.2f));  
+        ImGui::PushStyleColor(ImGuiCol_Border,         ImVec4(0.5f, 0.5f, 0.5f, 1.0f));                   
+        ImGui::PushStyleColor(ImGuiCol_Text,           ImVec4(1.0f, 1.0f, 1.0f, 1.0f));  
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,   8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,    ImVec2(4, 4));
+        if (ImGui::ImageButton("##fullviewbutton", icon_textures["magnifying_texture"], ImVec2(30.f, 30.f), sf::Color::White))
+        {
+            selectedCompound = compound.id;
+            compoundFullView = true; 
+            newCompoundClicked = true;
+        }
+        ImGui::PopStyleColor(5);
+        ImGui::PopStyleVar(3);
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(comp_sel["tooltip_fullview"].get<std::string>().c_str());
+        }
 
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
 
@@ -533,10 +644,11 @@ namespace core
         ImGui::PushID(ImGui::GetID(compound.name.c_str()));
 
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        if (ImGui::Button(comp_sel["button_add"].get<std::string>().c_str(), ImVec2(-1.0f, 40.0f)))
+        if (ImGui::Button(comp_sel["button_add"].get<std::string>().c_str(), ImVec2(0.f, 40.0f)))
         {
             simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
         }
+
         ImGui::PopStyleVar();
 
         ImGui::PopID();
@@ -545,9 +657,94 @@ namespace core
     void UIHandler::drawCompoundFulLView()
     {
         auto &comp_sel = localization_json["Simulation"]["universe_ui"]["compound_selector"];
+        auto &full_view = comp_sel["full_view"];
         auto &compounds = localization_json["Compounds"];
 
-        compound_preset_info& current_info = compound_presets[selectedCompound];
+        const compound_preset_info& compound = compound_presets[selectedCompound];
+        
+        ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.0f, 0.0f, 0.0f, 0.7f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, getMoleculeTypeColor(compound.type));
+        ImGui::PushStyleColor(ImGuiCol_Border, getMoleculeTypeColorBorder(compound.type));
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(4, 4));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 4.0f);
+
+        ImGui::SetNextWindowSize(ImVec2(400, 600), ImGuiCond_Appearing);
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (newCompoundClicked)
+        {
+            ImGui::SetNextWindowFocus();
+            newCompoundClicked = false;
+        }
+
+        if(!ImGui::Begin("##FullView", &compoundFullView, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+        {
+            ImGui::End();
+            return;
+        }
+
+        ImGui::PushFont(bold);
+        ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "%s", full_view["preview"].get<std::string>().c_str());
+        ImGui::PopFont();
+
+        ImGui::SameLine(ImGui::GetWindowWidth() - 100);
+        if (ImGui::Button(full_view["close"].get<std::string>().c_str()))
+        {
+            compoundFullView = false;
+        }
+
+        ImGui::SetWindowFontScale(1.2f);
+        ImGui::Text(compound.name.c_str());
+        ImGui::SetWindowFontScale(1.f);
+
+        ImGui::NewLine();
+        ImGui::BeginChild("##3DPreview", ImVec2(400, 410), true, ImGuiWindowFlags_HorizontalScrollbar);
+        {
+            ImGui::SetCursorPosX(15);
+            ImGui::Image(thumb_textures[compound.id],
+                        ImVec2(360, 360));
+
+            ImGui::Text(full_view["preview_subtext"].get<std::string>().c_str());
+        }
+        ImGui::EndChild();
+
+        ImGui::BeginChild("InfoPanel", ImVec2(0, 390), true);
+        {
+            ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+            ImGui::TextDisabled(comp_sel["formula"].get<std::string>().c_str());
+            ImGui::SameLine(); ImGui::Text("%s", compound.formula.c_str());
+
+            ImGui::TextDisabled(comp_sel["molar_weight"].get<std::string>().c_str());
+            ImGui::SameLine(); ImGui::Text("%.3f g/mol", compound.molecular_weight);
+
+            ImGui::TextDisabled("SMILES:");
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.8f, 1.0f, 1.0f));
+            ImGui::TextWrapped("%s", compound.SMILES.c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::Dummy(ImVec2(0, 15));
+
+            ImGui::TextDisabled(full_view["description"].get<std::string>().c_str());
+            ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]["compound_names"][compound.id - 1]].get<std::string>().c_str());
+
+            ImGui::Dummy(ImVec2(0, 20));
+
+            ImGui::SetCursorPosY(330);
+            if (ImGui::Button(full_view["add_simulation"].get<std::string>().c_str(), ImVec2(-1, 50)))
+            {
+                simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
+                compoundSelector = false;
+                compoundFullView = false;
+            }
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(4);
+
+        ImGui::End();
     }
 
     void UIHandler::drawCompoundSelector()
@@ -558,7 +755,7 @@ namespace core
         ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-        if (!ImGui::Begin(comp_sel["title"].get<std::string>().c_str(), &compoundSelector))
+        if (!ImGui::Begin(comp_sel["title"].get<std::string>().c_str(), &compoundSelector, ImGuiWindowFlags_NoCollapse))
         {
             ImGui::End();
             return;
@@ -604,6 +801,10 @@ namespace core
             }
             ImGui::EndTabBar();
         }
+
+        if (compoundFullView)
+            drawCompoundFulLView();
+
         ImGui::End();
     }
 
@@ -619,20 +820,24 @@ namespace core
 
         bool letter = false;
         bool ball = false;
+        float space_filling = false;
 
         if (mode == simulation_render_mode::BALL_AND_STICK)
         {
-            ball = true;
-            letter = true;
+            ball = letter = true;
         }
         else if (mode == simulation_render_mode::LETTER_AND_STICK)
         {
             ball = false;
             letter = true;
         }
+        else if (mode == simulation_render_mode::SPACE_FILLING)
+        {
+            ball = letter = space_filling = true;
+        }
 
         simulation_universe->handleCamera();
-        simulation_universe->draw(window, window.getWindow(), letter, ball);
+        simulation_universe->draw(window, window.getWindow(), letter, ball, space_filling);
 
         if (!pauseMenuOpen || !showHUD)
             drawUniverseUI();
@@ -648,6 +853,7 @@ namespace core
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             pauseMenuOpen = !pauseMenuOpen;
+            optionsOpen = false;
             paused_simulation = true;
         }
     }
@@ -689,7 +895,10 @@ namespace core
         if (ImGui::Button(pause_menu["button_restart"].get<std::string>().c_str(), buttonSize))
         {
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info);
+            simulation_universe->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
+            target_pressure = 0.f;
+            target_temperature = 300.f;
             paused_simulation = false;
             pauseMenuOpen = false;
         }
