@@ -62,13 +62,30 @@ namespace sim
             void linkSubset(int32_t subset, int32_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
-            void draw(core::window_t &window, sf::RenderTarget& target, bool letter = false, bool lennardBall = true, bool spaceFilling = false, bool universeBox = true);
+            void draw(core::window_t &window, sf::RenderTarget& target, const rendering_info info);
             void drawHydrogenBond(core::window_t &window, sf::RenderTarget& target, int32_t H);
             void drawBonds(core::window_t &window, sf::RenderTarget& target, const std::vector<int32_t>& no_draw);
             void drawRings(core::window_t &window, sf::RenderTarget& target);
             void drawChargeField(core::window_t &window, sf::RenderTarget& target);
 
             void drawDebug(core::window_t& window);
+
+            void insertGhostAtom(uint32_t g) { ghost_atoms.emplace_back(g); };
+            void insertGhostAtom(std::vector<uint32_t>& g) { ghost_atoms.insert(ghost_atoms.end(), g.begin(), g.end()); }
+
+            void removeGhostAtom(uint32_t g) 
+            {
+                auto it = std::find(ghost_atoms.begin(), ghost_atoms.end(), g);
+                
+                if (it != ghost_atoms.end())
+                    ghost_atoms.erase(it); 
+            }
+
+            void removeGhostAtom(const std::vector<uint32_t>& g) 
+            {
+                for (const uint32_t& a : g)
+                    removeGhostAtom(a);
+            }
 
             // Scenario stuff
             void highlightAtom(core::window_t& window, size_t i);
@@ -124,11 +141,29 @@ namespace sim
                 return positions;
             }
 
+            void setPosition(size_t i, sf::Vector3f p)
+            {
+                data.x[i] = p.x;
+                data.y[i] = p.y;
+                data.z[i] = p.z;
+            }
+
             void setRenderMode();
 
             // cam
             void handleCamera();
             core::camera_t& camera() { return cam; }
+
+            // Helper Funcs
+            sf::Vector3f minImageVec(sf::Vector3f dr)
+            {
+                if (wall_collision) return dr;
+
+                dr.x -= box.x * std::round(dr.x / box.x);
+                dr.y -= box.y * std::round(dr.y / box.y);
+                dr.z -= box.z * std::round(dr.z / box.z);
+                return dr;
+            }
         private:
             void boundCheck(uint32_t i);
 
@@ -191,6 +226,7 @@ namespace sim
             std::vector<molecule> molecules;
 
             std::vector<bool> frozen_atoms;
+            std::vector<uint32_t> ghost_atoms; // for displaying
             
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
@@ -220,17 +256,6 @@ namespace sim
             float temp = 0;
             float pres = 0;
             size_t timeStep = 0;
-
-            // Helper Funcs
-            sf::Vector3f minImageVec(sf::Vector3f dr)
-            {
-                if (wall_collision) return dr;
-
-                dr.x -= box.x * std::round(dr.x / box.x);
-                dr.y -= box.y * std::round(dr.y / box.y);
-                dr.z -= box.z * std::round(dr.z / box.z);
-                return dr;
-            }
 
             inline bool areBonded(uint32_t i, uint32_t j) const
             {

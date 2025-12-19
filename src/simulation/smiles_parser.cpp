@@ -819,7 +819,6 @@ namespace sim
                         rotate2D(M_PI);
                     }
 
-
                     ringOpen.erase(ringID);
                 }
                 else
@@ -985,6 +984,7 @@ namespace sim
         }
 
         const uint32_t nH = nSubsets[0].hydrogensIdx.size();
+        const uint32_t nS = nSubsets.size();
 
         for (uint32_t i = 0; i < nH; ++i)
         {
@@ -1015,6 +1015,8 @@ namespace sim
 
             positions[nSubsets[0].hydrogensIdx[i]] = positions[nSubsets[0].mainAtomIdx] + dir;
         }
+
+        if (nAtoms.size() <= 3) return;
 
         const int32_t max_iters = 30 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
@@ -1049,13 +1051,13 @@ namespace sim
                     forces[j] += F;
                 }
 
-                if (dist < COULOMB_CUTOFF && dist < r0)
+                if (dist < COULOMB_CUTOFF)
                 {
                     float qq = nAtoms[i].charge * nAtoms[j].charge;
                     if (qq != 0.f)
                     {
                         float factor = COULOMB_K * qq / (dist * dist * dist);
-                        sf::Vector3f F = dr * factor;
+                        sf::Vector3f F = -dr * factor;
                         forces[i] += F;
                         forces[j] -= F;
                     }

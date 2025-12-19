@@ -75,6 +75,7 @@
       "Water",
       "Ammonia",
       "Carbon Dioxide",
+      "Ozone",
       "Formaldehyde",
       "Methane",
       "Ethane",
@@ -93,7 +94,10 @@
       "Polystyrene (short chain)",
       "PMMA (short chain)",
       "Sulfate",
-      "Nitrate"
+      "Nitrate",
+      "Ammonium",
+      "Sodium Chloride",
+      "Picene"
     ],
 
     "compound_types":
@@ -110,6 +114,7 @@
     {
       "Water": "Water (H2O) is vital for organisms and Earth's systems, being the 'universal solvent', dissolving substances for biological functions, regulating climate with its heat capacity, cycling through solid, liquid, and gas, and shaping landscapes while sustaining ecosystems.",
       "Carbon Dioxide": "Carbon dioxide (CO2) is a compound made of one carbon atom bonded to two oxygen atoms, naturally present in the atmosphere and essential to life processes. It plays a key role in photosynthesis. is a greenhouse gas.",
+      "Ozone": "Ozone (O3) is a triatomic molecule composed of three oxygen atoms. It occurs naturally in the Earth's atmosphere, where it forms the ozone layer that protects living organisms by absorbing harmful ultraviolet radiation from the Sun.",
       "Methane": "Methane (CH4), composed of one carbon atom bonded to four hydrogen atoms, is the primary component of natural gas and a key energy source. It is a potent greenhouse gas.",
       "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
@@ -129,7 +134,10 @@
       "Polystyrene (short chain)": "Polystyrene (short chain, (C8H8)n) is a synthetic aromatic hydrocarbon polymer derived from styrene monomers. In short chains, it forms oligomers used in coatings, adhesives, and as precursors for longer-chain materials like packaging and insulation.",
       "PMMA (short chain)": "PMMA (short chain, poly(methyl methacrylate), (C5H8O2)n) is a transparent thermoplastic polymer from methyl methacrylate monomers. Short chains yield oligomers used in coatings, adhesives, and optical applications, known for clarity and weather resistance.",
       "Sulfate": "Sulfate (SO4(-2)) is a polyatomic anion with a central sulfur atom bonded to four oxygen atoms in tetrahedral geometry. It forms many salts, essential in biology, industry (e.g., detergents, fertilizers), and as a nutrient in ecosystems.",
-      "Nitrate": "Nitrate (NO3(-)) is a polyatomic anion with a central nitrogen atom bonded to three oxygen atoms in trigonal planar geometry. It is key in fertilizers, explosives, and biological processes, serving as a nitrogen source for plants."
+      "Nitrate": "Nitrate (NO3(-)) is a polyatomic anion with a central nitrogen atom bonded to three oxygen atoms in trigonal planar geometry. It is key in fertilizers, explosives, and biological processes, serving as a nitrogen source for plants.",
+      "Ammonium": "Ammonium (NH4+) is a positively charged polyatomic ion formed when ammonia (NH3) accepts a proton. It plays a central role in nitrogen metabolism, serving as an intermediate in the assimilation of nitrogen by plants and microorganisms. Ammonium salts are widely used in fertilizers, explosives, and industrial processes, and in aqueous solutions it contributes to acid-base balance.",
+      "Sodium Chloride": "Sodium chloride (NaCl), commonly known as table salt, is an ionic compound composed of sodium (Na+) and chloride (Cl-) ions. It is essential for life, playing a critical role in maintaining fluid balance, nerve transmission, and muscle function in living organisms. Beyond its biological importance, sodium chloride is widely used as a seasoning and preservative in food.",
+      "Picene": "Picene (C22H14) is a polycyclic aromatic hydrocarbon composed of five benzene rings fused in a zigzag arrangement, belonging to the acene family. It is a crystalline solid with low solubility in water, studied for its electronic and optical properties."
     }
   },
 
@@ -148,6 +156,9 @@
       "tooltip_pause": "Pause Simulation",
       "tooltip_screenshot": "Take a screenshot",
       "tooltip_compound_selector": "Add Compound",
+      "tooltip_emplace_molecule": "Press (G) to emplace Molecule, (Right Mouse) to cancel.",
+      "tooltip_collision_good": "Good Position",
+      "tooltip_collision_bad": "Collision Detected!",
 
       "compound_selector":
       {
@@ -162,7 +173,6 @@
         {
           "close": "Close",
           "preview": "Chem Chards TM",
-          "preview_subtext": "Click and Drag to rotate (Comming Soon)",
           "description": "Description",
           "add_simulation": "Add to the Simulation"
         }

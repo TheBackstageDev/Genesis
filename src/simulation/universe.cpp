@@ -84,7 +84,7 @@ namespace sim
             window.getWindow().draw(lines);
         }
 
-        void universe::draw(core::window_t &window, sf::RenderTarget& target, bool letter, bool lennardBall, bool spaceFilling, bool universeBox)
+        void universe::draw(core::window_t &window, sf::RenderTarget& target, const rendering_info info)
         {
             std::vector<int32_t> drawOrder(atoms.size());
             std::iota(drawOrder.begin(), drawOrder.end(), 0);
@@ -94,7 +94,7 @@ namespace sim
                       [&](int32_t a, int32_t b)
                       { return (pos(a) - eye).lengthSquared() > (pos(b) - eye).lengthSquared(); });
 
-            if (universeBox)
+            if (info.universeBox)
                 drawBox(window);
 
             std::vector<int32_t> no_draw{};
@@ -110,7 +110,7 @@ namespace sim
                     }
                 }
 
-            if (!react && !spaceFilling)
+            if (!react && !info.spaceFilling)
             {
                 drawBonds(window, target, no_draw);
                 //drawRings(window, target);
@@ -132,7 +132,7 @@ namespace sim
                 float camDistance = (pos(drawOrder[i]) - cam.eye()).length();
 
                 float T = calculateAtomTemperature(drawOrder[i]);
-                atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, target, letter, lennardBall, spaceFilling);
+                atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, target, info);
             }
         }
 
@@ -760,7 +760,7 @@ namespace sim
                 nMolecule.subsetBegin = baseSubset;
                 nMolecule.subsetCount = structure.subsets.size();
 
-                if (nMolecule.subsetCount > 0)
+                if (nMolecule.subsetCount > 0 && structure.atoms[0].charge == 0)
                     balanceMolecularCharges(subsets[baseSubset]);
 
                 rebuildBondTopology();
@@ -1047,8 +1047,8 @@ namespace sim
             if (qq == 0.f)
                 return {0.f, 0.f, 0.f};
 
-            float forceMag = COULOMB_K * data.q[i] * data.q[j] / dr;
-            return -forceMag * dr_vec / dr;
+            float forceMag = COULOMB_K * qq / (dr * dr * dr);
+            return -forceMag * dr_vec;
         }
 
         void universe::calcBondForces()
@@ -1222,20 +1222,32 @@ namespace sim
                 while (diff < -M_PI)
                     diff += 2.f * M_PI;
 
-                float torque_magnitude = -d_angle.K * d_angle.periodicity *
-                                         std::sin(d_angle.periodicity * phi - d_angle.K);
+                sf::Vector3f b1 = pb - pa;
+                sf::Vector3f b2 = pc - pb;
+                sf::Vector3f b3 = pd - pc;
+
+                sf::Vector3f n1 = b1.cross(b2).normalized();
+                sf::Vector3f n2 = b2.cross(b3).normalized();
+                sf::Vector3f u2 = b2.normalized();
+
+                float sin_term = std::sin(d_angle.periodicity * phi - d_angle.rad);
+                float torque_mag = d_angle.K * d_angle.periodicity * sin_term;
 
                 sf::Vector3f axis = (pc - pb).normalized();
 
                 sf::Vector3f rA = (pa - (pb.length() > 0.f ? pb.normalized() : sf::Vector3f{0.f, 0.f, 0.f}));
-                sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_magnitude;
+                sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_mag;
 
                 sf::Vector3f rD = (pd - pc).normalized();
-                sf::Vector3f torqueD = axis.cross(rD).normalized() * (-torque_magnitude);
+                sf::Vector3f torqueD = axis.cross(rD).normalized() * (-torque_mag);
 
-                add_force(d_angle.A, torqueA * 0.5f);
-                add_force(d_angle.B, torqueA * 0.5f - torqueD * 0.5f);
-                add_force(d_angle.C, torqueD * 0.5f);
+                sf::Vector3f f1 = (torque_mag / b1.length()) * (n1.cross(u2));
+                sf::Vector3f f4 = (torque_mag / b3.length()) * (u2.cross(n2));
+
+                add_force(d_angle.A, -f1);
+                add_force(d_angle.D, -f4);
+                add_force(d_angle.B, f1);
+                add_force(d_angle.C, f4);
                 add_force(d_angle.D, -torqueD * 0.5f);
             }
         }
@@ -1505,7 +1517,12 @@ namespace sim
                 for (int32_t d = start; d < end; ++d)
                 {
                     const dihedral_angle &da = dihedral_angles[d];
-                    float phi = calculateDihedral(pos(da.A), pos(da.B), pos(da.C), pos(da.D));
+                    const sf::Vector3f &pa = pos(da.A);
+                    const sf::Vector3f &pb = pos(da.B);
+                    const sf::Vector3f &pc = pos(da.C);
+                    const sf::Vector3f &pd = pos(da.D);
+
+                    float phi = calculateDihedral(pa, pb, pc, pd);
 
                     float target = da.rad;
                     if (target == 0.0f && da.periodicity == 1)
@@ -1523,23 +1540,33 @@ namespace sim
                     while (diff < -M_PI)
                         diff += 2.0f * M_PI;
 
-                    float torque = -da.K * da.periodicity * std::sin(da.periodicity * phi);
+                    sf::Vector3f b1 = pb - pa;
+                    sf::Vector3f b2 = pc - pb;
+                    sf::Vector3f b3 = pd - pc;
 
-                    sf::Vector3f axis = pos(da.C) - pos(da.B);
-                    axis = axis.length() == 0.f ? axis : axis.normalized();
+                    sf::Vector3f n1 = b1.cross(b2).normalized();
+                    sf::Vector3f n2 = b2.cross(b3).normalized();
+                    sf::Vector3f u2 = b2.normalized();
 
-                    sf::Vector3f rA = pos(da.A) - pos(da.B);
-                    sf::Vector3f rD = pos(da.D) - pos(da.C);
+                    float sin_term = std::sin(da.periodicity * phi - da.rad);
+                    float torque_mag = da.K * da.periodicity * sin_term;
 
-                    sf::Vector3f ra = axis.cross(rA);
-                    sf::Vector3f rd = axis.cross(rD);
-                    sf::Vector3f tA = ra.length() == 0.f ? axis : ra.normalized() * torque;
-                    sf::Vector3f tD = rd.length() == 0.f ? axis : rd.normalized() * -torque;
+                    sf::Vector3f axis = (pc - pb).normalized();
 
-                    lf[da.A] += tA * 0.5f;
-                    lf[da.B] += tA * 0.5f - tD * 0.5f;
-                    lf[da.C] += tD * 0.5f;
-                    lf[da.D] -= tD * 0.5f;
+                    sf::Vector3f rA = (pa - (pb.length() > 0.f ? pb.normalized() : sf::Vector3f{0.f, 0.f, 0.f}));
+                    sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_mag;
+
+                    sf::Vector3f rD = (pd - pc).normalized();
+                    sf::Vector3f torqueD = axis.cross(rD).normalized() * (-torque_mag);
+
+                    sf::Vector3f f1 = (torque_mag / b1.length()) * (n1.cross(u2));
+                    sf::Vector3f f4 = (torque_mag / b3.length()) * (u2.cross(n2));
+
+                    lf[da.A] += -f1;
+                    lf[da.D] += -f4;
+                    lf[da.B] +=  f1;
+                    lf[da.C] +=  f4;
+                    lf[da.D] +=  -torqueD * 0.5f;
                 }
             };
 
@@ -2054,232 +2081,9 @@ namespace sim
 
         void universe::initReaxParams()
         {
-            constants::reaxParams[1] = {
-                .p_boc1 = 6.500f,
-                .p_boc2 = 6.500f,
-                .p_boc3 = 0.000f,
-                .p_boc4 = 0.000f,
-                .p_boc5 = 0.000f,
 
-                .p_bo1 = -0.040f,
-                .p_bo2 = 5.000f,
-                .p_bo3 = -0.040f,
-                .p_bo4 = 5.000f,
-                .p_bo5 = 0.000f,
-                .p_bo6 = 0.000f,
-
-                .p_be1 = 0.000f,
-                .p_be2 = 1.000f,
-
-                .r0_sigma = 0.960f,
-
-                .r0_pi = 0.000f,
-                .r0_pp = 0.000f,
-
-                .De_sigma = 103.50f,
-                .De_pi = 0.0f,
-                .De_pp = 0.0f,
-
-                .gamma = 1.100f,
-                .r_vdw = 1.850f,
-                .D_vdw = 0.015f,
-            };
-
-            constants::reaxParams[6] = {
-                .p_boc1 = 1.540f,
-                .p_boc2 = 6.500f,
-                .p_bo1 = -0.200f,
-                .p_bo2 = 5.000f,
-                .p_bo3 = -0.100f,
-                .p_bo4 = 8.000f,
-                .p_bo5 = -0.200f,
-                .p_bo6 = 6.000f,
-                .r0_sigma = 1.515f,
-                .r0_pi = 1.350f,
-                .r0_pp = 1.200f,
-                .De_sigma = 95.0f,
-                .De_pi = 115.0f,
-                .De_pp = 10.0f,
-                .gamma = 1.60f,
-                .r_vdw = 1.992f,
-                .D_vdw = 0.006f,
-            };
-
-            constants::reaxParams[7] = {
-                .p_boc1 = 2.0f,
-                .p_boc2 = 6.5f,
-                .p_boc3 = 1.2f,
-                .p_boc4 = 1.5f,
-                .p_boc5 = 7.0f,
-                .p_bo1 = -0.18f,
-                .p_bo2 = 6.0f,
-                .p_bo3 = -0.18f,
-                .p_bo4 = 7.0f,
-                .p_bo5 = -0.18f,
-                .p_bo6 = 7.0f,
-                .p_be1 = 0.1f,
-                .p_be2 = 1.0f,
-                .r0_sigma = 1.45f,
-                .r0_pi = 1.30f,
-                .r0_pp = 1.10f,
-                .De_sigma = 45.0f,
-                .De_pi = 105.0f,
-                .De_pp = 140.0f,
-                .gamma = 1.85f,
-                .r_vdw = 1.95f,
-                .D_vdw = 0.012f,
-            };
-
-            // O (Z = 8)
-            constants::reaxParams[8] = {
-                .p_boc1 = 2.0f,
-                .p_boc2 = 7.0f,
-                .p_boc3 = 1.0f,
-                .p_boc4 = 2.0f,
-                .p_boc5 = 7.0f,
-                .p_bo1 = -0.15f,
-                .p_bo2 = 6.5f,
-                .p_bo3 = -0.15f,
-                .p_bo4 = 7.0f,
-                .p_bo5 = 0.0f,
-                .p_bo6 = 0.0f,
-                .p_be1 = 0.2f,
-                .p_be2 = 1.0f,
-                .r0_sigma = 1.42f,
-                .r0_pi = 1.20f,
-                .r0_pp = 0.0f,
-                .De_sigma = 40.0f,
-                .De_pi = 110.0f,
-                .De_pp = 0.0f,
-                .gamma = 2.40f,
-                .r_vdw = 1.82f,
-                .D_vdw = 0.018f,
-            };
-
-            // F (Z = 9)
-            constants::reaxParams[9] = {
-                .p_boc1 = 3.0f,
-                .p_boc2 = 7.5f,
-                .p_boc3 = 0.0f,
-                .p_boc4 = 0.0f,
-                .p_boc5 = 0.0f,
-                .p_bo1 = -0.15f,
-                .p_bo2 = 7.0f,
-                .p_bo3 = 0.0f,
-                .p_bo4 = 0.0f,
-                .p_bo5 = 0.0f,
-                .p_bo6 = 0.0f,
-                .p_be1 = 0.0f,
-                .p_be2 = 1.0f,
-                .r0_sigma = 1.35f,
-                .r0_pi = 0.0f,
-                .r0_pp = 0.0f,
-                .De_sigma = 110.0f,
-                .De_pi = 0.0f,
-                .De_pp = 0.0f,
-                .gamma = 2.90f,
-                .r_vdw = 1.750f,
-                .D_vdw = 0.080f,
-            };
-
-            // Na (Z = 11)
-            constants::reaxParams[11] = {
-                .p_boc1 = 1.0f,
-                .p_boc2 = 8.0f,
-                .p_boc3 = 0.0f,
-                .p_boc4 = 0.0f,
-                .p_boc5 = 0.0f,
-                .p_bo1 = -0.08f,
-                .p_bo2 = 7.5f,
-                .p_bo3 = 0.0f,
-                .p_bo4 = 0.0f,
-                .p_bo5 = 0.0f,
-                .p_bo6 = 0.0f,
-                .p_be1 = 0.0f,
-                .p_be2 = 1.0f,
-                .r0_sigma = 2.30f,
-                .r0_pi = 0.0f,
-                .r0_pp = 0.0f,
-                .De_sigma = 20.0f,
-                .De_pi = 0.0f,
-                .De_pp = 0.0f,
-                .gamma = 1.20f,
-                .r_vdw = 2.300f,
-                .D_vdw = 0.020f,
-            };
-
-            // 12 = Magnesium
-            constants::reaxParams[12] = {
-                .p_boc1 = 1.2f, .p_boc2 = 8.0f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.1f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.20f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 30.0f, .De_pi = 0.0f, .De_pp = 0.0f, .gamma = 1.300f, .r_vdw = 2.200f, .D_vdw = 0.030f};
-
-            // 13 = Aluminium
-            constants::reaxParams[13] = {
-                .p_boc1 = 1.5f, .p_boc2 = 7.5f, .p_boc3 = 7.5f, .p_boc4 = 8.0f, .p_boc5 = 7.5f, .p_bo1 = -0.12f, .p_bo2 = 6.5f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.60f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 70.0f, .De_pi = 0.0f, .De_pp = 0.0f, .gamma = 1.400f, .r_vdw = 2.600f, .D_vdw = 0.050f};
-
-            // 14 = Silicon
-            constants::reaxParams[14] = {
-                .p_boc1 = 1.8f,
-                .p_boc2 = 6.8f,
-                .p_boc3 = 6.8f,
-                .p_boc4 = 7.5f,
-                .p_boc5 = 6.8f,
-                .p_bo1 = -0.15f,
-                .p_bo2 = 6.0f,
-                .p_bo3 = -0.15f,
-                .p_bo4 = 6.5f,
-                .p_bo5 = 0.0f,
-                .p_bo6 = 0.0f,
-                .p_be1 = 0.0f,
-                .p_be2 = 1.0f,
-                .r0_sigma = 2.35f,
-                .r0_pi = 2.10f,
-                .r0_pp = 0.0f,
-                .De_sigma = 75.0f,
-                .De_pi = 50.0f,
-                .De_pp = 0.0f,
-                .gamma = 1.60f,
-                .r_vdw = 2.350f,
-                .D_vdw = 0.075f,
-            };
-
-            // 15 = Phosphorus
-            constants::reaxParams[15] = {
-                .p_boc1 = 2.0f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.16f, .p_bo2 = 6.5f, .p_bo3 = -0.16f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .p_be1 = 0.15f, .p_be2 = 1.0f, .r0_sigma = 2.20f, .r0_pi = 1.90f, .r0_pp = 0.0f, .De_sigma = 60.0f, .De_pi = 80.0f, .De_pp = 0.0f, .gamma = 1.800f, .r_vdw = 2.200f, .D_vdw = 0.060f};
-
-            // 16 = Sulfur
-            constants::reaxParams[16] = {
-                .p_boc1 = 1.8f, .p_boc2 = 7.0f, .p_boc3 = 7.0f, .p_boc4 = 8.0f, .p_boc5 = 7.0f, .p_bo1 = -0.15f, .p_bo2 = 6.5f, .p_bo3 = -0.15f, .p_bo4 = 7.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 2.05f, .r0_pi = 1.80f, .r0_pp = 0.0f, .De_sigma = 65.0f, .De_pi = 90.0f, .De_pp = 0.0f, .gamma = 2.000f, .r_vdw = 2.050f, .D_vdw = 0.090f};
-
-            // 17 = Chlorine
-            constants::reaxParams[17] = {
-                .p_boc1 = 2.5f, .p_boc2 = 7.5f, .p_boc3 = 0.0f, .p_boc4 = 0.0f, .p_boc5 = 0.0f, .p_bo1 = -0.14f, .p_bo2 = 7.0f, .p_bo3 = 0.0f, .p_bo4 = 0.0f, .p_bo5 = 0.0f, .p_bo6 = 0.0f, .r0_sigma = 1.80f, .r0_pi = 0.0f, .r0_pp = 0.0f, .De_sigma = 60.0f, .De_pi = 0.0f, .De_pp = 0.0f, .gamma = 2.300f, .r_vdw = 1.980f, .D_vdw = 0.100f};
-
-            // 26 = Iron
-            constants::reaxParams[26] = {
-                .p_boc1 = 1.0f,
-                .p_boc2 = 8.0f,
-                .p_boc3 = 8.0f,
-                .p_boc4 = 9.0f,
-                .p_boc5 = 8.0f,
-                .p_bo1 = -0.10f,
-                .p_bo2 = 7.0f,
-                .p_bo3 = 0.0f,
-                .p_bo4 = 0.0f,
-                .p_bo5 = 0.0f,
-                .p_bo6 = 0.0f,
-                .p_be1 = 0.0f,
-                .p_be2 = 1.0f,
-                .r0_sigma = 2.50f,
-                .r0_pi = 0.0f,
-                .r0_pp = 0.0f,
-                .De_sigma = 100.0f,
-                .De_pi = 0.0f,
-                .De_pp = 0.0f,
-                .gamma = 1.40f,
-                .r_vdw = 2.500f,
-                .D_vdw = 0.200f,
-            };
         }
+
         // loading and saving scenes
 
         void universe::saveFrame()

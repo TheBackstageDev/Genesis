@@ -60,7 +60,10 @@ namespace core
         std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
 
         sf::Texture magnifying_texture{};
-        magnifying_texture.resize(sf::Vector2u(64, 64));
+        if (!magnifying_texture.resize(sf::Vector2u(64, 64)));
+        {
+            std::cerr << "[UI HANDLER]: Magnifying Glass icon couldn't load!";
+        }
         if (!magnifying_texture.loadFromFile(magnifying_glass))
         {
             std::cerr << "[UI HANDLER]: Magnifying Glass icon couldn't load!";
@@ -101,13 +104,20 @@ namespace core
                 float r = pos.length();
                 if (r > max_radius) max_radius = r;
             }
-
-            float molecule_radius = max_radius + 2.f;  
+            
+            float molecule_radius = max_radius;  
             cam.distance = molecule_radius;     
-            cam.distance = std::max(cam.distance, 20.f);
+            cam.distance = std::max(cam.distance, 10.f);
+
+            rendering_info info{};
+            info.lennardBall = true;
+            info.letter = true;
+            info.spaceFilling = true;
+            info.universeBox = false;
+            info.opacity = 1.0f;
 
             window.clear();
-            display_universe->draw(window, window.getWindow(), true, true, true, false);
+            display_universe->draw(window, window.getWindow(), info);
 
             sf::Texture thumb_texture;
             if (!thumb_texture.resize(window.getWindow().getSize()))
@@ -125,12 +135,14 @@ namespace core
 
         compound_presets.clear();
 
-        constexpr int32_t num_compounds = 22;
+        constexpr int32_t num_compounds = 26;
 
-        std::array<std::string, num_compounds> smilesToParse = {
+        std::array<std::string, num_compounds> smilesToParse = 
+        {
             "O",        
             "N",
-            "O=C=O",         
+            "O=C=O",        
+            "[O-][O+]=O",
             "C=O",
             "C",                
             "CC",               
@@ -149,21 +161,47 @@ namespace core
             "c1ccccc1CCc2ccccc2CC",
             "C(C(=O)OC)C",
             "[O-]S(=O)(=O)[O-]",
-            "[O-][N+](=O)[O-]"
+            "[O-][N+](=O)[O-]",
+            "[NH4+]",
+            "[Na+].[Cl-]",
+            "C1=CC=CC2=C1C=CC3=C2C=CC4=C3C=CC5=C4C=CC=C5"
         };
 
         std::array<std::string, num_compounds> formulas = {
-            "H2O", "NH3", "CO2", "CH2O", "CH4", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
+            "H2O", "NH3", "CO2", "O3", "CH2O", "CH4", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
             "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2",
-            "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4^-2", "NO3-"
+            "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
+            "NaCl", "C22H14"
         };
 
         using type = compound_type;
         std::array<type, num_compounds> types = {
-            type::INORGANIC, type::INORGANIC, type::INORGANIC, type::ORGANIC, type::ORGANIC, type::ORGANIC, type::ORGANIC,
-            type::ORGANIC, type::INORGANIC, type::NANOMATERIAL,
-            type::ORGANIC, type::ORGANIC, type::ORGANIC, type::BIOMOLECULE, type::BIOMOLECULE,
-            type::BIOMOLECULE, type::ORGANIC, type::ORGANIC, type::POLYMER, type::POLYMER, type::ION, type::ION
+            type::INORGANIC,                                          // Water
+            type::INORGANIC,                                          // Ammonia
+            type::INORGANIC,                                          // CO2
+            type::INORGANIC,                                          // Ozone
+            type::ORGANIC,                                            // Formaldehyde
+            type::ORGANIC,                                            // Methane
+            type::ORGANIC,                                            // Ethane
+            type::ORGANIC,                                            // Ethanol
+            type::ORGANIC,                                            // Benzene
+            type::INORGANIC,                                          // N2
+            type::NANOMATERIAL,                                       // C20
+            type::ORGANIC,                                            // Acetic acid 
+            type::ORGANIC,                                            // Isobutyric acid
+            type::ORGANIC,                                            // Butanoic acid
+            type::BIOMOLECULE,                                        // Alanine
+            type::BIOMOLECULE,                                        // Glucose
+            type::BIOMOLECULE,                                        // Palmitic acid
+            type::ORGANIC,                                            // Aspirin
+            type::ORGANIC,                                            // Caffeine
+            type::POLYMER,                                            // Polystyrene
+            type::POLYMER,                                            // PMMA
+            type::ION,                                                // Sulfate
+            type::ION,                                                // Nitrate
+            type::ION,                                                // Ammonium
+            type::ION,                                                // Sodium Chloride
+            type::ORGANIC                                             // Tetracene
         };
 
         for (int32_t i = 0; i < num_compounds; ++i)
@@ -185,7 +223,6 @@ namespace core
 
             compound_presets.emplace_back(std::move(nInfo));
         }
-
     }
 
     void UIHandler::write_localization_json(localization lang)
@@ -315,7 +352,7 @@ namespace core
             {
                 ImGui::Indent();
                 ImGui::DragFloat(sandbox_creation["gravity_magnitude"].get<std::string>().c_str(),
-                                 &sandbox_info.mag_gravity, 0.1f, 0.0f, 50.0f, "%.2f m/s²");
+                                 &sandbox_info.mag_gravity, 0.1f, 0.0f, 981.0f, "%.2f m/s²");
                 ImGui::Unindent();
             }
 
@@ -574,7 +611,94 @@ namespace core
 
     constexpr float padding = 20.0f;
     constexpr float row_height = 200.f;
-    constexpr float row_width = 210.f;
+    constexpr float row_width = 200.f;
+
+    void UIHandler::insertGhost()
+    {
+        auto& compound = compound_presets[selectedCompound];
+
+        display_universe->clear();
+        display_universe->createMolecule(compound.structure, simulation_universe->camera().target);
+
+        sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
+        for (const auto& p : compound.structure.positions)
+        {
+            Centroid += p;
+        }
+        Centroid /= static_cast<float>(compound.structure.positions.size());
+
+        for (auto& p : compound.structure.positions)
+        {
+            p -= Centroid;
+        }
+
+        auto& display_cam = display_universe->camera();
+        display_cam = simulation_universe->camera();
+
+        ghostDisplay = true;
+    }
+
+    void UIHandler::handleGhost(window_t& window)
+    {
+        if (!ghostDisplay || selectedCompound == UINT32_MAX) return;
+
+        ghostColliding = false;
+
+        auto& compound = compound_presets[selectedCompound];
+        auto &sim_ui = localization_json["Simulation"]["universe_ui"];
+        auto& cam = simulation_universe->camera();
+
+        ImVec2 mousePos = ImGui::GetMousePos();
+
+        const auto& base_positions = compound.structure.positions;
+        for (size_t i = 0; i < base_positions.size(); ++i)
+        {
+            display_universe->setPosition(i, base_positions[i] + cam.target);
+        }
+
+        constexpr float minDistance = 1.6f;
+        for (auto& pos : display_universe->positions())
+        {
+            for (auto& other_pos : simulation_universe->positions())
+            {
+                if (simulation_universe->minImageVec(pos - other_pos).length() <= minDistance)
+                {
+                    ghostColliding = true;
+                }
+            }
+        }
+
+        ImGui::BeginTooltip();
+        if (ghostColliding)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+            ImGui::Text(sim_ui["tooltip_collision_bad"].get<std::string>().c_str());
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 1.0f, 0.3f, 1.0f));
+            ImGui::Text(sim_ui["tooltip_collision_good"].get<std::string>().c_str());
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::Text(sim_ui["tooltip_emplace_molecule"].get<std::string>().c_str());
+        ImGui::EndTooltip();
+
+        if (ImGui::IsKeyPressed(ImGuiKey_G) && !ghostColliding)
+        {
+            simulation_universe->createMolecule(compound.structure, cam.target);
+            selectedCompound = UINT32_MAX;
+            ghostDisplay = false;
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_MouseRight))
+        {
+            ghostDisplay = false;
+            display_universe->clear();
+            selectedCompound = UINT32_MAX;
+        }
+    }
 
     void UIHandler::drawCompoundView(const compound_preset_info &compound)
     {
@@ -646,7 +770,10 @@ namespace core
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
         if (ImGui::Button(comp_sel["button_add"].get<std::string>().c_str(), ImVec2(0.f, 40.0f)))
         {
-            simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
+            //simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
+            compoundSelector = false;
+            selectedCompound = compound.id;
+            insertGhost();
         }
 
         ImGui::PopStyleVar();
@@ -705,8 +832,6 @@ namespace core
             ImGui::SetCursorPosX(15);
             ImGui::Image(thumb_textures[compound.id],
                         ImVec2(360, 360));
-
-            ImGui::Text(full_view["preview_subtext"].get<std::string>().c_str());
         }
         ImGui::EndChild();
 
@@ -727,16 +852,16 @@ namespace core
             ImGui::Dummy(ImVec2(0, 15));
 
             ImGui::TextDisabled(full_view["description"].get<std::string>().c_str());
-            ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]["compound_names"][compound.id - 1]].get<std::string>().c_str());
+            ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]["compound_names"][compound.id]].get<std::string>().c_str());
 
             ImGui::Dummy(ImVec2(0, 20));
 
             ImGui::SetCursorPosY(330);
             if (ImGui::Button(full_view["add_simulation"].get<std::string>().c_str(), ImVec2(-1, 50)))
             {
-                simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
                 compoundSelector = false;
                 compoundFullView = false;
+                insertGhost();
             }
             ImGui::PopStyleColor();
         }
@@ -769,7 +894,6 @@ namespace core
 
                 if (ImGui::BeginTabItem(compounds["compound_types"][i].get<std::string>().c_str()))
                 {
-
                     int columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
                     columns = std::max(1, columns);
 
@@ -818,26 +942,35 @@ namespace core
     {
         simulation_render_mode mode = app_options.sim_options.render_mode;
 
-        bool letter = false;
-        bool ball = false;
-        float space_filling = false;
+        rendering_info info{};
+        info.opacity = 1.0f;
 
         if (mode == simulation_render_mode::BALL_AND_STICK)
         {
-            ball = letter = true;
+            info.lennardBall = info.letter = true;
         }
         else if (mode == simulation_render_mode::LETTER_AND_STICK)
         {
-            ball = false;
-            letter = true;
+            info.lennardBall = false;
+            info.letter = true;
         }
         else if (mode == simulation_render_mode::SPACE_FILLING)
         {
-            ball = letter = space_filling = true;
+            info.lennardBall = info.letter = info.spaceFilling = true;
         }
 
         simulation_universe->handleCamera();
-        simulation_universe->draw(window, window.getWindow(), letter, ball, space_filling);
+        simulation_universe->draw(window, window.getWindow(), info);
+
+        info.universeBox = false;
+        info.opacity = 0.7f;
+        info.color_addition = ghostColliding ? ImVec4(0.5f, 0.f, 0.f, 0.f) : ImVec4(0.f, 0.f, 0.f, 0.f);
+        if (ghostDisplay) 
+        {
+            handleGhost(window);
+            display_universe->draw(window, window.getWindow(), info);
+            display_universe->camera() = simulation_universe->camera();
+        }
 
         if (!pauseMenuOpen || !showHUD)
             drawUniverseUI();
@@ -936,6 +1069,10 @@ namespace core
             if (ImGui::Button(pause_menu["true_exit"].get<std::string>().c_str(), ImVec2(button_width, 30)))
             {
                 pauseMenuOpen = false;
+                compoundFullView = false;
+                compoundSelector = false;
+                optionsOpen = false;
+
                 setState(application_state::APP_STATE_MENU);
 
                 if (exitDesktop)

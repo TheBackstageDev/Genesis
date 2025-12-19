@@ -239,11 +239,15 @@ namespace core
         
         void runUniverse();
         void drawUniverseUI();
-        
+
         uint32_t selectedCompound = UINT32_MAX;
         bool compoundFullView = false;
         bool newCompoundClicked = false;
+        bool ghostDisplay = false;
+        bool ghostColliding = false;
 
+        void insertGhost();
+        void handleGhost(window_t& window);
         void drawCompoundSelector();
         void drawCompoundView(const compound_preset_info& compound);
         void drawCompoundFulLView();

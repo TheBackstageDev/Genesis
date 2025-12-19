@@ -74,6 +74,7 @@
       "Água",
       "Amônia",
       "Dióxido de Carbono",
+      "Ozônio",
       "formaldeído",
       "Metano",
       "Etano",
@@ -92,7 +93,10 @@
       "Poliestireno (cadeia curta)",
       "PMMA (cadeia curta)",
       "Sulfato",
-      "Nitrato"
+      "Nitrato",
+      "Amônio",
+      "Cloreto de Sódio",
+      "Piceno"
     ],
 
     "compound_types":
@@ -109,6 +113,7 @@
     {
       "Water": "A água (H2O) é vital para os organismos e os sistemas da Terra, sendo o 'solvente universal', dissolvendo substâncias para funções biológicas, regulando o clima com sua capacidade térmica, circulando entre sólido, líquido e gás, e moldando paisagens enquanto sustenta ecossistemas.",
       "Carbon Dioxide": "O dióxido de carbono (CO2) é um composto formado por um átomo de carbono ligado a dois átomos de oxigênio, presente naturalmente na atmosfera e essencial para processos vitais. Ele desempenha um papel fundamental na fotossíntese e é um gás de efeito estufa.",
+      "Ozônio": "Ozônio (O3) é uma molécula triatômica composta por três átomos de oxigênio. Ocorre naturalmente na atmosfera terrestre, onde forma a camada de ozônio que protege os organismos vivos ao absorver a radiação ultravioleta nociva proveniente do Sol.",
       "Methane": "O metano (CH4), composto por um átomo de carbono ligado a quatro átomos de hidrogênio, é o principal componente do gás natural e uma importante fonte de energia. É um potente gás de efeito estufa.",
       "Ethane": "O etano (C2H6) é um hidrocarboneto saturado da série dos alcanos, composto por dois átomos de carbono ligados por ligação simples e cercados por seis átomos de hidrogênio. É um gás incolor e inodoro em condições padrão e ocorre naturalmente no petróleo e no gás natural.",
       "Ethanol": "O etanol (C2H5OH) é um composto orgânico constituído por dois átomos de carbono, seis de hidrogênio e um de oxigênio, classificado como um álcool simples. É um líquido volátil, inflamável, com odor característico, amplamente usado como solvente, combustível e na produção de bebidas alcoólicas.",
@@ -128,7 +133,10 @@
       "Polystyrene (short chain)": "O poliestireno (cadeia curta, (C8H8)n) é um polímero aromático sintético derivado de monômeros de estireno. Em cadeias curtas, forma oligômeros usados em revestimentos, adesivos e como precursores para materiais de cadeia longa como embalagens e isolantes.",
       "PMMA (short chain)": "O PMMA (cadeia curta, poli(metacrilato de metila), (C5H8O2)n) é um termoplástico transparente derivado de monômeros de metacrilato de metila. Cadeias curtas produzem oligômeros usados em revestimentos, adesivos e aplicações ópticas, conhecidos pela clareza e resistência às intempéries.",
       "Sulfate": "O sulfato (SO4(-2)) é um ânion poliatômico com um átomo central de enxofre ligado a quatro átomos de oxigênio em geometria tetraédrica. Forma muitos sais, essencial na biologia, indústria (ex.: detergentes, fertilizantes) e como nutriente em ecossistemas.",
-      "Nitrate": "O nitrato (NO3(-)) é um ânion poliatômico com um átomo central de nitrogênio ligado a três átomos de oxigênio em geometria trigonal planar. É fundamental em fertilizantes, explosivos e processos biológicos, servindo como fonte de nitrogênio para plantas."
+      "Nitrate": "O nitrato (NO3(-)) é um ânion poliatômico com um átomo central de nitrogênio ligado a três átomos de oxigênio em geometria trigonal planar. É fundamental em fertilizantes, explosivos e processos biológicos, servindo como fonte de nitrogênio para plantas.",
+      "Ammonium": "O íon amônio (NH4+) é um cátion poliatômico formado quando a amônia (NH3) recebe um próton. Ele desempenha um papel central no metabolismo do nitrogênio, atuando como intermediário na assimilação de nitrogênio por plantas e microrganismos. Os sais de amônio são amplamente utilizados em fertilizantes, explosivos e processos industriais, e em soluções aquosas contribuem para o equilíbrio ácido-base.",
+      "Sodium Chloride": "Cloreto de sódio (NaCl), conhecido popularmente como sal de cozinha, é um composto iônico formado pela união de íons sódio (Na+) e cloreto (Cl-). Essencial para a vida, desempenha papel fundamental na manutenção do equilíbrio hídrico, na transmissão nervosa e na contração muscular dos organismos vivos. Além de sua importância biológica, o cloreto de sódio é amplamente utilizado como tempero e conservante de alimentos.",
+      "Piceno": "O piceno (C22H14) é um hidrocarboneto aromático policíclico composto por cinco anéis benzênicos fundidos em uma disposição em zigue-zague. É um sólido cristalino com baixa solubilidade em água, estudado por suas propriedades eletrônicas e ópticas. O piceno tem despertado interesse em ciência dos materiais e eletrônica orgânica."
     }
   },
 
@@ -147,6 +155,9 @@
       "tooltip_pause": "Pausar a Simulação",
       "tooltip_screenshot": "Tirar uma foto",
       "tooltip_compound_selector": "Adicionar Composto",
+      "tooltip_emplace_molecule": "Aperte (G) para posicionar a Molécula, (Mouse Direito) para cancelar.",
+      "tooltip_collision_good": "Boa Posição",
+      "tooltip_collision_bad": "Colisão Detectada!",
 
       "compound_selector":
       {
@@ -161,7 +172,6 @@
         {
           "close": "Fechar",
           "preview": "Chem Chards TM",
-          "preview_subtext": "Clique e Arraste para rodar (Vindo em Breve!)",
           "description": "Descrição",
           "add_simulation": "Adicionar para a Simulação"
         }

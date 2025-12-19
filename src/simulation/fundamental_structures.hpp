@@ -145,6 +145,17 @@ namespace sim
             bool exclude = false;
         };
 
+        struct rendering_info
+        {
+            bool letter = false; 
+            bool lennardBall = true; 
+            bool spaceFilling = false; 
+            bool universeBox = true;
+
+            float opacity = 1.0f;
+            ImVec4 color_addition{0.0f, 0.0f, 0.0f, 0.0f};
+        };
+
         struct atom
         {
             float mass;            
@@ -160,7 +171,7 @@ namespace sim
 
             int32_t chirality;
             int8_t padding[12];
-            void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, bool letterMode, bool lennardBall, bool spaceFilling);
+            void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, const rendering_info info);
         };
     } // namespace fun
 } // namespace sim

@@ -20,30 +20,30 @@ namespace sim
 
     namespace fun
     {
-        void atom::draw(float temperature, sf::Vector2f &pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, bool letter, bool lennardBall, bool spaceFilling)
+        void atom::draw(float temperature, sf::Vector2f &pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, const rendering_info info)
         {
-            sf::Color atomColor = constants::getElementColor(ZIndex);
+            sf::Color atomColor = constants::getElementColor(ZIndex) + info.color_addition;
 
             float vdw_r = radius;
 
-            if (spaceFilling)
+            if (info.spaceFilling)
             {
                 vdw_r = constants::VDW_RADII[ZIndex] * 3;
             }
 
             float minDist = 20.0f;
             float maxDist = 300.0f;
-            float alpha = 255.0f;
+            float alpha = info.opacity * 255.0f;
 
             if (camDistance > minDist)
             {
                 float t = (camDistance - minDist) / (maxDist - minDist);
                 t = std::clamp(t, 0.0f, 1.0f);
-                alpha = 255.0f * (1.0f - t);
+                alpha = info.opacity * 255.0f * (1.0f - t);
             }
 
             float rad = vdw_r / camDistance * 10.f;
-            if (lennardBall)
+            if (info.lennardBall)
             {
                 sf::CircleShape cloud(rad);
                 cloud.setOrigin({rad, rad});
@@ -52,7 +52,7 @@ namespace sim
                 target.draw(cloud);
             }
 
-            if (letter)
+            if (info.letter)
             {
                 auto &font = window.getFont();
                 std::string name = constants::getAtomLetter(ZIndex);
