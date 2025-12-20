@@ -436,8 +436,8 @@ namespace sim
             sf::Vector2f pH = project(window, pos(H));
 
             constexpr float MAX_HA_DISTANCE = 2.8f;
-            constexpr float MIN_COS_ANGLE = 0.7f;
-            constexpr float STRONG_ENERGY = -300.0f;
+            constexpr float MIN_COS_ANGLE = 0.8f;
+            constexpr float STRONG_ENERGY = -700.0f;
             constexpr float WEAK_ENERGY = -5.0f;
 
             sf::Vector3f p = pos(H);
@@ -453,16 +453,12 @@ namespace sim
             iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy) - 1 : iy;
             iz = iz >= static_cast<int32_t>(cz) ? static_cast<int32_t>(cz) - 1 : iz;
 
-            for (int32_t d = 0; d < 14; ++d)
+            for (int32_t dx = -1; dx <= 1; ++dx)
+            for (int32_t dy = -1; dy <= 1; ++dy)
+            for (int32_t dz = -1; dz <= 1; ++dz)
             {
-                int32_t iix = ix + offsets[d][0];
-                int32_t iiy = iy + offsets[d][1];
-                int32_t iiz = iz + offsets[d][2];
-
-                uint32_t cell_id = iix + cx * (iiy + cy * iiz);
-
-                if (cell_id < -1 || cell_id >= (cx * cy * cz))
-                    continue;
+                int32_t x = ix + dx, y = iy + dy, z = iz + dz;
+                uint32_t cell_id = getCellID(x, y, z);
 
                 for (uint32_t A : cells[cell_id])
                 {
@@ -875,6 +871,8 @@ namespace sim
             for (int32_t i = 0; i < atomsToBalance.size(); ++i)
             {
                 int32_t idx = atomsToBalance[i];
+                if (idx >= atoms.size()) continue;
+                
                 uint8_t usualValence = constants::getUsualBonds(atoms[idx].ZIndex);
                 int deficit = usualValence - static_cast<int>(atoms[idx].bondCount);
                 valenceDeficit[i] = static_cast<float>(deficit);
@@ -2104,7 +2102,7 @@ namespace sim
             return time_str;
         }
 
-        void universe::saveAsVideo(const std::filesystem::path path)
+        void universe::saveAsVideo(const std::filesystem::path path, const std::string name)
         {
             nlohmann::json video{};
 
@@ -2129,8 +2127,8 @@ namespace sim
             {
                 if (!std::filesystem::is_directory(path))
                     std::filesystem::create_directory(path);
-
-                std::filesystem::path filepath(path.string() + "/" + formatTime() + ".json");
+                
+                std::filesystem::path filepath = name.empty() ? path / ("video_" + formatTime() + ".json") : path / ("video_" + name + ".json");
                 std::ofstream file(filepath);
                 file.flush();
                 file << video.dump();
@@ -2152,7 +2150,7 @@ namespace sim
             energyLog.clear();
         }
 
-        void universe::saveScene(const std::filesystem::path path)
+        void universe::saveScene(const std::filesystem::path path, const std::string name)
         {
             if (!std::filesystem::is_directory(path))
                 std::filesystem::create_directory(path);
@@ -2270,7 +2268,7 @@ namespace sim
 
             try
             {
-                std::filesystem::path filepath{path.string() + "/" + formatTime() + ".json"};
+                std::filesystem::path filepath = name.empty() ? path / (formatTime() + ".json") : path / (name + ".json");
                 std::ofstream file(filepath);
                 if (!file.is_open())
                 {

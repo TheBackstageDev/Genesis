@@ -69,7 +69,7 @@ namespace sim
                 target.draw(name_text);
 
                 // Charge
-                if (std::abs(q) > 1.f)
+                if (std::abs(q) >= 1.f)
                 {
                     sf::Text ion_text(font, q > 0.0f ? "+" : "-", 15.f);
 

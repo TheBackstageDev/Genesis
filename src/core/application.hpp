@@ -6,6 +6,8 @@
 #include "core/window.hpp"
 #include "core/UIHandler.hpp"
 
+#include "json.hpp"
+
 #include <memory>
 
 namespace core
@@ -18,6 +20,8 @@ namespace core
 
         void run();
     private:
+
+        void save();
     
         application_state current_state{application_state::APP_STATE_MENU};
         options app_options{};

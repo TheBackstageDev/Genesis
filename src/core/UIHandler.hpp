@@ -60,12 +60,12 @@ namespace core
         std::string title;
         std::string description;
 
-        std::filesystem::path snapshot;
         std::filesystem::path file;
         std::filesystem::path video;
 
         bool has_video = true;
         bool is_locked = true;
+        bool is_sandbox = false;
     };
 
     enum class compound_type : uint32_t
@@ -172,6 +172,7 @@ namespace core
         // Universe
 
         void drawUniverse(window_t& window);
+        void screenshotWindow(window_t& window, std::filesystem::path path);
 
         // Callback
 
@@ -192,6 +193,8 @@ namespace core
         ImFont* bold_font() { return bold; }
         ImFont* black_font() { return black; }
 
+        nlohmann::json save();
+
     private:
         localization lang{localization::EN_US};
         options& app_options;
@@ -200,6 +203,7 @@ namespace core
 
         void write_localization_json(localization lang);
         void initImages(window_t& window);
+        void initSavedData();
 
         // Menu
 
@@ -207,8 +211,7 @@ namespace core
         uint32_t placeholder_texture_id = 0;
 
         std::vector<sf::Texture> thumb_textures;
-
-        std::unordered_map<std::string, sf::Texture> icon_textures;
+        std::unordered_map<std::string, sf::Texture> textures;
 
         const float image_size = 200.f;
 
@@ -219,13 +222,16 @@ namespace core
         void drawBackgroundDisplay();
 
         std::vector<scenario_info> backgroundDisplays;
+        std::vector<scenario_info> savedSandbox;
 
         void drawSceneSelection();
         void drawSceneFrame(scenario_info& info, int32_t id);
         void drawSandboxCreation();
+        void drawSavedSimulations();
         void drawOptions();
 
         bool sceneSelectionOpen = false;
+        bool savesSelectionOpen = false;
         bool tutorialSelectionOpen = false;
         bool sandboxSelectionOpen = false;
         bool challengeSelectionOpen = false;
@@ -238,7 +244,9 @@ namespace core
         float target_pressure = 0.f;
         
         void runUniverse();
-        void drawUniverseUI();
+        void drawUniverseUI(window_t& window);
+
+        bool screenshotToggle = false;
 
         uint32_t selectedCompound = UINT32_MAX;
         bool compoundFullView = false;
@@ -252,7 +260,7 @@ namespace core
         void drawCompoundView(const compound_preset_info& compound);
         void drawCompoundFulLView();
 
-        void pauseMenu();
+        void pauseMenu(window_t& window);
 
         void initCompoundPresetsImages(window_t& window);
         void initCompoundPresets();

@@ -1021,6 +1021,7 @@ namespace sim
         const int32_t max_iters = 30 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
         constexpr float   repulse     = 2.2f;
+        constexpr float   k_angle     = 1.2f;
         constexpr float   k_spring    = 5.0f;
         constexpr float   convergence = 0.01f;
 
@@ -1042,7 +1043,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.4f;
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.3f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;
@@ -1084,6 +1085,39 @@ namespace sim
 
                 forces[c] += F;
                 forces[a] -= F;
+            }
+
+            for (const auto& ang : angles)
+            {
+                int32_t i = ang.A, j = ang.B, k = ang.C;
+
+                sf::Vector3f r_ji = positions[i] - positions[j];
+                sf::Vector3f r_jk = positions[k] - positions[j];
+                float len_ji = r_ji.length();
+                float len_jk = r_jk.length();
+                if (len_ji < EPSILON || len_jk < EPSILON)
+                    continue;
+
+                sf::Vector3f u_ji = r_ji / len_ji;
+                sf::Vector3f u_jk = r_jk / len_jk;
+                float cos_theta = std::clamp(u_ji.dot(u_jk), -1.0f, 1.0f);
+                float sin_theta = std::sqrt(std::max(1.0f - cos_theta * cos_theta, 0.0f));
+                if (sin_theta < 1e-6f)
+                    sin_theta = 1e-6f;
+
+                float theta = std::acos(cos_theta);
+                float delta_theta = theta - ang.rad;
+
+                sf::Vector3f dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
+                sf::Vector3f dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
+
+                sf::Vector3f F_i = -k_angle * delta_theta * dtheta_dri;
+                sf::Vector3f F_k = -k_angle * delta_theta * dtheta_drk;
+                sf::Vector3f F_j = -F_i - F_k;
+
+                forces[i] += F_i;
+                forces[j] += F_j;
+                forces[k] += F_k;
             }
 
             for (uint32_t i = 0; i < positions.size(); ++i)

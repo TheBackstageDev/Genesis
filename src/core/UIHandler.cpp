@@ -10,6 +10,8 @@ namespace core
 {
     // Helper
 
+    std::filesystem::path sandboxSave = std::filesystem::path("src/scenes/saved");
+
     std::filesystem::path getLocalizationFile(localization lang)
     {
         std::filesystem::path localization_path = "src/resource/localizations";
@@ -24,7 +26,7 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t& window)
+    UIHandler::UIHandler(options &app_options, window_t &window)
         : app_options(app_options)
     {
         write_localization_json(lang);
@@ -48,42 +50,123 @@ namespace core
 
         initCompoundPresets();
         initImages(window);
+        initSavedData();
     }
 
-    void UIHandler::initImages(window_t& window)
+    void UIHandler::initSavedData()
     {
+        std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
+
+        if (!std::filesystem::exists(saved_sandbox_dir))
+        {
+            std::filesystem::create_directories(saved_sandbox_dir);
+            return;
+        }
+
+        for (const auto &entry : std::filesystem::directory_iterator(saved_sandbox_dir))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".json")
+            {
+                std::ifstream file(entry.path());
+                if (file.is_open())
+                {
+                    try
+                    {
+                        nlohmann::json scene_json = nlohmann::json::parse(file);
+
+                        scenario_info nInfo{};
+                        nInfo.file = entry;
+
+                        std::filesystem::path videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
+                        if (std::filesystem::directory_entry(videoPath).exists())
+                        {
+                            nInfo.video = videoPath;
+                            nInfo.has_video = true;
+                        }
+
+                        nInfo.is_sandbox = true;
+
+                        std::cout << "Loaded saved scene: " << entry.path() << std::endl;
+                    }
+                    catch (const nlohmann::json::parse_error &e)
+                    {
+                        std::cerr << "JSON parse error in " << entry.path() << ": " << e.what() << std::endl;
+                    }
+                }
+            }
+        }
+    }
+
+    void resize_texture(sf::Texture &tex, sf::Vector2u size)
+    {
+        if (!tex.resize(size))
+        {
+            std::cerr << "[UI HANDLER]: icon couldn't resize! \n";
+        }
+    }
+
+    void load_texture(sf::Texture &tex, std::filesystem::path path)
+    {
+        if (!tex.loadFromFile(path))
+        {
+            std::cerr << "[UI HANDLER]: icon couldn't load! \n";
+        }
+    }
+
+    void UIHandler::initImages(window_t &window)
+    {
+        initCompoundPresetsImages(window);
+
         sf::Image placeholder_image;
         placeholder_image.createMaskFromColor(sf::Color(80, 80, 90), 255); // Dark gray
         placeholder_texture_id = placeholder_texture.getNativeHandle();
 
         std::filesystem::path icons = "src/resource/images/icons";
         std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
+        std::filesystem::path genesis_glass = icons / "Genesis.png";
 
         sf::Texture magnifying_texture{};
-        if (!magnifying_texture.resize(sf::Vector2u(64, 64)));
+        sf::Texture genesis_icon_texture{};
+
+        resize_texture(magnifying_texture, {64, 64});
+        load_texture(magnifying_texture, magnifying_glass);
+
+        textures.emplace("magnifying_texture", std::move(magnifying_texture));
+        textures.emplace("genesis_icon", std::move(genesis_icon_texture));
+
+        std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
+        if (!std::filesystem::exists(saved_sandbox_dir))
         {
-            std::cerr << "[UI HANDLER]: Magnifying Glass icon couldn't load!";
+            std::filesystem::create_directories(saved_sandbox_dir);
+            return;
         }
-        if (!magnifying_texture.loadFromFile(magnifying_glass))
+
+        for (const auto &entry : std::filesystem::directory_iterator(saved_sandbox_dir))
         {
-            std::cerr << "[UI HANDLER]: Magnifying Glass icon couldn't load!";
-        } 
+            if (entry.is_regular_file() && entry.path().extension() == ".png")
+            {
+                sf::Texture scenario_texture{};
+                if (!scenario_texture.loadFromFile(entry.path()))
+                {
+                    std::cerr << "[UI HANDLER]: Couldn't load sandbox image!" << entry.path() << "\n";
+                    continue;
+                }
 
-        icon_textures.emplace("magnifying_texture", std::move(magnifying_texture));
-
-        initCompoundPresetsImages(window);
+                textures.emplace(entry.path().filename().string(), std::move(scenario_texture));
+            }
+        }
     }
 
-    void UIHandler::initCompoundPresetsImages(window_t& window)
+    void UIHandler::initCompoundPresetsImages(window_t &window)
     {
         sim::fun::universe_create_info display_info{};
         display_info.box.x = 100.f;
         display_info.box.y = 100.f;
         display_info.box.z = 100.f;
         display_info.wall_collision = false;
-        
+
         display_universe = std::make_unique<sim::fun::universe>(display_info);
-        auto& cam = display_universe->camera();
+        auto &cam = display_universe->camera();
         cam.target = {0.f, 0.f, 0.f};
         cam.distance = 0.f;
         cam.azimuth = 200.f;
@@ -99,14 +182,15 @@ namespace core
             display_universe->createMolecule(compound.structure, {0.f, 0.f, 0.f});
 
             float max_radius = 0.f;
-            for (const auto& pos : compound.structure.positions)
+            for (const auto &pos : compound.structure.positions)
             {
                 float r = pos.length();
-                if (r > max_radius) max_radius = r;
+                if (r > max_radius)
+                    max_radius = r;
             }
-            
-            float molecule_radius = max_radius;  
-            cam.distance = molecule_radius;     
+
+            float molecule_radius = max_radius;
+            cam.distance = molecule_radius;
             cam.distance = std::max(cam.distance, 10.f);
 
             rendering_info info{};
@@ -130,78 +214,92 @@ namespace core
 
     void UIHandler::initCompoundPresets()
     {
-        auto& compounds = localization_json["Compounds"];
-        auto& compound_names = compounds["compound_names"];
+        auto &compounds = localization_json["Compounds"];
+        auto &compound_names = compounds["compound_names"];
 
         compound_presets.clear();
 
-        constexpr int32_t num_compounds = 26;
+        constexpr int32_t num_compounds = 33;
 
-        std::array<std::string, num_compounds> smilesToParse = 
-        {
-            "O",        
-            "N",
-            "O=C=O",        
-            "[O-][O+]=O",
-            "C=O",
-            "C",                
-            "CC",               
-            "CCO",
-            "c1ccccc1",          
-            "N#N",       
-            "C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91", 
-            "CC(=O)O",        
-            "CC(C)C(=O)O",      
-            "O=C(O)CCC",
-            "NC(C)C(=O)O",    
-            "C1C(C(C(C(O1)O)O)O)O",
-            "CCCCCCCCCCCCCCCC(=O)O", 
-            "CC(=O)OC1=CC=CC=C1C(=O)O",     
-            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-            "c1ccccc1CCc2ccccc2CC",
-            "C(C(=O)OC)C",
-            "[O-]S(=O)(=O)[O-]",
-            "[O-][N+](=O)[O-]",
-            "[NH4+]",
-            "[Na+].[Cl-]",
-            "C1=CC=CC2=C1C=CC3=C2C=CC4=C3C=CC5=C4C=CC=C5"
-        };
+        std::array<std::string, num_compounds> smilesToParse =
+            {
+                "O",
+                "N",
+                "O=C=O",
+                "O=O",
+                "[O-][O+]=O",
+                "C=O",
+                "C",
+                "[C-]#[O+]",
+                "CC",
+                "CCO",
+                "c1ccccc1",
+                "N#N",
+                "C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91",
+                "CC(=O)O",
+                "CC(C)C(=O)O",
+                "O=C(O)CCC",
+                "NC(C)C(=O)O",
+                "C1C(C(C(C(O1)O)O)O)O",
+                "CCCCCCCCCCCCCCCC(=O)O",
+                "O=C(O)CCCCCCCCC",
+                "CCCCCCCC\\C=C/CCCCCCCC(O)=O",
+                "C[C@H](CCCC(C)C)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)O)C)C",
+                "C1=NC(=C2C(=N1)N(C=N2)[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)OP(=O)(O)OP(=O)(O)O)O)O)N",
+                "CC(=O)OC1=CC=CC=C1C(=O)O",
+                "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+                "c1ccccc1CCc2ccccc2CC",
+                "C(C(=O)OC)C",
+                "[O-]S(=O)(=O)[O-]",
+                "[O-][N+](=O)[O-]",
+                "[NH4+]",
+                "[Na+].[Cl-]",
+                "C1=CC=CC2=C1C=CC3=C2C=CC4=C3C=CC5=C4C=CC=C5",
+                "S1SSSSSSS1"
+            };
 
         std::array<std::string, num_compounds> formulas = {
-            "H2O", "NH3", "CO2", "O3", "CH2O", "CH4", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
-            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2",
+            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
+            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2", "C10H20O2", "C18H34O2",
+            "C27H46O", "C10H16N5O13P3",
             "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
-            "NaCl", "C22H14"
-        };
+            "NaCl", "C22H14", "S8"};
 
         using type = compound_type;
         std::array<type, num_compounds> types = {
-            type::INORGANIC,                                          // Water
-            type::INORGANIC,                                          // Ammonia
-            type::INORGANIC,                                          // CO2
-            type::INORGANIC,                                          // Ozone
-            type::ORGANIC,                                            // Formaldehyde
-            type::ORGANIC,                                            // Methane
-            type::ORGANIC,                                            // Ethane
-            type::ORGANIC,                                            // Ethanol
-            type::ORGANIC,                                            // Benzene
-            type::INORGANIC,                                          // N2
-            type::NANOMATERIAL,                                       // C20
-            type::ORGANIC,                                            // Acetic acid 
-            type::ORGANIC,                                            // Isobutyric acid
-            type::ORGANIC,                                            // Butanoic acid
-            type::BIOMOLECULE,                                        // Alanine
-            type::BIOMOLECULE,                                        // Glucose
-            type::BIOMOLECULE,                                        // Palmitic acid
-            type::ORGANIC,                                            // Aspirin
-            type::ORGANIC,                                            // Caffeine
-            type::POLYMER,                                            // Polystyrene
-            type::POLYMER,                                            // PMMA
-            type::ION,                                                // Sulfate
-            type::ION,                                                // Nitrate
-            type::ION,                                                // Ammonium
-            type::ION,                                                // Sodium Chloride
-            type::ORGANIC                                             // Tetracene
+            type::INORGANIC,    // Water
+            type::INORGANIC,    // Ammonia
+            type::INORGANIC,    // CO2
+            type::INORGANIC,    // O2
+            type::INORGANIC,    // Ozone
+            type::ORGANIC,      // Formaldehyde
+            type::ORGANIC,      // Methane
+            type::INORGANIC,    // Carbon Monoxide
+            type::ORGANIC,      // Ethane
+            type::ORGANIC,      // Ethanol
+            type::ORGANIC,      // Benzene
+            type::INORGANIC,    // N2
+            type::NANOMATERIAL, // C20
+            type::ORGANIC,      // Acetic acid
+            type::ORGANIC,      // Isobutyric acid
+            type::ORGANIC,      // Butanoic acid
+            type::BIOMOLECULE,  // Alanine
+            type::BIOMOLECULE,  // Glucose
+            type::BIOMOLECULE,  // Palmitic acid
+            type::BIOMOLECULE,  // Capric Acid
+            type::BIOMOLECULE,  // Oleic Acid
+            type::BIOMOLECULE,  // Cholesterol
+            type::BIOMOLECULE,  // ATP
+            type::ORGANIC,      // Aspirin
+            type::ORGANIC,      // Caffeine
+            type::POLYMER,      // Polystyrene
+            type::POLYMER,      // PMMA
+            type::ION,          // Sulfate
+            type::ION,          // Nitrate
+            type::ION,          // Ammonium
+            type::ION,          // Sodium Chloride
+            type::ORGANIC,      // Tetracene
+            type::INORGANIC     // Octasulfur    
         };
 
         for (int32_t i = 0; i < num_compounds; ++i)
@@ -215,7 +313,7 @@ namespace core
             nInfo.structure = sim::parseSMILES(nInfo.SMILES);
 
             nInfo.molecular_weight = 0.0f;
-            for (const auto& atom : nInfo.structure.atoms)
+            for (const auto &atom : nInfo.structure.atoms)
             {
                 float mass = atom.ZIndex * MASS_PROTON + atom.NIndex * MASS_NEUTRON;
                 nInfo.molecular_weight += mass;
@@ -255,6 +353,8 @@ namespace core
         float buttonWidth = 260.0f;
         float buttonHeight = 45.0f;
 
+        // ImGui::Image(textures["genesis_icon"], ImVec2(100, 100));
+
         ImGui::PushFont(regular);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.12f, 0.95f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -262,6 +362,7 @@ namespace core
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 20));
 
         {
+            ImGui::SameLine();
             std::string menu_title = localization_json["Menu"]["title"].get<std::string>().c_str();
             float titleSize = ImGui::CalcTextSize(menu_title.c_str()).x;
 
@@ -294,6 +395,8 @@ namespace core
                 tutorialSelectionOpen = !tutorialSelectionOpen;
             if (ImGui::Button(localization_json["Menu"]["button_scenarios"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 sceneSelectionOpen = !sceneSelectionOpen;
+            if (ImGui::Button(localization_json["Menu"]["button_load"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
+                savesSelectionOpen = !savesSelectionOpen;
             if (ImGui::Button(localization_json["Menu"]["button_sandbox"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 sandboxSelectionOpen = !sandboxSelectionOpen;
             if (ImGui::Button(localization_json["Menu"]["button_challenges"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
@@ -325,14 +428,55 @@ namespace core
             drawSandboxCreation();
         if (optionsOpen)
             drawOptions();
+        if (savesSelectionOpen)
+            drawSavedSimulations();
 
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(2);
         ImGui::PopFont();
     }
 
+    constexpr float padding = 20.0f;
+    constexpr float row_height = 200.f;
+    constexpr float row_width = 200.f;
+
     void UIHandler::drawBackgroundDisplay()
     {
+    }
+
+    void UIHandler::drawSavedSimulations()
+    {
+        ImGui::SetNextWindowSize(ImVec2(800, 650), ImGuiCond_Appearing);
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+        auto &sim_loading = localization_json["Menu"]["Simulation_Loading"];
+        ImGui::Begin(sim_loading["title"].get<std::string>().c_str(), nullptr, ImGuiWindowFlags_NoMove);
+
+        int32_t columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
+        columns = std::max(1, columns);
+
+        if (ImGui::BeginTable("SavesGrid", columns, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV))
+        {
+            for (const auto &sandbox : savedSandbox)
+            {
+                ImGui::TableNextColumn();
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15, 15));
+                ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.9f));
+
+                ImGui::BeginChild(ImGui::GetID(sandbox.title.c_str()),
+                                  ImVec2(0, 0), ImGuiChildFlags_AutoResizeY);
+
+                ImGui::EndChild();
+
+                ImGui::PopStyleVar(2);
+                ImGui::PopStyleColor();
+            }
+            ImGui::EndTable();
+        }
+
+        ImGui::End();
     }
 
     sim::fun::universe_create_info sandbox_info{};
@@ -428,6 +572,8 @@ namespace core
 
     void UIHandler::drawSceneSelection()
     {
+        ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         ImGui::Begin(localization_json["Menu"]["Scene_Selection"]["title"].get<std::string>().c_str(), nullptr, ImGuiWindowFlags_NoMove);
 
         ImGui::End();
@@ -459,11 +605,10 @@ namespace core
             space_filling = options["render_modes"]["space_filling"].get<std::string>();
 
             const char *modes[] =
-            {
-                ball_and_stick.c_str(),
-                letter_and_stick.c_str(),
-                space_filling.c_str()
-            };
+                {
+                    ball_and_stick.c_str(),
+                    letter_and_stick.c_str(),
+                    space_filling.c_str()};
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
             if (ImGui::Combo("##render_mode", &current_mode, modes, IM_ARRAYSIZE(modes)))
@@ -521,7 +666,7 @@ namespace core
 
     // Universe Simulation
 
-    void UIHandler::drawUniverseUI()
+    void UIHandler::drawUniverseUI(window_t &window)
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
 
@@ -580,7 +725,7 @@ namespace core
         ImGui::SameLine();
         if (ImGui::Button("Screenshot", ImVec2(button_width, button_height)))
         {
-            // TODO: Implement screenshot capture
+            screenshotToggle = true;
         }
         if (ImGui::IsItemHovered())
         {
@@ -609,57 +754,54 @@ namespace core
         ImGui::PopFont();
     }
 
-    constexpr float padding = 20.0f;
-    constexpr float row_height = 200.f;
-    constexpr float row_width = 200.f;
-
     void UIHandler::insertGhost()
     {
-        auto& compound = compound_presets[selectedCompound];
+        auto &compound = compound_presets[selectedCompound];
 
         display_universe->clear();
         display_universe->createMolecule(compound.structure, simulation_universe->camera().target);
 
         sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
-        for (const auto& p : compound.structure.positions)
+        for (const auto &p : compound.structure.positions)
         {
             Centroid += p;
         }
         Centroid /= static_cast<float>(compound.structure.positions.size());
 
-        for (auto& p : compound.structure.positions)
+        for (auto &p : compound.structure.positions)
         {
             p -= Centroid;
         }
 
-        auto& display_cam = display_universe->camera();
+        auto &display_cam = display_universe->camera();
         display_cam = simulation_universe->camera();
 
         ghostDisplay = true;
     }
 
-    void UIHandler::handleGhost(window_t& window)
+    void UIHandler::handleGhost(window_t &window)
     {
-        if (!ghostDisplay || selectedCompound == UINT32_MAX) return;
+        if (!ghostDisplay || selectedCompound == UINT32_MAX)
+            return;
 
         ghostColliding = false;
 
-        auto& compound = compound_presets[selectedCompound];
+        auto &compound = compound_presets[selectedCompound];
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
-        auto& cam = simulation_universe->camera();
+        auto &cam = simulation_universe->camera();
 
         ImVec2 mousePos = ImGui::GetMousePos();
 
-        const auto& base_positions = compound.structure.positions;
+        const auto &base_positions = compound.structure.positions;
         for (size_t i = 0; i < base_positions.size(); ++i)
         {
             display_universe->setPosition(i, base_positions[i] + cam.target);
         }
 
         constexpr float minDistance = 1.6f;
-        for (auto& pos : display_universe->positions())
+        for (auto &pos : display_universe->positions())
         {
-            for (auto& other_pos : simulation_universe->positions())
+            for (auto &other_pos : simulation_universe->positions())
             {
                 if (simulation_universe->minImageVec(pos - other_pos).length() <= minDistance)
                 {
@@ -688,8 +830,12 @@ namespace core
         if (ImGui::IsKeyPressed(ImGuiKey_G) && !ghostColliding)
         {
             simulation_universe->createMolecule(compound.structure, cam.target);
-            selectedCompound = UINT32_MAX;
-            ghostDisplay = false;
+
+            if (!ImGui::IsKeyDown(ImGuiKey_LeftShift))
+            {
+                selectedCompound = UINT32_MAX;
+                ghostDisplay = false;
+            }
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_MouseRight))
@@ -704,33 +850,34 @@ namespace core
     {
         auto &comp_sel = localization_json["Simulation"]["universe_ui"]["compound_selector"];
         auto &compounds = localization_json["Compounds"];
-            
+
         const ImVec2 card_size(-FLT_MIN, 0.0f);
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 8));
-        
+
         float avail_width = ImGui::GetContentRegionAvail().x;
         float offset_x = (avail_width - image_size) * 0.5f;
-        if (offset_x > 0) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+        if (offset_x > 0)
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
         ImGui::Image(thumb_textures[compound.id], ImVec2(image_size, image_size));
         ImGui::PopStyleVar();
 
         ImGui::SameLine(11.f);
 
-        ImGui::PushStyleColor(ImGuiCol_FrameBg,        ImVec4(0.8f, 0.8f, 0.8f, 0.0f)); 
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.1f));  
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  ImVec4(1.0f, 1.0f, 1.0f, 0.2f));  
-        ImGui::PushStyleColor(ImGuiCol_Border,         ImVec4(0.5f, 0.5f, 0.5f, 1.0f));                   
-        ImGui::PushStyleColor(ImGuiCol_Text,           ImVec4(1.0f, 1.0f, 1.0f, 1.0f));  
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.8f, 0.8f, 0.8f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.1f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1.0f, 1.0f, 1.0f, 0.2f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,   8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,    ImVec2(4, 4));
-        if (ImGui::ImageButton("##fullviewbutton", icon_textures["magnifying_texture"], ImVec2(30.f, 30.f), sf::Color::White))
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+        if (ImGui::ImageButton("##fullviewbutton", textures["magnifying_texture"], ImVec2(30.f, 30.f), sf::Color::White))
         {
             selectedCompound = compound.id;
-            compoundFullView = true; 
+            compoundFullView = true;
             newCompoundClicked = true;
         }
         ImGui::PopStyleColor(5);
@@ -756,7 +903,8 @@ namespace core
 
             ImVec2 info_size = ImGui::CalcTextSize(info_line.c_str());
             float info_x = (avail_width - info_size.x) * 0.5f;
-            if (info_x > 0) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + info_x);
+            if (info_x > 0)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + info_x);
 
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.8f, 1.0f));
             ImGui::TextUnformatted(info_line.c_str());
@@ -764,13 +912,13 @@ namespace core
         }
 
         ImGui::Dummy(ImVec2(0.0f, 12.0f));
-        
+
         ImGui::PushID(ImGui::GetID(compound.name.c_str()));
 
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
         if (ImGui::Button(comp_sel["button_add"].get<std::string>().c_str(), ImVec2(0.f, 40.0f)))
         {
-            //simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
+            // simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
             compoundSelector = false;
             selectedCompound = compound.id;
             insertGhost();
@@ -787,15 +935,15 @@ namespace core
         auto &full_view = comp_sel["full_view"];
         auto &compounds = localization_json["Compounds"];
 
-        const compound_preset_info& compound = compound_presets[selectedCompound];
-        
+        const compound_preset_info &compound = compound_presets[selectedCompound];
+
         ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.0f, 0.0f, 0.0f, 0.7f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, getMoleculeTypeColor(compound.type));
         ImGui::PushStyleColor(ImGuiCol_Border, getMoleculeTypeColorBorder(compound.type));
-        
+
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 4.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(4, 4));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 4.0f);
 
         ImGui::SetNextWindowSize(ImVec2(400, 600), ImGuiCond_Appearing);
@@ -806,7 +954,7 @@ namespace core
             newCompoundClicked = false;
         }
 
-        if(!ImGui::Begin("##FullView", &compoundFullView, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+        if (!ImGui::Begin("##FullView", &compoundFullView, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
         {
             ImGui::End();
             return;
@@ -831,7 +979,7 @@ namespace core
         {
             ImGui::SetCursorPosX(15);
             ImGui::Image(thumb_textures[compound.id],
-                        ImVec2(360, 360));
+                         ImVec2(360, 360));
         }
         ImGui::EndChild();
 
@@ -839,10 +987,12 @@ namespace core
         {
             ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
             ImGui::TextDisabled(comp_sel["formula"].get<std::string>().c_str());
-            ImGui::SameLine(); ImGui::Text("%s", compound.formula.c_str());
+            ImGui::SameLine();
+            ImGui::Text("%s", compound.formula.c_str());
 
             ImGui::TextDisabled(comp_sel["molar_weight"].get<std::string>().c_str());
-            ImGui::SameLine(); ImGui::Text("%.3f g/mol", compound.molecular_weight);
+            ImGui::SameLine();
+            ImGui::Text("%.3f g/mol", compound.molecular_weight);
 
             ImGui::TextDisabled("SMILES:");
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.8f, 1.0f, 1.0f));
@@ -894,7 +1044,7 @@ namespace core
 
                 if (ImGui::BeginTabItem(compounds["compound_types"][i].get<std::string>().c_str()))
                 {
-                    int columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
+                    int32_t columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
                     columns = std::max(1, columns);
 
                     if (ImGui::BeginTable("CompoundsGrid", columns, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV))
@@ -910,8 +1060,8 @@ namespace core
                             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
                             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.9f));
 
-                            ImGui::BeginChild(ImGui::GetID(compound.name.c_str()), 
-                                            ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+                            ImGui::BeginChild(ImGui::GetID(compound.name.c_str()),
+                                              ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
                             drawCompoundView(compound);
                             ImGui::EndChild();
 
@@ -962,10 +1112,16 @@ namespace core
         simulation_universe->handleCamera();
         simulation_universe->draw(window, window.getWindow(), info);
 
+        if (screenshotToggle)
+        {
+            screenshotWindow(window, "src/resource/screenshots");
+            screenshotToggle = false;
+        }
+
         info.universeBox = false;
         info.opacity = 0.7f;
-        info.color_addition = ghostColliding ? ImVec4(0.5f, 0.f, 0.f, 0.f) : ImVec4(0.f, 0.f, 0.f, 0.f);
-        if (ghostDisplay) 
+        info.color_addition = ghostColliding ? ImVec4(0.8f, 0.f, 0.f, 0.f) : ImVec4(0.f, 0.f, 0.f, 0.f);
+        if (ghostDisplay)
         {
             handleGhost(window);
             display_universe->draw(window, window.getWindow(), info);
@@ -973,9 +1129,9 @@ namespace core
         }
 
         if (!pauseMenuOpen || !showHUD)
-            drawUniverseUI();
+            drawUniverseUI(window);
         else if (pauseMenuOpen)
-            pauseMenu();
+            pauseMenu(window);
 
         runUniverse();
 
@@ -991,7 +1147,34 @@ namespace core
         }
     }
 
-    void UIHandler::pauseMenu()
+    std::string formatTime()
+    {
+        const auto now = std::chrono::system_clock::now();
+
+        std::string time_str = std::format("{:%Y_%m_%d%H_%M}", now);
+        return time_str;
+    }
+
+    void UIHandler::screenshotWindow(window_t &window, std::filesystem::path path)
+    {
+        sf::Texture screenshot{};
+        if (!screenshot.resize(window.getWindow().getSize()))
+        {
+            std::cerr << "[UI HANDLER]: Failed to Screenshot!";
+            return;
+        }
+
+        screenshot.update(window.getWindow());
+        sf::Image image = screenshot.copyToImage();
+
+        std::filesystem::path filepath = path / (formatTime() + ".png");
+        if (!image.saveToFile(filepath))
+        {
+            std::cerr << "[UI HANDLER]: Failed to save Screenshot!";
+        }
+    }
+
+    void UIHandler::pauseMenu(window_t& window)
     {
         auto &pause_menu = localization_json["Simulation"]["pause_menu"];
 
@@ -1004,7 +1187,7 @@ namespace core
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 20));
 
-        ImGui::Begin("pause menu", &pauseMenuOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("##pause menu", &pauseMenuOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
         ImGui::SetWindowFontScale(2.8f);
         const std::string title = pause_menu["title"].get<std::string>();
@@ -1036,6 +1219,16 @@ namespace core
             pauseMenuOpen = false;
         }
 
+        if (ImGui::Button(pause_menu["button_save"].get<std::string>().c_str(), buttonSize))
+        {
+            ImGui::OpenPopup("SavePopup");
+        }
+
+        if (ImGui::Button(pause_menu["button_load"].get<std::string>().c_str(), buttonSize))
+        {
+            savesSelectionOpen = !savesSelectionOpen;
+        }
+
         if (ImGui::Button(pause_menu["button_options"].get<std::string>().c_str(), buttonSize))
         {
             optionsOpen = !optionsOpen;
@@ -1052,21 +1245,40 @@ namespace core
             exitDesktop = true;
         }
 
+        float button_width_popup = 130.0f;
+
+        if (ImGui::BeginPopupModal("SavePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+        {
+            if (ImGui::Button(pause_menu["confirm_save"].get<std::string>().c_str(), ImVec2(button_width_popup, 30)))
+            {
+                simulation_universe->saveScene(sandboxSave);
+                screenshotWindow(window, sandboxSave);
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0.f, 1.f));
+            if (ImGui::Button(pause_menu["cancel"].get<std::string>().c_str(), ImVec2(button_width_popup, 30)))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(2);
+
+            ImGui::EndPopup();
+        }
+
         if (ImGui::BeginPopupModal("ConfirmExitToMenu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
         {
-            float button_width = 130.0f;
-
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetWindowPos({center.x - button_width * 1.5f, center.y - button_width});
+            ImGui::SetWindowPos({center.x - button_width_popup * 1.5f, center.y - button_width_popup});
             ImGui::TextWrapped(pause_menu["warning"].get<std::string>().c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - (button_width * 2 + ImGui::GetStyle().ItemSpacing.x)) * 0.5f);
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - (button_width_popup * 2 + ImGui::GetStyle().ItemSpacing.x)) * 0.5f);
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.f, 1.f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0.f, 1.f));
-            if (ImGui::Button(pause_menu["true_exit"].get<std::string>().c_str(), ImVec2(button_width, 30)))
+            if (ImGui::Button(pause_menu["true_exit"].get<std::string>().c_str(), ImVec2(button_width_popup, 30)))
             {
                 pauseMenuOpen = false;
                 compoundFullView = false;
@@ -1083,7 +1295,7 @@ namespace core
 
             ImGui::SameLine();
 
-            if (ImGui::Button(pause_menu["cancel"].get<std::string>().c_str(), ImVec2(button_width, 30)))
+            if (ImGui::Button(pause_menu["cancel"].get<std::string>().c_str(), ImVec2(button_width_popup, 30)))
             {
                 exitDesktop = false;
                 ImGui::CloseCurrentPopup();
@@ -1093,13 +1305,18 @@ namespace core
         }
 
         ImGui::PopStyleVar();
-        
+
         ImGui::Dummy(ImVec2(0.0f, 20.0f));
         ImGui::TextWrapped(pause_menu["hint_esc"].get<std::string>().c_str());
 
         if (optionsOpen)
         {
             drawOptions();
+        }
+
+        if (savesSelectionOpen)
+        {
+            drawSavedSimulations();
         }
 
         ImGui::End();
@@ -1121,5 +1338,14 @@ namespace core
             ImGui::End();
             return;
         }
+    }
+
+    // Saving
+
+    nlohmann::json UIHandler::save()
+    {
+        nlohmann::json UI_json{};
+
+        return UI_json;
     }
 } // namespace core

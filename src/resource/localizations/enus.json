@@ -5,6 +5,7 @@
     "subtitle": "Molecular Dynamics Simulator",
     "button_tutorials": "Tutorials",
     "button_scenarios": "Scenarios",
+    "button_load": "Load Simulation",
     "button_sandbox": "Sandbox Mode",
     "button_challenges": "Challenges",
     "button_options": "Options",
@@ -65,6 +66,11 @@
     "Scene_Selection":
     {
       "title": "Scene Selection"
+    },
+    
+    "Simulation_Loading":
+    {
+      "title": "Saved Simulations"
     }
   },
 
@@ -75,9 +81,11 @@
       "Water",
       "Ammonia",
       "Carbon Dioxide",
+      "Oxygen",
       "Ozone",
       "Formaldehyde",
       "Methane",
+      "Carbon Monoxide",
       "Ethane",
       "Ethanol",
       "Benzene",
@@ -89,6 +97,10 @@
       "Alanine",
       "Beta-D-Glucose",
       "Palmitic Acid",
+      "Capric Acid",
+      "Oleic Acid",
+      "Cholesterol",
+      "ATP",
       "Aspirin",
       "Caffeine",
       "Polystyrene (short chain)",
@@ -97,7 +109,8 @@
       "Nitrate",
       "Ammonium",
       "Sodium Chloride",
-      "Picene"
+      "Picene",
+      "Octasulfur"
     ],
 
     "compound_types":
@@ -116,10 +129,12 @@
       "Carbon Dioxide": "Carbon dioxide (CO2) is a compound made of one carbon atom bonded to two oxygen atoms, naturally present in the atmosphere and essential to life processes. It plays a key role in photosynthesis. is a greenhouse gas.",
       "Ozone": "Ozone (O3) is a triatomic molecule composed of three oxygen atoms. It occurs naturally in the Earth's atmosphere, where it forms the ozone layer that protects living organisms by absorbing harmful ultraviolet radiation from the Sun.",
       "Methane": "Methane (CH4), composed of one carbon atom bonded to four hydrogen atoms, is the primary component of natural gas and a key energy source. It is a potent greenhouse gas.",
+      "Carbon Monoxide": "Carbon monoxide (CO) is a colorless, odorless, and tasteless gas composed of one carbon atom bonded to one oxygen atom. It is produced by the incomplete combustion of carbon-containing fuels such as wood, coal, gasoline, and natural gas. Carbon monoxide binds strongly to hemoglobin in the blood, reducing oxygen transport and making it highly toxic to humans and animals.",
       "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
       "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
+      "Oxygen": "Oxygen (O2) is a diatomic molecule essential for life, composed of two oxygen atoms. It is a colorless, odorless gas that makes up about 21% of Earth's atmosphere. Oxygen is vital for cellular respiration in most organisms and supports combustion. While necessary for survival, high concentrations can be toxic, and low levels can cause hypoxia.",
       "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C60",
       "Ammonia": "Ammonia (NH3) is an inorganic compound of nitrogen and hydrogen, a colorless gas with a pungent odor. It is essential in fertilizers, serves as a building block for many chemicals, and plays a role in biological processes like protein metabolism.",
       "Formaldehyde": "Formaldehyde (CH2O) is the simplest aldehyde, a colorless, pungent gas that readily polymerizes. It is widely used in resins, disinfectants, preservatives, and as a precursor in chemical synthesis, though it is toxic and carcinogenic in high exposure.",
@@ -129,6 +144,10 @@
       "Alanine": "Alanine (C3H7NO2) is a non-essential alpha-amino acid with a methyl side chain, used in protein biosynthesis. It plays key roles in metabolism, including the glucose-alanine cycle, and serves as an energy source for muscles and the brain.",
       "Beta-D-Glucose": "Beta-D-glucose (C6H12O6) is a monosaccharide and the beta anomer of glucose, a primary energy source in biology. It forms the building block of cellulose in plants and is crucial in carbohydrate metabolism and energy production.",
       "Palmitic Acid": "Palmitic acid (C16H32O2) is a saturated long-chain fatty acid, abundant in palm oil, animal fats, and human tissues. It is a major component of cell membranes and used in soaps, cosmetics, and food production.",
+      "Capric Acid": "Capric acid (C10H20O2), also known as decanoic acid, is a saturated fatty acid with a 10-carbon chain. It occurs naturally in coconut oil, palm kernel oil, and in the milk of cows and goats. Capric acid is a white crystalline solid with a melting point around 31 °C and a boiling point near 270 °C. It has a characteristic odor reminiscent of goats, from which its name derives (Latin 'caper/capra').",
+      "Oleic Acid": "Oleic acid (C18H34O2) is a monounsaturated fatty acid with an 18-carbon chain and one cis double bond at the ninth carbon (omega-9). It is the most abundant fatty acid in nature, found in olive oil, canola oil, and animal fats. Oleic acid is a colorless to pale yellow liquid at room temperature, insoluble in water but soluble in organic solvents.",
+      "Cholesterol": "Cholesterol (C27H46O) is a sterol essential for cell membranes and hormone production. While vital, excess cholesterol in the blood can lead to plaque buildup in arteries, increasing the risk of heart disease and stroke.",
+      "ATP": "Adenosine triphosphate (ATP, C10H16N5O13P3) is a nucleotide composed of adenine, ribose, and three phosphate groups. It is the primary energy carrier in living cells, storing and transferring energy for biological processes such as muscle contraction, nerve impulse transmission, and biosynthesis. ATP is continuously regenerated from ADP and phosphate during cellular respiration and photosynthesis, making it essential for life.",
       "Aspirin": "Aspirin (C9H8O4), or acetylsalicylic acid, is a synthetic derivative of salicylic acid used as an analgesic, anti-inflammatory, antipyretic, and antiplatelet agent. It inhibits cyclooxygenase enzymes to reduce pain, fever, and blood clotting.",
       "Caffeine": "Caffeine (C8H10N4O2) is a methylxanthine alkaloid, a bitter white crystalline compound acting as a central nervous system stimulant. Found in coffee, tea, and cocoa, it blocks adenosine receptors to promote alertness.",
       "Polystyrene (short chain)": "Polystyrene (short chain, (C8H8)n) is a synthetic aromatic hydrocarbon polymer derived from styrene monomers. In short chains, it forms oligomers used in coatings, adhesives, and as precursors for longer-chain materials like packaging and insulation.",
@@ -137,7 +156,8 @@
       "Nitrate": "Nitrate (NO3(-)) is a polyatomic anion with a central nitrogen atom bonded to three oxygen atoms in trigonal planar geometry. It is key in fertilizers, explosives, and biological processes, serving as a nitrogen source for plants.",
       "Ammonium": "Ammonium (NH4+) is a positively charged polyatomic ion formed when ammonia (NH3) accepts a proton. It plays a central role in nitrogen metabolism, serving as an intermediate in the assimilation of nitrogen by plants and microorganisms. Ammonium salts are widely used in fertilizers, explosives, and industrial processes, and in aqueous solutions it contributes to acid-base balance.",
       "Sodium Chloride": "Sodium chloride (NaCl), commonly known as table salt, is an ionic compound composed of sodium (Na+) and chloride (Cl-) ions. It is essential for life, playing a critical role in maintaining fluid balance, nerve transmission, and muscle function in living organisms. Beyond its biological importance, sodium chloride is widely used as a seasoning and preservative in food.",
-      "Picene": "Picene (C22H14) is a polycyclic aromatic hydrocarbon composed of five benzene rings fused in a zigzag arrangement, belonging to the acene family. It is a crystalline solid with low solubility in water, studied for its electronic and optical properties."
+      "Picene": "Picene (C22H14) is a polycyclic aromatic hydrocarbon composed of five benzene rings fused in a zigzag arrangement, belonging to the acene family. It is a crystalline solid with low solubility in water, studied for its electronic and optical properties.",
+      "Octasulfur": "Octasulfur (S8) is the most stable and common allotrope of elemental sulfur, consisting of eight sulfur atoms arranged in a puckered ring structure. It is a bright yellow crystalline solid, insoluble in water but soluble in organic solvents. Octasulfur occurs naturally in volcanic regions and is widely used in the production of sulfuric acid, fertilizers, rubber vulcanization, and various industrial processes."
     }
   },
 
@@ -156,7 +176,7 @@
       "tooltip_pause": "Pause Simulation",
       "tooltip_screenshot": "Take a screenshot",
       "tooltip_compound_selector": "Add Compound",
-      "tooltip_emplace_molecule": "Press (G) to emplace Molecule, (Right Mouse) to cancel.",
+      "tooltip_emplace_molecule": "Press (G) to emplace Molecule, \n (Right Mouse) to cancel. \n Hold (Shift) to continue placing",
       "tooltip_collision_good": "Good Position",
       "tooltip_collision_bad": "Collision Detected!",
 
@@ -183,13 +203,16 @@
       "title": "Pause Menu",
       "button_resume": "Resume Simulation",
       "button_restart": "Restart Simulation",
+      "button_save": "Save Simulation",
+      "button_load": "Load Simulation",
       "button_options": "Options",
       "button_exit_menu": "Exit to Menu",
       "warning": "Warning! All unsaved Progress will be lost!",
       "true_exit": "Exit",
       "cancel": "Cancel",
       "button_exit_desktop": "Exit to Desktop",
-      "hint_esc": "Press ESC again to resume"
+      "hint_esc": "Press ESC again to resume",
+      "confirm_save": "Save"
     }
   }
 }

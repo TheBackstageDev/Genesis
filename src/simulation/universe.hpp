@@ -43,7 +43,7 @@ namespace sim
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
-            sf::Vector3f box{CELL_CUTOFF, CELL_CUTOFF, CELL_CUTOFF};
+            sf::Vector3f box{CELL_CUTOFF * 2.f, CELL_CUTOFF * 2.f, CELL_CUTOFF * 2.f};
         };
 
         class universe
@@ -91,10 +91,10 @@ namespace sim
             void highlightAtom(core::window_t& window, size_t i);
             void highlightBond(core::window_t& window, size_t i, size_t j);
 
-            void saveScene(const std::filesystem::path path);
+            void saveScene(const std::filesystem::path path, const std::string name = "");
             void loadScene(const std::filesystem::path path);
 
-            void saveAsVideo(const std::filesystem::path path);
+            void saveAsVideo(const std::filesystem::path path, const std::string name = "");
             void saveFrame();
 
             void clear()

@@ -1,6 +1,8 @@
 #include "application.hpp"
 
 #include <imgui-SFML.h>
+#include <iostream>
+#include <fstream>
 
 namespace core
 {
@@ -59,6 +61,7 @@ namespace core
 
     application::~application()
     {
+        save();
         ImGui::SFML::Shutdown(window->getWindow());
     }
 
@@ -81,6 +84,24 @@ namespace core
             
             ImGui::SFML::Render(window->getWindow());
             window->display();
+        }
+    }
+
+    void application::save()
+    {
+        nlohmann::json app_save{};
+
+        std::filesystem::path path{"src/resource"};
+
+        try
+        {
+            std::fstream file{path};
+
+            file << app_save.dump();
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << "[APPLICATION]: " << e.what() << '\n';
         }
     }
 } // namespace core
