@@ -2,100 +2,120 @@
 #include <SFML/Graphics.hpp>
 #include "simulation/constants.hpp"
 #include "core/window.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
+#include <algorithm>
 #include <cmath>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_INTRINSICS
+#define GLM_FORCE_ALIGNED_GENTYPES
 
 namespace core
 {
     struct camera_t
     {
-        sf::Vector3f target{0, 0, 0};      // look-at point
-        float distance = 30.f;            // eye distance from target
-        float azimuth = 45.f;              // horizontal angle (deg)
-        float elevation = 25.f;            // vertical angle (deg)
-        float fov = 50.f;                  // field of view (deg)
-        float nearPlane = 1.f;
-        float farPlane = 1000.f;
+        glm::vec3 target{0.0f, 0.0f, 0.0f};  // Point the camera looks at
+        float distance = 30.0f;             // Distance from target
+        float azimuth = 45.0f;              // Horizontal rotation (degrees)
+        float elevation = 25.0f;            // Vertical rotation (degrees), -89 to +89
+        float fov = 50.0f;                  // Field of view in degrees
+        float nearPlane = 1.0f;
+        float farPlane = 1000.0f;
 
-        sf::Vector3f eye() const
+        glm::vec3 eye() const
         {
-            float x = distance * cos(elevation * RADIAN) * sin(azimuth * RADIAN);
-            float y = distance * cos(elevation * RADIAN) * cos(azimuth * RADIAN);
-            float z = distance * sin(elevation * RADIAN);
-            return target + sf::Vector3f{x, y, z};
+            const float radAz = glm::radians(azimuth);
+            const float radEl = glm::radians(elevation);
+
+            const float cosEl = std::cos(radEl);
+            const float sinEl = std::sin(radEl);
+
+            const float x = distance * cosEl * std::sin(radAz);
+            const float y = distance * cosEl * std::cos(radAz);
+            const float z = distance * sinEl;
+
+            return target + glm::vec3(x, y, z);
         }
 
-        void rotateAzimuth(float deltaDegrees) {
+        void rotateAzimuth(float deltaDegrees)
+        {
             azimuth += deltaDegrees;
-            azimuth = fmod(azimuth, 360.f);
-            if (azimuth < 0.f) azimuth += 360.f;
+
+            if (azimuth >= 360.0f) azimuth -= 360.0f;
+            if (azimuth < 0.0f)    azimuth += 360.0f;
         }
 
-        void rotateElevation(float deltaDegrees) {
+        void rotateElevation(float deltaDegrees)
+        {
             elevation += deltaDegrees;
-            elevation = std::clamp(elevation, -89.f, 89.f);
-
-            if (elevation == 89.f)
-                elevation = -89.f;
+            elevation = std::clamp(elevation, -89.0f, 89.0f);
         }
 
-        void rotateAroundTarget(float azimuthDelta, float elevationDelta, float sensitivity = 1.f) {
-            rotateAzimuth(azimuthDelta * sensitivity);
-            rotateElevation(elevationDelta * sensitivity);
+        void rotateAroundTarget(float deltaAzimuth, float deltaElevation, float sensitivity = 1.0f)
+        {
+            rotateAzimuth(deltaAzimuth * sensitivity);
+            rotateElevation(deltaElevation * sensitivity);
         }
 
         void setSideView(char axis)
         {
             switch (axis)
             {
-                case 'X': azimuth = 0.f;   elevation = 0.f;   break;
-                case 'Y': azimuth = 90.f;  elevation = 0.f;   break;
-                case 'Z': azimuth = 45.f;  elevation = 90.f;  break;
+                case 'X': azimuth = 0.0f;   elevation = 0.0f;   break;  // +X view
+                case 'Y': azimuth = 90.0f;  elevation = 0.0f;   break;  // +Y view
+                case 'Z': azimuth = 45.0f;  elevation = 89.9f;  break;  // Top-down (+Z)
+                default: break;
             }
         }
 
-        sf::Vector2f project(const sf::Vector3f& p, float w, float h) const
+        sf::Vector2f project(const glm::vec3& worldPos, float viewportWidth, float viewportHeight) const
         {
-            sf::Vector3f eyePos = eye();
-            sf::Vector3f view = p - eyePos;
-            sf::Vector3f forward = distance == 0.f ? sf::Vector3f(1.f, 0.f, 0.f) : (target - eyePos).normalized();
-            sf::Vector3f up{0, 0, 1};
-            sf::Vector3f right = forward.cross(up).normalized();
-            up = right.cross(forward).normalized();
+            const glm::vec3 eyePos = eye();
+            const glm::vec3 toPoint = worldPos - eyePos;
 
-            float depth = view.dot(forward);
+            const glm::vec3 forward = glm::normalize(target - eyePos);
+            if (forward == glm::vec3(0.0f))
+                return {-9999.f, -9999.f};
+
+            const float depth = glm::dot(toPoint, forward);
             if (depth <= nearPlane || depth >= farPlane)
                 return {-9999.f, -9999.f};
 
-            float f = 1.0f / std::tan(fov * 0.5f * M_PI / 180.0f);
-            float aspect = w / h;
+            const glm::vec3 worldUp(0.0f, 0.0f, 1.0f);
+            glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
+            glm::vec3 up = glm::cross(right, forward);
 
-            float px = view.dot(right) * f / depth;
-            float py = view.dot(up)    * f / depth;
+            const float projX = glm::dot(toPoint, right);
+            const float projY = glm::dot(toPoint, up);
 
-            float x = (px + 1.0f) * 0.5f * w;
-            float y = (1.0f - py) * 0.5f * h;
+            const float f = 1.0f / std::tan(glm::radians(fov) * 0.5f);
+            const float aspect = viewportWidth / viewportHeight;
 
-            return {x, y};
+            const float ndcX = projX * f / depth;
+            const float ndcY = projY * f / depth;
+
+            const float screenX = (ndcX + 1.0f) * 0.5f * viewportWidth;
+            const float screenY = (1.0f - ndcY) * 0.5f * viewportHeight; 
+
+            return {screenX, screenY};
         }
 
-        sf::Transform getViewMatrix() const
+        glm::mat4 getViewMatrix() const
         {
-            sf::Vector3f e  = eye();
-            sf::Vector3f f  = (target - e).normalized();
-            sf::Vector3f up = sf::Vector3f(0, 0, 1);
-            sf::Vector3f r  = f.cross(up).normalized();
-            up = r.cross(f);
+            const glm::vec3 e = eye();
+            const glm::vec3 f = glm::normalize(target - e);
+            const glm::vec3 u = glm::vec3(0.0f, 0.0f, 1.0f);
+            const glm::vec3 r = glm::normalize(glm::cross(f, u));
+            const glm::vec3 actualUp = glm::cross(r, f);
 
-            sf::Transform rotation(
-                r.x, r.y, r.z,
-                up.x, up.y, up.z,
-                -f.x, -f.y, -f.z
-            );
+            glm::mat4 view(1.0f);
+            view[0] = glm::vec4(r, 0.0f);
+            view[1] = glm::vec4(actualUp, 0.0f);
+            view[2] = glm::vec4(-f, 0.0f);
+            view[3] = glm::vec4(e, 1.0f);
 
-            sf::Transform translation;
-            translation.translate({-r.dot(e), -up.dot(e)});
-
-            return translation * rotation;
+            return glm::inverse(view);
         }
     };
 }

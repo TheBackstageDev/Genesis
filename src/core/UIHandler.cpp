@@ -869,7 +869,7 @@ namespace core
         auto &compound = compound_presets[selectedCompound];
 
         display_universe->clear();
-        display_universe->createMolecule(compound.structure, simulation_universe->camera().target);
+        display_universe->createMolecule(compound.structure, sf::Vector3f(simulation_universe->camera().target.x, simulation_universe->camera().target.y, simulation_universe->camera().target.z));
 
         sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
         for (const auto &p : compound.structure.positions)
@@ -905,7 +905,7 @@ namespace core
         const auto &base_positions = compound.structure.positions;
         for (size_t i = 0; i < base_positions.size(); ++i)
         {
-            display_universe->setPosition(i, base_positions[i] + cam.target);
+            display_universe->setPosition(i, base_positions[i] + sf::Vector3f(cam.target.x, cam.target.y, cam.target.z));
         }
 
         constexpr float minDistance = 1.6f;
@@ -939,7 +939,7 @@ namespace core
 
         if (ImGui::IsKeyPressed(ImGuiKey_G) && !ghostColliding)
         {
-            simulation_universe->createMolecule(compound.structure, cam.target);
+            simulation_universe->createMolecule(compound.structure, sf::Vector3f(cam.target.x, cam.target.y, cam.target.z));
 
             if (!ImGui::IsKeyDown(ImGuiKey_LeftShift))
             {

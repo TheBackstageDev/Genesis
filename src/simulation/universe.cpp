@@ -70,8 +70,9 @@ namespace sim
                 const sf::Vector3f &a = corners[i];
                 const sf::Vector3f &b = corners[j];
 
-                sf::Vector3f camToA = a - cam.eye();
-                sf::Vector3f camToB = b - cam.eye();
+                glm::vec3 cam_eye = cam.eye();
+                sf::Vector3f camToA = a - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
+                sf::Vector3f camToB = b - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
 
                 float dot = camToA.normalized().dot(camToB.normalized());
                 const float THRESHOLD = 0.3f;
@@ -89,7 +90,7 @@ namespace sim
         {
             std::vector<int32_t> drawOrder(atoms.size());
             std::iota(drawOrder.begin(), drawOrder.end(), 0);
-            sf::Vector3f eye = cam.eye();
+            sf::Vector3f eye = sf::Vector3f(cam.eye().x, cam.eye().y, cam.eye().z);
 
             std::sort(drawOrder.begin(), drawOrder.end(),
                       [&](int32_t a, int32_t b)
@@ -130,7 +131,8 @@ namespace sim
                 if (atoms[drawOrder[i]].ZIndex == 1)
                     drawHydrogenBond(window, target, drawOrder[i]);
 
-                float camDistance = (pos(drawOrder[i]) - cam.eye()).length();
+                glm::vec3 cam_eye = cam.eye();
+                float camDistance = (pos(drawOrder[i]) - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
 
                 float T = calculateAtomTemperature(drawOrder[i]);
                 atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, target, info);
@@ -230,7 +232,8 @@ namespace sim
 
                         col.a = static_cast<uint8_t>(255 * opacity);
 
-                        float distance = (worldPos - cam.eye()).length();
+                        glm::vec3 cam_eye = cam.eye();
+                        float distance = (worldPos - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
                         float size = step * GRID / distance;
 
                         blobs.emplace_back(screen, distance, size, col);
@@ -275,14 +278,15 @@ namespace sim
                 const sf::Vector3f &pCentral = pos(bond.centralAtom); // pB
                 const sf::Vector3f &pBonded = pos(bond.bondedAtom);   // pA
 
-                sf::Vector2f s1 = cam.project(pCentral, dimensions.x, dimensions.y); // center
-                sf::Vector2f s2 = cam.project(pBonded, dimensions.x, dimensions.y);  // end
+                sf::Vector2f s1 = cam.project(glm::vec3(pCentral.x, pCentral.y, pCentral.z), dimensions.x, dimensions.y); // center
+                sf::Vector2f s2 = cam.project(glm::vec3(pBonded.x, pBonded.y, pBonded.z), dimensions.x, dimensions.y);  // end
 
                 if (s1.x <= -9999 || s2.x <= -9999)
                     continue;
                 if ((pCentral - pBonded).length() > 5.f)
                     continue;
-                if ((pCentral - cam.eye()).length() > 200.f)
+                glm::vec3 cam_eye = cam.eye();
+                if ((pCentral - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length() > 200.f)
                     continue;
 
                 sf::Vector2f dir = s2 - s1;
@@ -294,7 +298,7 @@ namespace sim
                 sf::Vector2f perp{-dir.y, dir.x};
 
                 uint8_t lines = static_cast<uint8_t>(bond.type);
-                float distance = (pCentral - cam.eye()).length();
+                float distance = (pCentral - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
 
                 float shrink = 5.f / distance;   // pixels
                 float spacing = 10.f / distance; // pixels between lines
@@ -331,7 +335,8 @@ namespace sim
             sf::Vector3f worldPos = pos(i);
             sf::Vector2f currentPos = project(window, worldPos);
 
-            float distance = (pos(i) - cam.eye()).length();
+            glm::vec3 cam_eye = cam.eye();
+            float distance = (pos(i) - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
 
             sf::CircleShape circle(ringRadius / distance);
             circle.setPosition(currentPos - sf::Vector2f(ringRadius / distance, ringRadius / distance));
@@ -374,7 +379,8 @@ namespace sim
                 if (normal.lengthSquared() > 0.0f) normal /= normal.length();
                 else normal = sf::Vector3f(0.0f, 0.0f, 1.0f); 
 
-                float distance = (center - cam.eye()).length();
+                glm::vec3 cam_eye = cam.eye();
+                float distance = (center - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
                 if (distance < 0.1f) continue;
 
                 float scaledRadius = visualRadius * radius3D;
@@ -582,8 +588,9 @@ namespace sim
                             if (a.x < -1000.f || b.x < -1000.f)
                                 continue;
 
-                            sf::Vector3f camToA = c[edges[e][0]] - cam.eye();
-                            sf::Vector3f camToB = c[edges[e][1]] - cam.eye();
+                            glm::vec3 cam_eye = cam.eye();
+                            sf::Vector3f camToA = c[edges[e][0]] - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
+                            sf::Vector3f camToB = c[edges[e][1]] - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
                             if (camToA.normalized().dot(camToB.normalized()) < 0.2f)
                                 continue;
 
@@ -1965,7 +1972,7 @@ namespace sim
         sf::Vector2f universe::project(core::window_t &window, const sf::Vector3f &p) const
         {
             auto size = window.getWindow().getView().getSize();
-            return cam.project(p, size.x, size.y);
+            return cam.project(glm::vec3{p.x, p.y, p.z}, size.x, size.y);
         }
 
         void universe::handleCamera()
@@ -1987,15 +1994,15 @@ namespace sim
 
                 ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
             }
+            
+            glm::vec3 cam_eye = cam.eye();
+            glm::vec3 forward = glm::normalize(cam.target - cam_eye);
+            glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 0, 1)));
+            glm::vec3 up = glm::normalize(glm::cross(right, forward));
 
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
             {
                 ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 0.0f);
-
-                sf::Vector3f forward = (cam.target - cam.eye()).normalized();
-                sf::Vector3f right = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
-                sf::Vector3f up = right.cross(forward).normalized();
-
                 float panSpeed = cam.distance * 0.002f;
 
                 cam.target += right * (-dragDelta.x * panSpeed);
@@ -2015,10 +2022,6 @@ namespace sim
 
             ImVec2 ioMousePos = ImGui::GetMousePos();
             (void)ioMousePos; // silence unused warning
-
-            sf::Vector3f forward = (cam.target - cam.eye()).normalized();
-            sf::Vector3f right = forward.cross(sf::Vector3f(0, 0, 1)).normalized();
-            sf::Vector3f up = right.cross(forward).normalized();
 
             float moveSpeed = 0.5f;
 
