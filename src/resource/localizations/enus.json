@@ -70,7 +70,12 @@
     
     "Simulation_Loading":
     {
-      "title": "Saved Simulations"
+      "title": "Saved Simulations",
+      "button_load": "Load Simulation",
+      "button_delete": "Delete Simulation",
+      "true_delete": "Delete",
+      "cancel": "Cancel",
+      "warning": "Warning! This Simulation will be forever lost! Procced?"
     }
   },
 
@@ -207,6 +212,7 @@
       "button_load": "Load Simulation",
       "button_options": "Options",
       "button_exit_menu": "Exit to Menu",
+      "simulation_name": "Simulation Name:",
       "warning": "Warning! All unsaved Progress will be lost!",
       "true_exit": "Exit",
       "cancel": "Cancel",

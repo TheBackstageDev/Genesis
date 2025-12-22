@@ -40,6 +40,7 @@ namespace sim
             bool wall_collision = false;
             bool isothermal = true;
             bool render_water = true;
+            bool HMassRepartitioning = false;
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
@@ -296,6 +297,7 @@ namespace sim
             bool isothermal = true;
             bool render_water = true;
             bool wall_collision = false;
+            bool HMassRepartitioning = true;
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;

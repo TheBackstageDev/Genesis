@@ -689,7 +689,7 @@ namespace sim
                         {
                             normal = normal.normalized();
 
-                            sf::Vector3f newDir = rotateDirection(dir, normal, -30.0f * RADIAN);
+                            sf::Vector3f newDir = rotateDirection(dir, normal, -40.f * RADIAN);
                             dir = newDir;
                         }
                     }
@@ -700,7 +700,7 @@ namespace sim
                             sf::Vector3f ringNormal(0, 0, 1);
                             sf::Vector3f axis = positions[A] - positions[B];
                             if (axis.length() > 1e-6f) axis = axis.normalized();
-                            dir = rotateDirection(axis, ringNormal, -30.0f * RADIAN);
+                            dir = rotateDirection(axis, ringNormal, -40.f * RADIAN);
                         }
                     }
                 }
@@ -887,9 +887,6 @@ namespace sim
                 sf::Vector3f dir = baseDir; 
                 const sf::Vector3f ringNormal(0, 0, 1);
 
-                if (nH == 3)
-                    dir = rotateDirection(dir, axis, -90.f * RADIAN);
-
                 if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX && ringDir.count(sub.mainAtomIdx) > 0)
                     dir = rotateDirection(dir, axis, 120.f * h * RADIAN);
                 else if (nH == 1 && chirality != 0)
@@ -945,7 +942,10 @@ namespace sim
                 else if (nH == 2) 
                     dir = rotateDirection(dir, ringNormal, M_PI * h);
                 else if (nH == 3) 
+                {
+                    dir = rotateDirection(dir, ringNormal, -90.f * RADIAN);
                     dir = rotateDirection(dir, ringNormal, 90.f * h * RADIAN);
+                }
                 else if (nH == 4)
                 {
                     const float cosT = -1.0f / 3.0f;
@@ -1018,10 +1018,10 @@ namespace sim
 
         if (nAtoms.size() <= 3) return;
 
-        const int32_t max_iters = 30 * static_cast<int32_t>(nAtoms.size());
+        const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
         constexpr float   repulse     = 2.2f;
-        constexpr float   k_angle     = 1.2f;
+        constexpr float   k_angle     = 0.8f;
         constexpr float   k_spring    = 5.0f;
         constexpr float   convergence = 0.01f;
 

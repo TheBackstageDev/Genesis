@@ -172,7 +172,7 @@ namespace core
         // Universe
 
         void drawUniverse(window_t& window);
-        void screenshotWindow(window_t& window, std::filesystem::path path);
+        void screenshotWindow(window_t& window, std::filesystem::path path, std::string name = "");
 
         // Callback
 
@@ -224,9 +224,12 @@ namespace core
         std::vector<scenario_info> backgroundDisplays;
         std::vector<scenario_info> savedSandbox;
 
+        void drawScene(scenario_info& info);
         void drawSceneSelection();
         void drawSceneFrame(scenario_info& info, int32_t id);
         void drawSandboxCreation();
+
+        void drawSandboxSave(scenario_info& info);
         void drawSavedSimulations();
         void drawOptions();
 
@@ -237,6 +240,8 @@ namespace core
         bool challengeSelectionOpen = false;
         bool challengeViewOpen = false;
         bool optionsOpen = false;
+
+        bool savedSimulation = false;
 
         // Universe
 

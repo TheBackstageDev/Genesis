@@ -69,7 +69,12 @@
 
     "Simulation_Loading":
     {
-      "title": "Simulações Salvas"
+      "title": "Simulações Salvas",
+      "button_load": "Carregar Simulação",
+      "button_delete": "Deletar Simulação",
+      "true_delete": "Deletar",
+      "cancel": "Cancelar",
+      "warning": "Alerta! Essa simulação será perdida para sempre. Prosseguir?"
     }
   },
 
@@ -206,6 +211,7 @@
       "button_load": "Carregar a Simulação",
       "button_options": "Opções",
       "button_exit_menu": "Sair para o Menu",
+      "simulation_name": "Nome da Simulação:",
       "warning": "Aviso! Todo progresso não salvo será Perdido!",
       "true_exit": "Sair",
       "cancel": "Cancelar",

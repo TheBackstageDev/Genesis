@@ -18,7 +18,8 @@ namespace sim
             : box(create_info.box), react(create_info.reactive),
               gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
-              render_water(create_info.render_water), log_flags(create_info.log_flags)
+              render_water(create_info.render_water), HMassRepartitioning(create_info.HMassRepartitioning), 
+              log_flags(create_info.log_flags)
         {
             if (react)
                 initReaxParams();
@@ -613,6 +614,12 @@ namespace sim
             newAtom.chirality = chirality;
             newAtom.bondCount = 0;
 
+            if (HMassRepartitioning)
+            {
+                if (ZIndex == 1) newAtom.mass *= 3.f;
+                if (ZIndex > 5) newAtom.mass -= 3.f;
+            }
+
             atoms.emplace_back(std::move(newAtom));
             data.q.emplace_back(ZIndex - numElectron);
             data.fx.resize(atoms.size());
@@ -743,6 +750,7 @@ namespace sim
                     const def_bond &db = structure.bonds[b];
                     int32_t central = baseAtomIndex + db.centralAtomIdx;
                     int32_t bonded = baseAtomIndex + db.bondingAtomIdx;
+
                     createBond(bonded, central, db.type);
                 }
 

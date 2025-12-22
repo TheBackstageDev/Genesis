@@ -76,6 +76,7 @@ namespace core
 
                         scenario_info nInfo{};
                         nInfo.file = entry;
+                        nInfo.title = entry.path().filename().replace_extension("").string();
 
                         std::filesystem::path videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
                         if (std::filesystem::directory_entry(videoPath).exists())
@@ -85,6 +86,8 @@ namespace core
                         }
 
                         nInfo.is_sandbox = true;
+
+                        savedSandbox.emplace_back(std::move(nInfo));
 
                         std::cout << "Loaded saved scene: " << entry.path() << std::endl;
                     }
@@ -255,8 +258,7 @@ namespace core
                 "[NH4+]",
                 "[Na+].[Cl-]",
                 "C1=CC=CC2=C1C=CC3=C2C=CC4=C3C=CC5=C4C=CC=C5",
-                "S1SSSSSSS1"
-            };
+                "S1SSSSSSS1"};
 
         std::array<std::string, num_compounds> formulas = {
             "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
@@ -299,7 +301,7 @@ namespace core
             type::ION,          // Ammonium
             type::ION,          // Sodium Chloride
             type::ORGANIC,      // Tetracene
-            type::INORGANIC     // Octasulfur    
+            type::INORGANIC     // Octasulfur
         };
 
         for (int32_t i = 0; i < num_compounds; ++i)
@@ -444,21 +446,128 @@ namespace core
     {
     }
 
+    static std::filesystem::path selected_for_delete;
+
+    void UIHandler::drawSandboxSave(scenario_info &info)
+    {
+        const float image_save_size = image_size;
+        const sf::Texture *thumbnail = &placeholder_texture;
+
+        std::string thumb_key = info.title + ".png";
+        if (textures.count(thumb_key))
+            thumbnail = &textures.at(thumb_key);
+
+        float avail_width = ImGui::GetContentRegionAvail().x;
+        float offset_x = (avail_width - image_save_size) * 0.5f;
+        if (offset_x > 0)
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+
+        ImGui::Image(*thumbnail, ImVec2(image_save_size, image_save_size));
+
+        ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+        ImGui::PushFont(bold);
+        float title_width = ImGui::CalcTextSize(info.title.c_str()).x;
+        ImGui::SetCursorPosX((avail_width - title_width) * 0.7f);
+        ImGui::Text("%s", info.title.c_str());
+        ImGui::PopFont();
+
+        auto &sim_loading = localization_json["Menu"]["Simulation_Loading"];
+        float button_width = avail_width - 40.0f;
+
+        ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
+        if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
+        {
+            simulation_universe = std::make_unique<sim::fun::universe>(info.file);
+            savesSelectionOpen = false;
+            pauseMenuOpen = false;
+            paused_simulation = false;
+            setState(application_state::APP_STATE_SIMULATION);
+        }
+
+        ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.15f, 0.15f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.9f, 0.2f, 0.2f, 1.0f));
+        if (ImGui::Button(sim_loading["button_delete"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
+        {
+            selected_for_delete = info.file;
+            ImGui::OpenPopup("ConfirmDelete");
+        }
+        ImGui::PopStyleColor(3);
+
+        float button_width_popup = 130.0f;
+
+        ImGui::SetNextWindowPos(ImVec2{ImGui::GetMainViewport()->GetCenter().x / 2.f, ImGui::GetMainViewport()->GetCenter().y});
+        if (ImGui::BeginPopupModal("ConfirmDelete", nullptr,
+                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+        {
+            ImGui::TextWrapped(sim_loading["warning"].get<std::string>().c_str());
+            ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+            float button_width = 120.0f;
+            float total_width = button_width * 2 + ImGui::GetStyle().ItemSpacing.x;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - total_width) * 0.5f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.15f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.2f, 0.2f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.95f, 0.25f, 0.25f, 1.0f));
+            if (ImGui::Button(sim_loading["true_delete"].get<std::string>().c_str(), ImVec2(button_width, 40)))
+            {
+                auto it = std::find_if(savedSandbox.begin(), savedSandbox.end(),
+                                       [&](const scenario_info &a)
+                                       { return a.file == selected_for_delete; });
+
+                if (it != savedSandbox.end())
+                {
+                    std::filesystem::remove(selected_for_delete);
+                    auto thumb_path = selected_for_delete;
+                    thumb_path.replace_extension(".png");
+
+                    std::filesystem::remove(thumb_path);
+
+                    textures.erase(it->title + ".png");
+                    savedSandbox.erase(it);
+                }
+
+                selected_for_delete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(3);
+
+            ImGui::SameLine();
+
+            if (ImGui::Button(sim_loading["cancel"].get<std::string>().c_str(), ImVec2(button_width, 40)))
+            {
+                selected_for_delete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
     void UIHandler::drawSavedSimulations()
     {
-        ImGui::SetNextWindowSize(ImVec2(800, 650), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(ImVec2(800, 500), ImGuiCond_Appearing);
         ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
         auto &sim_loading = localization_json["Menu"]["Simulation_Loading"];
-        ImGui::Begin(sim_loading["title"].get<std::string>().c_str(), nullptr, ImGuiWindowFlags_NoMove);
+        ImGui::Begin(sim_loading["title"].get<std::string>().c_str(), &savesSelectionOpen, ImGuiWindowFlags_NoMove);
+
+        ImGui::Separator();
+
+        const float cell_size = image_size;
 
         int32_t columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
         columns = std::max(1, columns);
-
-        if (ImGui::BeginTable("SavesGrid", columns, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV))
+        if (ImGui::BeginTable("SavesGrid", columns, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY))
         {
-            for (const auto &sandbox : savedSandbox)
+            for (auto &sandbox : savedSandbox)
             {
+                std::string lower_title = sandbox.title;
+                std::transform(lower_title.begin(), lower_title.end(), lower_title.begin(), ::tolower);
+
                 ImGui::TableNextColumn();
 
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15, 15));
@@ -466,12 +575,13 @@ namespace core
                 ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.9f));
 
                 ImGui::BeginChild(ImGui::GetID(sandbox.title.c_str()),
-                                  ImVec2(0, 0), ImGuiChildFlags_AutoResizeY);
+                                  ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+                drawSandboxSave(sandbox);
+
+                ImGui::PopStyleColor();
+                ImGui::PopStyleVar(2);
 
                 ImGui::EndChild();
-
-                ImGui::PopStyleVar(2);
-                ImGui::PopStyleColor();
             }
             ImGui::EndTable();
         }
@@ -851,8 +961,6 @@ namespace core
         auto &comp_sel = localization_json["Simulation"]["universe_ui"]["compound_selector"];
         auto &compounds = localization_json["Compounds"];
 
-        const ImVec2 card_size(-FLT_MIN, 0.0f);
-
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 8));
 
         float avail_width = ImGui::GetContentRegionAvail().x;
@@ -891,7 +999,13 @@ namespace core
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
 
         {
+            ImVec2 name_size = ImGui::CalcTextSize(compound.name.c_str());
+            ImVec2 formula_size = ImGui::CalcTextSize(compound.formula.c_str());
+
+            ImGui::SetCursorPosX((row_width - name_size.x) * 0.6f);
             ImGui::Text(compound.name.c_str());
+
+            ImGui::SetCursorPosX((row_width - formula_size.x) * 0.6f);
             ImGui::Text(compound.formula.c_str());
 
             std::ostringstream info_stream;
@@ -915,10 +1029,13 @@ namespace core
 
         ImGui::PushID(ImGui::GetID(compound.name.c_str()));
 
+        std::string button_add = comp_sel["button_add"].get<std::string>();
+        ImVec2 add_size = ImGui::CalcTextSize(button_add.c_str());
+
+        ImGui::SetCursorPosX((row_width - add_size.x) * 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        if (ImGui::Button(comp_sel["button_add"].get<std::string>().c_str(), ImVec2(0.f, 40.0f)))
+        if (ImGui::Button(button_add.c_str(), ImVec2(0.f, 40.0f)))
         {
-            // simulation_universe->createMolecule(compound.structure, simulation_universe->camera().target);
             compoundSelector = false;
             selectedCompound = compound.id;
             insertGhost();
@@ -1094,6 +1211,7 @@ namespace core
 
         rendering_info info{};
         info.opacity = 1.0f;
+        info.universeBox = !(screenshotToggle && savedSimulation);
 
         if (mode == simulation_render_mode::BALL_AND_STICK)
         {
@@ -1114,7 +1232,16 @@ namespace core
 
         if (screenshotToggle)
         {
-            screenshotWindow(window, "src/resource/screenshots");
+            std::filesystem::path path = "src/resource/screenshots";
+            std::string title = "";
+
+            if (savedSimulation)
+            {
+                path = sandboxSave;
+                title = savedSandbox.at(savedSandbox.size() - 1).title;
+            }
+
+            screenshotWindow(window, path, title);
             screenshotToggle = false;
         }
 
@@ -1143,6 +1270,8 @@ namespace core
         {
             pauseMenuOpen = !pauseMenuOpen;
             optionsOpen = false;
+            savesSelectionOpen = false;
+            compoundSelector = false;
             paused_simulation = true;
         }
     }
@@ -1155,7 +1284,7 @@ namespace core
         return time_str;
     }
 
-    void UIHandler::screenshotWindow(window_t &window, std::filesystem::path path)
+    void UIHandler::screenshotWindow(window_t &window, std::filesystem::path path, std::string name)
     {
         sf::Texture screenshot{};
         if (!screenshot.resize(window.getWindow().getSize()))
@@ -1167,14 +1296,19 @@ namespace core
         screenshot.update(window.getWindow());
         sf::Image image = screenshot.copyToImage();
 
-        std::filesystem::path filepath = path / (formatTime() + ".png");
+        std::filesystem::path filepath = name.empty() ? path / (formatTime() + ".png") : path / (name + ".png");
         if (!image.saveToFile(filepath))
         {
             std::cerr << "[UI HANDLER]: Failed to save Screenshot!";
         }
+
+        if (!name.empty())
+        {
+            textures.emplace(name + ".png", screenshot);
+        }
     }
 
-    void UIHandler::pauseMenu(window_t& window)
+    void UIHandler::pauseMenu(window_t &window)
     {
         auto &pause_menu = localization_json["Simulation"]["pause_menu"];
 
@@ -1249,15 +1383,28 @@ namespace core
 
         if (ImGui::BeginPopupModal("SavePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
         {
-            if (ImGui::Button(pause_menu["confirm_save"].get<std::string>().c_str(), ImVec2(button_width_popup, 30)))
+            static char input[256];
+
+            ImGui::Text(pause_menu["simulation_name"].get<std::string>().c_str());
+            ImGui::InputText("##InputName", input, 256 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue);
+
+            ImGui::SetNextItemWidth(150.f);
+            if (ImGui::Button(pause_menu["confirm_save"].get<std::string>().c_str(), ImVec2(-1.f, 30)))
             {
-                simulation_universe->saveScene(sandboxSave);
-                screenshotWindow(window, sandboxSave);
+                scenario_info saved{};
+                saved.title = input;
+                saved.is_sandbox = true;
+                saved.file = sandboxSave / (std::string(input) + ".json");
+                savedSandbox.emplace_back(std::move(saved));
+
+                simulation_universe->saveScene(sandboxSave, std::string(input));
+                savedSimulation = true;
+                screenshotToggle = true;
             }
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.f, 1.f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0.f, 1.f));
-            if (ImGui::Button(pause_menu["cancel"].get<std::string>().c_str(), ImVec2(button_width_popup, 30)))
+            if (ImGui::Button(pause_menu["cancel"].get<std::string>().c_str(), ImVec2(-1.f, 30)))
             {
                 ImGui::CloseCurrentPopup();
             }
@@ -1283,6 +1430,7 @@ namespace core
                 pauseMenuOpen = false;
                 compoundFullView = false;
                 compoundSelector = false;
+                savesSelectionOpen = false;
                 optionsOpen = false;
 
                 setState(application_state::APP_STATE_MENU);

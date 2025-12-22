@@ -7,7 +7,7 @@
 
 namespace sim
 {
-    namespace fun { enum class BondType { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE, PARTIAL }; }; // Partial is for bonds that have partial pi bonds
+    namespace fun { enum class BondType { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE }; };
 }; // namespace sim
 
 
