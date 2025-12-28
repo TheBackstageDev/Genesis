@@ -29,7 +29,7 @@ namespace sim
             auto &font = window.getFont();
             std::string name = constants::getAtomLetter(ZIndex);
             sf::Text name_text(font, name, 30.f);
-            name_text.setScale({0.02f * rad, 0.02f * rad});
+            name_text.setScale({0.05f * rad, 0.05f * rad});
             name_text.setFillColor({255,
                                     255,
                                     255,
@@ -45,7 +45,7 @@ namespace sim
             {
                 sf::Text ion_text(font, q > 0.0f ? "+" : "-", 15.f);
 
-                ion_text.setScale({0.018f * rad, 0.018f * rad});
+                ion_text.setScale({0.03f * rad, 0.03f * rad});
                 ion_text.setFillColor({255, 255, 255, 255});
 
                 sf::FloatRect ionBounds = ion_text.getLocalBounds();

@@ -25,5 +25,8 @@ void main()
 
     v_uv = uv;
 
-    gl_Position = u_projection * (center_view + vec4(uv, 0.0, 0.0));
+    vec4 pos = u_projection * center_view;
+    pos.xy += uv * s_radius * 0.707;
+
+    gl_Position = pos;
 }

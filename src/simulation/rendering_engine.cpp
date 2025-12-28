@@ -168,11 +168,12 @@ namespace sim
         std::vector<AtomInstance> instances;
         instances.reserve(sim_info.atoms.size());
 
+        if (info.lennardBall)
         for (int32_t sortedIdx : drawOrder)
         {
             const auto& atom = sim_info.atoms[sortedIdx];
             float radius = info.spaceFilling
-                            ? constants::VDW_RADII[atom.ZIndex] * 3.0f
+                            ? constants::VDW_RADII[atom.ZIndex] * 1.5f
                             : atom.radius / 3.f;
 
             sf::Color col = constants::getElementColor(atom.ZIndex);
@@ -195,7 +196,7 @@ namespace sim
         GLint loc_cam_pos = glGetUniformLocation(atom_program, "u_campos");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix()));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
@@ -218,6 +219,8 @@ namespace sim
 
         if (info.universeBox)
             drawBox(sim_info.box);
+    
+        glm::vec3 cam_eye = cam.eye();
 
         if (info.letter)
             for (int32_t i = 0; i < sim_info.positions.size(); ++i)
@@ -229,9 +232,9 @@ namespace sim
                 if (p.x < -1000)
                     continue;
 
-                float distance = (sim_info.positions[drawOrder[i]] - cam.eye()).length();
+                glm::vec3 r_vec = sim_info.positions[drawOrder[i]] - cam_eye;
 
-                sim_info.atoms[i].draw(sf::Vector2f(p.x, p.y), distance, sim_info.q[drawOrder[i]], window, window.getWindow());
+                sim_info.atoms[i].draw(sf::Vector2f(p.x, p.y), glm::length(r_vec), sim_info.q[drawOrder[i]], window, window.getWindow());
             }
 
         drawBonds(window.getWindow(), sim_info);

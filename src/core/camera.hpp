@@ -11,6 +11,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace core
 {
@@ -102,17 +103,16 @@ namespace core
             return {screenX, screenY};
         }
 
-        glm::mat4 getProjectionMatrix() const 
+        glm::mat4 getProjectionMatrix(const sf::RenderTarget& target) const 
         {
-            const float ratio = (farPlane + nearPlane) / (nearPlane - farPlane);
+            float aspect = static_cast<float>(target.getView().getSize().x) / static_cast<float>(target.getView().getSize().y);
 
-            glm::mat4 projection(1.0f);
-            projection[0] = glm::vec4(farPlane, 0.f, 0.f, 0.f);
-            projection[1] = glm::vec4(0.f, farPlane, 0.f, 0.f);
-            projection[2] = glm::vec4(0.f, 0.f, ratio, 2.f * ratio);
-            projection[3] = glm::vec4(0.f, 0.f, -1.f, 0.f);
-
-            return projection;
+            return glm::perspective(
+                glm::radians(fov),
+                aspect,
+                nearPlane,
+                farPlane
+            );
         }
 
         glm::mat4 getViewMatrix() const

@@ -13,7 +13,7 @@ namespace core
         settings.depthBits = 24;
         settings.stencilBits = 8;
         settings.antiAliasingLevel = 2;
-        settings.majorVersion = 3;
+        settings.majorVersion = 4.2;
         settings.minorVersion = 0;
 
         window.create(sf::VideoMode({width, height}), title, sf::Style::Default, sf::State::Windowed, settings);
@@ -28,7 +28,7 @@ namespace core
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
         glEnable(GL_BLEND);
-        glEnable(GL_PROGRAM_POINT_SIZE);
+        glEnable(GL_CULL_FACE);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -92,6 +92,7 @@ namespace core
                 view.setCenter(sf::Vector2f(boxSizeAspect / 2.0f, boxSizeAspect / 2.0f));
                 view.setSize(sf::Vector2f(boxSizeAspect, boxSizeAspect));
                 window.setView(view);
+                window.setSize(sf::Vector2u(width, height));
             }
         }
 

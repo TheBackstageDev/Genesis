@@ -8,6 +8,7 @@ namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
     {
+        app_options.sim_options.target_fps = 0;
         window = std::make_unique<core::window_t>(width, height, name, 50.f, app_options.sim_options.target_fps);
 
         if (!ImGui::SFML::Init(window->getWindow(), false))
