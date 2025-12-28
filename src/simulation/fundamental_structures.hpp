@@ -14,6 +14,13 @@
 
 #include "constants.hpp"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_INTRINSICS
+#define GLM_FORCE_ALIGNED_GENTYPES
+
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
+
 namespace sim
 {
     namespace fun
@@ -171,7 +178,20 @@ namespace sim
 
             int32_t chirality;
             int8_t padding[12];
-            void draw(float temperature, sf::Vector2f& pos, float camDistance, float q, core::window_t &window, sf::RenderTarget& target, const rendering_info info);
+            void draw(const sf::Vector2f pos, const float camDistance, const float q, core::window_t &window, sf::RenderTarget& target);
+        };
+
+        struct rendering_simulation_info
+        {
+            std::vector<glm::vec3>& positions;
+
+            std::vector<float>& q;
+            std::vector<atom>& atoms;
+            std::vector<bond>& bonds;
+            std::vector<molecule>& molecules;
+            glm::vec3 box;
+
+            bool renderWater = false;
         };
     } // namespace fun
 } // namespace sim

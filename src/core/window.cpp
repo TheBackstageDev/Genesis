@@ -1,6 +1,5 @@
 #include "window.hpp"
 #include <SFML/Window.hpp>
-#include <SFML/Graphics.hpp>
 
 #include <ostream>
 #include <iostream>
@@ -8,8 +7,31 @@
 namespace core
 {
     window_t::window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize, uint32_t framerate)
-        : width(width), height(height), boxSize(boxSize), window(sf::VideoMode({width, height}), title)
+        : width(width), height(height), boxSize(boxSize)
     {
+        sf::ContextSettings settings;
+        settings.depthBits = 24;
+        settings.stencilBits = 8;
+        settings.antiAliasingLevel = 2;
+        settings.majorVersion = 3;
+        settings.minorVersion = 0;
+
+        window.create(sf::VideoMode({width, height}), title, sf::Style::Default, sf::State::Windowed, settings);
+        window.setActive(true);
+        
+        if (!gladLoadGLLoader((GLADloadproc)sf::Context::getFunction)) 
+        {
+            throw std::exception("[WINDOW]: glad Failed to load OpenGL!");
+        }
+        
+        glEnable(GL_TEXTURE_2D);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glEnable(GL_BLEND);
+        glEnable(GL_PROGRAM_POINT_SIZE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
         window.setFramerateLimit(framerate);
         view.setCenter(sf::Vector2f(boxSize / 2.0f, boxSize / 2.0f));
         view.setSize(sf::Vector2f(boxSize, boxSize));
@@ -21,12 +43,13 @@ namespace core
 
         if (!arial.openFromFile("src/resource/fonts/Orbitron-Regular.ttf"))
         {
-            std::cerr << "Failed to load font. letter mode may not display correctly.\n";
+            std::cerr << "[WINDOW]: Failed to load font. letter mode may not display correctly.\n";
         }
     }
 
     window_t::~window_t()
     {
+        window.setActive(false);
     }
 
     bool window_t::pollEvents()
@@ -46,6 +69,8 @@ namespace core
                 const auto& resizedEvent = event.getIf<sf::Event::Resized>()->size;
                 width = resizedEvent.x;
                 height = resizedEvent.y;
+
+                glViewport(0, 0, width, height);
 
                 view.setSize(sf::Vector2f(boxSize, boxSize));
                 float windowAspect = static_cast<float>(width) / height;

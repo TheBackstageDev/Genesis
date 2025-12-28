@@ -44,11 +44,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ImGui-SFML)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp src/*.hpp)
+
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src/
     include/
+    include/glad/
+)
+
+target_sources(${PROJECT_NAME} PRIVATE
+    include/glad/glad.c
 )
 
 find_package(OpenGL REQUIRED)
@@ -57,7 +63,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     sfml-window
     sfml-system
     ImGui-SFML::ImGui-SFML
-    OpenGL::GL
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

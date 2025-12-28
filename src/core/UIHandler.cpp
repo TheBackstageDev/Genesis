@@ -48,6 +48,8 @@ namespace core
             return;
         }
 
+        rendering_eng = std::make_unique<sim::rendering_engine>(window);
+
         initCompoundPresets();
         initImages(window);
         initSavedData();
@@ -168,8 +170,8 @@ namespace core
         display_info.box.z = 100.f;
         display_info.wall_collision = false;
 
-        display_universe = std::make_unique<sim::fun::universe>(display_info);
-        auto &cam = display_universe->camera();
+        display_universe = std::make_unique<sim::fun::universe>(display_info, *rendering_eng.get());
+        auto &cam = rendering_eng->camera();
         cam.target = {0.f, 0.f, 0.f};
         cam.distance = 0.f;
         cam.azimuth = 200.f;
@@ -204,7 +206,7 @@ namespace core
             info.opacity = 1.0f;
 
             window.clear();
-            display_universe->draw(window, window.getWindow(), info);
+            display_universe->draw(window.getWindow(), info);
 
             sf::Texture thumb_texture;
             if (!thumb_texture.resize(window.getWindow().getSize()))
@@ -478,7 +480,7 @@ namespace core
         ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
         if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(info.file);
+            simulation_universe = std::make_unique<sim::fun::universe>(info.file, *rendering_eng.get());
             savesSelectionOpen = false;
             pauseMenuOpen = false;
             paused_simulation = false;
@@ -648,8 +650,8 @@ namespace core
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info);
-            simulation_universe->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
+            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, *rendering_eng.get());
+            rendering_eng->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             sandboxSelectionOpen = false;
             paused_simulation = false;
@@ -869,7 +871,7 @@ namespace core
         auto &compound = compound_presets[selectedCompound];
 
         display_universe->clear();
-        display_universe->createMolecule(compound.structure, sf::Vector3f(simulation_universe->camera().target.x, simulation_universe->camera().target.y, simulation_universe->camera().target.z));
+        display_universe->createMolecule(compound.structure, sf::Vector3f(rendering_eng->camera().target.x, rendering_eng->camera().target.y, rendering_eng->camera().target.z));
 
         sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
         for (const auto &p : compound.structure.positions)
@@ -883,9 +885,6 @@ namespace core
             p -= Centroid;
         }
 
-        auto &display_cam = display_universe->camera();
-        display_cam = simulation_universe->camera();
-
         ghostDisplay = true;
     }
 
@@ -898,14 +897,15 @@ namespace core
 
         auto &compound = compound_presets[selectedCompound];
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
-        auto &cam = simulation_universe->camera();
+        auto &cam = rendering_eng->camera();
 
         ImVec2 mousePos = ImGui::GetMousePos();
 
         const auto &base_positions = compound.structure.positions;
         for (size_t i = 0; i < base_positions.size(); ++i)
         {
-            display_universe->setPosition(i, base_positions[i] + sf::Vector3f(cam.target.x, cam.target.y, cam.target.z));
+            sf::Vector3f pos = base_positions[i] + sf::Vector3f(cam.target.x, cam.target.y, cam.target.z);
+            display_universe->setPosition(i, glm::vec3(pos.x, pos.y, pos.z));
         }
 
         constexpr float minDistance = 1.6f;
@@ -913,7 +913,8 @@ namespace core
         {
             for (auto &other_pos : simulation_universe->positions())
             {
-                if (simulation_universe->minImageVec(pos - other_pos).length() <= minDistance)
+                glm::vec3 r = pos - other_pos;
+                if (simulation_universe->minImageVec(sf::Vector3f(r.x, r.y, r.z)).length() <= minDistance)
                 {
                     ghostColliding = true;
                 }
@@ -1227,8 +1228,8 @@ namespace core
             info.lennardBall = info.letter = info.spaceFilling = true;
         }
 
-        simulation_universe->handleCamera();
-        simulation_universe->draw(window, window.getWindow(), info);
+        rendering_eng->handleCamera();
+        simulation_universe->draw(window.getWindow(), info);
 
         if (screenshotToggle)
         {
@@ -1251,8 +1252,7 @@ namespace core
         if (ghostDisplay)
         {
             handleGhost(window);
-            display_universe->draw(window, window.getWindow(), info);
-            display_universe->camera() = simulation_universe->camera();
+            display_universe->draw(window.getWindow(), info);
         }
 
         if (!pauseMenuOpen || !showHUD)
@@ -1344,8 +1344,8 @@ namespace core
 
         if (ImGui::Button(pause_menu["button_restart"].get<std::string>().c_str(), buttonSize))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info);
-            simulation_universe->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
+            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, *rendering_eng.get());
+            rendering_eng->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             target_pressure = 0.f;
             target_temperature = 300.f;
@@ -1395,8 +1395,10 @@ namespace core
                 saved.title = input;
                 saved.is_sandbox = true;
                 saved.file = sandboxSave / (std::string(input) + ".json");
-                savedSandbox.emplace_back(std::move(saved));
-
+                
+                //if (std::find(savedSandbox.begin(), savedSandbox.end(), saved) == savedSandbox.end())
+                    savedSandbox.emplace_back(std::move(saved));
+                
                 simulation_universe->saveScene(sandboxSave, std::string(input));
                 savedSimulation = true;
                 screenshotToggle = true;

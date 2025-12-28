@@ -1,10 +1,13 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+#include <glad/glad.h>
 #include <functional>
 
 #include <imgui/imgui.h>
 #include "imgui/imgui-SFML.h"
+
+#include <SFML/Graphics.hpp>
+#include <SFML/OpenGL.hpp>
 
 #define MIN_ZOOM 0.001f
 #define MAX_ZOOM 100.f
@@ -31,7 +34,7 @@ namespace core
 
         void draw(sf::Drawable& drawable) { window.draw(drawable); }
 
-        void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); }
+        void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); glClearColor(0.05f, 0.05f, 0.1f, 1.0f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);}
         void display() { window.display(); }
         void handleCameraInput();
 

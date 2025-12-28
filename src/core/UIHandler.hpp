@@ -79,6 +79,23 @@ namespace core
         COUNT
     };
 
+    enum class tutorial_type : uint32_t
+    {
+        ENGINE,
+        CLASSICAL,
+        QUANTUM,
+        CHEMISTRY,
+        COUNT
+    };
+
+    enum class scenario_type : uint32_t
+    {
+        DYNAMICS,
+        MOLECULE,
+        REACTIONS,
+        COUNT
+    };
+
     inline ImVec4 getMoleculeTypeColor(compound_type _type)
     {
         using type = compound_type;
@@ -281,6 +298,8 @@ namespace core
 
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
+
+        std::unique_ptr<sim::rendering_engine> rendering_eng;
 
         // Callbacks
         

@@ -2,14 +2,15 @@
 #include <SFML/Graphics.hpp>
 #include "simulation/constants.hpp"
 #include "core/window.hpp"
-#include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
 #include <algorithm>
 #include <cmath>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_INTRINSICS
 #define GLM_FORCE_ALIGNED_GENTYPES
+
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 
 namespace core
 {
@@ -69,7 +70,7 @@ namespace core
             }
         }
 
-        sf::Vector2f project(const glm::vec3& worldPos, float viewportWidth, float viewportHeight) const
+        glm::vec2 project(const glm::vec3& worldPos, float viewportWidth, float viewportHeight) const
         {
             const glm::vec3 eyePos = eye();
             const glm::vec3 toPoint = worldPos - eyePos;
@@ -99,6 +100,19 @@ namespace core
             const float screenY = (1.0f - ndcY) * 0.5f * viewportHeight; 
 
             return {screenX, screenY};
+        }
+
+        glm::mat4 getProjectionMatrix() const 
+        {
+            const float ratio = (farPlane + nearPlane) / (nearPlane - farPlane);
+
+            glm::mat4 projection(1.0f);
+            projection[0] = glm::vec4(farPlane, 0.f, 0.f, 0.f);
+            projection[1] = glm::vec4(0.f, farPlane, 0.f, 0.f);
+            projection[2] = glm::vec4(0.f, 0.f, ratio, 2.f * ratio);
+            projection[3] = glm::vec4(0.f, 0.f, -1.f, 0.f);
+
+            return projection;
         }
 
         glm::mat4 getViewMatrix() const

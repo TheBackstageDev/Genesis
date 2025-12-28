@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fundamental_structures.hpp"
+#include "rendering_engine.hpp"
 #include <SFML/Graphics.hpp>
 
 #include <thread>
@@ -15,9 +16,9 @@ namespace sim
     {
         struct simData
         {
-            alignas(32) std::vector<float> x, y, z;
-            alignas(32) std::vector<float> vx, vy, vz;
-            alignas(32) std::vector<float> fx, fy, fz;
+            alignas(32) std::vector<glm::vec3> positions;
+            alignas(32) std::vector<glm::vec3> velocities;
+            alignas(32) std::vector<glm::vec3> forces;
             alignas(32) std::vector<float> q, bond_orders, temperature;
         };
 
@@ -50,10 +51,10 @@ namespace sim
         class universe
         {
         public:
-            universe(const universe_create_info& create_info);
-            universe(std::filesystem::path scene);
+            universe(const universe_create_info& create_info, rendering_engine& rendering);
+            universe(std::filesystem::path scene, rendering_engine& rendering);
 
-            int32_t createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
+            int32_t createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
             void createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel = {0.f, 0.f, 0.f});
 
@@ -63,30 +64,7 @@ namespace sim
             void linkSubset(int32_t subset, int32_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
 
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
-            void draw(core::window_t &window, sf::RenderTarget& target, const rendering_info info);
-            void drawHydrogenBond(core::window_t &window, sf::RenderTarget& target, int32_t H);
-            void drawBonds(core::window_t &window, sf::RenderTarget& target, const std::vector<int32_t>& no_draw);
-            void drawRings(core::window_t &window, sf::RenderTarget& target);
-            void drawChargeField(core::window_t &window, sf::RenderTarget& target);
-
-            void drawDebug(core::window_t& window);
-
-            void insertGhostAtom(uint32_t g) { ghost_atoms.emplace_back(g); };
-            void insertGhostAtom(std::vector<uint32_t>& g) { ghost_atoms.insert(ghost_atoms.end(), g.begin(), g.end()); }
-
-            void removeGhostAtom(uint32_t g) 
-            {
-                auto it = std::find(ghost_atoms.begin(), ghost_atoms.end(), g);
-                
-                if (it != ghost_atoms.end())
-                    ghost_atoms.erase(it); 
-            }
-
-            void removeGhostAtom(const std::vector<uint32_t>& g) 
-            {
-                for (const uint32_t& a : g)
-                    removeGhostAtom(a);
-            }
+            void draw(sf::RenderTarget& target, const rendering_info& info);
 
             // Scenario stuff
             void highlightAtom(core::window_t& window, size_t i);
@@ -100,15 +78,9 @@ namespace sim
 
             void clear()
             {
-                data.x.clear();
-                data.y.clear();
-                data.z.clear();
-                data.vx.clear();
-                data.vy.clear();
-                data.vz.clear();
-                data.fx.clear();
-                data.fy.clear();
-                data.fz.clear();
+                data.positions.clear();
+                data.velocities.clear();
+                data.forces.clear();
                 data.q.clear();
                 data.temperature.clear();
                 data.bond_orders.clear();
@@ -129,31 +101,17 @@ namespace sim
             float pressure() const { return pres; }
             float timestep() const { return timeStep; }
 
-            _NODISCARD std::vector<sf::Vector3f> positions() const 
+            _NODISCARD std::vector<glm::vec3> positions() const 
             {
-                std::vector<sf::Vector3f> positions;
-                positions.reserve(data.x.size());
-
-                for (int32_t i = 0; i < data.x.size(); ++i)
-                {
-                    positions.emplace_back(pos(i));
-                }
-
-                return positions;
+                return data.positions;
             }
 
-            void setPosition(size_t i, sf::Vector3f p)
+            void setPosition(size_t i, glm::vec3 p)
             {
-                data.x[i] = p.x;
-                data.y[i] = p.y;
-                data.z[i] = p.z;
+                data.positions[i] = p;
             }
 
             void setRenderMode();
-
-            // cam
-            void handleCamera();
-            core::camera_t& camera() { return cam; }
 
             // Helper Funcs
             sf::Vector3f minImageVec(sf::Vector3f dr)
@@ -191,7 +149,7 @@ namespace sim
             float calculatePressure();
             void setPressure(float bar = 100);
             void setTemperature(float kelvin = 0.f);
-            float calculateDihedral(const sf::Vector3f& pa, const sf::Vector3f& pb, const sf::Vector3f& pc, const sf::Vector3f& pd);
+            float calculateDihedral(const glm::vec3& pa, const glm::vec3& pb, const glm::vec3& pc, const glm::vec3& pd);
 
             // Energies
             float calculateKineticEnergy();
@@ -203,6 +161,8 @@ namespace sim
             void processReactivePair(int32_t i, int32_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
             void calcUnbondedForcesReactive();
             void handleReactiveForces();
+
+            rendering_engine& rendering_eng;
 
             simData data;
             std::vector<std::vector<uint64_t>> bondedBits;
@@ -225,9 +185,7 @@ namespace sim
             std::vector<atom> atoms;
             std::vector<subset> subsets;
             std::vector<molecule> molecules;
-
             std::vector<bool> frozen_atoms;
-            std::vector<uint32_t> ghost_atoms; // for displaying
             
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
@@ -317,12 +275,7 @@ namespace sim
             std::vector<std::vector<float>> positionzLog{};
             std::map<uint32_t, float> energyLog{};
             std::vector<float> temperatureLog{};
-
-            // Camera
-            ImVec2 lastMouse;
-            sf::Vector2f project(core::window_t& window, const sf::Vector3f& p) const;
-            core::camera_t cam;
-
+            
             // Other
             std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
             void drawBox(core::window_t& window);
@@ -337,15 +290,15 @@ namespace sim
                 if (i > j) std::swap(i, j);
                 return data.bond_orders[i * atoms.size() + j];
             }
-            inline sf::Vector3f pos(uint32_t i) const   { return {data.x[i], data.y[i], data.z[i]}; }
-            inline sf::Vector3f vel(uint32_t i) const   { return {data.vx[i], data.vy[i], data.vz[i]}; }
-            inline sf::Vector3f force(uint32_t i) const { return {data.fx[i], data.fy[i], data.fz[i]}; }
-            inline void add_force(uint32_t i, sf::Vector3f f) { data.fx[i] += f.x, data.fy[i] += f.y, data.fz[i] += f.z; }
-            inline void add_pos(uint32_t i, sf::Vector3f p) { data.x[i] += p.x, data.y[i] += p.y, data.z[i] += p.z; }
-            inline void add_vel(uint32_t i, sf::Vector3f v) { data.vx[i] += v.x, data.vy[i] += v.y, data.vz[i] += v.z; }
+            inline sf::Vector3f pos(uint32_t i) const   { return {data.positions[i].x, data.positions[i].y, data.positions[i].z}; }
+            inline sf::Vector3f vel(uint32_t i) const   { return {data.velocities[i].x, data.velocities[i].y, data.velocities[i].z}; }
+            inline sf::Vector3f force(uint32_t i) const { return {data.forces[i].x, data.forces[i].y, data.forces[i].z}; }
+            inline void add_force(uint32_t i, sf::Vector3f f) { data.forces[i].x += f.x, data.forces[i].y += f.y, data.forces[i].z += f.z; }
+            inline void add_pos(uint32_t i, sf::Vector3f p) { data.positions[i].x += p.x, data.positions[i].y += p.y, data.positions[i].z += p.z; }
+            inline void add_vel(uint32_t i, sf::Vector3f v) { data.velocities[i].x += v.x, data.velocities[i].y += v.y, data.velocities[i].z += v.z; }
 
-            inline void emplace_vel(sf::Vector3f v) { data.vx.emplace_back(v.x); data.vy.emplace_back(v.y); data.vz.emplace_back(v.z); }
-            inline void emplace_pos(sf::Vector3f p) { data.x.emplace_back(p.x); data.y.emplace_back(p.y); data.z.emplace_back(p.z); }
+            inline void emplace_vel(glm::vec3 v) { data.velocities.emplace_back(v); }
+            inline void emplace_pos(glm::vec3 p) { data.positions.emplace_back(p); }
 
             void initReaxParams();
         };

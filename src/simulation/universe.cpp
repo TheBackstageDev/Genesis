@@ -14,595 +14,31 @@ namespace sim
     namespace fun
     {
 
-        universe::universe(const universe_create_info &create_info)
+        universe::universe(const universe_create_info &create_info, rendering_engine& rendering_engine)
             : box(create_info.box), react(create_info.reactive),
               gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
-              render_water(create_info.render_water), HMassRepartitioning(create_info.HMassRepartitioning), 
-              log_flags(create_info.log_flags)
+              render_water(create_info.render_water), HMassRepartitioning(create_info.HMassRepartitioning),
+              log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
             if (react)
                 initReaxParams();
         }
 
-        universe::universe(const std::filesystem::path path)
+        universe::universe(const std::filesystem::path path, rendering_engine& rendering_engine)
+            : rendering_eng(rendering_engine)
         {
             loadScene(path);
         }
 
-        void universe::drawBox(core::window_t &window)
+        void universe::draw(sf::RenderTarget& target, const rendering_info& info)
         {
-            const std::array<sf::Vector3f, 8> corners =
-                {{{0.f, 0.f, 0.f},
-                  {box.x, 0.f, 0.f},
-                  {box.x, box.y, 0.f},
-                  {0.f, box.y, 0.f},
-                  {0.f, 0.f, box.z},
-                  {box.x, 0.f, box.z},
-                  {box.x, box.y, box.z},
-                  {0.f, box.y, box.z}}};
+            rendering_simulation_info sim_info{.positions = data.positions, .q = data.q, .atoms = atoms, .bonds = bonds, .molecules = molecules, .box = glm::vec3(box.x, box.y, box.z)};
 
-            const std::array<std::pair<int, int>, 12> edges =
-                {{
-                    {0, 1}, {1, 2}, {2, 3}, {3, 0}, // bottom face
-                    {4, 5},
-                    {5, 6},
-                    {6, 7},
-                    {7, 4}, // top face
-                    {0, 4},
-                    {1, 5},
-                    {2, 6},
-                    {3, 7} // vertical pillars
-                }};
-
-            sf::VertexArray lines(sf::PrimitiveType::Lines, edges.size() * 2);
-            sf::Color edgeColor(200, 200, 200, 180);
-
-            int32_t idx = 0;
-            for (const auto &[i, j] : edges)
-            {
-                sf::Vector2f p1 = project(window, corners[i]);
-                sf::Vector2f p2 = project(window, corners[j]);
-
-                if (p1.x < -1000.f || p2.x < -1000.f)
-                    continue;
-
-                const sf::Vector3f &a = corners[i];
-                const sf::Vector3f &b = corners[j];
-
-                glm::vec3 cam_eye = cam.eye();
-                sf::Vector3f camToA = a - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
-                sf::Vector3f camToB = b - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
-
-                float dot = camToA.normalized().dot(camToB.normalized());
-                const float THRESHOLD = 0.3f;
-                if (dot < THRESHOLD)
-                    continue;
-
-                lines[idx++] = sf::Vertex(p1, edgeColor);
-                lines[idx++] = sf::Vertex(p2, edgeColor);
-            }
-
-            window.getWindow().draw(lines);
+            rendering_eng.draw(target, info, sim_info);
         }
 
-        void universe::draw(core::window_t &window, sf::RenderTarget& target, const rendering_info info)
-        {
-            std::vector<int32_t> drawOrder(atoms.size());
-            std::iota(drawOrder.begin(), drawOrder.end(), 0);
-            sf::Vector3f eye = sf::Vector3f(cam.eye().x, cam.eye().y, cam.eye().z);
-
-            std::sort(drawOrder.begin(), drawOrder.end(),
-                      [&](int32_t a, int32_t b)
-                      { return (pos(a) - eye).lengthSquared() > (pos(b) - eye).lengthSquared(); });
-
-            if (info.universeBox)
-                drawBox(window);
-
-            std::vector<int32_t> no_draw{};
-
-            if (!render_water)
-                for (auto &m : molecules)
-                {
-                    if (m.exclude)
-                    {
-                        no_draw.emplace_back(m.angleBegin);
-                        no_draw.emplace_back(m.angleBegin + 1);
-                        no_draw.emplace_back(m.angleBegin + 2);
-                    }
-                }
-
-            if (!react && !info.spaceFilling)
-            {
-                drawBonds(window, target, no_draw);
-                //drawRings(window, target);
-            }
-
-            for (int32_t i = 0; i < atoms.size(); ++i)
-            {
-                if (std::find(no_draw.begin(), no_draw.end(), drawOrder[i]) != no_draw.end())
-                    continue;
-
-                sf::Vector2f p = project(window, pos(drawOrder[i]));
-                if (p.x < -1000)
-                    continue;
-
-                float temp = calculateAtomTemperature(drawOrder[i]);
-                if (atoms[drawOrder[i]].ZIndex == 1)
-                    drawHydrogenBond(window, target, drawOrder[i]);
-
-                glm::vec3 cam_eye = cam.eye();
-                float camDistance = (pos(drawOrder[i]) - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
-
-                float T = calculateAtomTemperature(drawOrder[i]);
-                atoms[drawOrder[i]].draw(T, p, camDistance, data.q[drawOrder[i]], window, target, info);
-            }
-        }
-
-        float smootherstep(float edge0, float edge1, float x)
-        {
-            x = std::clamp((x - edge0) / (edge1 - edge0), 0.f, 1.f);
-
-            return x * x * (3.0f - 2.0f * x);
-        }
-
-        void universe::drawChargeField(core::window_t &window, sf::RenderTarget& target)
-        {
-            if (!(cx > 0 && cy > 0 && cz > 0))
-                return;
-
-            sf::RenderStates states;
-            states.blendMode = sf::BlendAlpha;
-
-            constexpr int32_t GRID = 50;
-            float step = box.length() / GRID;
-
-            const float isovalue_pos = 1.f;
-            const float isovalue_neg = -1.f;
-            const float thickness = .7f;
-
-            struct Blob
-            {
-                sf::Vector2f screenPos;
-                float depth;
-                float size;
-                sf::Color color;
-            };
-
-            std::vector<Blob> blobs;
-            blobs.reserve(GRID * GRID * GRID);
-
-            for (int iz = 0; iz < GRID; ++iz)
-                for (int iy = 0; iy < GRID; ++iy)
-                    for (int ix = 0; ix < GRID; ++ix)
-                    {
-                        sf::Vector3f worldPos(
-                            (ix + 0.5f) * step,
-                            (iy + 0.5f) * step,
-                            (iz + 0.5f) * step);
-
-                        sf::Vector2f screen = project(window, worldPos);
-                        if (screen.x < -500)
-                            continue;
-
-                        float density = 0.0f;
-
-                        for (int32_t d = 0; d < 14; ++d)
-                        {
-                            auto &cell = cells[getCellID(ix + offsets[d][0], iy + offsets[d][1], iz + offsets[d][2])];
-                            for (int32_t i = 0; i < cell.size(); ++i)
-                            {
-                                sf::Vector3f dr = minImageVec(worldPos - pos(cell[i]));
-                                float r2 = dr.lengthSquared();
-                                density += data.q[cell[i]] * std::exp(-r2 / (1.2f * 1.2f));
-                            }
-                        }
-
-                        if (std::abs(density) < 0.1f)
-                            continue;
-
-                        float dist_to_pos = std::abs(density - isovalue_pos);
-                        float dist_to_neg = std::abs(density - isovalue_neg);
-                        float dist = std::min(dist_to_pos, dist_to_neg);
-
-                        if (dist > thickness)
-                            continue;
-
-                        sf::Color col;
-                        if (density <= -1.f)
-                            col = sf::Color(220, 20, 60, 180); // deep red
-                        else if (density <= -0.5f)
-                            col = sf::Color(255, 80, 80, 180); // red
-                        else if (density <= -0.2f)
-                            col = sf::Color(255, 147, 147, 150); // mild red / light pink
-                        else if (density < 0.2f)
-                            col = sf::Color(120, 240, 150, 200); // green
-                        else if (density < 0.5f)
-                            col = sf::Color(135, 206, 255, 160); // light sky blue
-                        else if (density < 1.f)
-                            col = sf::Color(70, 130, 255, 180); // medium blue
-                        else
-                            col = sf::Color(30, 70, 200, 180); // deep royal blue
-
-                        float alpha = 1.0f - smootherstep(0.0f, thickness, dist);
-                        float t = (density - isovalue_neg) / (isovalue_pos - isovalue_neg);
-                        t = std::clamp(t, 0.0f, 1.0f);
-
-                        float opacity = 1.0f - smootherstep(0.0f, thickness, dist);
-
-                        col.a = static_cast<uint8_t>(255 * opacity);
-
-                        glm::vec3 cam_eye = cam.eye();
-                        float distance = (worldPos - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
-                        float size = step * GRID / distance;
-
-                        blobs.emplace_back(screen, distance, size, col);
-                    }
-
-            std::sort(blobs.begin(), blobs.end(), [=](const Blob &a, const Blob &b)
-                      { return a.depth > b.depth; });
-
-            sf::VertexArray billboards(sf::PrimitiveType::Triangles);
-            billboards.resize(blobs.size() * 6);
-
-            int32_t idx = 0;
-            for (const auto &b : blobs)
-            {
-                sf::Vector2f p = b.screenPos;
-                float s = b.size;
-                sf::Color c = b.color;
-
-                billboards[idx + 0] = {p + sf::Vector2f(-s, -s), c};
-                billboards[idx + 1] = {p + sf::Vector2f(s, -s), c};
-                billboards[idx + 2] = {p + sf::Vector2f(s, s), c};
-
-                billboards[idx + 3] = {p + sf::Vector2f(-s, -s), c};
-                billboards[idx + 4] = {p + sf::Vector2f(s, s), c};
-                billboards[idx + 5] = {p + sf::Vector2f(-s, s), c};
-
-                idx += 6;
-            }
-            target.draw(billboards, states);
-        }
-
-        void universe::drawBonds(core::window_t &window, sf::RenderTarget& target, const std::vector<int32_t> &no_draw)
-        {
-            sf::Vector2f dimensions = window.getWindow().getView().getSize();
-
-            for (int32_t b = 0; b < bonds.size(); ++b)
-            {
-                const bond &bond = bonds[b];
-                if (std::find(no_draw.begin(), no_draw.end(), bond.centralAtom) != no_draw.end())
-                    continue;
-
-                const sf::Vector3f &pCentral = pos(bond.centralAtom); // pB
-                const sf::Vector3f &pBonded = pos(bond.bondedAtom);   // pA
-
-                sf::Vector2f s1 = cam.project(glm::vec3(pCentral.x, pCentral.y, pCentral.z), dimensions.x, dimensions.y); // center
-                sf::Vector2f s2 = cam.project(glm::vec3(pBonded.x, pBonded.y, pBonded.z), dimensions.x, dimensions.y);  // end
-
-                if (s1.x <= -9999 || s2.x <= -9999)
-                    continue;
-                if ((pCentral - pBonded).length() > 5.f)
-                    continue;
-                glm::vec3 cam_eye = cam.eye();
-                if ((pCentral - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length() > 200.f)
-                    continue;
-
-                sf::Vector2f dir = s2 - s1;
-                float len = dir.length();
-                if (len < 0.5f)
-                    continue;
-                dir /= len;
-
-                sf::Vector2f perp{-dir.y, dir.x};
-
-                uint8_t lines = static_cast<uint8_t>(bond.type);
-                float distance = (pCentral - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
-
-                float shrink = 5.f / distance;   // pixels
-                float spacing = 10.f / distance; // pixels between lines
-
-                std::vector<sf::Vertex> verts;
-                verts.reserve(lines * 2);
-
-                for (int32_t i = 0; i < lines; ++i)
-                {
-                    float offset = spacing * (i - (lines - 1) * 0.5f);
-
-                    sf::Vector2f off = perp * offset;
-
-                    sf::Vector2f start = s1 + dir * shrink + off;
-                    sf::Vector2f end = s2 - dir * shrink + off;
-
-                    verts.emplace_back(start, sf::Color::White);
-                    verts.emplace_back(end, sf::Color::White);
-                }
-
-                target.draw(verts.data(), verts.size(), sf::PrimitiveType::Lines);
-            }
-        }
-
-        void universe::highlightAtom(core::window_t& window, size_t i)
-        {
-            const atom &a = atoms[i];
-
-            constexpr uint32_t pointCount = 60;
-            constexpr float thickness = 4.0f;
-
-            float ringRadius = a.radius * 1.2f;
-
-            sf::Vector3f worldPos = pos(i);
-            sf::Vector2f currentPos = project(window, worldPos);
-
-            glm::vec3 cam_eye = cam.eye();
-            float distance = (pos(i) - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
-
-            sf::CircleShape circle(ringRadius / distance);
-            circle.setPosition(currentPos - sf::Vector2f(ringRadius / distance, ringRadius / distance));
-            circle.setFillColor(sf::Color::Transparent);
-            circle.setOutlineColor(sf::Color::White);
-            circle.setOutlineThickness(thickness);
-            circle.setPointCount(pointCount);
-
-            window.getWindow().draw(circle);
-        }
-
-        void universe::drawRings(core::window_t &window, sf::RenderTarget& target)
-        {
-            constexpr float visualRadius = 0.5f;
-            constexpr float visualThickness = 0.1f;
-            constexpr uint32_t segments = 60;
-
-            for (const auto& ring : rings)
-            {
-                if (ring.size() < 3) continue;
-
-                sf::Vector3f center(0.0f, 0.0f, 0.0f);
-                for (uint32_t idx : ring) center += pos(idx);
-                center /= static_cast<float>(ring.size());
-
-                sf::Vector3f normal(0.0f, 0.0f, 0.0f);
-                float radius3D = 0.0f;
-                sf::Vector3f first = pos(ring[0]);
-                for (size_t i = 0; i < ring.size(); ++i)
-                {
-                    sf::Vector3f p1 = pos(ring[i]);
-                    sf::Vector3f p2 = pos(ring[(i + 1) % ring.size()]);
-                    radius3D += (p1 - center).length();
-
-                    normal.x += (p1.y - p2.y) * (p1.z + p2.z);
-                    normal.y += (p1.z - p2.z) * (p1.x + p2.x);
-                    normal.z += (p1.x - p2.x) * (p1.y + p2.y);
-                }
-                radius3D /= static_cast<float>(ring.size());
-                if (normal.lengthSquared() > 0.0f) normal /= normal.length();
-                else normal = sf::Vector3f(0.0f, 0.0f, 1.0f); 
-
-                glm::vec3 cam_eye = cam.eye();
-                float distance = (center - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z)).length();
-                if (distance < 0.1f) continue;
-
-                float scaledRadius = visualRadius * radius3D;
-                float scaledHalfThick = visualThickness * 0.5f;
-
-                sf::Vector2f screenCenter = project(window, center);
-
-                if (screenCenter.x < -1000.f) continue;
-
-                sf::Vector3f arb = (std::abs(normal.x) > 0.5f) ? sf::Vector3f(0,1,0) : sf::Vector3f(1,0,0);
-
-                sf::Vector3f u = normal.cross(arb);
-                if (u.lengthSquared() > 0.0f) u /= u.length();
-                sf::Vector3f v = normal.cross(u);
-
-                sf::VertexArray verts(sf::PrimitiveType::TriangleStrip, 2 * (segments + 1));
-                for (uint32_t i = 0; i <= segments; ++i)
-                {
-                    float angle = 2.0f * static_cast<float>(M_PI) * i / segments;
-                    float c = std::cos(angle);
-                    float s = std::sin(angle);
-                    sf::Vector3f dir = u * c + v * s;
-
-                    // Outer
-                    sf::Vector3f outer3D = center + dir * (radius3D + 0.1f * scaledHalfThick);
-                    sf::Vector2f outer2D = project(window, outer3D) - screenCenter;
-                    verts[2 * i].position = screenCenter + outer2D * (scaledRadius / radius3D);
-                    verts[2 * i].color = sf::Color::White;
-
-                    // Inner
-                    sf::Vector3f inner3D = center + dir * (radius3D - scaledHalfThick);
-                    sf::Vector2f inner2D = project(window, inner3D) - screenCenter;
-                    verts[2 * i + 1].position = screenCenter + inner2D * (scaledRadius / radius3D);
-                    verts[2 * i + 1].color = sf::Color::White;
-                }
-
-                target.draw(verts);
-            }
-        }
-        void universe::drawHydrogenBond(core::window_t &window, sf::RenderTarget& target, int32_t H)
-        {
-            if (timeStep == 0 || cells.size() == 0)
-                return;
-
-            if (data.q[H] > -0.2f && data.q[H] < 0.2f)
-                return;
-
-            int32_t D = SIZE_MAX;
-            for (const auto &b : bonds)
-            {
-                if (b.bondedAtom == H)
-                {
-                    D = b.centralAtom;
-                    break;
-                }
-            }
-            if (D == SIZE_MAX)
-                return;
-
-            sf::Vector2f pH = project(window, pos(H));
-
-            constexpr float MAX_HA_DISTANCE = 2.8f;
-            constexpr float MIN_COS_ANGLE = 0.8f;
-            constexpr float STRONG_ENERGY = -700.0f;
-            constexpr float WEAK_ENERGY = -5.0f;
-
-            sf::Vector3f p = pos(H);
-            p.x -= box.x * std::floor(p.x * (1.0f / box.x));
-            p.y -= box.y * std::floor(p.y * (1.0f / box.y));
-            p.z -= box.z * std::floor(p.z * (1.0f / box.z));
-
-            int32_t ix = static_cast<int32_t>(p.x * 1 / box.x);
-            int32_t iy = static_cast<int32_t>(p.y * 1 / box.y);
-            int32_t iz = static_cast<int32_t>(p.z * 1 / box.z);
-
-            ix = ix >= static_cast<int32_t>(cx) ? static_cast<int32_t>(cx) - 1 : ix;
-            iy = iy >= static_cast<int32_t>(cy) ? static_cast<int32_t>(cy) - 1 : iy;
-            iz = iz >= static_cast<int32_t>(cz) ? static_cast<int32_t>(cz) - 1 : iz;
-
-            for (int32_t dx = -1; dx <= 1; ++dx)
-            for (int32_t dy = -1; dy <= 1; ++dy)
-            for (int32_t dz = -1; dz <= 1; ++dz)
-            {
-                int32_t x = ix + dx, y = iy + dy, z = iz + dz;
-                uint32_t cell_id = getCellID(x, y, z);
-
-                for (uint32_t A : cells[cell_id])
-                {
-                    if (A == D || A == H)
-                        continue;
-
-                    if (std::abs(data.q[A]) < 0.15f)
-                        continue;
-                    if (data.q[H] * data.q[A] > 0.0f)
-                        continue;
-
-                    sf::Vector3f rHD = minImageVec(pos(D) - pos(H));
-                    sf::Vector3f rHA = minImageVec(pos(A) - pos(H));
-                    float dHD = rHD.length();
-                    float dHA = rHA.length();
-
-                    if (dHA > MAX_HA_DISTANCE || dHA < 0.7f)
-                        continue;
-                    if (dHD < 0.5f)
-                        continue;
-
-                    float cos_angle = rHD.dot(rHA) / (dHD * dHA);
-                    if (cos_angle < MIN_COS_ANGLE)
-                        continue;
-
-                    float energy_kJ = COULOMB_K * data.q[H] * data.q[A] / dHA;
-                    if (energy_kJ > WEAK_ENERGY)
-                        continue;
-
-                    float strength = std::clamp((energy_kJ - WEAK_ENERGY) / (STRONG_ENERGY - WEAK_ENERGY), 0.0f, 1.0f);
-                    if (strength < 0.15f)
-                        continue;
-
-                    uint8_t alpha = static_cast<uint8_t>(255 * strength);
-
-                    sf::Vector2f pA = project(window, pos(A));
-                    sf::Vector2f dir = (pA - pH).normalized();
-                    float dist2D = (pA - pH).length();
-                    if (dist2D < 1e-3f)
-                        continue;
-
-                    constexpr int NUM_DASHES = 8;
-                    constexpr float DASH_FRACTION = 0.55f;
-                    constexpr float GAP_FRACTION = 0.45f;
-
-                    float dash_len = dist2D * DASH_FRACTION / NUM_DASHES;
-                    float gap_len = dist2D * GAP_FRACTION / NUM_DASHES;
-
-                    sf::Vertex line[2];
-                    line[0].color = line[1].color = sf::Color(255, 255, 255, alpha);
-
-                    for (int i = 0; i < NUM_DASHES; ++i)
-                    {
-                        float start = (dash_len + gap_len) * i;
-                        float end = start + dash_len;
-
-                        if (end > dist2D)
-                            end = dist2D;
-                        if (start >= dist2D)
-                            break;
-
-                        line[0].position = pH + dir * start;
-                        line[1].position = pH + dir * end;
-                        window.getWindow().draw(line, 2, sf::PrimitiveType::Lines);
-                    }
-                }
-            }
-        }
-
-        void universe::drawDebug(core::window_t &window)
-        {
-            if (cx == 0 || box.x <= 0.f)
-                return;
-
-            sf::VertexArray grid(sf::PrimitiveType::Lines, 0);
-            grid.resize(24 * cx * cy * cz);
-
-            sf::Color cellColor(100, 149, 237, 60);
-            sf::Color hotColor(255, 69, 0, 120);
-
-            int32_t vert_idx = 0;
-
-            for (int32_t ix = 0; ix < cx; ++ix)
-                for (int32_t iy = 0; iy < cy; ++iy)
-                    for (int32_t iz = 0; iz < cz; ++iz)
-                    {
-                        int32_t cell_id = getCellID(ix, iy, iz);
-                        bool has_atoms = !cells[cell_id].empty();
-
-                        sf::Color color = has_atoms ? hotColor : cellColor;
-
-                        float x0 = ix * CELL_CUTOFF;
-                        float y0 = iy * CELL_CUTOFF;
-                        float z0 = iz * CELL_CUTOFF;
-                        float x1 = x0 + CELL_CUTOFF;
-                        float y1 = y0 + CELL_CUTOFF;
-                        float z1 = z0 + CELL_CUTOFF;
-
-                        // 8 corners of the cell
-                        std::array<sf::Vector3f, 8> c = {{{x0, y0, z0}, {x1, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}}};
-
-                        // 12 edges
-                        const int edges[12][2] = {
-                            {0, 1}, {1, 2}, {2, 3}, {3, 0}, // bottom
-                            {4, 5},
-                            {5, 6},
-                            {6, 7},
-                            {7, 4}, // top
-                            {0, 4},
-                            {1, 5},
-                            {2, 6},
-                            {3, 7} // vertical
-                        };
-
-                        for (int e = 0; e < 12; ++e)
-                        {
-                            sf::Vector2f a = project(window, c[edges[e][0]]);
-                            sf::Vector2f b = project(window, c[edges[e][1]]);
-
-                            if (a.x < -1000.f || b.x < -1000.f)
-                                continue;
-
-                            glm::vec3 cam_eye = cam.eye();
-                            sf::Vector3f camToA = c[edges[e][0]] - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
-                            sf::Vector3f camToB = c[edges[e][1]] - sf::Vector3f(cam_eye.x, cam_eye.y, cam_eye.z);
-                            if (camToA.normalized().dot(camToB.normalized()) < 0.2f)
-                                continue;
-
-                            grid[vert_idx++] = sf::Vertex(a, color);
-                            grid[vert_idx++] = sf::Vertex(b, color);
-                        }
-                    }
-
-            window.getWindow().draw(grid);
-        }
-
-        int32_t universe::createAtom(sf::Vector3f p, sf::Vector3f v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron, int32_t chirality)
+        int32_t universe::createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron, int32_t chirality)
         {
             atom newAtom{};
             newAtom.ZIndex = ZIndex;
@@ -623,15 +59,15 @@ namespace sim
 
             if (HMassRepartitioning)
             {
-                if (ZIndex == 1) newAtom.mass *= 3.f;
-                if (ZIndex > 5) newAtom.mass -= 3.f;
+                if (ZIndex == 1)
+                    newAtom.mass *= 3.f;
+                if (ZIndex > 5)
+                    newAtom.mass -= 3.f;
             }
 
             atoms.emplace_back(std::move(newAtom));
             data.q.emplace_back(ZIndex - numElectron);
-            data.fx.resize(atoms.size());
-            data.fy.resize(atoms.size());
-            data.fz.resize(atoms.size());
+            data.forces.resize(atoms.size());
             data.bond_orders.resize(atoms.size());
             data.temperature.resize(atoms.size());
 
@@ -727,13 +163,13 @@ namespace sim
             molecule nMolecule{};
 
             sf::Vector3f centroid{0.f, 0.f, 0.f};
-            for (const auto& p : structure.positions)
+            for (const auto &p : structure.positions)
             {
                 centroid += p;
             }
             centroid /= static_cast<float>(structure.positions.size());
 
-            for (auto& p : structure.positions)
+            for (auto &p : structure.positions)
             {
                 p -= centroid;
             }
@@ -742,7 +178,8 @@ namespace sim
             {
                 const def_atom &a = structure.atoms[i];
 
-                createAtom(structure.positions[i] + pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
+                sf::Vector3f end_pos = structure.positions[i] + pos;
+                createAtom(glm::vec3(end_pos.x, end_pos.y, end_pos.z), glm::vec3(vel.x, vel.y, vel.z), a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
                 data.q[i] += structure.atoms[i].charge;
             }
 
@@ -886,8 +323,9 @@ namespace sim
             for (int32_t i = 0; i < atomsToBalance.size(); ++i)
             {
                 int32_t idx = atomsToBalance[i];
-                if (idx >= atoms.size()) continue;
-                
+                if (idx >= atoms.size())
+                    continue;
+
                 uint8_t usualValence = constants::getUsualBonds(atoms[idx].ZIndex);
                 int deficit = usualValence - static_cast<int>(atoms[idx].bondCount);
                 valenceDeficit[i] = static_cast<float>(deficit);
@@ -924,13 +362,13 @@ namespace sim
 
         void universe::boundCheck(uint32_t i)
         {
-            float &x = data.x[i];
-            float &y = data.y[i];
-            float &z = data.z[i];
+            float &x = data.positions[i].x;
+            float &y = data.positions[i].y;
+            float &z = data.positions[i].z;
 
-            float &vx = data.vx[i];
-            float &vy = data.vy[i];
-            float &vz = data.vz[i];
+            float &vx = data.velocities[i].x;
+            float &vy = data.velocities[i].y;
+            float &vz = data.velocities[i].z;
 
             if (wall_collision)
             {
@@ -1181,23 +619,23 @@ namespace sim
             // std::cout << "count: " << count << std::endl;
         }
 
-        float universe::calculateDihedral(const sf::Vector3f &pa, const sf::Vector3f &pb, const sf::Vector3f &pc, const sf::Vector3f &pd)
+        float universe::calculateDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
         {
-            sf::Vector3f v1 = pb - pa;
-            sf::Vector3f v2 = pc - pb;
-            sf::Vector3f v3 = pd - pc;
+            glm::vec3 v1 = pb - pa;
+            glm::vec3 v2 = pc - pb;
+            glm::vec3 v3 = pd - pc;
 
-            sf::Vector3f n1 = v1.cross(v2);
-            sf::Vector3f n2 = v2.cross(v3);
+            glm::vec3 n1 = glm::cross(v1, v2);
+            glm::vec3 n2 = glm::cross(v2, v3);
 
-            n1 = n1.length() == 0.f ? sf::Vector3f{0.f, 0.f, 0.f} : n1.normalized();
-            n2 = n2.length() == 0.f ? sf::Vector3f{0.f, 0.f, 0.f} : n2.normalized();
+            n1 = glm::normalize(n1);
+            n2 = glm::normalize(n2);
 
-            float cosPhi = std::clamp(n1.dot(n2), -1.f, 1.f);
+            float cosPhi = std::clamp(glm::dot(n1, n2), -1.f, 1.f);
             float phi = std::acos(cosPhi);
 
             // sign via right-hand rule
-            if (v2.dot(n1.cross(n2)) < 0.f)
+            if (glm::dot(v2, glm::cross(n1, n2)) < 0.f)
                 phi = -phi;
             if (phi < 0.f)
                 phi += 2.f * M_PI;
@@ -1215,7 +653,7 @@ namespace sim
                 const sf::Vector3f &pc = pos(d_angle.C);
                 const sf::Vector3f &pd = pos(d_angle.D);
 
-                float phi = calculateDihedral(pa, pb, pc, pd);
+                float phi = calculateDihedral(glm::vec3(pa.x, pa.y, pa.z), glm::vec3(pb.x, pb.y, pb.z), glm::vec3(pc.x, pc.y, pc.z), glm::vec3(pd.x, pd.y, pd.z));
 
                 float target = d_angle.rad;
                 if (target == 0.f && d_angle.periodicity == 1)
@@ -1535,7 +973,7 @@ namespace sim
                     const sf::Vector3f &pc = pos(da.C);
                     const sf::Vector3f &pd = pos(da.D);
 
-                    float phi = calculateDihedral(pa, pb, pc, pd);
+                    float phi = calculateDihedral(glm::vec3(pa.x, pa.y, pa.z), glm::vec3(pb.x, pb.y, pb.z), glm::vec3(pc.x, pc.y, pc.z), glm::vec3(pd.x, pd.y, pd.z));
 
                     float target = da.rad;
                     if (target == 0.0f && da.periodicity == 1)
@@ -1577,9 +1015,9 @@ namespace sim
 
                     lf[da.A] += -f1;
                     lf[da.D] += -f4;
-                    lf[da.B] +=  f1;
-                    lf[da.C] +=  f4;
-                    lf[da.D] +=  -torqueD * 0.5f;
+                    lf[da.B] += f1;
+                    lf[da.C] += f4;
+                    lf[da.D] += -torqueD * 0.5f;
                 }
             };
 
@@ -1782,9 +1220,7 @@ namespace sim
             if (N == 0)
                 return;
 
-            data.fx.assign(N, 0.0f);
-            data.fy.assign(N, 0.0f);
-            data.fz.assign(N, 0.0f);
+            data.forces.assign(N, glm::vec3(0.0f));
 
             total_virial = 0.0f;
 
@@ -1815,9 +1251,7 @@ namespace sim
                 boundCheck(i);
             }
 
-            data.fx.assign(N, 0.0f);
-            data.fy.assign(N, 0.0f);
-            data.fz.assign(N, 0.0f);
+            data.forces.assign(N, glm::vec3(0.0f));
 
             if (!react)
             {
@@ -1827,7 +1261,8 @@ namespace sim
             else
                 handleReactiveForces();
 
-            for (int32_t i = 0; i < N; ++i) {
+            for (int32_t i = 0; i < N; ++i)
+            {
                 sf::Vector3f accel = force(i) / atoms[i].mass;
                 add_vel(i, accel * (0.5f * DT));
 
@@ -1883,7 +1318,7 @@ namespace sim
 
             for (int32_t i = 0; i < atoms.size(); ++i)
             {
-                data.z[i] *= scale;
+                data.positions[i].z *= scale;
             }
         }
 
@@ -1905,11 +1340,9 @@ namespace sim
                 lambda = 1.0f + (lambda - 1.0f) / tau;
             }
 
-            for (int32_t i = 0; i < data.vx.size(); ++i)
+            for (int32_t i = 0; i < data.velocities.size(); ++i)
             {
-                data.vx[i] *= lambda;
-                data.vy[i] *= lambda;
-                data.vz[i] *= lambda;
+                data.velocities[i] *= lambda;
             }
         }
 
@@ -1968,77 +1401,6 @@ namespace sim
             return (2.0f / 3.0f) * ke * KB;
         }
 
-        // Camera
-        sf::Vector2f universe::project(core::window_t &window, const sf::Vector3f &p) const
-        {
-            auto size = window.getWindow().getView().getSize();
-            return cam.project(glm::vec3{p.x, p.y, p.z}, size.x, size.y);
-        }
-
-        void universe::handleCamera()
-        {
-            ImGuiIO &io = ImGui::GetIO();
-
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard)
-                return;
-
-            if (ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
-                return;
-
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-            {
-                ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f);
-
-                cam.azimuth -= dragDelta.x * 0.25f;                                             // yaw
-                cam.elevation = std::clamp(cam.elevation - dragDelta.y * 0.25f, -89.0f, 89.0f); // pitch
-
-                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
-            }
-            
-            glm::vec3 cam_eye = cam.eye();
-            glm::vec3 forward = glm::normalize(cam.target - cam_eye);
-            glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 0, 1)));
-            glm::vec3 up = glm::normalize(glm::cross(right, forward));
-
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
-            {
-                ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 0.0f);
-                float panSpeed = cam.distance * 0.002f;
-
-                cam.target += right * (-dragDelta.x * panSpeed);
-                cam.target += up * (dragDelta.y * panSpeed);
-
-                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
-            }
-
-            float wheel = ImGui::GetIO().MouseWheel;
-            if (wheel != 0.0f)
-            {
-                const float zoomSpeed = 6.0f;
-                float factor = (wheel > 0) ? (1.0f / 1.1f) : 1.1f;
-                cam.distance = std::clamp(cam.distance * std::pow(factor, zoomSpeed * std::abs(wheel)),
-                                          5.0f, 1000.0f);
-            }
-
-            ImVec2 ioMousePos = ImGui::GetMousePos();
-            (void)ioMousePos; // silence unused warning
-
-            float moveSpeed = 0.5f;
-
-            if (ImGui::IsKeyDown(ImGuiKey_W))
-                cam.target += forward * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_S))
-                cam.target -= forward * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_A))
-                cam.target -= right * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_D))
-                cam.target += right * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_Q))
-                cam.target -= up * moveSpeed;
-            if (ImGui::IsKeyDown(ImGuiKey_E))
-                cam.target += up * moveSpeed;
-        }
-
         // TO DO
         std::string universe::moleculeName(const std::vector<uint32_t> &subsetIdx)
         {
@@ -2090,17 +1452,13 @@ namespace sim
 
         void universe::initReaxParams()
         {
-
         }
 
         // loading and saving scenes
 
         void universe::saveFrame()
         {
-            positionxLog.emplace_back(data.x);
-            positionyLog.emplace_back(data.y);
-            positionzLog.emplace_back(data.z);
-
+            // TO DO
             temperatureLog.emplace_back(temp);
         }
 
@@ -2122,7 +1480,6 @@ namespace sim
                 video["posx"].emplace_back(positionxLog[i]);
                 video["posy"].emplace_back(positionyLog[i]);
                 video["posz"].emplace_back(positionzLog[i]);
-
                 video["temperature"].emplace_back(temperatureLog[i]);
             }
 
@@ -2138,7 +1495,7 @@ namespace sim
             {
                 if (!std::filesystem::is_directory(path))
                     std::filesystem::create_directory(path);
-                
+
                 std::filesystem::path filepath = name.empty() ? path / ("video_" + formatTime() + ".json") : path / ("video_" + name + ".json");
                 std::ofstream file(filepath);
                 file.flush();
@@ -2156,7 +1513,6 @@ namespace sim
             positionxLog.clear();
             positionyLog.clear();
             positionzLog.clear();
-
             temperatureLog.clear();
             energyLog.clear();
         }
@@ -2168,15 +1524,14 @@ namespace sim
 
             nlohmann::json scene{};
 
-            for (int32_t x = 0; x < data.x.size(); ++x)
+            for (int32_t x = 0; x < data.positions.size(); ++x)
             {
-                scene["posx"].emplace_back(data.x[x]);
-                scene["posy"].emplace_back(data.y[x]);
-                scene["posz"].emplace_back(data.z[x]);
-
-                scene["velx"].emplace_back(data.vx[x]);
-                scene["vely"].emplace_back(data.vy[x]);
-                scene["velz"].emplace_back(data.vz[x]);
+                scene["posx"].emplace_back(data.positions[x].x);
+                scene["posy"].emplace_back(data.positions[x].y);
+                scene["posz"].emplace_back(data.positions[x].z);
+                scene["velx"].emplace_back(data.velocities[x].x);
+                scene["vely"].emplace_back(data.velocities[x].y);
+                scene["velz"].emplace_back(data.velocities[x].z);
 
                 scene["charge"].emplace_back(data.q[x]);
                 scene["temperature"].emplace_back(data.temperature[x]);
@@ -2326,12 +1681,8 @@ namespace sim
             subsets.clear();
             molecules.clear();
             reactive_bonds.clear();
-            data.x.clear();
-            data.y.clear();
-            data.z.clear();
-            data.vx.clear();
-            data.vy.clear();
-            data.vz.clear();
+            data.positions.clear();
+            data.velocities.clear();
             data.q.clear();
             data.temperature.clear();
             data.bond_orders.clear();
@@ -2368,12 +1719,8 @@ namespace sim
             int32_t N = posx.size();
 
             atoms.reserve(N);
-            data.x.reserve(N);
-            data.y.reserve(N);
-            data.z.reserve(N);
-            data.vx.reserve(N);
-            data.vy.reserve(N);
-            data.vz.reserve(N);
+            data.positions.reserve(N);
+            data.velocities.reserve(N);
             data.q.reserve(N);
             data.temperature.reserve(N);
             data.bond_orders.reserve(N);
@@ -2398,17 +1745,15 @@ namespace sim
 
                 atoms.emplace_back(std::move(newAtom));
 
-                emplace_pos(sf::Vector3f(posx[i], posy[i], posz[i]));
-                emplace_vel(sf::Vector3f(velx[i], vely[i], velz[i]));
+                emplace_pos(glm::vec3(posx[i], posy[i], posz[i]));
+                emplace_vel(glm::vec3(velx[i], vely[i], velz[i]));
 
                 data.q.emplace_back(charges[i]);
                 data.temperature.emplace_back(temperatures[i]);
                 data.bond_orders.emplace_back(bondorders[i]);
             }
 
-            data.fx.assign(N, 0.0f);
-            data.fy.assign(N, 0.0f);
-            data.fz.assign(N, 0.0f);
+            data.forces.assign(N, glm::vec3(0.0f));
 
             if (scene.contains("bonds"))
             {
