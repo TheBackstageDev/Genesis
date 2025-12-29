@@ -145,6 +145,10 @@ namespace sim
 
     void rendering_engine::draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
+        if (info.universeBox)
+            drawBox(sim_info.box);
+
+        glm::vec3 cam_eye = cam.eye();
         std::vector<int32_t> no_draw{};
 
         if (!sim_info.renderWater)
@@ -162,17 +166,21 @@ namespace sim
         instances.reserve(sim_info.atoms.size());
 
         if (info.lennardBall)
-        for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
         {
-            const auto& atom = sim_info.atoms[i];
-            float radius = info.spaceFilling
-                            ? atom.radius
-                            : constants::VDW_RADII[atom.ZIndex] * 1.2f; 
+            glm::mat4 viewMatrix = cam.getViewMatrix();
 
-            sf::Color col = constants::getElementColor(atom.ZIndex);
-            glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, 1.0f);
+            for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
+            {
+                const auto &atom = sim_info.atoms[i];
+                float radius = info.spaceFilling
+                                   ? atom.radius
+                                   : constants::VDW_RADII[atom.ZIndex] * 1.2f;
 
-            instances.emplace_back(sim_info.positions[i], radius, color_norm);
+                sf::Color col = constants::getElementColor(atom.ZIndex);
+                glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, 1.0f);
+
+                instances.emplace_back(glm::vec3(viewMatrix * glm::vec4(sim_info.positions[i], 1.0)), radius, color_norm);
+            }
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -193,6 +201,7 @@ namespace sim
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
 
+        glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
 
         GLenum err = glGetError();
@@ -203,32 +212,6 @@ namespace sim
 
         glBindVertexArray(0);
         glUseProgram(0);
-
-        target.pushGLStates();
-
-        if (info.universeBox)
-            drawBox(sim_info.box);
-    
-        glm::vec3 cam_eye = cam.eye();
-
-        /* if (info.letter)
-            for (int32_t i = 0; i < sim_info.positions.size(); ++i)
-            {
-                if (std::find(no_draw.begin(), no_draw.end(), drawOrder[i]) != no_draw.end())
-                    continue;
-
-                glm::vec2 p = project(sim_info.positions[drawOrder[i]]);
-                if (p.x < -1000)
-                    continue;
-
-                glm::vec3 r_vec = sim_info.positions[drawOrder[i]] - cam_eye;
-
-                sim_info.atoms[i].draw(sf::Vector2f(p.x, p.y), glm::length(r_vec), sim_info.q[drawOrder[i]], window, window.getWindow());
-            } */
-
-        //drawBonds(window.getWindow(), sim_info);
-
-        target.popGLStates();
     }
 
     float smootherstep(float edge0, float edge1, float x)

@@ -77,7 +77,7 @@ namespace core
             window->getWindow().setFramerateLimit(app_options.target_fps);
             window->refresh();
             window->clear();
-            
+
             if (current_state == application_state::APP_STATE_MENU)
                 ui->drawMenu();
             if (current_state == application_state::APP_STATE_SIMULATION)

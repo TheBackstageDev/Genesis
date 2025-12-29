@@ -215,6 +215,8 @@ namespace core
             thumb_texture.update(window.getWindow());
             thumb_textures.emplace_back(std::move(thumb_texture));
         }
+
+        display_universe->clear();
     }
 
     void UIHandler::initCompoundPresets()
@@ -1228,8 +1230,8 @@ namespace core
             info.lennardBall = info.letter = info.spaceFilling = true;
         }
 
-        rendering_eng->handleCamera();
         simulation_universe->draw(window.getWindow(), info);
+        rendering_eng->handleCamera();
 
         if (screenshotToggle)
         {
