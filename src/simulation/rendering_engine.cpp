@@ -145,13 +145,6 @@ namespace sim
 
     void rendering_engine::draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        std::vector<int32_t> drawOrder(sim_info.positions.size());
-        std::iota(drawOrder.begin(), drawOrder.end(), 0);
-
-        std::sort(drawOrder.begin(), drawOrder.end(),
-                  [&](int32_t a, int32_t b)
-                  { return (sim_info.positions[a] - cam.eye()).length() > (sim_info.positions[b] - cam.eye()).length(); });
-
         std::vector<int32_t> no_draw{};
 
         if (!sim_info.renderWater)
@@ -169,17 +162,17 @@ namespace sim
         instances.reserve(sim_info.atoms.size());
 
         if (info.lennardBall)
-        for (int32_t sortedIdx : drawOrder)
+        for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
         {
-            const auto& atom = sim_info.atoms[sortedIdx];
+            const auto& atom = sim_info.atoms[i];
             float radius = info.spaceFilling
-                            ? constants::VDW_RADII[atom.ZIndex] * 1.5f
-                            : atom.radius / 3.f;
+                            ? atom.radius
+                            : constants::VDW_RADII[atom.ZIndex] * 1.2f; 
 
             sf::Color col = constants::getElementColor(atom.ZIndex);
             glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, 1.0f);
 
-            instances.emplace_back(sim_info.positions[sortedIdx], radius, color_norm);
+            instances.emplace_back(sim_info.positions[i], radius, color_norm);
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -191,18 +184,14 @@ namespace sim
         glBindVertexArray(vao);
         glUseProgram(atom_program);
 
-        GLint loc_projection = glGetUniformLocation(atom_program, "u_projection");
+        GLint loc_projection = glGetUniformLocation(atom_program, "u_proj");
         GLint loc_view = glGetUniformLocation(atom_program, "u_view");
-        GLint loc_cam_pos = glGetUniformLocation(atom_program, "u_campos");
 
         if (loc_projection != -1)
             glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
-
-        if (loc_cam_pos != -1)
-            glUniform3fv(loc_cam_pos, 1, glm::value_ptr(cam.eye()));
 
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
 
@@ -222,7 +211,7 @@ namespace sim
     
         glm::vec3 cam_eye = cam.eye();
 
-        if (info.letter)
+        /* if (info.letter)
             for (int32_t i = 0; i < sim_info.positions.size(); ++i)
             {
                 if (std::find(no_draw.begin(), no_draw.end(), drawOrder[i]) != no_draw.end())
@@ -235,9 +224,9 @@ namespace sim
                 glm::vec3 r_vec = sim_info.positions[drawOrder[i]] - cam_eye;
 
                 sim_info.atoms[i].draw(sf::Vector2f(p.x, p.y), glm::length(r_vec), sim_info.q[drawOrder[i]], window, window.getWindow());
-            }
+            } */
 
-        drawBonds(window.getWindow(), sim_info);
+        //drawBonds(window.getWindow(), sim_info);
 
         target.popGLStates();
     }
@@ -286,8 +275,8 @@ namespace sim
             uint8_t lines = static_cast<uint8_t>(bond.type);
             float distance = (pCentral - cam_eye).length();
 
-            float shrink = 1.5f;  // pixels
-            float spacing = 0.5f; // pixels between lines
+            float shrink = 1.2f;  // pixels
+            float spacing = 0.3f; // pixels between lines
 
             std::vector<sf::Vertex> verts;
             verts.reserve(lines * 2);

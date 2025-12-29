@@ -13,7 +13,7 @@ namespace core
         settings.depthBits = 24;
         settings.stencilBits = 8;
         settings.antiAliasingLevel = 2;
-        settings.majorVersion = 4.2;
+        settings.majorVersion = 4.0;
         settings.minorVersion = 0;
 
         window.create(sf::VideoMode({width, height}), title, sf::Style::Default, sf::State::Windowed, settings);

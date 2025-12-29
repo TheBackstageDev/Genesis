@@ -38,9 +38,9 @@ namespace sim
 
         struct AtomInstance 
         {
-            glm::vec3 position;
-            float radius;
-            glm::vec4 color;
+            alignas(16) glm::vec3 position;
+            alignas(16) float radius;
+            alignas(16) glm::vec4 color;
         };
 
         void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);

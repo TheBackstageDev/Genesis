@@ -138,7 +138,7 @@ namespace sim::io
             for (size_t j = i + 1; j < atoms.size(); ++j)
             {
                 uint8_t z2 = atoms[j].ZIndex;
-                double dist = (positions[i] - positions[j]).length();
+                float dist = (positions[i] - positions[j]).length();
                 float r_cov = (constants::covalent_radius[z1] + constants::covalent_radius[z2]);
 
                 if (dist < r_cov + tolerance) 

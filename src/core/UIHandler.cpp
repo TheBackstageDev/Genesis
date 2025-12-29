@@ -662,7 +662,7 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("src/resource/molecules/presets/dna.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("src/resource/molecules/nanoparticle.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
 
             simulation_universe->createMolecule(structure, {30, 30, 30}); */
