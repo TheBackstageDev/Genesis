@@ -10,6 +10,10 @@
 #include <filesystem>
 #include <json.hpp>
 
+#ifndef _NODISCARD
+#define _NODISCARD
+#endif
+
 namespace sim
 {
     namespace fun

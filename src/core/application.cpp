@@ -3,6 +3,7 @@
 #include <imgui-SFML.h>
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 
 namespace core
 {
@@ -56,7 +57,7 @@ namespace core
 
         if (!ImGui::SFML::UpdateFontTexture())
         {
-            throw std::exception("[APPLICATION]: IMGUI SFML Couldn't update it's fonts");
+            throw std::runtime_error("[APPLICATION]: IMGUI SFML Couldn't update it's fonts");
         }
     }
 

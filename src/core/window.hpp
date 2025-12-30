@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <functional>
 
 #include <imgui/imgui.h>
 #include "imgui/imgui-SFML.h"

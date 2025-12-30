@@ -6,7 +6,7 @@
 namespace sim
 {
     using namespace sim::fun;
-    molecule_structure sim::parseSMILES(const std::string &molecule, bool implicitHydrogens)
+    molecule_structure parseSMILES(const std::string &molecule, bool implicitHydrogens)
     {
         molecule_structure nStructure{};
         std::vector<def_bond> nBonds{};
@@ -19,7 +19,7 @@ namespace sim
         if (molecule.empty())
             return nStructure;
 
-        uint32_t prevAtom = SIZE_MAX;
+        uint32_t prevAtom = UINT32_MAX;
         BondType bondType = BondType::SINGLE; // Current Bond
 
         std::stack<uint32_t> branchStack;
@@ -101,7 +101,7 @@ namespace sim
 
             if (c == '(')
             {
-                if (prevAtom != SIZE_MAX)
+                if (prevAtom != UINT32_MAX)
                 {
                     branchStack.emplace(prevAtom);
                     branchAtoms.emplace_back(prevAtom);
@@ -132,11 +132,11 @@ namespace sim
 
                 std::string symbol;
                 int isotope = 0, charge = 0;
-                char chirality = 0;
+                uint32_t chirality = 0;
                 uint32_t k = 0;
 
                 if (std::isdigit(atomStr[k]))
-                    isotope = std::stoi(atomStr.substr(k), &k) - 1;
+                    isotope = std::stoi(atomStr.substr(k)) - 1;
 
                 if (k >= atomStr.size() || !std::isalpha(atomStr[k])) { i = j; continue; }
                 symbol += atomStr[k++];
@@ -155,8 +155,8 @@ namespace sim
 
                 if (k < atomStr.size() && atomStr[k] == '@')
                 {
-                    chirality = atomStr[k++];
-                    if (k < atomStr.size() && atomStr[k] == '@') { chirality = '@@'; ++k; }
+                    chirality = 1;
+                    if (k < atomStr.size() && atomStr[k] == '@') { chirality = 2; ++k; }
                 }
 
                 uint32_t Hcount = 0;
@@ -193,7 +193,7 @@ namespace sim
 
                 uint32_t currentAtom = nAtoms.size() - 1;
 
-                if (prevAtom != SIZE_MAX)
+                if (prevAtom != UINT32_MAX)
                 {
                     def_bond nb{};
                     nb.centralAtomIdx = prevAtom;
@@ -214,7 +214,7 @@ namespace sim
             // Different molecule
             if (c == '.')
             {
-                prevAtom = SIZE_MAX;
+                prevAtom = UINT32_MAX;
                 bondType = BondType::SINGLE;
                 newMolecule = true;
                 continue;
@@ -255,7 +255,7 @@ namespace sim
 
                 uint32_t currentAtom = nAtoms.size() - 1;
 
-                if (prevAtom != SIZE_MAX)
+                if (prevAtom != UINT32_MAX)
                 {   
                     def_bond nBond{};
                     nBond.bondingAtomIdx = currentAtom;
@@ -318,7 +318,7 @@ namespace sim
                 });
                 
                 if (bondIt != nBonds.end()) 
-                bondIt->type = doubleBond ? BondType::DOUBLE : BondType::SINGLE;
+                  bondIt->type = doubleBond ? BondType::DOUBLE : BondType::SINGLE;
                 
                 if (doubleBond)
                 {
@@ -356,7 +356,7 @@ namespace sim
         }
     };
 
-    void sim::organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
+    void organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
                             std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles)
     {
         std::unordered_map<std::pair<uint32_t, uint32_t>, def_bond, pair_hash> bond_map;
@@ -469,7 +469,7 @@ namespace sim
         }
     }
 
-    void sim::organizeSubsets(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
+    void organizeSubsets(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds)
     {
         std::unordered_map<uint32_t, std::vector<uint32_t>> atomBonds; // atomIndex > atomsIndices
 
@@ -554,7 +554,7 @@ namespace sim
         }
     }
 
-    void sim::addImplicitHydrogens(std::vector<def_atom> &nAtoms, std::vector<def_bond> &nBonds)
+    void addImplicitHydrogens(std::vector<def_atom> &nAtoms, std::vector<def_bond> &nBonds)
     {
         uint32_t originalSize = nAtoms.size();
 
@@ -591,7 +591,7 @@ namespace sim
         }
     }
 
-    void sim::positionAtoms(const std::string &SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<uint32_t>> &rings,
+    void positionAtoms(const std::string &SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<uint32_t>> &rings,
                             const std::vector<def_atom> &nAtoms, const std::vector<def_subset> &nSubsets,
                             std::vector<sf::Vector3f> &positions, std::vector<angle>& angles)
     {
@@ -615,7 +615,7 @@ namespace sim
         
         std::unordered_map<uint32_t,bool> flipMap;
         uint32_t atomIdx = 0;             
-        uint32_t prevAtom = SIZE_MAX;
+        uint32_t prevAtom = UINT32_MAX;
 
         auto place = [&](uint32_t idx, const sf::Vector3f& p){
             positions[idx] = p; pos = p;
@@ -643,7 +643,7 @@ namespace sim
             if (c=='='||c=='#') { curBond = (c=='=')?BondType::DOUBLE:BondType::TRIPLE; continue; }
 
             float ideal = 0.f;
-            if (prevAtom != SIZE_MAX)
+            if (prevAtom != UINT32_MAX)
             {
                 auto it = atomToSubset.find(prevAtom);
                 if (it != atomToSubset.end()) ideal = nSubsets[it->second].idealAngle;
@@ -749,7 +749,7 @@ namespace sim
                 }
 
                 float len = 2.0f * MULT_FACTOR;
-                if (prevAtom != SIZE_MAX && a.ZIndex != 1)
+                if (prevAtom != UINT32_MAX && a.ZIndex != 1)
                 {
                     len = constants::getBondLength(nAtoms[prevAtom].ZIndex, a.ZIndex, curBond);
 
@@ -842,7 +842,7 @@ namespace sim
             const char chirality = atom.chirality;
 
             sf::Vector3f axis(1,0,0);
-            if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX)
+            if (sub.bondedSubset != UINT32_MAX && sub.bondingSubset != UINT32_MAX)
             {
                 const uint32_t c1 = nSubsets[sub.bondedSubset].mainAtomIdx;
                 const uint32_t c2 = nSubsets[sub.bondingSubset].mainAtomIdx;
@@ -850,12 +850,12 @@ namespace sim
                 const sf::Vector3f v2 = (positions[centralAtom] - positions[c2]).normalized();
                 axis = (v1 + v2).length() == 0.f ? axis : (v1 + v2).normalized();
             }
-            else if (sub.bondingSubset != SIZE_MAX)
+            else if (sub.bondingSubset != UINT32_MAX)
             {
                 const uint32_t prev = nSubsets[sub.bondingSubset].mainAtomIdx;
                 axis = (positions[centralAtom] - positions[prev]).normalized();
             }
-            else if (sub.bondedSubset != SIZE_MAX)
+            else if (sub.bondedSubset != UINT32_MAX)
             {
                 const uint32_t next = nSubsets[sub.bondedSubset].mainAtomIdx;
                 axis = (positions[centralAtom] - positions[next]).normalized();
@@ -887,7 +887,7 @@ namespace sim
                 sf::Vector3f dir = baseDir; 
                 const sf::Vector3f ringNormal(0, 0, 1);
 
-                if (sub.bondedSubset != SIZE_MAX && sub.bondingSubset != SIZE_MAX && ringDir.count(sub.mainAtomIdx) > 0)
+                if (sub.bondedSubset != UINT32_MAX && sub.bondingSubset != UINT32_MAX && ringDir.count(sub.mainAtomIdx) > 0)
                     dir = rotateDirection(dir, axis, 120.f * h * RADIAN);
                 else if (nH == 1 && chirality != 0)
                 {
@@ -1133,7 +1133,7 @@ namespace sim
         }
     }
 
-    sf::Vector3f sim::rotateDirection(const sf::Vector3f &v, const sf::Vector3f &axis, float angle)
+    sf::Vector3f rotateDirection(const sf::Vector3f &v, const sf::Vector3f &axis, float angle)
     {
         const float c = std::cos(angle);
         const float s = std::sin(angle);

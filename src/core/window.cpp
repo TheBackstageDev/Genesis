@@ -1,8 +1,8 @@
 #include "window.hpp"
 #include <SFML/Window.hpp>
 
-#include <ostream>
 #include <iostream>
+#include <stdexcept>
 
 namespace core
 {
@@ -17,11 +17,11 @@ namespace core
         settings.minorVersion = 4;
 
         window.create(sf::VideoMode({width, height}), title, sf::Style::Default, sf::State::Windowed, settings);
-        window.setActive(true);
+        (void)window.setActive(true);
         
         if (!gladLoadGLLoader((GLADloadproc)sf::Context::getFunction)) 
         {
-            throw std::exception("[WINDOW]: glad Failed to load OpenGL!");
+            throw std::runtime_error("[WINDOW]: glad Failed to load OpenGL!");
         }
         
         glEnable(GL_TEXTURE_2D);
@@ -49,7 +49,7 @@ namespace core
 
     window_t::~window_t()
     {
-        window.setActive(false);
+        (void)window.setActive(false);
     }
 
     bool window_t::pollEvents()

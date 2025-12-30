@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <SFML/Graphics.hpp>
+#include <cmath>
 
 namespace sim
 {
@@ -13,7 +14,6 @@ namespace sim
 
 namespace constants
 {
-#define M_PI 3.1415926535
 #define RADIAN M_PI / 180
 #define DEGREE 180 / M_PI
 

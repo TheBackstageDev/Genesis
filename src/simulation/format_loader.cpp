@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <strstream>
 
 namespace sim::io
 {
@@ -78,7 +77,7 @@ namespace sim::io
         return fun::BondType::SINGLE;
     }
 
-    bool io::loadXYZ(const std::filesystem::path path, std::vector<fun::def_atom>& atoms, std::vector<fun::def_bond>& bonds, std::vector<sf::Vector3f>& positions)
+    bool loadXYZ(const std::filesystem::path path, std::vector<fun::def_atom>& atoms, std::vector<fun::def_bond>& bonds, std::vector<sf::Vector3f>& positions)
     {
         std::ifstream file(path);
         if (!file.is_open() || path.extension() != ".xyz") 

@@ -18,7 +18,7 @@ namespace sim
                         std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles);
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
     void addImplicitHydrogens(std::vector<def_atom>& nAtoms, std::vector<def_bond>& nBonds);
-    void positionAtoms(const std::string& SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<size_t>>& rings, 
+    void positionAtoms(const std::string& SMILES, std::vector<def_bond>& nBonds, const std::vector<std::vector<uint32_t>>& rings, 
         const std::vector<def_atom>& nAtoms, const std::vector<def_subset>& nSubsets, std::vector<sf::Vector3f>& positions, std::vector<angle>& angles);
 
     sf::Vector3f rotateDirection(const sf::Vector3f& v, const sf::Vector3f& axis, float angle);

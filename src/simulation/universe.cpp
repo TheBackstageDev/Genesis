@@ -1739,7 +1739,7 @@ namespace sim
                 newAtom.radius = radius;
                 newAtom.electrons = electrons[i];
                 newAtom.NCount = nNeutrons;
-                newAtom.mass = Z * MASS_PROTON + nNeutrons * MASS_NEUTRON + electrons[i] * MASS_ELECTRON;
+                newAtom.mass = Z * MASS_PROTON + nNeutrons * MASS_NEUTRON + ((float)electrons[i]) * MASS_ELECTRON;
                 newAtom.chirality = chiralities[i];
                 newAtom.bondCount = bondCounts[i];
 
