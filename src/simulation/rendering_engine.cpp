@@ -171,12 +171,10 @@ namespace sim
 
             for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
             {
-                if (std::find(no_draw.begin(), no_draw.end(), i) != no_draw.end()) continue;
-                
                 const auto &atom = sim_info.atoms[i];
                 float radius = info.spaceFilling
-                                   ? atom.radius * 1.2f
-                                   : constants::VDW_RADII[atom.ZIndex];
+                                   ? atom.radius
+                                   : constants::VDW_RADII[atom.ZIndex] * 1.2f;
 
                 sf::Color col = constants::getElementColor(atom.ZIndex);
                 glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, 1.0f);

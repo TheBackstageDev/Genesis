@@ -191,7 +191,7 @@ namespace sim
             std::vector<molecule>& molecules;
             glm::vec3 box;
 
-            bool renderWater = true;
+            bool renderWater = false;
         };
     } // namespace fun
 } // namespace sim
