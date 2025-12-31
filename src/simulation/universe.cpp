@@ -747,6 +747,7 @@ namespace sim
                                 const uint32_t &i = cell[ii];
                                 if (data.q[i] == 0.f)
                                     continue;
+                                    
                                 for (int32_t jj = 0; jj < neighbour_cell.size(); ++jj)
                                 {
                                     const uint32_t &j = neighbour_cell[jj];

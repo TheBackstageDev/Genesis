@@ -17,7 +17,7 @@ void main()
     v_radius = a_radius;
     v_color = a_color;
 
-    if (a_center.z > 0.0) 
+    if (a_center.z > 0.0 || -a_center.z < v_radius * 1.1) 
     {
         gl_Position = vec4(0.0);
         return;

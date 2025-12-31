@@ -14,6 +14,8 @@ namespace sim
 
 namespace constants
 {
+
+#define M_PI 3.1415926535897932
 #define RADIAN M_PI / 180
 #define DEGREE 180 / M_PI
 
@@ -116,7 +118,8 @@ namespace constants
         2.44f,  // Cs
         2.15f,  // Ba
         2.05f,  // La
-        2.00f,  // Hf (Lu=1.75, but grouped)
+        2.00f,  // Hf
+        1.75f,
         1.90f,  // Ta
         1.85f,  // W
         1.80f,  // Re
@@ -134,16 +137,48 @@ namespace constants
         2.60f,  // Fr
         2.25f,  // Ra
         0.00f,  // Ac
-
-        1.80f,  // Ce 1.80, Pr 1.80, Nd 1.80, Pm 1.80, Sm 1.80, Eu 1.80, Gd 1.80,
-        1.80f,  // Tb 1.75, Dy 1.75, Ho 1.75, Er 1.75, Tm 1.75, Yb 1.75, Lu 1.75
-
-        1.70f,  // Th 1.75, Pa 1.70, U 1.65, Np 1.65, Pu 1.65, Am 1.65, Cm 1.65,
-        1.65f,  // Bk 1.65, Cf 1.65, Es 1.65, Fm 1.65, Md 1.65, No 1.65
-
-        1.60f,  // Rf 1.60, Db 1.60, Sg 1.60, Bh 1.60, Hs 1.60, Mt 1.50,
-        1.50f,  // Ds 1.40, Rg 1.35, Cn 1.30, Nh 1.30, Fl 1.30, Mc 1.30, Lv 1.30,
-        1.30f,  // Ts 1.30, Og 1.30
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.80f,
+        1.75f,
+        1.75f,
+        1.75f,
+        1.75f,
+        1.75f,
+        1.75f,
+        1.75f,
+        1.70f,
+        1.75f,
+        1.70f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.65f,
+        1.60f,
+        1.60f,
+        1.60f,
+        1.60f,
+        1.60f,
+        1.60f,
+        1.50f,  
+        1.50f, 
+        1.30f,
+        1.30f
     };
 
     constexpr float VDW_RADII[119] = {
@@ -431,7 +466,6 @@ namespace constants
                 break;
         }
 
-        // Final clamp
         return (bonds > 8) ? 4 : bonds;
     }
 
