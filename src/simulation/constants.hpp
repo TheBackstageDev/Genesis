@@ -14,6 +14,7 @@ namespace sim
 
 namespace constants
 {
+#define M_PI 3.14159265f
 #define RADIAN M_PI / 180
 #define DEGREE 180 / M_PI
 
@@ -22,7 +23,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.0005f // ps
+#define DT 0.0007f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f

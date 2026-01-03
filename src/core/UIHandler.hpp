@@ -267,6 +267,7 @@ namespace core
         
         void runUniverse();
         void drawUniverseUI(window_t& window);
+        sim::fun::rendering_info getSimulationRenderingInfo(simulation_render_mode mode);
 
         bool screenshotToggle = false;
 
@@ -282,6 +283,7 @@ namespace core
         void drawCompoundView(const compound_preset_info& compound);
         void drawCompoundFulLView();
 
+        
         void pauseMenu(window_t& window);
 
         void initCompoundPresetsImages(window_t& window);
@@ -299,7 +301,7 @@ namespace core
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
 
-        std::unique_ptr<sim::rendering_engine> rendering_eng;
+        sim::rendering_engine rendering_eng;
 
         // Callbacks
         

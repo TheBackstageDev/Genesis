@@ -33,7 +33,7 @@
       {
         "ball_and_stick": "Bola e Palito",
         "letter_and_stick": "Letra e Palito",
-        "space_filling": "Preenchedor de Espaço (WIP)"
+        "space_filling": "Preenchedor de Espaço"
       }
     },
 
@@ -103,7 +103,6 @@
       "Ácido Palmítico",
       "Ácido Cáprico",
       "Ácido Oleico",
-      "Colesterol",
       "ATP",
       "Aspirina",
       "Cafeína",

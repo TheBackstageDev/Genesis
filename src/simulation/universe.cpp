@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <numeric>
 #include <unordered_set>
+#include <set>
 #include <queue>
 #include <fstream>
 
@@ -14,7 +15,7 @@ namespace sim
     namespace fun
     {
 
-        universe::universe(const universe_create_info &create_info, rendering_engine& rendering_engine)
+        universe::universe(const universe_create_info &create_info, rendering_engine &rendering_engine)
             : box(create_info.box), react(create_info.reactive),
               gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
@@ -25,13 +26,13 @@ namespace sim
                 initReaxParams();
         }
 
-        universe::universe(const std::filesystem::path path, rendering_engine& rendering_engine)
+        universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine)
             : rendering_eng(rendering_engine)
         {
             loadScene(path);
         }
 
-        void universe::draw(sf::RenderTarget& target, const rendering_info& info)
+        void universe::draw(sf::RenderTarget &target, const rendering_info &info)
         {
             rendering_simulation_info sim_info{.positions = data.positions, .q = data.q, .atoms = atoms, .bonds = bonds, .molecules = molecules, .box = glm::vec3(box.x, box.y, box.z)};
 
@@ -782,8 +783,8 @@ namespace sim
 
             if (local_forces.size() != atoms.size())
                 local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
-
-            std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
+            else
+                std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
 
             for (int32_t ii = 0; ii < cell.size(); ++ii)
             {
@@ -864,6 +865,104 @@ namespace sim
                             }
                         }
                     }
+
+            total_virial.fetch_add(local_virial, std::memory_order_relaxed);
+            return local_forces;
+        }
+
+        std::vector<sf::Vector3f> universe::processPartialCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
+        {
+            float local_virial = 0.f;
+
+            int32_t cellID = getCellID(ix, iy, iz);
+            const auto &cell = cells[cellID];
+            thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
+
+            if (local_forces.size() != atoms.size())
+                local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
+
+            std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
+
+            for (int32_t ii = atom_start; ii < atom_end; ++ii)
+            {
+                int32_t i = cell[ii];
+
+                for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
+                {
+                    int32_t j = cell[jj];
+
+                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+
+                    float r2 = dr.lengthSquared();
+                    if (r2 > CELL_CUTOFF)
+                        continue;
+
+                    if (areBonded(i, j))
+                        continue;
+
+                    sf::Vector3f cForce = coulombForce(i, j, dr);
+                    sf::Vector3f lForce = ljForce(i, j);
+
+                    sf::Vector3f total_force = cForce + lForce;
+                    local_forces[i] += total_force;
+                    local_forces[j] -= total_force;
+
+                    local_virial += dr.x * total_force.x +
+                                    dr.y * total_force.y +
+                                    dr.z * total_force.z;
+                }
+
+                for (int32_t dx = 0; dx <= 1; ++dx)
+                    for (int32_t dy = -1; dy <= 1; ++dy)
+                        for (int32_t dz = -1; dz <= 1; ++dz)
+                        {
+                            if (dx == 0 && dy == 0 && dz == 0)
+                                continue;
+
+                            int32_t n_ix = ix + dx;
+                            int32_t n_iy = iy + dy;
+                            int32_t n_iz = iz + dz;
+                            int32_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
+
+                            if (neighbor_id == cellID)
+                                continue;
+
+                            const auto &neighbor_cell = cells[neighbor_id];
+
+                            for (int32_t ii = atom_start; ii < atom_end; ++ii)
+                            {
+                                int32_t i = cell[ii];
+
+                                for (int32_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                                {
+                                    int32_t j = neighbor_cell[jj];
+
+                                    if (j <= i)
+                                        continue;
+
+                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                                    float r = dr.length();
+
+                                    if (r > CELL_CUTOFF)
+                                        continue;
+
+                                    if (areBonded(i, j))
+                                        continue;
+
+                                    sf::Vector3f cForce = coulombForce(i, j, dr);
+                                    sf::Vector3f lForce = ljForce(i, j);
+
+                                    sf::Vector3f total_force = cForce + lForce;
+                                    local_forces[i] += total_force;
+                                    local_forces[j] -= total_force;
+
+                                    local_virial += dr.x * total_force.x +
+                                                    dr.y * total_force.y +
+                                                    dr.z * total_force.z;
+                                }
+                            }
+                        }
+            }
 
             total_virial.fetch_add(local_virial, std::memory_order_relaxed);
             return local_forces;
@@ -1038,48 +1137,132 @@ namespace sim
 
         void universe::calcUnbondedForcesParallel()
         {
-            // NOTE: eventually distribute cells with more work over threads instead of evenly giving to all threads, threads with no work are gonna be dismissed.
             const int32_t n_threads = std::thread::hardware_concurrency();
+            const int32_t threads_per_top = cells.size() < 2 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
+            constexpr int32_t subdivide_top = 5; // how many of the top cells to subdivide
 
-            std::vector<std::future<std::vector<sf::Vector3f>>> futures;
+            struct task
+            {
+                uint32_t work;
+                int32_t cell_idx;
+                int32_t atom_start;
+                int32_t atom_end = -1;
+            };
 
-            std::vector<uint32_t> work(cells.size());
+            struct cell_work
+            {
+                uint32_t cell_idx;
+                uint32_t work;
+
+                constexpr bool operator<(const cell_work &other) const
+                {
+                    return work < other.work;
+                }
+            };
+
+            std::set<cell_work> sorted_cells;
+
             for (int32_t c = 0; c < cells.size(); ++c)
             {
                 uint32_t n = cells[c].size();
-                work[c] = n * n;
+                if (n == 0)
+                    continue;
+
+                sorted_cells.emplace(c, n * n * 9);
             }
 
-            auto worker = [this](int32_t start_flat, int32_t end_flat) -> std::vector<sf::Vector3f>
+            std::vector<task> tasks;
+
+            int32_t rank = 0;
+            for (const auto &cw : sorted_cells)
+            {
+                int32_t c = cw.cell_idx;
+                uint32_t n = cells[c].size();
+
+                if (rank < subdivide_top)
+                {
+                    int32_t slice_size = static_cast<int32_t>((n + threads_per_top - 1) / threads_per_top);
+                    for (int32_t p = 0; p < threads_per_top; ++p)
+                    {
+                        int32_t start = p * slice_size + 1;
+                        int32_t end = std::min(start + slice_size, static_cast<int32_t>(n));
+                        if (start >= end)
+                            break;
+                        uint64_t sub_work = static_cast<uint64_t>(end - start) * n * 9ull;
+                        tasks.emplace_back(sub_work, c, start, end);
+                    }
+                }
+                else
+                {
+                    tasks.push_back({cw.work, c, 0, -1});
+                }
+
+                ++rank;
+            }
+
+            auto worker = [this](const std::vector<task> &my_tasks) -> std::vector<sf::Vector3f>
             {
                 std::vector<sf::Vector3f> thread_forces(atoms.size(), {0, 0, 0});
 
-                for (int32_t flat = start_flat; flat < end_flat; ++flat)
+                for (auto &t : my_tasks)
                 {
-                    int32_t iz = flat % cz;
-                    int32_t iy = (flat / cz) % cy;
-                    int32_t ix = flat / (cz * cy);
+                    int32_t iz = t.cell_idx % cz;
+                    int32_t iy = (t.cell_idx / cz) % cy;
+                    int32_t ix = t.cell_idx / (cz * cy);
 
-                    auto cell_forces = processCellUnbonded(ix, iy, iz);
-                    for (int32_t i = 0; i < atoms.size(); ++i)
+                    std::vector<sf::Vector3f> cell_forces;
+
+                    if (t.atom_end < 0)
+                    {
+                        cell_forces = processCellUnbonded(ix, iy, iz);
+                    }
+                    else
+                    {
+                        cell_forces = processPartialCellUnbonded(ix, iy, iz, t.atom_start, t.atom_end);
+                    }
+
+                    for (size_t i = 0; i < atoms.size(); ++i)
+                    {
                         thread_forces[i] += cell_forces[i];
+                    }
                 }
                 return thread_forces;
             };
 
-            for (int32_t t = 0; t < n_threads; ++t)
-            {
-                int32_t start = (cells.size() * t) / n_threads;
-                int32_t end = (cells.size() * (t + 1)) / n_threads;
+            int32_t n_used_threads = std::min(n_threads, static_cast<int32_t>(tasks.size()));
+            std::vector<uint64_t> thread_load(n_used_threads, 0);
+            std::vector<std::vector<task>> thread_tasks(n_used_threads);
 
-                futures.push_back(std::async(std::launch::async, worker, start, end));
+            for (const auto &task : tasks)
+            {
+                auto min_it = std::min_element(thread_load.begin(), thread_load.end());
+                int32_t t = std::distance(thread_load.begin(), min_it);
+
+                thread_tasks[t].push_back(task);
+                thread_load[t] += task.work;
+            }
+
+            std::vector<std::future<std::vector<sf::Vector3f>>> futures;
+            futures.reserve(n_used_threads);
+
+            for (int32_t t = 0; t < n_used_threads; ++t)
+            {
+                if (!thread_tasks[t].empty())
+                {
+                    futures.push_back(
+                        std::async(std::launch::async,
+                                   worker,
+                                   std::cref(thread_tasks[t])));
+                }
             }
 
             for (auto &fut : futures)
             {
-                std::vector<sf::Vector3f> local_f = fut.get();
-                for (int32_t i = 0; i < atoms.size(); ++i)
-                    add_force(i, local_f[i]);
+                auto local_f = fut.get();
+                for (size_t i = 0; i < atoms.size(); ++i)
+                {
+                    add_force(static_cast<int32_t>(i), local_f[i]);
+                }
             }
         }
 

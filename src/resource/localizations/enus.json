@@ -34,7 +34,7 @@
       {
         "ball_and_stick": "Ball And Stick",
         "letter_and_stick": "Letter And Stick",
-        "space_filling": "Space Filling (WIP)"
+        "space_filling": "Space Filling"
       }
     },
 
@@ -104,7 +104,6 @@
       "Palmitic Acid",
       "Capric Acid",
       "Oleic Acid",
-      "Cholesterol",
       "ATP",
       "Aspirin",
       "Caffeine",

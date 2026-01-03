@@ -27,7 +27,7 @@ namespace core
     }
 
     UIHandler::UIHandler(options &app_options, window_t &window)
-        : app_options(app_options)
+        : app_options(app_options), rendering_eng(window)
     {
         write_localization_json(lang);
         std::filesystem::path path = getLocalizationFile(localization::EN_US);
@@ -47,8 +47,6 @@ namespace core
             std::cerr << "[UI Handler] JSON parse error: " << e.what() << '\n';
             return;
         }
-
-        rendering_eng = std::make_unique<sim::rendering_engine>(window);
 
         initCompoundPresets();
         initImages(window);
@@ -170,8 +168,8 @@ namespace core
         display_info.box.z = 100.f;
         display_info.wall_collision = false;
 
-        display_universe = std::make_unique<sim::fun::universe>(display_info, *rendering_eng.get());
-        auto &cam = rendering_eng->camera();
+        display_universe = std::make_unique<sim::fun::universe>(display_info, rendering_eng);
+        auto &cam = rendering_eng.camera();
         cam.target = {0.f, 0.f, 0.f};
         cam.distance = 0.f;
         cam.azimuth = 200.f;
@@ -185,26 +183,22 @@ namespace core
             sf::RenderTexture thumbnail_renderer;
             display_universe->clear();
             display_universe->createMolecule(compound.structure, {0.f, 0.f, 0.f});
-
+            
             float max_radius = 0.f;
             for (const auto &pos : compound.structure.positions)
             {
                 float r = pos.length();
                 if (r > max_radius)
-                    max_radius = r;
+                max_radius = r;
             }
-
+            
             float molecule_radius = max_radius;
             cam.distance = molecule_radius;
             cam.distance = std::max(cam.distance, 10.f);
-
-            rendering_info info{};
-            info.lennardBall = true;
-            info.letter = true;
-            info.spaceFilling = true;
+            
+            rendering_info info = getSimulationRenderingInfo(simulation_render_mode::SPACE_FILLING);
             info.universeBox = false;
-            info.opacity = 1.0f;
-
+            
             window.clear();
             display_universe->draw(window.getWindow(), info);
 
@@ -226,7 +220,7 @@ namespace core
 
         compound_presets.clear();
 
-        constexpr int32_t num_compounds = 33;
+        constexpr int32_t num_compounds = 32;
 
         std::array<std::string, num_compounds> smilesToParse =
             {
@@ -251,7 +245,6 @@ namespace core
                 "CCCCCCCCCCCCCCCC(=O)O",
                 "O=C(O)CCCCCCCCC",
                 "CCCCCCCC\\C=C/CCCCCCCC(O)=O",
-                "C[C@H](CCCC(C)C)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)O)C)C",
                 "C1=NC(=C2C(=N1)N(C=N2)[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)OP(=O)(O)OP(=O)(O)O)O)O)N",
                 "CC(=O)OC1=CC=CC=C1C(=O)O",
                 "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
@@ -266,9 +259,8 @@ namespace core
 
         std::array<std::string, num_compounds> formulas = {
             "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
-            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2", "C10H20O2", "C18H34O2",
-            "C27H46O", "C10H16N5O13P3",
-            "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
+            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2", "C10H20O2", "C18H34O2", 
+            "C10H16N5O13P3", "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
             "NaCl", "C22H14", "S8"};
 
         using type = compound_type;
@@ -294,7 +286,6 @@ namespace core
             type::BIOMOLECULE,  // Palmitic acid
             type::BIOMOLECULE,  // Capric Acid
             type::BIOMOLECULE,  // Oleic Acid
-            type::BIOMOLECULE,  // Cholesterol
             type::BIOMOLECULE,  // ATP
             type::ORGANIC,      // Aspirin
             type::ORGANIC,      // Caffeine
@@ -482,7 +473,7 @@ namespace core
         ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
         if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(info.file, *rendering_eng.get());
+            simulation_universe = std::make_unique<sim::fun::universe>(info.file, rendering_eng);
             savesSelectionOpen = false;
             pauseMenuOpen = false;
             paused_simulation = false;
@@ -652,8 +643,8 @@ namespace core
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, *rendering_eng.get());
-            rendering_eng->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
+            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, rendering_eng);
+            rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             sandboxSelectionOpen = false;
             paused_simulation = false;
@@ -873,7 +864,7 @@ namespace core
         auto &compound = compound_presets[selectedCompound];
 
         display_universe->clear();
-        display_universe->createMolecule(compound.structure, sf::Vector3f(rendering_eng->camera().target.x, rendering_eng->camera().target.y, rendering_eng->camera().target.z));
+        display_universe->createMolecule(compound.structure, sf::Vector3f(rendering_eng.camera().target.x, rendering_eng.camera().target.y, rendering_eng.camera().target.z));
 
         sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
         for (const auto &p : compound.structure.positions)
@@ -899,7 +890,7 @@ namespace core
 
         auto &compound = compound_presets[selectedCompound];
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
-        auto &cam = rendering_eng->camera();
+        auto &cam = rendering_eng.camera();
 
         ImVec2 mousePos = ImGui::GetMousePos();
 
@@ -1202,19 +1193,10 @@ namespace core
         ImGui::End();
     }
 
-    void UIHandler::runUniverse()
+    rendering_info UIHandler::getSimulationRenderingInfo(simulation_render_mode mode)
     {
-        if (!paused_simulation)
-            simulation_universe->update(target_temperature, target_pressure);
-    }
-
-    void UIHandler::drawUniverse(window_t &window)
-    {
-        simulation_render_mode mode = app_options.sim_options.render_mode;
-
         rendering_info info{};
         info.opacity = 1.0f;
-        info.universeBox = !(screenshotToggle && savedSimulation);
 
         if (mode == simulation_render_mode::BALL_AND_STICK)
         {
@@ -1230,8 +1212,25 @@ namespace core
             info.lennardBall = info.letter = info.spaceFilling = true;
         }
 
+        return info;
+    }
+
+    void UIHandler::runUniverse()
+    {
+        if (paused_simulation) return;
+
+        simulation_universe->update(target_temperature, target_pressure);
+    }
+
+    void UIHandler::drawUniverse(window_t &window)
+    {
+        simulation_render_mode mode = app_options.sim_options.render_mode;
+
+        rendering_info info = getSimulationRenderingInfo(app_options.sim_options.render_mode);
+        info.universeBox = !(screenshotToggle && savedSimulation);
+
         simulation_universe->draw(window.getWindow(), info);
-        rendering_eng->handleCamera();
+        rendering_eng.handleCamera();
 
         if (screenshotToggle)
         {
@@ -1346,8 +1345,8 @@ namespace core
 
         if (ImGui::Button(pause_menu["button_restart"].get<std::string>().c_str(), buttonSize))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, *rendering_eng.get());
-            rendering_eng->camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
+            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, rendering_eng);
+            rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             target_pressure = 0.f;
             target_temperature = 300.f;

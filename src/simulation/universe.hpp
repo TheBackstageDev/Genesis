@@ -144,6 +144,7 @@ namespace sim
             void calcElectrostaticForces();
 
             std::vector<sf::Vector3f> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz);
+            std::vector<sf::Vector3f> processPartialCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end);
             void calcUnbondedForcesParallel();
             void calcBondedForcesParallel();
 

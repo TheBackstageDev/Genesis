@@ -173,8 +173,8 @@ namespace sim
             {
                 const auto &atom = sim_info.atoms[i];
                 float radius = info.spaceFilling
-                                   ? atom.radius
-                                   : constants::VDW_RADII[atom.ZIndex] * 1.2f;
+                                   ? constants::VDW_RADII[atom.ZIndex] * 0.8f
+                                   : constants::covalent_radius[atom.ZIndex] * 0.8f;
 
                 sf::Color col = constants::getElementColor(atom.ZIndex);
                 glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, 1.0f);
