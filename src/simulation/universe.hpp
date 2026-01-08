@@ -49,7 +49,35 @@ namespace sim
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
-            sf::Vector3f box{CELL_CUTOFF * 2.f, CELL_CUTOFF * 2.f, CELL_CUTOFF * 2.f};
+            glm::vec3 box{CELL_CUTOFF * 2.f, CELL_CUTOFF * 2.f, CELL_CUTOFF * 2.f};
+        };
+
+        struct videoMetaData
+        {
+            std::string title;
+            std::string description;
+
+            glm::vec3 box;
+            size_t num_atoms;
+            size_t num_frames;
+        };
+
+        struct frame
+        {
+            std::vector<glm::vec3> positions;
+            std::map<size_t, float> temperatures;
+
+            float global_temperature;
+        };
+
+        struct video
+        {
+            std::vector<frame> frames; // index is defined by order
+            std::vector<size_t> keyFrames; // for events
+
+            std::vector<std::string> text; // changes every keyframe (or continue);
+
+            videoMetaData metadata;
         };
 
         class universe
@@ -64,16 +92,13 @@ namespace sim
 
             void createBond(int32_t idx1, int32_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges(subset& mol);
-
-            void linkSubset(int32_t subset, int32_t subset2) { subsets[subset].bondingSubsetIdx = subset2; }
-
+            
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
             void draw(sf::RenderTarget& target, const rendering_info& info);
 
-            // Scenario stuff
-            void highlightAtom(core::window_t& window, size_t i);
-            void highlightBond(core::window_t& window, size_t i, size_t j);
+            void runVideo(const video& vid);
 
+            // Scenario stuff
             void saveScene(const std::filesystem::path path, const std::string name = "");
             void loadScene(const std::filesystem::path path);
 
@@ -96,6 +121,8 @@ namespace sim
                 rings.clear();
             }
 
+            // Gets
+
             int32_t numBonds() { return bonds.size(); }
             int32_t numAtoms() { return atoms.size(); }
             int32_t numMolecules() { return molecules.size(); }
@@ -104,6 +131,8 @@ namespace sim
             float temperature() const { return temp; }
             float pressure() const { return pres; }
             float timestep() const { return timeStep; }
+
+            glm::vec3 boxSizes() { return box; }
 
             _NODISCARD std::vector<glm::vec3> positions() const 
             {
@@ -114,8 +143,6 @@ namespace sim
             {
                 data.positions[i] = p;
             }
-
-            void setRenderMode();
 
             // Helper Funcs
             sf::Vector3f minImageVec(sf::Vector3f dr)
@@ -203,7 +230,7 @@ namespace sim
             // CellList
             std::vector<std::vector<uint32_t>> cells;
 
-            sf::Vector3f box{0.f, 0.f, 0.f};
+            glm::vec3 box{0.f, 0.f, 0.f};
             uint32_t cx = 0, cy = 0, cz = 0; // cell dimensions
 
             void buildCells();

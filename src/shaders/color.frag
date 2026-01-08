@@ -43,12 +43,12 @@ void main()
     }
 
     float t = (tt.x >= 0.0) ? tt.x : tt.y;
-
+    
     vec3 hitPos_view = rayOrig + t * rayDir;
     vec3 hit_normal = normalize(hitPos_view - v_center);
 
     gl_FragDepth = viewPosToDepth(hitPos_view);
 
     float NdotL = max(0.0, dot(hit_normal, u_lightDir));
-    fragColor = vec4(v_color.xyz * (0.2 + 0.8 * NdotL), 1.0f);
+    fragColor = vec4(v_color.rgb * (0.2 + 0.8 * NdotL), v_color.w);
 }

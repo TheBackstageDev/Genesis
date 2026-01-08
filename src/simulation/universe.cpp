@@ -1138,7 +1138,7 @@ namespace sim
         void universe::calcUnbondedForcesParallel()
         {
             const int32_t n_threads = std::thread::hardware_concurrency();
-            const int32_t threads_per_top = cells.size() < 2 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
+            const int32_t threads_per_top = cells.size() < 9 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
             constexpr int32_t subdivide_top = 5; // how many of the top cells to subdivide
 
             struct task
@@ -1156,7 +1156,7 @@ namespace sim
 
                 constexpr bool operator<(const cell_work &other) const
                 {
-                    return work < other.work;
+                    return work > other.work;
                 }
             };
 
@@ -1184,7 +1184,8 @@ namespace sim
                     int32_t slice_size = static_cast<int32_t>((n + threads_per_top - 1) / threads_per_top);
                     for (int32_t p = 0; p < threads_per_top; ++p)
                     {
-                        int32_t start = p * slice_size + 1;
+                        int32_t start = p * slice_size;
+                        if (p != 0) start += 1;
                         int32_t end = std::min(start + slice_size, static_cast<int32_t>(n));
                         if (start >= end)
                             break;
@@ -1641,7 +1642,13 @@ namespace sim
 
         void universe::saveFrame()
         {
-            // TO DO
+            for (const auto& v : data.positions)
+            {
+                positionxLog.emplace_back(v.x);
+                positionyLog.emplace_back(v.y);
+                positionzLog.emplace_back(v.z);
+            }
+            
             temperatureLog.emplace_back(temp);
         }
 
@@ -1652,6 +1659,11 @@ namespace sim
 
             std::string time_str = std::format("{:%Y_%m_%d%H_%M}", now);
             return time_str;
+        }
+
+        void universe::runVideo(const video& vid)
+        {
+        
         }
 
         void universe::saveAsVideo(const std::filesystem::path path, const std::string name)

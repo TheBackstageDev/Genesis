@@ -37,42 +37,12 @@ namespace sim
     rendering_engine::rendering_engine(core::window_t &window)
         : window(window)
     {
-        const std::filesystem::path shader_root = "src/shaders";
-        std::string vertex = loadShaderSource(shader_root / "color.vert");
-        std::string fragment = loadShaderSource(shader_root / "color.frag");
+        initShaders();
 
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        const char *vertex_src = vertex.c_str();
-        glShaderSource(vertex_shader, 1, &vertex_src, nullptr);
-        glCompileShader(vertex_shader);
-
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        const char *fragment_src = fragment.c_str();
-        glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
-        glCompileShader(fragment_shader);
-
-        atom_program = glCreateProgram();
-        glAttachShader(atom_program, vertex_shader);
-        glAttachShader(atom_program, fragment_shader);
-        glLinkProgram(atom_program);
-
-        GLint success = 0;
-        glGetProgramiv(atom_program, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            char info[1024] = {};
-            glGetProgramInfoLog(atom_program, 1024, nullptr, info);
-            std::cerr << info << "\n";
-            throw std::runtime_error(std::string("[Shader link failed]: ") + info);
-        }
-
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glGenVertexArrays(1, &color_vao);
+        glGenBuffers(1, &color_vbo);
+        glBindVertexArray(color_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
 
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(AtomInstance), (void *)offsetof(AtomInstance, position));
@@ -85,6 +55,31 @@ namespace sim
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(AtomInstance), (void *)offsetof(AtomInstance, color));
         glVertexAttribDivisor(2, 1);
+
+        glGenVertexArrays(1, &bond_vao);
+        glGenBuffers(1, &bond_vbo);
+        glBindVertexArray(bond_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, posA));
+        glVertexAttribDivisor(0, 1);
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, posB));
+        glVertexAttribDivisor(1, 1);
+
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, colorA));
+        glVertexAttribDivisor(2, 1);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, colorB));
+        glVertexAttribDivisor(3, 1);
+
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radius));
+        glVertexAttribDivisor(4, 1);
     }
 
     void rendering_engine::drawBox(const glm::vec3 &box)
@@ -143,53 +138,110 @@ namespace sim
         window.getWindow().draw(lines);
     }
 
-    void rendering_engine::draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::initShaders()
     {
-        if (info.universeBox)
-            drawBox(sim_info.box);
+        const std::filesystem::path shader_root = "src/shaders";
 
-        glm::vec3 cam_eye = cam.eye();
-        std::vector<int32_t> no_draw{};
+        initColorShaders(shader_root / "color.vert", shader_root / "color.frag");
+        initBondShaders(shader_root / "bond.vert", shader_root / "bond.frag");
+    }
 
-        if (!sim_info.renderWater)
-            for (auto &m : sim_info.molecules)
-            {
-                if (m.exclude)
-                {
-                    no_draw.emplace_back(m.angleBegin);
-                    no_draw.emplace_back(m.angleBegin + 1);
-                    no_draw.emplace_back(m.angleBegin + 2);
-                }
-            }
+    void rendering_engine::initColorShaders(const std::filesystem::path vert, const std::filesystem::path frag)
+    {
+        std::string vertex = loadShaderSource(vert);
+        std::string fragment = loadShaderSource(frag);
 
+        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+        const char *vertex_src = vertex.c_str();
+        glShaderSource(vertex_shader, 1, &vertex_src, nullptr);
+        glCompileShader(vertex_shader);
+
+        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+        const char *fragment_src = fragment.c_str();
+        glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
+        glCompileShader(fragment_shader);
+
+        atom_program = glCreateProgram();
+        glAttachShader(atom_program, vertex_shader);
+        glAttachShader(atom_program, fragment_shader);
+        glLinkProgram(atom_program);
+
+        GLint success = 0;
+        glGetProgramiv(atom_program, GL_LINK_STATUS, &success);
+        if (!success)
+        {
+            char info[1024] = {};
+            glGetProgramInfoLog(atom_program, 1024, nullptr, info);
+            std::cerr << info << "\n";
+            throw std::runtime_error(std::string("[Shader link failed]: ") + info);
+        }
+
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+    }
+
+    void rendering_engine::initBondShaders(const std::filesystem::path vert, const std::filesystem::path frag)
+    {
+        std::string vertex = loadShaderSource(vert);
+        std::string fragment = loadShaderSource(frag);
+
+        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+        const char *vertex_src = vertex.c_str();
+        glShaderSource(vertex_shader, 1, &vertex_src, nullptr);
+        glCompileShader(vertex_shader);
+
+        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+        const char *fragment_src = fragment.c_str();
+        glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
+        glCompileShader(fragment_shader);
+
+        bond_program = glCreateProgram();
+        glAttachShader(bond_program, vertex_shader);
+        glAttachShader(bond_program, fragment_shader);
+        glLinkProgram(bond_program);
+
+        GLint success = 0;
+        glGetProgramiv(bond_program, GL_LINK_STATUS, &success);
+        if (!success)
+        {
+            char info[1024] = {};
+            glGetProgramInfoLog(bond_program, 1024, nullptr, info);
+            std::cerr << info << "\n";
+            throw std::runtime_error(std::string("[Shader link failed]: ") + info);
+        }
+
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+    }
+
+    void rendering_engine::bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
         std::vector<AtomInstance> instances;
         instances.reserve(sim_info.atoms.size());
 
         if (info.lennardBall)
         {
-            glm::mat4 viewMatrix = cam.getViewMatrix();
-
             for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
             {
                 const auto &atom = sim_info.atoms[i];
                 float radius = info.spaceFilling
                                    ? constants::VDW_RADII[atom.ZIndex] * 0.8f
-                                   : constants::covalent_radius[atom.ZIndex] * 0.8f;
+                                   : constants::covalent_radius[atom.ZIndex] * 0.7f;
 
-                sf::Color col = constants::getElementColor(atom.ZIndex);
-                glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, 1.0f);
+                sf::Color col = constants::getElementColor(atom.ZIndex) + info.color_addition;
+                glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, info.opacity);
 
-                instances.emplace_back(glm::vec3(viewMatrix * glm::vec4(sim_info.positions[i], 1.0)), radius, color_norm);
+                instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, color_norm);
             }
         }
 
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
         glBufferData(GL_ARRAY_BUFFER,
                      instances.size() * sizeof(AtomInstance),
                      instances.data(),
                      GL_DYNAMIC_DRAW);
 
-        glBindVertexArray(vao);
+        glBindVertexArray(color_vao);
         glUseProgram(atom_program);
 
         GLint loc_projection = glGetUniformLocation(atom_program, "u_proj");
@@ -209,6 +261,68 @@ namespace sim
         {
             std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
         }
+    }
+
+    void rendering_engine::bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
+        if (info.spaceFilling || !info.lennardBall)
+            return;
+
+        std::vector<BondInstance> instances;
+        instances.reserve(sim_info.bonds.size() * 4);
+
+        for (int32_t i = 0; i < sim_info.bonds.size(); ++i)
+        {
+            const auto &bond = sim_info.bonds[i];
+            sf::Color colA = constants::getElementColor(sim_info.atoms[bond.bondedAtom].ZIndex) + info.color_addition;
+            sf::Color colB = constants::getElementColor(sim_info.atoms[bond.centralAtom].ZIndex) + info.color_addition;
+
+            glm::vec4 colorA_norm(colA.r / 255.f, colA.g / 255.f, colA.b / 255.f, info.opacity);
+            glm::vec4 colorB_norm(colB.r / 255.f, colB.g / 255.f, colB.b / 255.f, info.opacity);
+
+            float bondR = 1.0f / static_cast<int32_t>(bond.type);
+            instances.emplace_back(sim_info.positions[bond.bondedAtom], sim_info.positions[bond.centralAtom], colorA_norm, colorB_norm, bondR);
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
+        glBufferData(GL_ARRAY_BUFFER,
+                     instances.size() * sizeof(BondInstance),
+                     instances.data(),
+                     GL_DYNAMIC_DRAW);
+
+        glBindVertexArray(bond_vao);
+        glUseProgram(bond_program);
+
+        GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
+        GLint loc_view = glGetUniformLocation(bond_program, "u_view");
+        GLint loc_cam = glGetUniformLocation(bond_program, "u_cameraPos");
+
+        if (loc_projection != -1)
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+
+        if (loc_view != -1)
+            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+
+        if (loc_cam != -1)
+            glUniform3fv(loc_cam, 1, glm::value_ptr(cam.eye()));
+
+        glEnable(GL_DEPTH_TEST);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR)
+        {
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
+        }
+    }
+
+    void rendering_engine::draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
+        if (info.universeBox)
+            drawBox(sim_info.box);
+
+        bindColor(target, info, sim_info);
+        //bindBond(target, info, sim_info);
 
         glBindVertexArray(0);
         glUseProgram(0);
@@ -223,62 +337,6 @@ namespace sim
 
     void rendering_engine::drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)
     {
-    }
-
-    void rendering_engine::drawBonds(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)
-    {
-        sf::Vector2f dimensions = window.getWindow().getView().getSize();
-
-        for (int32_t b = 0; b < sim_info.bonds.size(); ++b)
-        {
-            const fun::bond &bond = sim_info.bonds[b];
-
-            const glm::vec3 &pCentral = sim_info.positions[bond.centralAtom]; // pB
-            const glm::vec3 &pBonded = sim_info.positions[bond.bondedAtom];   // pA
-
-            glm::vec2 s1 = cam.project(pCentral, dimensions.x, dimensions.y); // center
-            glm::vec2 s2 = cam.project(pBonded, dimensions.x, dimensions.y);  // end
-
-            if (s1.x <= -9999 || s2.x <= -9999)
-                continue;
-            if ((pCentral - pBonded).length() > 3.f)
-                continue;
-            glm::vec3 cam_eye = cam.eye();
-            if ((pCentral - cam_eye).length() > 50.f)
-                continue;
-
-            glm::vec2 dir = s2 - s1;
-            float len = dir.length();
-            if (len < 0.5f)
-                continue;
-            dir /= len;
-
-            glm::vec2 perp{-dir.y, dir.x};
-
-            uint8_t lines = static_cast<uint8_t>(bond.type);
-            float distance = (pCentral - cam_eye).length();
-
-            float shrink = 1.2f;  // pixels
-            float spacing = 0.3f; // pixels between lines
-
-            std::vector<sf::Vertex> verts;
-            verts.reserve(lines * 2);
-
-            for (int32_t i = 0; i < lines; ++i)
-            {
-                float offset = spacing * (i - (lines - 1) * 0.5f);
-
-                glm::vec2 off = perp * offset;
-
-                glm::vec2 start = s1 + dir * shrink + off;
-                glm::vec2 end = s2 - dir * shrink + off;
-
-                verts.emplace_back(sf::Vector2f(start.x, start.y), sf::Color::White);
-                verts.emplace_back(sf::Vector2f(end.x, end.y), sf::Color::White);
-            }
-
-            target.draw(verts.data(), verts.size(), sf::PrimitiveType::Lines);
-        }
     }
 
     void rendering_engine::drawRings(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)

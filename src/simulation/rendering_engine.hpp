@@ -33,8 +33,8 @@ namespace sim
     private:
         core::window_t &window;
 
-        GLuint vao, vbo;
-        GLuint atom_program;
+        GLuint color_vao, color_vbo, bond_vao, bond_vbo;
+        GLuint atom_program, bond_program;
 
         struct AtomInstance 
         {
@@ -43,12 +43,29 @@ namespace sim
             alignas(16) glm::vec4 color;
         };
 
+        struct BondInstance
+        {
+            alignas(16) glm::vec3 posA;
+            alignas(16) glm::vec3 posB;
+            alignas(16) glm::vec4 colorA;
+            alignas(16) glm::vec4 colorB;
+            alignas(16) float radius;
+        };
+
         void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);
-        void drawBonds(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawRings(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawBox(const glm::vec3 &box);
         
+        // Init
+
+        void initShaders();
+        void initColorShaders(const std::filesystem::path vert, const std::filesystem::path frag);
+        void initBondShaders(const std::filesystem::path vert, const std::filesystem::path frag);
+
+        void bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+
         // Callbacks
 
         std::function<uint32_t(int32_t ix, int32_t iy, int32_t iz)> getCellID;

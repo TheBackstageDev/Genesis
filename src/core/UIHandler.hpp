@@ -10,6 +10,8 @@
 #include <functional>
 
 #include "json.hpp"
+
+#include "core/ScenarioHandler.hpp"
 #include "simulation/universe.hpp"
 
 namespace core
@@ -27,34 +29,6 @@ namespace core
         COUNT
     };
 
-    struct videoMetaData
-    {
-        std::string title;
-        std::string description;
-
-        sf::Vector3f box;
-        size_t num_atoms;
-        size_t num_frames;
-    };
-
-    struct frame
-    {
-        std::vector<sf::Vector3f> positions;
-        std::map<size_t, float> temperatures;
-
-        float global_temperature;
-    };
-
-    struct video
-    {
-        std::vector<frame> frames; // index is defined by order
-        std::vector<size_t> keyFrames; // for events
-
-        std::vector<std::string> text; // changes every keyframe (or continue);
-
-        videoMetaData metadata;
-    };
-
     struct scenario_info
     {
         std::string title;
@@ -63,9 +37,13 @@ namespace core
         std::filesystem::path file;
         std::filesystem::path video;
 
-        bool has_video = true;
         bool is_locked = true;
         bool is_sandbox = false;
+
+        bool operator==(const scenario_info& other) const
+        {
+            return other.file == file && other.title == title;
+        }
     };
 
     enum class compound_type : uint32_t
@@ -176,26 +154,27 @@ namespace core
         UIHandler(options& app_options, window_t& window);
 
         void set_language(localization new_lang) { lang = new_lang; write_localization_json(lang); }
-
-        // Video
-
-        void drawVideoControls();
+        void setDeltaTime(float dt) { m_deltaTime = dt; }
 
         // Menu
         
         void drawMenu();
-        bool isrewinding() { return rewinding; }
 
         // Universe
 
-        void drawUniverse(window_t& window);
-        void screenshotWindow(window_t& window, std::filesystem::path path, std::string name = "");
+        void drawUniverse();
+        void screenshotWindow(std::filesystem::path path, std::string name = "");
 
         // Callback
 
         void setApplicationStateCallback(std::function<void(application_state newState)> callback)
         {
             setState = callback;
+        }
+
+        void setGetApplicationStateCallback(std::function<application_state()> callback)
+        {
+            getState = callback;
         }
 
         // Fonts
@@ -218,9 +197,12 @@ namespace core
         nlohmann::json localization_json{};
         nlohmann::json default_json{};
 
+        window_t& m_window;
+
         void write_localization_json(localization lang);
-        void initImages(window_t& window);
+        void initImages();
         void initSavedData();
+        void loadScenariosFromFolder(const std::filesystem::path path, bool background = false);
 
         // Menu
 
@@ -232,14 +214,15 @@ namespace core
 
         const float image_size = 200.f;
 
-        int32_t currentDisplayScenario = 0;
-        float currentDisplayTime = 0.0f;
-        const float displayMaxTime = 10.f;
+        const float m_displayMaxTime = 15.f;
+        float m_currentDisplayTime = m_displayMaxTime + 1.f; // trigger initial setup on menu
         void chooseNewDisplayScenario();
-        void drawBackgroundDisplay();
+        void drawMenuBackgroundDisplay();
 
-        std::vector<scenario_info> backgroundDisplays;
-        std::vector<scenario_info> savedSandbox;
+        uint32_t m_currentDisplay = 0;
+        std::vector<scenario_info> m_backgroundDisplays;
+        std::vector<scenario_info> m_savedSandbox;
+        std::vector<sim::fun::video> m_SimulationVideos;
 
         void drawScene(scenario_info& info);
         void drawSceneSelection();
@@ -260,13 +243,15 @@ namespace core
 
         bool savedSimulation = false;
 
+        float m_deltaTime = 0.0f;
+
         // Universe
 
         float target_temperature = 300.f;
         float target_pressure = 0.f;
         
         void runUniverse();
-        void drawUniverseUI(window_t& window);
+        void drawUniverseUI();
         sim::fun::rendering_info getSimulationRenderingInfo(simulation_render_mode mode);
 
         bool screenshotToggle = false;
@@ -278,15 +263,14 @@ namespace core
         bool ghostColliding = false;
 
         void insertGhost();
-        void handleGhost(window_t& window);
+        void handleGhost();
         void drawCompoundSelector();
         void drawCompoundView(const compound_preset_info& compound);
         void drawCompoundFulLView();
 
-        
-        void pauseMenu(window_t& window);
+        void pauseMenu();
 
-        void initCompoundPresetsImages(window_t& window);
+        void initCompoundPresetsImages();
         void initCompoundPresets();
         std::vector<compound_preset_info> compound_presets{};
 
@@ -306,11 +290,15 @@ namespace core
         // Callbacks
         
         std::function<void(application_state newState)> setState;
+        std::function<application_state()> getState;
 
         // Video
 
-        video* currentVideo = nullptr;
-        bool rewinding = false;
+        void drawVideoControls();
+
+        sim::fun::video* m_currentVideo = nullptr;
+        bool m_rewinding = false;
+        size_t m_currentFrame = 0;
 
         // Fonts
         ImFont* regular = nullptr;

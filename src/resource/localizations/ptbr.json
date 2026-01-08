@@ -62,6 +62,38 @@
       "button_cancel": "Cancelar"
     },
 
+    "Tutorial":
+    {
+      "tutorial_types":
+      [
+        "MOTOR",
+        "CLASSICO",
+        "QUÂNTICO",
+        "QUÍMICA"
+      ],
+
+      "titles":
+      {
+        "ENGINE":
+        [
+          "Controles",
+          "Selecionador de Compostos"
+        ],
+        "CLASSICAL":
+        [
+        
+        ],
+        "QUANTUM":
+        [
+        
+        ],
+        "CHEMISTRY":
+        [
+        
+        ]
+      }
+    },
+
     "Scene_Selection":
     {
       "title": "Seleção de Cenários"

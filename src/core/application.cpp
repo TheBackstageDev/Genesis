@@ -8,19 +8,20 @@
 namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
+        : window(width, height, name, 50.f, 0), ui(app_options, window)
     {
-        app_options.sim_options.target_fps = 0;
-        window = std::make_unique<core::window_t>(width, height, name, 50.f, app_options.sim_options.target_fps);
-
-        if (!ImGui::SFML::Init(window->getWindow(), false))
+        if (!ImGui::SFML::Init(window.getWindow(), false))
             throw std::runtime_error("Error! failed to init Imgui");
 
-        ui = std::make_unique<UIHandler>(app_options, *window.get());
-
-        ui->set_language(app_options.lang);
-        ui->setApplicationStateCallback([&](application_state newState)
+        ui.set_language(app_options.lang);
+        ui.setApplicationStateCallback([&](application_state newState)
         {
             current_state = newState;
+        });
+
+        ui.setGetApplicationStateCallback([&]()
+        {
+            return current_state;
         });
         
         ImGuiIO& io = ImGui::GetIO();
@@ -50,10 +51,10 @@ namespace core
         ImFont* bold   = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Bold.ttf", size, nullptr, ranges.Data);
         ImFont* black  = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Black.ttf", size, nullptr, ranges.Data);
 
-        ui->set_regular_font(regular);
-        ui->set_medium_font(medium);
-        ui->set_bold_font(bold);
-        ui->set_black_font(black);
+        ui.set_regular_font(regular);
+        ui.set_medium_font(medium);
+        ui.set_bold_font(bold);
+        ui.set_black_font(black);
 
         if (!ImGui::SFML::UpdateFontTexture())
         {
@@ -64,28 +65,30 @@ namespace core
     application::~application()
     {
         save();
-        ImGui::SFML::Shutdown(window->getWindow());
+        ImGui::SFML::Shutdown(window.getWindow());
     }
 
     void application::run()
     {
         sf::Clock deltaClock;
-        while (window->isOpen())
+        while (window.isOpen())
         {
-            window->pollEvents(); 
-            ImGui::SFML::Update(window->getWindow(), deltaClock.restart());
+            window.pollEvents(); 
+            
+            ui.setDeltaTime(deltaClock.getElapsedTime().asSeconds());
+            ImGui::SFML::Update(window.getWindow(), deltaClock.restart());
 
-            window->getWindow().setFramerateLimit(app_options.target_fps);
-            window->refresh();
-            window->clear();
+            window.getWindow().setFramerateLimit(app_options.target_fps);
+            window.refresh();
+            window.clear();
 
             if (current_state == application_state::APP_STATE_MENU)
-                ui->drawMenu();
+                ui.drawMenu();
             if (current_state == application_state::APP_STATE_SIMULATION)
-                ui->drawUniverse(*window.get());
+                ui.drawUniverse();
             
-            ImGui::SFML::Render(window->getWindow());
-            window->display();
+            ImGui::SFML::Render(window.getWindow());
+            window.display();
         }
     }
 

@@ -17,18 +17,20 @@ void main()
     v_radius = a_radius;
     v_color = a_color;
 
-    if (a_center.z > 0.0 || length(a_center) < a_radius) 
+    vec4 center_view = u_view * vec4(a_center, 1.0);
+
+    if (center_view.z > 0.0 || length(center_view.xyz) < a_radius) 
     {
         gl_Position = vec4(0.0);
         return;
     }
 
-    v_center = a_center;
+    v_center = center_view.xyz;
     vec2 uv = vec2(((gl_VertexID << 1) & 2) - 1.0, (gl_VertexID & 2) - 1.0) * 1.2f;
 
     v_uv = uv;
 
-    vec4 pos_view = vec4(a_center, 1.0) + vec4(uv * a_radius, 0.0, 0.0);
+    vec4 pos_view = vec4(center_view.xyz, 1.0) + vec4(uv * a_radius, 0.0, 0.0);
     vec4 pos = u_proj * pos_view;
 
     gl_Position = pos;

@@ -26,7 +26,7 @@ namespace core
         application_state current_state{application_state::APP_STATE_MENU};
         options app_options{};
     
-        std::unique_ptr<core::window_t> window;
-        std::unique_ptr<UIHandler> ui;
+        core::window_t window;
+        UIHandler ui;
     };
 } // namespace core

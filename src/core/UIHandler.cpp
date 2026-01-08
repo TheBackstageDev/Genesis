@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <random>
 
 #include "simulation/smiles_parser.hpp"
 #include "simulation/format_loader.hpp"
@@ -26,8 +27,8 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t &window)
-        : app_options(app_options), rendering_eng(window)
+    UIHandler::UIHandler(options &app_options, window_t& window)
+        : app_options(app_options), m_window(window), rendering_eng(window)
     {
         write_localization_json(lang);
         std::filesystem::path path = getLocalizationFile(localization::EN_US);
@@ -49,21 +50,28 @@ namespace core
         }
 
         initCompoundPresets();
-        initImages(window);
+        initImages();
         initSavedData();
     }
 
     void UIHandler::initSavedData()
     {
         std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
+        std::filesystem::path saved_menu_displays_dir = "src/scenes/menu display";
 
-        if (!std::filesystem::exists(saved_sandbox_dir))
+        loadScenariosFromFolder(saved_sandbox_dir);
+        loadScenariosFromFolder(saved_menu_displays_dir, true);
+    }
+    
+    void UIHandler::loadScenariosFromFolder(const std::filesystem::path path, bool background)
+    {
+        if (!std::filesystem::exists(path))
         {
-            std::filesystem::create_directories(saved_sandbox_dir);
+            std::filesystem::create_directories(path);
             return;
         }
 
-        for (const auto &entry : std::filesystem::directory_iterator(saved_sandbox_dir))
+        for (const auto &entry : std::filesystem::directory_iterator(path))
         {
             if (entry.is_regular_file() && entry.path().extension() == ".json")
             {
@@ -80,14 +88,12 @@ namespace core
 
                         std::filesystem::path videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
                         if (std::filesystem::directory_entry(videoPath).exists())
-                        {
                             nInfo.video = videoPath;
-                            nInfo.has_video = true;
-                        }
 
                         nInfo.is_sandbox = true;
 
-                        savedSandbox.emplace_back(std::move(nInfo));
+                        background ? m_backgroundDisplays.emplace_back(std::move(nInfo)) :
+                                     m_savedSandbox.emplace_back(std::move(nInfo));
 
                         std::cout << "Loaded saved scene: " << entry.path() << std::endl;
                     }
@@ -116,9 +122,9 @@ namespace core
         }
     }
 
-    void UIHandler::initImages(window_t &window)
+    void UIHandler::initImages()
     {
-        initCompoundPresetsImages(window);
+        initCompoundPresetsImages();
 
         sf::Image placeholder_image;
         placeholder_image.createMaskFromColor(sf::Color(80, 80, 90), 255); // Dark gray
@@ -160,7 +166,7 @@ namespace core
         }
     }
 
-    void UIHandler::initCompoundPresetsImages(window_t &window)
+    void UIHandler::initCompoundPresetsImages()
     {
         sim::fun::universe_create_info display_info{};
         display_info.box.x = 100.f;
@@ -199,14 +205,14 @@ namespace core
             rendering_info info = getSimulationRenderingInfo(simulation_render_mode::SPACE_FILLING);
             info.universeBox = false;
             
-            window.clear();
-            display_universe->draw(window.getWindow(), info);
+            m_window.clear();
+            display_universe->draw(m_window.getWindow(), info);
 
             sf::Texture thumb_texture;
-            if (!thumb_texture.resize(window.getWindow().getSize()))
+            if (!thumb_texture.resize(m_window.getWindow().getSize()))
                 continue;
 
-            thumb_texture.update(window.getWindow());
+            thumb_texture.update(m_window.getWindow());
             thumb_textures.emplace_back(std::move(thumb_texture));
         }
 
@@ -431,14 +437,62 @@ namespace core
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(2);
         ImGui::PopFont();
+
+        drawMenuBackgroundDisplay();
+
+        if (getState() != application_state::APP_STATE_MENU)
+        {
+            display_universe->clear();
+        }
     }
 
     constexpr float padding = 20.0f;
     constexpr float row_height = 200.f;
     constexpr float row_width = 200.f;
 
-    void UIHandler::drawBackgroundDisplay()
+    void UIHandler::chooseNewDisplayScenario()
     {
+        uint32_t newDisplay = 0;
+        uint32_t maxTries = 5;
+        uint32_t currentTries = 0;
+
+        do 
+        {
+            ++currentTries;
+
+            srand(time(0));
+            newDisplay = rand() % m_backgroundDisplays.size();
+        }
+        while (newDisplay == m_currentDisplay && currentTries < maxTries);
+    }
+
+    void UIHandler::drawMenuBackgroundDisplay()
+    {
+        m_currentDisplayTime += m_deltaTime;
+        if (m_currentDisplayTime >= m_displayMaxTime)
+        {
+            m_currentDisplayTime = 0.f;
+
+            chooseNewDisplayScenario();
+            display_universe->clear();
+
+            const auto& current_display = m_backgroundDisplays[m_currentDisplay];
+            display_universe->loadScene(current_display.file);
+
+            if (!current_display.video.empty())
+            {
+                // TO DO
+            }
+
+            const glm::vec3 boxSizes = display_universe->boxSizes();
+            rendering_eng.camera().target = boxSizes * 0.5f;
+
+            float diagonal = glm::length(boxSizes);
+            rendering_eng.camera().distance = diagonal * 1.5f;
+        }
+
+        display_universe->draw(m_window.getWindow(), getSimulationRenderingInfo(app_options.sim_options.render_mode));
+        rendering_eng.camera().rotateAroundTarget(10.f * m_deltaTime, 0.f);
     }
 
     static std::filesystem::path selected_for_delete;
@@ -509,11 +563,11 @@ namespace core
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.95f, 0.25f, 0.25f, 1.0f));
             if (ImGui::Button(sim_loading["true_delete"].get<std::string>().c_str(), ImVec2(button_width, 40)))
             {
-                auto it = std::find_if(savedSandbox.begin(), savedSandbox.end(),
+                auto it = std::find_if(m_savedSandbox.begin(), m_savedSandbox.end(),
                                        [&](const scenario_info &a)
                                        { return a.file == selected_for_delete; });
 
-                if (it != savedSandbox.end())
+                if (it != m_savedSandbox.end())
                 {
                     std::filesystem::remove(selected_for_delete);
                     auto thumb_path = selected_for_delete;
@@ -522,7 +576,7 @@ namespace core
                     std::filesystem::remove(thumb_path);
 
                     textures.erase(it->title + ".png");
-                    savedSandbox.erase(it);
+                    m_savedSandbox.erase(it);
                 }
 
                 selected_for_delete.clear();
@@ -558,7 +612,7 @@ namespace core
         columns = std::max(1, columns);
         if (ImGui::BeginTable("SavesGrid", columns, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY))
         {
-            for (auto &sandbox : savedSandbox)
+            for (auto &sandbox : m_savedSandbox)
             {
                 std::string lower_title = sandbox.title;
                 std::transform(lower_title.begin(), lower_title.end(), lower_title.begin(), ::tolower);
@@ -623,7 +677,7 @@ namespace core
             if (ImGui::Button(sandbox_creation["box_cubic"].get<std::string>().c_str()))
             {
                 float size = (sandbox_info.box.x + sandbox_info.box.y + sandbox_info.box.z) / 3.0f;
-                sandbox_info.box = sf::Vector3f(size, size, size);
+                sandbox_info.box = glm::vec3(size, size, size);
             }
         }
 
@@ -655,10 +709,10 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("src/resource/molecules/nanoparticle.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("src/resource/molecules/presets/dna.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
 
-            simulation_universe->createMolecule(structure, {30, 30, 30}); */
+            simulation_universe->createMolecule(structure, {20, 20, 40}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -771,7 +825,7 @@ namespace core
 
     // Universe Simulation
 
-    void UIHandler::drawUniverseUI(window_t &window)
+    void UIHandler::drawUniverseUI()
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
 
@@ -881,7 +935,7 @@ namespace core
         ghostDisplay = true;
     }
 
-    void UIHandler::handleGhost(window_t &window)
+    void UIHandler::handleGhost()
     {
         if (!ghostDisplay || selectedCompound == UINT32_MAX)
             return;
@@ -1222,14 +1276,14 @@ namespace core
         simulation_universe->update(target_temperature, target_pressure);
     }
 
-    void UIHandler::drawUniverse(window_t &window)
+    void UIHandler::drawUniverse()
     {
         simulation_render_mode mode = app_options.sim_options.render_mode;
 
         rendering_info info = getSimulationRenderingInfo(app_options.sim_options.render_mode);
         info.universeBox = !(screenshotToggle && savedSimulation);
 
-        simulation_universe->draw(window.getWindow(), info);
+        simulation_universe->draw(m_window.getWindow(), info);
         rendering_eng.handleCamera();
 
         if (screenshotToggle)
@@ -1240,10 +1294,10 @@ namespace core
             if (savedSimulation)
             {
                 path = sandboxSave;
-                title = savedSandbox.at(savedSandbox.size() - 1).title;
+                title = m_savedSandbox.at(m_savedSandbox.size() - 1).title;
             }
 
-            screenshotWindow(window, path, title);
+            screenshotWindow(path, title);
             screenshotToggle = false;
         }
 
@@ -1252,14 +1306,14 @@ namespace core
         info.color_addition = ghostColliding ? ImVec4(0.8f, 0.f, 0.f, 0.f) : ImVec4(0.f, 0.f, 0.f, 0.f);
         if (ghostDisplay)
         {
-            handleGhost(window);
-            display_universe->draw(window.getWindow(), info);
+            handleGhost();
+            display_universe->draw(m_window.getWindow(), info);
         }
 
         if (!pauseMenuOpen || !showHUD)
-            drawUniverseUI(window);
+            drawUniverseUI();
         else if (pauseMenuOpen)
-            pauseMenu(window);
+            pauseMenu();
 
         runUniverse();
 
@@ -1285,16 +1339,16 @@ namespace core
         return time_str;
     }
 
-    void UIHandler::screenshotWindow(window_t &window, std::filesystem::path path, std::string name)
+    void UIHandler::screenshotWindow(std::filesystem::path path, std::string name)
     {
         sf::Texture screenshot{};
-        if (!screenshot.resize(window.getWindow().getSize()))
+        if (!screenshot.resize(m_window.getWindow().getSize()))
         {
             std::cerr << "[UI HANDLER]: Failed to Screenshot!";
             return;
         }
 
-        screenshot.update(window.getWindow());
+        screenshot.update(m_window.getWindow());
         sf::Image image = screenshot.copyToImage();
 
         std::filesystem::path filepath = name.empty() ? path / (formatTime() + ".png") : path / (name + ".png");
@@ -1309,7 +1363,7 @@ namespace core
         }
     }
 
-    void UIHandler::pauseMenu(window_t &window)
+    void UIHandler::pauseMenu()
     {
         auto &pause_menu = localization_json["Simulation"]["pause_menu"];
 
@@ -1397,8 +1451,8 @@ namespace core
                 saved.is_sandbox = true;
                 saved.file = sandboxSave / (std::string(input) + ".json");
                 
-                //if (std::find(savedSandbox.begin(), savedSandbox.end(), saved) == savedSandbox.end())
-                    savedSandbox.emplace_back(std::move(saved));
+                if (std::find(m_savedSandbox.begin(), m_savedSandbox.end(), saved) == m_savedSandbox.end())
+                    m_savedSandbox.emplace_back(std::move(saved));
                 
                 simulation_universe->saveScene(sandboxSave, std::string(input));
                 savedSimulation = true;
@@ -1489,6 +1543,8 @@ namespace core
             ImGui::End();
             return;
         }
+
+        ImGui::End();
     }
 
     // Saving

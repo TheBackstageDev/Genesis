@@ -24,6 +24,7 @@ namespace constants
 
 #define EPSILON 0.1f
 #define DT 0.0007f // ps
+#define DECREASED_DT 0.0005f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
