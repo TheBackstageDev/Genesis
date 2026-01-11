@@ -97,7 +97,18 @@
 
     "Scene_Selection":
     {
-      "title": "Scene Selection"
+      "title": "Scene Selection",
+
+      "scene_types":
+      [
+        "MOLECULE",
+        "DYNAMICS"
+      ],
+
+      "titles":
+      {
+      
+      }
     },
     
     "Simulation_Loading":
@@ -215,6 +226,16 @@
       "tooltip_emplace_molecule": "Press (G) to emplace Molecule, \n (Right Mouse) to cancel. \n Hold (Shift) to continue placing",
       "tooltip_collision_good": "Good Position",
       "tooltip_collision_bad": "Collision Detected!",
+
+      "video_controller":
+      {
+        "play_tooltip": "Resume Video",
+        "pause_tooltip": "Pause Video",
+        "restart_tooltip": "Restart Video",
+        "record_start_tooltip": "Start Recording",
+        "record_stop_tooltip": "Stop Recording",
+        "play_speed": "Play Speed"
+      },
 
       "compound_selector":
       {

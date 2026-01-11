@@ -240,6 +240,7 @@ namespace core
         bool challengeSelectionOpen = false;
         bool challengeViewOpen = false;
         bool optionsOpen = false;
+        bool videoPlayerOpen = true;
 
         bool savedSimulation = false;
 
@@ -294,11 +295,32 @@ namespace core
 
         // Video
 
-        void drawVideoControls();
+        void resetVideoData() 
+        { 
+            m_autoFrame = true;
+            m_recordingFrames = false;
+            m_rewinding = false;
+            m_playingVideo = false;
 
-        sim::fun::video* m_currentVideo = nullptr;
+            m_currentFrame = 0;
+
+            simulation_universe->clearDisplayPositions();
+            display_universe->clearDisplayPositions();
+
+            simulation_universe->clearFrames();
+            display_universe->clearFrames();
+        }
+
+        void drawVideoControls();
+        
+        float m_replaySpeed = 60.f; // in FPS
+        float m_frameAccumulator  = 0.0f; // seconds
+        bool m_autoFrame = true; // lock it when at last frame;
+        bool m_recordingFrames = false;
         bool m_rewinding = false;
-        size_t m_currentFrame = 0;
+        bool m_playingVideo = false;
+
+        int32_t m_currentFrame = 0;
 
         // Fonts
         ImFont* regular = nullptr;

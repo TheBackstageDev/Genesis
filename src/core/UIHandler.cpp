@@ -438,11 +438,13 @@ namespace core
         ImGui::PopStyleColor(2);
         ImGui::PopFont();
 
-        drawMenuBackgroundDisplay();
-
         if (getState() != application_state::APP_STATE_MENU)
         {
             display_universe->clear();
+        }
+        else
+        {
+            drawMenuBackgroundDisplay();
         }
     }
 
@@ -452,8 +454,8 @@ namespace core
 
     void UIHandler::chooseNewDisplayScenario()
     {
+        constexpr uint32_t maxTries = 5;
         uint32_t newDisplay = 0;
-        uint32_t maxTries = 5;
         uint32_t currentTries = 0;
 
         do 
@@ -468,6 +470,8 @@ namespace core
 
     void UIHandler::drawMenuBackgroundDisplay()
     {
+        auto& camera = rendering_eng.camera();
+
         m_currentDisplayTime += m_deltaTime;
         if (m_currentDisplayTime >= m_displayMaxTime)
         {
@@ -485,14 +489,16 @@ namespace core
             }
 
             const glm::vec3 boxSizes = display_universe->boxSizes();
-            rendering_eng.camera().target = boxSizes * 0.5f;
+            camera.target = boxSizes * 0.5f;
 
             float diagonal = glm::length(boxSizes);
-            rendering_eng.camera().distance = diagonal * 1.5f;
+            camera.distance = diagonal * 1.2f;
+            camera.azimuth = 45.f;
+            camera.elevation = 25.f;
         }
 
         display_universe->draw(m_window.getWindow(), getSimulationRenderingInfo(app_options.sim_options.render_mode));
-        rendering_eng.camera().rotateAroundTarget(10.f * m_deltaTime, 0.f);
+        camera.rotateAroundTarget(10.f * m_deltaTime, 0.f);
     }
 
     static std::filesystem::path selected_for_delete;
@@ -532,6 +538,8 @@ namespace core
             pauseMenuOpen = false;
             paused_simulation = false;
             setState(application_state::APP_STATE_SIMULATION);
+
+            resetVideoData();
         }
 
         ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
@@ -698,7 +706,8 @@ namespace core
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, rendering_eng);
-            rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
+            rendering_eng.camera().target = sandbox_info.box / 2.f;
+            rendering_eng.camera().distance = glm::length(sandbox_info.box * 1.2f);
 
             sandboxSelectionOpen = false;
             paused_simulation = false;
@@ -904,11 +913,15 @@ namespace core
         ImGui::Columns(1);
         ImGui::End();
 
+        if (videoPlayerOpen)
+            drawVideoControls();
+
         ImGui::PopStyleVar(4);
         ImGui::PopStyleColor(2);
 
         if (compoundSelector)
             drawCompoundSelector();
+
 
         ImGui::PopFont();
     }
@@ -1274,6 +1287,13 @@ namespace core
         if (paused_simulation) return;
 
         simulation_universe->update(target_temperature, target_pressure);
+
+        if (m_recordingFrames)
+        {
+            simulation_universe->saveFrame();
+
+            if (m_autoFrame) m_currentFrame = simulation_universe->numFrames();
+        }
     }
 
     void UIHandler::drawUniverse()
@@ -1316,6 +1336,24 @@ namespace core
             pauseMenu();
 
         runUniverse();
+
+        if (m_playingVideo && simulation_universe->numFrames() > 0)
+        {
+            const float timePerFrame = 1.0f / m_replaySpeed;
+
+            m_frameAccumulator += m_deltaTime;
+
+            if (m_frameAccumulator > 2.f) m_frameAccumulator = 1.f; // Prevent too big
+            while (m_frameAccumulator >= timePerFrame)
+            {
+                m_frameAccumulator -= timePerFrame;
+                ++m_currentFrame;
+
+                m_currentFrame = m_currentFrame % simulation_universe->numFrames();
+            }
+
+            simulation_universe->setDisplayPositions(simulation_universe->getFrame(m_currentFrame).positions);
+        }
 
         if (ImGui::IsKeyPressed(ImGuiKey_Space))
         {
@@ -1406,6 +1444,8 @@ namespace core
             target_temperature = 300.f;
             paused_simulation = false;
             pauseMenuOpen = false;
+
+            resetVideoData();
         }
 
         if (ImGui::Button(pause_menu["button_save"].get<std::string>().c_str(), buttonSize))
@@ -1455,6 +1495,7 @@ namespace core
                     m_savedSandbox.emplace_back(std::move(saved));
                 
                 simulation_universe->saveScene(sandboxSave, std::string(input));
+
                 savedSimulation = true;
                 screenshotToggle = true;
             }
@@ -1491,6 +1532,10 @@ namespace core
                 optionsOpen = false;
 
                 setState(application_state::APP_STATE_MENU);
+
+                m_currentDisplayTime = m_displayMaxTime + 1.f;
+
+                resetVideoData();
 
                 if (exitDesktop)
                     std::exit(EXIT_SUCCESS);
@@ -1534,14 +1579,71 @@ namespace core
 
     void UIHandler::drawVideoControls()
     {
-        ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(400, 220), ImGuiCond_FirstUseEver);
+        auto &video_controller = localization_json["Simulation"]["universe_ui"]["video_controller"];
+
+        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetMainViewport()->Size.y - 220), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(ImGui::GetMainViewport()->Size.x, 50), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.85f);
 
-        if (!ImGui::Begin("Video Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        if (!ImGui::Begin("Video Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
         {
             ImGui::End();
             return;
+        }
+
+        if (ImGui::Button("Play"))
+        {
+            m_playingVideo = !m_playingVideo; 
+        }
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(m_playingVideo ? video_controller["pause_tooltip"].get<std::string>().c_str() : video_controller["play_tooltip"].get<std::string>().c_str());
+        
+        ImGui::SameLine();
+        
+        if (ImGui::Button("Restart"))
+        {
+            m_currentFrame = 0;
+        }
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(video_controller["restart_tooltip"].get<std::string>().c_str());
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Record"))
+        {
+            m_recordingFrames = !m_recordingFrames;
+
+            if (!m_recordingFrames)
+                simulation_universe->clearDisplayPositions();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(m_recordingFrames ? video_controller["record_stop_tooltip"].get<std::string>().c_str() : video_controller["record_start_tooltip"].get<std::string>().c_str());
+
+        ImGui::DragFloat(video_controller["play_speed"].get<std::string>().c_str(), &m_replaySpeed, 0.5f, 1.0f, 1000.f, "%.1f");
+
+        ImGui::SameLine();
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 50);
+        if (ImGui::SliderInt("##Frame", &m_currentFrame, 0, simulation_universe->numFrames(),
+                                "Frame %d", ImGuiSliderFlags_AlwaysClamp))
+        {
+            m_playingVideo = false;
+            
+            if (m_currentFrame != simulation_universe->numFrames())
+            {
+                simulation_universe->setDisplayPositions(simulation_universe->getFrame(m_currentFrame).positions);
+                m_autoFrame = false;
+            }
+            else
+            {
+                m_autoFrame = true;
+                simulation_universe->clearDisplayPositions();
+            }
         }
 
         ImGui::End();

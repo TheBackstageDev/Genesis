@@ -223,6 +223,8 @@ namespace sim
         {
             for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
             {
+                if (sim_info.positions.size() < i) break;
+
                 const auto &atom = sim_info.atoms[i];
                 float radius = info.spaceFilling
                                    ? constants::VDW_RADII[atom.ZIndex] * 0.8f

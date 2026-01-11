@@ -34,7 +34,8 @@ namespace sim
 
         void universe::draw(sf::RenderTarget &target, const rendering_info &info)
         {
-            rendering_simulation_info sim_info{.positions = data.positions, .q = data.q, .atoms = atoms, .bonds = bonds, .molecules = molecules, .box = glm::vec3(box.x, box.y, box.z)};
+            rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions, 
+                                        .q = data.q, .atoms = atoms, .bonds = bonds, .molecules = molecules, .box = box};
 
             rendering_eng.draw(target, info, sim_info);
         }
@@ -104,7 +105,7 @@ namespace sim
 
             if (deltaEN > 0.1f) // Significant electronegativity difference
             {
-                float charge = deltaEN;
+                float charge = deltaEN * 0.34f;
 
                 if (EN1 > EN2)
                 {
@@ -1405,7 +1406,6 @@ namespace sim
                 return;
 
             data.forces.assign(N, glm::vec3(0.0f));
-
             total_virial = 0.0f;
 
             if (!react)
@@ -1455,9 +1455,6 @@ namespace sim
             }
 
             buildCells();
-
-            /* if (timeStep % 2 == 0)
-                saveFrame(); */
 
             ++timeStep;
         }
@@ -1642,14 +1639,11 @@ namespace sim
 
         void universe::saveFrame()
         {
-            for (const auto& v : data.positions)
-            {
-                positionxLog.emplace_back(v.x);
-                positionyLog.emplace_back(v.y);
-                positionzLog.emplace_back(v.z);
-            }
+            frame nFrame{};
+            nFrame.positions = data.positions;
+            nFrame.global_temperature = temp;
             
-            temperatureLog.emplace_back(temp);
+            m_frames.emplace_back(std::move(nFrame));
         }
 
         // Helper
@@ -1666,24 +1660,34 @@ namespace sim
         
         }
 
-        void universe::saveAsVideo(const std::filesystem::path path, const std::string name)
+        video universe::saveAsVideo(const std::filesystem::path path, const std::string name)
         {
-            nlohmann::json video{};
+            nlohmann::json json_video{};
 
-            for (int32_t i = 0; i < positionxLog.size(); ++i)
+            for (int32_t i = 0; i < m_frames.size(); ++i)
             {
-                video["posx"].emplace_back(positionxLog[i]);
-                video["posy"].emplace_back(positionyLog[i]);
-                video["posz"].emplace_back(positionzLog[i]);
-                video["temperature"].emplace_back(temperatureLog[i]);
+                const frame& cFrame = m_frames[i]; 
+                for (int32_t p = 0; p < cFrame.positions.size(); ++p)
+                {
+                    json_video["posx"].emplace_back(cFrame.positions[p].x);
+                    json_video["posy"].emplace_back(cFrame.positions[p].y);
+                    json_video["posz"].emplace_back(cFrame.positions[p].z);
+                }
+                json_video["temperature"].emplace_back(cFrame.global_temperature);
             }
 
-            video["metadata"] =
+            videoMetaData nMetadata{};
+            nMetadata.box = box;
+            nMetadata.num_atoms = atoms.size();
+            nMetadata.num_frames = m_frames.size();
+            nMetadata.title = name.empty() ? formatTime() : name;
+
+            json_video["metadata"] =
                 {
-                    {"title", formatTime()},
+                    {"title", nMetadata.title},
                     {"description", "Molecular dynamics trajectory"},
-                    {"atoms", atoms.size()},
-                    {"frames", positionxLog.size()},
+                    {"atoms", nMetadata.num_atoms},
+                    {"frames", nMetadata.num_frames},
                     {"box", {box.x, box.y, box.z}}};
 
             try
@@ -1694,22 +1698,24 @@ namespace sim
                 std::filesystem::path filepath = name.empty() ? path / ("video_" + formatTime() + ".json") : path / ("video_" + name + ".json");
                 std::ofstream file(filepath);
                 file.flush();
-                file << video.dump();
+                file << json_video.dump();
                 file.close();
 
-                std::cout << "[Recorder] Saved trajectory with " << video["metadata"]["frames"] << " frames to " << path << '\n';
+                std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames to " << path << '\n';
             }
             catch (std::exception &e)
             {
                 std::cout << "[Recorder] Failed to save trajectory: " << e.what() << std::endl;
-                return;
+                return video{};
             }
 
-            positionxLog.clear();
-            positionyLog.clear();
-            positionzLog.clear();
-            temperatureLog.clear();
-            energyLog.clear();
+            video nVideo{};
+            nVideo.frames = std::move(m_frames);
+            nVideo.metadata = std::move(nMetadata);
+
+            m_frames.clear();
+
+            return nVideo;
         }
 
         void universe::saveScene(const std::filesystem::path path, const std::string name)

@@ -64,18 +64,18 @@ namespace sim
 
         struct frame
         {
-            std::vector<glm::vec3> positions;
-            std::map<size_t, float> temperatures;
+            std::vector<glm::vec3> positions{};
+            std::vector<float> temperatures{};
 
-            float global_temperature;
+            std::unordered_map<uint32_t, float> energyLog{};
+
+            float global_temperature = 0.0f;
         };
 
         struct video
         {
             std::vector<frame> frames; // index is defined by order
             std::vector<size_t> keyFrames; // for events
-
-            std::vector<std::string> text; // changes every keyframe (or continue);
 
             videoMetaData metadata;
         };
@@ -102,8 +102,14 @@ namespace sim
             void saveScene(const std::filesystem::path path, const std::string name = "");
             void loadScene(const std::filesystem::path path);
 
-            void saveAsVideo(const std::filesystem::path path, const std::string name = "");
+            void loadFrames(const std::vector<frame>& nFrames) { m_frames = std::move(nFrames); }
             void saveFrame();
+            _NODISCARD video saveAsVideo(const std::filesystem::path path, const std::string name = "");
+            _NODISCARD const std::vector<frame>& getFrames() const { return m_frames; }
+            const frame& getFrame(size_t i) const { return m_frames[i]; }
+
+            int32_t numFrames() { return m_frames.size(); }
+            void clearFrames() { m_frames.clear(); }
 
             void clear()
             {
@@ -137,6 +143,21 @@ namespace sim
             _NODISCARD std::vector<glm::vec3> positions() const 
             {
                 return data.positions;
+            }
+
+            void clearDisplayPositions()
+            {
+                m_displayPositions.clear();
+            }
+            
+            void setDisplayPositions(const std::vector<glm::vec3>& nPositions)
+            {
+                m_displayPositions = nPositions;
+            }
+
+            void setPositions(const std::vector<glm::vec3>& nPositions)
+            {
+                data.positions = nPositions;
             }
 
             void setPosition(size_t i, glm::vec3 p)
@@ -197,6 +218,8 @@ namespace sim
             rendering_engine& rendering_eng;
 
             simData data;
+            std::vector<glm::vec3> m_displayPositions{};
+
             std::vector<std::vector<uint64_t>> bondedBits;
             void markBonded(uint32_t i, uint32_t j)
             {
@@ -301,13 +324,9 @@ namespace sim
                 float time;
             };
 
-            std::vector<ReactionEvent> reactionLog{};
-            std::vector<std::vector<float>> positionxLog{};
-            std::vector<std::vector<float>> positionyLog{};
-            std::vector<std::vector<float>> positionzLog{};
-            std::map<uint32_t, float> energyLog{};
-            std::vector<float> temperatureLog{};
-            
+            std::vector<ReactionEvent> m_reactionLog{};
+            std::vector<frame> m_frames;
+
             // Other
             std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
             void drawBox(core::window_t& window);
