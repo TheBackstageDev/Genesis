@@ -215,6 +215,16 @@
       "tooltip_collision_good": "Boa Posição",
       "tooltip_collision_bad": "Colisão Detectada!",
 
+      "video_controller":
+      {
+        "play_tooltip": "Resumir o Video",
+        "pause_tooltip": "Pausar o Video",
+        "restart_tooltip": "Recomeçar o Video",
+        "record_start_tooltip": "Começar a Gravar",
+        "record_stop_tooltip": "Parar de Gravar",
+        "play_speed": "Velocidade de rolagem"
+      },
+
       "compound_selector":
       {
         "title": "Selecionador de Compostos",

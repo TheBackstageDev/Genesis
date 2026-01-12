@@ -204,7 +204,8 @@
       "Ammonium": "Ammonium (NH4+) is a positively charged polyatomic ion formed when ammonia (NH3) accepts a proton. It plays a central role in nitrogen metabolism, serving as an intermediate in the assimilation of nitrogen by plants and microorganisms. Ammonium salts are widely used in fertilizers, explosives, and industrial processes, and in aqueous solutions it contributes to acid-base balance.",
       "Sodium Chloride": "Sodium chloride (NaCl), commonly known as table salt, is an ionic compound composed of sodium (Na+) and chloride (Cl-) ions. It is essential for life, playing a critical role in maintaining fluid balance, nerve transmission, and muscle function in living organisms. Beyond its biological importance, sodium chloride is widely used as a seasoning and preservative in food.",
       "Picene": "Picene (C22H14) is a polycyclic aromatic hydrocarbon composed of five benzene rings fused in a zigzag arrangement, belonging to the acene family. It is a crystalline solid with low solubility in water, studied for its electronic and optical properties.",
-      "Octasulfur": "Octasulfur (S8) is the most stable and common allotrope of elemental sulfur, consisting of eight sulfur atoms arranged in a puckered ring structure. It is a bright yellow crystalline solid, insoluble in water but soluble in organic solvents. Octasulfur occurs naturally in volcanic regions and is widely used in the production of sulfuric acid, fertilizers, rubber vulcanization, and various industrial processes."
+      "Octasulfur": "Octasulfur (S8) is the most stable and common allotrope of elemental sulfur, consisting of eight sulfur atoms arranged in a puckered ring structure. It is a bright yellow crystalline solid, insoluble in water but soluble in organic solvents. Octasulfur occurs naturally in volcanic regions and is widely used in the production of sulfuric acid, fertilizers, rubber vulcanization, and various industrial processes.",
+      "Buckminsterfullerene": "Buckminsterfullerene (C60) is a spherical fullerene consisting of 60 carbon atoms arranged in a truncated icosahedron (soccer ball pattern). Discovered in 1985 and named after Buckminster Fuller due to its geodesic dome-like structure."
     }
   },
 
@@ -271,6 +272,17 @@
       "button_exit_desktop": "Exit to Desktop",
       "hint_esc": "Press ESC again to resume",
       "confirm_save": "Save"
+    }
+  },
+
+  "Scenarios":
+  {
+    "Tutorials":
+    {
+      "Controls":
+      {
+      
+      }
     }
   }
 }

@@ -216,11 +216,14 @@ namespace core
 
         const float m_displayMaxTime = 15.f;
         float m_currentDisplayTime = m_displayMaxTime + 1.f; // trigger initial setup on menu
+
+        size_t m_backgroundDisplays = 0;
         void chooseNewDisplayScenario();
         void drawMenuBackgroundDisplay();
 
-        uint32_t m_currentDisplay = 0;
-        std::vector<scenario_info> m_backgroundDisplays;
+        uint32_t m_currentDisplay = UINT32_MAX;
+        std::vector<std::shared_ptr<sim::fun::universe>> m_backgroundUniverses;
+
         std::vector<scenario_info> m_savedSandbox;
         std::vector<sim::fun::video> m_SimulationVideos;
 
@@ -273,6 +276,7 @@ namespace core
 
         void initCompoundPresetsImages();
         void initCompoundPresets();
+        void initCompoundXYZ();
         std::vector<compound_preset_info> compound_presets{};
 
         bool compoundSelector = false;
@@ -311,6 +315,7 @@ namespace core
             display_universe->clearFrames();
         }
 
+        void playFramesUniverse(sim::fun::universe& u);
         void drawVideoControls();
         
         float m_replaySpeed = 60.f; // in FPS

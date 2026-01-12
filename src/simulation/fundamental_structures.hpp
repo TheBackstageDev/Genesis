@@ -103,6 +103,7 @@ namespace sim
             uint32_t i, j;
             float bo;
             BondType type = BondType::NONE;
+            int32_t padding;
         };
 
         struct bond 
@@ -113,9 +114,10 @@ namespace sim
             float equilibriumLength = 0.f;
             float k = 100.f;
             BondType type;
+            int32_t padding;
         };
 
-        struct alignas(32) subset
+        struct subset
         {
             uint32_t mainAtomIdx;              
             uint32_t bondedSubsetIdx   = UINT32_MAX;       // Index of the last subset (optional, max(uint32_t) if none)
@@ -130,7 +132,7 @@ namespace sim
             int32_t padding;
         };
 
-        struct alignas(64) molecule
+        struct molecule
         {
             uint32_t subsetBegin = UINT32_MAX;
             uint32_t subsetCount = UINT32_MAX;
@@ -148,8 +150,6 @@ namespace sim
             uint32_t dihedralCount = UINT32_MAX;
 
             int32_t padding[6];
-
-            bool exclude = false;
         };
 
         struct rendering_info
@@ -178,7 +178,6 @@ namespace sim
 
             int32_t chirality;
             int8_t padding[12];
-            void draw(const sf::Vector2f pos, const float camDistance, const float q, core::window_t &window, sf::RenderTarget& target);
         };
 
         struct rendering_simulation_info

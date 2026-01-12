@@ -8,7 +8,7 @@
 
 namespace sim
 {
-    namespace fun { enum class BondType { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE }; };
+    namespace fun { enum class BondType : uint32_t { NONE, SINGLE, DOUBLE, TRIPLE, QUADRUPLE }; };
 }; // namespace sim
 
 

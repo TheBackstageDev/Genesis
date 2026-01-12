@@ -246,8 +246,6 @@ namespace sim
                 nMolecule.dihedralBegin = baseDihedral;
                 nMolecule.dihedralCount = structure.dihedral_angles.size();
 
-                if (structure.atoms.size() == 3 && structure.atoms[0].ZIndex == 8 && structure.atoms[1].ZIndex == 1 && structure.atoms[2].ZIndex == 1)
-                    nMolecule.exclude = true;
             }
 
             molecules.emplace_back(std::move(nMolecule));
@@ -1664,18 +1662,6 @@ namespace sim
         {
             nlohmann::json json_video{};
 
-            for (int32_t i = 0; i < m_frames.size(); ++i)
-            {
-                const frame& cFrame = m_frames[i]; 
-                for (int32_t p = 0; p < cFrame.positions.size(); ++p)
-                {
-                    json_video["posx"].emplace_back(cFrame.positions[p].x);
-                    json_video["posy"].emplace_back(cFrame.positions[p].y);
-                    json_video["posz"].emplace_back(cFrame.positions[p].z);
-                }
-                json_video["temperature"].emplace_back(cFrame.global_temperature);
-            }
-
             videoMetaData nMetadata{};
             nMetadata.box = box;
             nMetadata.num_atoms = atoms.size();
@@ -1689,6 +1675,26 @@ namespace sim
                     {"atoms", nMetadata.num_atoms},
                     {"frames", nMetadata.num_frames},
                     {"box", {box.x, box.y, box.z}}};
+
+            json_video["positions"] = nlohmann::json::array();
+
+            for (const auto& frame : m_frames)
+            {
+                if (frame.positions.size() != nMetadata.num_atoms)
+                {
+                    std::cerr << "[Video Save] Frame has wrong atom count! Skipping.\n";
+                    continue;
+                }
+
+                for (const auto& pos : frame.positions)
+                {
+                    json_video["positions"].push_back(pos.x);
+                    json_video["positions"].push_back(pos.y);
+                    json_video["positions"].push_back(pos.z);
+                }
+
+                json_video["temperatures"].push_back(frame.global_temperature);
+            }
 
             try
             {
@@ -1818,7 +1824,6 @@ namespace sim
                 m_json["dihedralCount"] = molecule.dihedralCount;
                 m_json["subsetBegin"] = molecule.subsetBegin;
                 m_json["subsetCount"] = molecule.subsetCount;
-                m_json["exclude"] = molecule.exclude;
 
                 scene["molecules"].emplace_back(m_json);
             }
@@ -2034,9 +2039,7 @@ namespace sim
                     m.dihedralCount = m_json["dihedralCount"];
                     m.subsetBegin = m_json["subsetBegin"];
                     m.subsetCount = m_json["subsetCount"];
-                    m.exclude = m_json.value("exclude", false);
 
-                    m.exclude = m_json.value("exclude", false);
                     molecules.emplace_back(std::move(m));
                 }
             }
@@ -2048,5 +2051,113 @@ namespace sim
                       << molecules.size() << " molecules)\n";
         }
 
+        void universe::loadFrames(const std::filesystem::path path)
+        {
+            if (!std::filesystem::exists(path) || path.extension() != ".json")
+            {
+                std::cerr << "[Video Load] Invalid or missing file: " << path << "\n";
+                return;
+            }
+
+            std::ifstream file(path);
+            if (!file.is_open())
+            {
+                std::cerr << "[Video Load] Cannot open file: " << path << "\n";
+                return;
+            }
+
+            nlohmann::json j;
+            try
+            {
+                file >> j;
+            }
+            catch (const nlohmann::json::parse_error& e)
+            {
+                std::cerr << "[Video Load] JSON parse error in " << path << ": " << e.what() << "\n";
+                return;
+            }
+
+            m_frames.clear();
+
+            if (!j.contains("metadata") || !j["metadata"].is_object())
+            {
+                std::cerr << "[Video Load] Missing or invalid metadata in " << path << "\n";
+                return;
+            }
+
+            auto& meta = j["metadata"];
+            size_t expectedAtoms = meta.value("atoms", 0ull);
+            size_t expectedFrames = meta.value("frames", 0ull);
+            glm::vec3 loadedBox = 
+            {
+                meta["box"][0].get<float>(),
+                meta["box"][1].get<float>(),
+                meta["box"][2].get<float>()
+            };
+
+            if (expectedAtoms == 0 || expectedFrames == 0)
+            {
+                std::cerr << "[Video Load] Empty or invalid frame/atom count\n";
+                return;
+            }
+
+            if (glm::length(loadedBox - box) > 1e-3f)
+            {
+                box = loadedBox;
+            }
+
+            if (!j.contains("positions") || !j["positions"].is_array())
+            {
+                std::cerr << "[Video Load] Missing or invalid 'positions' array\n";
+                return;
+            }
+
+            auto& posArray = j["positions"];
+            if (posArray.size() != expectedFrames * expectedAtoms * 3)
+            {
+                std::cerr << "[Video Load] Position array size mismatch! Expected "
+                        << expectedFrames * expectedAtoms * 3 << ", got " << posArray.size() << "\n";
+                return;
+            }
+
+            std::vector<float> temperatures;
+            if (j.contains("temperatures") && j["temperatures"].is_array())
+            {
+                temperatures = j["temperatures"].get<std::vector<float>>();
+                if (temperatures.size() != expectedFrames)
+                {
+                    std::cerr << "[Video Load] Temperatures size mismatch! Expected "
+                            << expectedFrames << ", got " << temperatures.size() << "\n";
+                    temperatures.clear();
+                }
+            }
+
+            m_frames.reserve(expectedFrames);
+
+            size_t idx = 0;
+            for (size_t f = 0; f < expectedFrames; ++f)
+            {
+                frame newFrame;
+                newFrame.positions.reserve(expectedAtoms);
+
+                for (size_t a = 0; a < expectedAtoms; ++a)
+                {
+                    float x = posArray[idx++];
+                    float y = posArray[idx++];
+                    float z = posArray[idx++];
+                    newFrame.positions.emplace_back(x, y, z);
+                }
+
+                if (!temperatures.empty())
+                    newFrame.global_temperature = temperatures[f];
+                else
+                    newFrame.global_temperature = 300.0f;
+
+                m_frames.emplace_back(std::move(newFrame));
+            }
+
+            std::cout << "[Video Load] Successfully loaded " << m_frames.size()
+                    << " frames with " << expectedAtoms << " atoms from " << path << "\n";
+        }
     } // namespace fun
 } // namespace sim

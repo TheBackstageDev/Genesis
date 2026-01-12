@@ -20,10 +20,10 @@ namespace sim
     {
         struct simData
         {
-            alignas(32) std::vector<glm::vec3> positions;
-            alignas(32) std::vector<glm::vec3> velocities;
-            alignas(32) std::vector<glm::vec3> forces;
-            alignas(32) std::vector<float> q, bond_orders, temperature;
+            alignas(64) std::vector<glm::vec3> positions;
+            alignas(64) std::vector<glm::vec3> velocities;
+            alignas(64) std::vector<glm::vec3> forces;
+            alignas(64) std::vector<float> q, bond_orders, temperature;
         };
 
         constexpr int32_t offsets[14][3] = 
@@ -64,7 +64,7 @@ namespace sim
 
         struct frame
         {
-            std::vector<glm::vec3> positions{};
+            alignas(64) std::vector<glm::vec3> positions{};
             std::vector<float> temperatures{};
 
             std::unordered_map<uint32_t, float> energyLog{};
@@ -103,7 +103,9 @@ namespace sim
             void loadScene(const std::filesystem::path path);
 
             void loadFrames(const std::vector<frame>& nFrames) { m_frames = std::move(nFrames); }
+            void loadFrames(const std::filesystem::path path);
             void saveFrame();
+            
             _NODISCARD video saveAsVideo(const std::filesystem::path path, const std::string name = "");
             _NODISCARD const std::vector<frame>& getFrames() const { return m_frames; }
             const frame& getFrame(size_t i) const { return m_frames[i]; }
@@ -187,7 +189,6 @@ namespace sim
             void calcAngleForces();
             void calcDihedralForces();
 
-            void calcReactiveAngleForces();
             void calcLjForces();
             void calcElectrostaticForces();
 
@@ -213,6 +214,7 @@ namespace sim
             float calculateUncorrectedBondOrder(int32_t i, int32_t j);
             void processReactivePair(int32_t i, int32_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
             void calcUnbondedForcesReactive();
+            void calcReactiveAngleForces();
             void handleReactiveForces();
 
             rendering_engine& rendering_eng;

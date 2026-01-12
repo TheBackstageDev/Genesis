@@ -11,6 +11,17 @@ namespace core
 {
     // Helper
 
+    size_t count_all_items(std::filesystem::path path)
+    {
+        try 
+        {
+            return static_cast<std::size_t>(std::distance(std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}));
+        } catch (std::filesystem::filesystem_error const& ex) {
+            std::cerr << "Error accessing directory: " << ex.what() << std::endl;
+            return 0;
+        }
+    }
+
     std::filesystem::path sandboxSave = std::filesystem::path("src/scenes/saved");
 
     std::filesystem::path getLocalizationFile(localization lang)
@@ -80,20 +91,35 @@ namespace core
                 {
                     try
                     {
-                        nlohmann::json scene_json = nlohmann::json::parse(file);
+                        std::filesystem::path videoPath;
 
-                        scenario_info nInfo{};
-                        nInfo.file = entry;
-                        nInfo.title = entry.path().filename().replace_extension("").string();
+                        if (!background)
+                        {
+                            nlohmann::json scene_json = nlohmann::json::parse(file);
+    
+                            scenario_info nInfo{};
+                            nInfo.file = entry;
+                            nInfo.title = entry.path().filename().replace_extension("").string();
+                        
+                            m_savedSandbox.emplace_back(std::move(nInfo));
 
-                        std::filesystem::path videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
-                        if (std::filesystem::directory_entry(videoPath).exists())
-                            nInfo.video = videoPath;
+                            videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
+                            if (std::filesystem::directory_entry(videoPath).exists())
+                                nInfo.video = videoPath;
+                            else
+                                videoPath = "";
+                            
+                            nInfo.is_sandbox = true;
+                        }
+                        else 
+                        {
+                            m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), rendering_eng));
 
-                        nInfo.is_sandbox = true;
+                            if (!videoPath.empty())
+                                m_backgroundUniverses.back()->loadFrames(videoPath);
 
-                        background ? m_backgroundDisplays.emplace_back(std::move(nInfo)) :
-                                     m_savedSandbox.emplace_back(std::move(nInfo));
+                            ++m_backgroundDisplays;
+                        }
 
                         std::cout << "Loaded saved scene: " << entry.path() << std::endl;
                     }
@@ -219,6 +245,8 @@ namespace core
         display_universe->clear();
     }
 
+    constexpr int32_t num_smiles_compounds = 31;
+
     void UIHandler::initCompoundPresets()
     {
         auto &compounds = localization_json["Compounds"];
@@ -226,9 +254,7 @@ namespace core
 
         compound_presets.clear();
 
-        constexpr int32_t num_compounds = 32;
-
-        std::array<std::string, num_compounds> smilesToParse =
+        std::array<std::string, num_smiles_compounds> smilesToParse =
             {
                 "O",
                 "N",
@@ -251,7 +277,6 @@ namespace core
                 "CCCCCCCCCCCCCCCC(=O)O",
                 "O=C(O)CCCCCCCCC",
                 "CCCCCCCC\\C=C/CCCCCCCC(O)=O",
-                "C1=NC(=C2C(=N1)N(C=N2)[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)OP(=O)(O)OP(=O)(O)O)O)O)N",
                 "CC(=O)OC1=CC=CC=C1C(=O)O",
                 "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
                 "c1ccccc1CCc2ccccc2CC",
@@ -263,14 +288,14 @@ namespace core
                 "C1=CC=CC2=C1C=CC3=C2C=CC4=C3C=CC5=C4C=CC=C5",
                 "S1SSSSSSS1"};
 
-        std::array<std::string, num_compounds> formulas = {
+        std::array<std::string, num_smiles_compounds> formulas = {
             "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
             "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2", "C10H20O2", "C18H34O2", 
-            "C10H16N5O13P3", "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
+            "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
             "NaCl", "C22H14", "S8"};
 
         using type = compound_type;
-        std::array<type, num_compounds> types = {
+        std::array<type, num_smiles_compounds> types = {
             type::INORGANIC,    // Water
             type::INORGANIC,    // Ammonia
             type::INORGANIC,    // CO2
@@ -292,7 +317,6 @@ namespace core
             type::BIOMOLECULE,  // Palmitic acid
             type::BIOMOLECULE,  // Capric Acid
             type::BIOMOLECULE,  // Oleic Acid
-            type::BIOMOLECULE,  // ATP
             type::ORGANIC,      // Aspirin
             type::ORGANIC,      // Caffeine
             type::POLYMER,      // Polystyrene
@@ -305,7 +329,7 @@ namespace core
             type::INORGANIC     // Octasulfur
         };
 
-        for (int32_t i = 0; i < num_compounds; ++i)
+        for (int32_t i = 0; i < num_smiles_compounds; ++i)
         {
             compound_preset_info nInfo{};
             nInfo.name = compound_names[i].get<std::string>();
@@ -324,6 +348,79 @@ namespace core
 
             compound_presets.emplace_back(std::move(nInfo));
         }
+
+        // XYZ types
+ 
+        initCompoundXYZ();
+    }
+
+    void UIHandler::initCompoundXYZ()
+    {
+        std::filesystem::path folder = "src/resource/molecules/compounds";
+        if (!std::filesystem::exists(folder) || !std::filesystem::is_directory(folder))
+        {
+            std::cerr << "[Compounds] Folder not found: " << folder << "\n";
+            return;
+        }
+
+        size_t id_counter = 0;
+        for (const auto& entry : std::filesystem::directory_iterator(folder))
+        {
+            if (!entry.is_regular_file() || entry.path().extension() != ".xyz")
+                continue;
+
+            std::string filename = entry.path().stem().string();
+
+            sim::fun::molecule_structure structure{};
+            if (!sim::io::loadXYZ(entry.path().string(), structure.atoms, structure.bonds, structure.positions))
+            {
+                std::cerr << "[Compounds] Failed to load XYZ: " << entry.path() << "\n";
+                continue;
+            }
+
+            sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
+            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
+
+            std::string displayName = filename;
+            std::string formula = "Unknown";
+            compound_type type = compound_type::ORGANIC;
+
+            std::filesystem::path metaPath = entry.path();
+            metaPath.replace_extension(".json");
+            if (std::filesystem::exists(metaPath))
+            {
+                std::ifstream metaFile(metaPath);
+                nlohmann::json metaJson;
+                if (metaFile >> metaJson)
+                {
+                    displayName   = metaJson.value("name", filename);
+                    formula       = metaJson.value("formula", formula);
+                    type          = static_cast<compound_type>(metaJson.value("type", 0));
+                }
+            }
+
+            float molWeight = 0.0f;
+            for (const auto& atom : structure.atoms)
+            {
+                molWeight += atom.ZIndex * MASS_PROTON + atom.NIndex * MASS_NEUTRON;
+            }
+
+            compound_preset_info info{};
+            info.id              = num_smiles_compounds + id_counter++;
+            info.name            = displayName;
+            info.formula         = formula;
+            info.SMILES          = "";
+            info.structure       = std::move(structure);
+            info.molecular_weight = molWeight;
+            info.type            = type;
+
+            compound_presets.emplace_back(std::move(info));
+
+            std::cout << "[Compounds] Loaded XYZ: " << displayName << " (" << formula << ", " 
+                    << structure.atoms.size() << " atoms)\n";
+        }
+
+        std::cout << "[Compounds] Loaded " << compound_presets.size() << " XYZ compounds\n";
     }
 
     void UIHandler::write_localization_json(localization lang)
@@ -463,9 +560,11 @@ namespace core
             ++currentTries;
 
             srand(time(0));
-            newDisplay = rand() % m_backgroundDisplays.size();
+            newDisplay = rand() % m_backgroundDisplays;
         }
         while (newDisplay == m_currentDisplay && currentTries < maxTries);
+
+        m_currentDisplay = newDisplay;
     }
 
     void UIHandler::drawMenuBackgroundDisplay()
@@ -476,19 +575,9 @@ namespace core
         if (m_currentDisplayTime >= m_displayMaxTime)
         {
             m_currentDisplayTime = 0.f;
-
             chooseNewDisplayScenario();
-            display_universe->clear();
 
-            const auto& current_display = m_backgroundDisplays[m_currentDisplay];
-            display_universe->loadScene(current_display.file);
-
-            if (!current_display.video.empty())
-            {
-                // TO DO
-            }
-
-            const glm::vec3 boxSizes = display_universe->boxSizes();
+            const glm::vec3 boxSizes = m_backgroundUniverses[m_currentDisplay]->boxSizes();
             camera.target = boxSizes * 0.5f;
 
             float diagonal = glm::length(boxSizes);
@@ -497,8 +586,12 @@ namespace core
             camera.elevation = 25.f;
         }
 
-        display_universe->draw(m_window.getWindow(), getSimulationRenderingInfo(app_options.sim_options.render_mode));
+        auto& current_universe = m_backgroundUniverses[m_currentDisplay];
+        current_universe->draw(m_window.getWindow(), getSimulationRenderingInfo(app_options.sim_options.render_mode));
         camera.rotateAroundTarget(10.f * m_deltaTime, 0.f);
+
+        if (current_universe->numFrames() > 0)
+            playFramesUniverse(*current_universe.get());;
     }
 
     static std::filesystem::path selected_for_delete;
@@ -720,8 +813,9 @@ namespace core
             /* sim::fun::molecule_structure structure{};
             sim::io::loadXYZ("src/resource/molecules/presets/dna.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
+            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {20, 20, 40}); */
+            simulation_universe->createMolecule(structure, {22, 22, 25}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -1180,7 +1274,7 @@ namespace core
             ImGui::Dummy(ImVec2(0, 15));
 
             ImGui::TextDisabled(full_view["description"].get<std::string>().c_str());
-            ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]["compound_names"][compound.id]].get<std::string>().c_str());
+            ImGui::TextWrapped(compounds["compound_descriptions"][compound.name].get<std::string>().c_str());
 
             ImGui::Dummy(ImVec2(0, 20));
 
@@ -1337,23 +1431,7 @@ namespace core
 
         runUniverse();
 
-        if (m_playingVideo && simulation_universe->numFrames() > 0)
-        {
-            const float timePerFrame = 1.0f / m_replaySpeed;
-
-            m_frameAccumulator += m_deltaTime;
-
-            if (m_frameAccumulator > 2.f) m_frameAccumulator = 1.f; // Prevent too big
-            while (m_frameAccumulator >= timePerFrame)
-            {
-                m_frameAccumulator -= timePerFrame;
-                ++m_currentFrame;
-
-                m_currentFrame = m_currentFrame % simulation_universe->numFrames();
-            }
-
-            simulation_universe->setDisplayPositions(simulation_universe->getFrame(m_currentFrame).positions);
-        }
+        playFramesUniverse(*simulation_universe.get());
 
         if (ImGui::IsKeyPressed(ImGuiKey_Space))
         {
@@ -1495,6 +1573,7 @@ namespace core
                     m_savedSandbox.emplace_back(std::move(saved));
                 
                 simulation_universe->saveScene(sandboxSave, std::string(input));
+                (void)simulation_universe->saveAsVideo(sandboxSave, std::string(input));
 
                 savedSimulation = true;
                 screenshotToggle = true;
@@ -1576,6 +1655,27 @@ namespace core
     }
 
     // Video
+
+    void UIHandler::playFramesUniverse(sim::fun::universe& u)
+    {
+        if (m_playingVideo && u.numFrames() > 0)
+        {
+            const float timePerFrame = 1.0f / m_replaySpeed;
+
+            m_frameAccumulator += m_deltaTime;
+
+            if (m_frameAccumulator > 2.f) m_frameAccumulator = 1.f; // Prevent too big
+            while (m_frameAccumulator >= timePerFrame)
+            {
+                m_frameAccumulator -= timePerFrame;
+                ++m_currentFrame;
+
+                m_currentFrame = m_currentFrame % u.numFrames();
+            }
+
+            u.setDisplayPositions(u.getFrame(m_currentFrame).positions);
+        }
+    }
 
     void UIHandler::drawVideoControls()
     {
