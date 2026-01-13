@@ -9,33 +9,20 @@ in vec3  v_corner;
 
 uniform mat4 u_view;
 uniform mat4 u_proj;
-uniform vec3 u_cameraPos;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
 
 out vec4 fragColor;
 
-vec2 cylIntersect(vec3 ro, vec3 rd, vec3 pa, vec3 pb, float ra)
+vec2 sphIntersect(in vec3 ro, in vec3 rd, in vec3 ce, in float ra)
 {
-    vec3  ba = pb - pa;
-    vec3  oa = ro - pa;
-    float baba = dot(ba, ba);
-    float bard = dot(ba, rd);
-    float baoa = dot(ba, oa);
-    float a    = baba - bard * bard;
-    float b    = baoa * bard - dot(oa, rd) * baba;
-    float c    = dot(oa, oa) * baba - baoa * baoa - ra * ra * baba;
-
-    if (abs(a) < 1e-6)
-    {
-        if (dot(oa - (baoa / baba) * ba, oa - (baoa / baba) * ba) > ra * ra)
-            return vec2(-1.0);
-        return vec2(-1e6, 1e6);
-    }
-
-    float h = b * b - a * c;
-    if (h < 0.0) return vec2(-1.0);
-    h = sqrt(h);
-    return vec2((-b - h) / a, (-b + h) / a);
+    vec3 oc = ro - ce;
+    float b = dot( oc, rd );
+    float c = dot( oc, oc ) - ra*ra;
+    float h = b*b - c;
+    
+    if( h<0.0 ) return vec2(-1.0);
+    h = sqrt( h );
+    return vec2( -b-h, -b+h );
 }
 
 float viewPosToDepth(vec3 viewPos)
@@ -47,19 +34,43 @@ float viewPosToDepth(vec3 viewPos)
 
 void main()
 {
-    vec3 rayOrig = u_cameraPos;
-    vec3 rayDir  = normalize(v_corner - rayOrig);
+    vec3 ro = vec3(0.0);
+    vec3 rd = normalize(v_corner);
 
-    vec3 axis    = v_end - v_start;
-    float axisLen = length(axis);
-    if (axisLen < 1e-5f) discard;
+    if (length(v_corner) > 500.0 * v_radius) discard;
 
-    vec2 tt = cylIntersect(rayOrig, rayDir, v_start, v_end, v_radius);
+    vec3 center = (v_start + v_end) * 0.5;
+    vec2 tt = sphIntersect(ro, rd, center, v_radius);
 
-    float t = (tt.x > 0.0) ? tt.x : tt.y;
-    if (t > 0.0001f) {
-        fragColor = mix(v_colorA, v_colorB, 0.5);
-    } else {
-        fragColor = vec4(1.0, 0.2, 0.2, 1.0);
+    float t = -1.0;
+    if (tt.x > 0.001) t = tt.x;
+    else if (tt.y > 0.001) t = tt.y;
+
+    if (t < 0.001) 
+    {
+        discard;
     }
+
+    vec3 hit = ro + t * rd;
+
+    vec3 ba = v_end - v_start;
+    float len2 = dot(ba, ba);
+    float h = dot(hit - v_start, ba) / len2;
+
+    if (h < -0.05 || h > 1.05) 
+    {
+        discard;
+    }
+
+    gl_FragDepth = viewPosToDepth(hit);
+
+    vec3 hitPos_view = ro + t * rd;
+    vec3 hit_normal = normalize(hitPos_view - center);
+
+    vec4 final_color = mix(v_colorA, v_colorB, h);
+
+    vec3 normal = normalize(hit - center);
+    float NdotL = max(0.0, dot(normal, u_lightDir));
+
+    fragColor = vec4(vec3(1.0, 1.0, 1.0) * (0.2 + 0.8 * NdotL), final_color.w);
 }

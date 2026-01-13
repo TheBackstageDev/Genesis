@@ -282,8 +282,8 @@ namespace sim
             glm::vec4 colorA_norm(colA.r / 255.f, colA.g / 255.f, colA.b / 255.f, info.opacity);
             glm::vec4 colorB_norm(colB.r / 255.f, colB.g / 255.f, colB.b / 255.f, info.opacity);
 
-            float bondR = 1.0f / static_cast<int32_t>(bond.type);
-            instances.emplace_back(sim_info.positions[bond.bondedAtom], sim_info.positions[bond.centralAtom], colorA_norm, colorB_norm, bondR);
+            float bondR = 1.0f / 6.f * static_cast<int32_t>(bond.type);
+            instances.emplace_back(sim_info.positions[bond.centralAtom], sim_info.positions[bond.bondedAtom], colorA_norm, colorB_norm, bondR);
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
@@ -297,16 +297,12 @@ namespace sim
 
         GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
         GLint loc_view = glGetUniformLocation(bond_program, "u_view");
-        GLint loc_cam = glGetUniformLocation(bond_program, "u_cameraPos");
 
         if (loc_projection != -1)
             glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
-
-        if (loc_cam != -1)
-            glUniform3fv(loc_cam, 1, glm::value_ptr(cam.eye()));
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -324,7 +320,7 @@ namespace sim
             drawBox(sim_info.box);
 
         bindColor(target, info, sim_info);
-        //bindBond(target, info, sim_info);
+        bindBond(target, info, sim_info);
 
         glBindVertexArray(0);
         glUseProgram(0);

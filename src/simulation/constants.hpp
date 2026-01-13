@@ -23,7 +23,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.0008f // ps
+#define DT 0.001f // ps
 #define DECREASED_DT 0.0005f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
@@ -463,6 +463,11 @@ namespace constants
 
         float ideal_angle = 0.0f;
 
+                if (centralZIndex == 15)
+        {
+            ideal_angle = 0.0f;
+        }
+
         switch (total_domains) {
             case 2:
                 ideal_angle = 180.0f * RADIAN; // Linear: AX₂
@@ -761,45 +766,80 @@ namespace constants
         {
         case sim::fun::BondType::SINGLE:
 
-            if (BONDED(6,6))   base = 1.54f;    // C–C sp³
-            else if (BONDED(6,1))  base = 1.09f;    // C–H
-            else if (BONDED(6,7))  base = 1.47f;    // C–N
-            else if (BONDED(6,8))  base = 1.43f;    // C–O
-            else if (BONDED(6,9))  base = 1.35f;    // C–F
-            else if (BONDED(6,14)) base = 1.90f;    // C–Si
-            else if (BONDED(6,15)) base = 1.85f;    // C–P
-            else if (BONDED(6,16)) base = 1.82f;    // C–S
-            else if (BONDED(6,17)) base = 1.77f;    // C–Cl
-            else if (BONDED(6,35)) base = 1.94f;    // C–Br
-            else if (BONDED(6,53)) base = 2.14f;    // C–I
+            if      (BONDED(6,1))  base = 1.09f;   // C–H
+            else if (BONDED(6,3))  base = 1.82f;   // C–Li 
+            else if (BONDED(6,4))  base = 1.70f;   // C–Be 
+            else if (BONDED(6,5))  base = 1.56f;   // C–B 
+            else if (BONDED(6,6))  base = 1.54f;   // C–C (sp³)
+            else if (BONDED(6,7))  base = 1.47f;   // C–N
+            else if (BONDED(6,8))  base = 1.43f;   // C–O
+            else if (BONDED(6,9))  base = 1.35f;   // C–F
+            else if (BONDED(6,11)) base = 2.16f;   // C–Na
+            else if (BONDED(6,12)) base = 1.97f;   // C–Mg
+            else if (BONDED(6,13)) base = 1.97f;   // C–Al 
+            else if (BONDED(6,14)) base = 1.87f;   // C–Si
+            else if (BONDED(6,15)) base = 1.85f;   // C–P
+            else if (BONDED(6,16)) base = 1.82f;   // C–S
+            else if (BONDED(6,17)) base = 1.77f;   // C–Cl
+            else if (BONDED(6,33)) base = 1.98f;   // C–As 
+            else if (BONDED(6,34)) base = 1.98f;   // C–Se 
+            else if (BONDED(6,35)) base = 1.94f;   // C–Br
+            else if (BONDED(6,50)) base = 2.15f;   // C–Sn 
+            else if (BONDED(6,51)) base = 2.16f;   // C–Sb 
+            else if (BONDED(6,52)) base = 2.21f;   // C–Te 
+            else if (BONDED(6,53)) base = 2.14f;   // C–I
+            else if (BONDED(6,82)) base = 2.16f;   // C–Pb 
 
             // Nitrogen
-            else if (BONDED(7,7))  base = 1.45f;    // N–N
-            else if (BONDED(7,8))  base = 1.43f;    // N–O
-            else if (BONDED(7,1))  base = 1.01f;    // N–H
-            else if (BONDED(7,15)) base = 1.75f;    // N–P
-            else if (BONDED(7,16)) base = 1.74f;    // N–S
+            else if (BONDED(7,1))  base = 1.01f;   // N–H
+            else if (BONDED(7,5))  base = 1.36f;   // N–B 
+            else if (BONDED(7,7))  base = 1.45f;   // N–N
+            else if (BONDED(7,8))  base = 1.43f;   // N–O
+            else if (BONDED(7,9))  base = 1.39f;   // N–F 
+            else if (BONDED(7,13)) base = 2.05f;   // N–Al 
+            else if (BONDED(7,14)) base = 1.74f;   // N–Si 
+            else if (BONDED(7,15)) base = 1.77f;   // N–P 
+            else if (BONDED(7,16)) base = 1.68f;   // N–S 
+            else if (BONDED(7,17)) base = 1.87f;   // N–Cl 
 
             // Oxygen
-            else if (BONDED(8,8))  base = 1.48f;    // O–O (peroxide)
-            else if (BONDED(8,1))  base = 0.96f;    // O–H
-            else if (BONDED(8,14)) base = 1.63f;    // O–Si
-            else if (BONDED(8,15)) base = 1.60f;    // O–P
-            else if (BONDED(8,16)) base = 1.57f;    // O–S
+            else if (BONDED(8,1))  base = 0.96f;   // O–H
+            else if (BONDED(8,5))  base = 1.36f;   // O–B 
+            else if (BONDED(8,8))  base = 1.48f;   // O–O (peroxide)
+            else if (BONDED(8,9))  base = 1.42f;   // O–F 
+            else if (BONDED(8,13)) base = 1.75f;   // O–Al 
+            else if (BONDED(8,14)) base = 1.63f;   // O–Si
+            else if (BONDED(8,15)) base = 1.61f;   // O–P
+            else if (BONDED(8,16)) base = 1.57f;   // O–S
 
             // Halogens
             else if (BONDED(9,9))   base = 1.42f;   // F–F
+            else if (BONDED(9,17))  base = 1.63f;   // F–Cl
             else if (BONDED(17,17)) base = 1.99f;   // Cl–Cl
             else if (BONDED(35,35)) base = 2.28f;   // Br–Br
             else if (BONDED(53,53)) base = 2.66f;   // I–I
 
             // Phosphorus
-            else if (BONDED(15,15)) base = 2.22f;   // P–P
+            else if (BONDED(15,1))  base = 1.42f;   // P–H
+            else if (BONDED(15,5))  base = 1.96f;   // P–B 
+            else if (BONDED(15,6))  base = 1.85f;   // P–C
+            else if (BONDED(15,7))  base = 1.77f;   // P–N 
+            else if (BONDED(15,8))  base = 1.61f;   // P–O (P(III))
             else if (BONDED(15,9))  base = 1.56f;   // P–F
+            else if (BONDED(15,13)) base = 2.27f;   // P–Al 
+            else if (BONDED(15,14)) base = 2.27f;   // P–Si 
+            else if (BONDED(15,15)) base = 2.20f;   // P–P
+            else if (BONDED(15,16)) base = 2.10f;   // P–S
             else if (BONDED(15,17)) base = 2.01f;   // P–Cl
+            else if (BONDED(15,33)) base = 2.30f;   // P–As 
+            else if (BONDED(15,34)) base = 2.31f;   // P–Se 
+            else if (BONDED(15,35)) base = 2.18f;   // P–Br
+            else if (BONDED(15,53)) base = 2.40f;   // P–I
 
             // Sulfur
             else if (BONDED(16,16)) base = 2.05f;   // S–S
+            else if (BONDED(16,5))  base = 1.82f;   // S–B
+            else if (BONDED(16,14)) base = 2.15f;   // S–Si
             else if (BONDED(16,1))  base = 1.34f;   // S–H
             else if (BONDED(16,17)) base = 1.99f;   // S–Cl
 
@@ -815,6 +855,10 @@ namespace constants
             else if (BONDED(5,17))  base = 1.81f;   // B–Cl
 
             // Metals
+            else if (BONDED(3,3))   base = 2.67f;   // Li–Li
+            else if (BONDED(11,11)) base = 3.08f;   // Na–Na
+            else if (BONDED(12,12)) base = 2.82f;   // Mg–Mg
+            else if (BONDED(13,13)) base = 2.86f;   // Al–Al
             else if (BONDED(26,6))  base = 1.92f;   // Fe–C
             else if (BONDED(26,8))  base = 1.62f;   // Fe–O
             else if (BONDED(28,6))  base = 1.88f;   // Ni–C
@@ -826,22 +870,29 @@ namespace constants
             break;
 
         case sim::fun::BondType::DOUBLE:
-            if (BONDED(6,6))       base = 1.34f;  // C=C
-            else if (BONDED(6,7))  base = 1.31f;  // C=N
-            else if (BONDED(6,8))  base = 1.22f;  // C=O
-            else if (BONDED(6,16)) base = 1.61f;  // C=S
-            else if (BONDED(7,7))  base = 1.24f;  // N=N
-            else if (BONDED(7,8))  base = 1.28f;  // N=O
-            else if (BONDED(8,8))  base = 1.21f;  // O=O
-            else if (BONDED(8,16)) base = 1.43f;  // S=O
-            else if (BONDED(15,8)) base = 1.44f;  // P=O
+            if      (BONDED(6,5))  base = 1.42f;   // C=B 
+            else if (BONDED(6,6))  base = 1.34f;   // C=C
+            else if (BONDED(6,7))  base = 1.31f;   // C=N
+            else if (BONDED(6,8))  base = 1.22f;   // C=O
+            else if (BONDED(6,15)) base = 1.67f;   // C=P
+            else if (BONDED(6,16)) base = 1.61f;   // C=S
+            else if (BONDED(7,7))  base = 1.24f;   // N=N
+            else if (BONDED(7,8))  base = 1.28f;   // N=O
+            else if (BONDED(7,15)) base = 1.54f;   // N=P
+            else if (BONDED(8,8))  base = 1.21f;   // O=O
+            else if (BONDED(8,15)) base = 1.48f;   // O=P
+            else if (BONDED(8,16)) base = 1.43f;   // O=S
+            else if (BONDED(15,15)) base = 1.89f;  // P=P
+            else if (BONDED(15,16)) base = 1.95f;  // P=S
             break;
 
         case sim::fun::BondType::TRIPLE:
-            if (BONDED(6,6))      base = 1.20f;   // C≡C
-            else if (BONDED(6,7)) base = 1.16f;   // C≡N
-            else if (BONDED(7,7)) base = 1.10f;   // N≡N
-            else if (BONDED(6,8)) base = 1.13f;   // C≡O (CO)
+            if      (BONDED(6,6))  base = 1.20f;   // C≡C
+            else if (BONDED(6,7))  base = 1.16f;   // C≡N
+            else if (BONDED(6,15)) base = 1.50f;   // C≡P
+            else if (BONDED(7,7))  base = 1.10f;   // N≡N
+            else if (BONDED(7,15)) base = 1.49f;   // N≡P
+            else if (BONDED(6,8))  base = 1.13f;   // C≡O (CO)
             break;
 
         case sim::fun::BondType::QUADRUPLE:
@@ -862,176 +913,121 @@ namespace constants
 
     inline float getBondEnergy(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)
     {
-        if (Z1 > Z2) std::swap(Z1, Z2);
+        #define BONDED(a, b) ((Z1 == (a) && Z2 == (b)) || (Z1 == (b) && Z2 == (a)))
 
-        static const std::map<std::pair<uint8_t, uint8_t>, float> singleBondEnergy = 
-        {
-            // C–X
-            {{6,6},  348.0f},   // C–C  (alkane)
+        static const std::map<std::pair<uint8_t, uint8_t>, float> singleBondEnergy = {
+            // Carbon
             {{6,1},  413.0f},   // C–H
-            {{6,7},  305.0f},   // C–N  (amine)
-            {{6,8},  358.0f},   // C–O  (alcohol)
+            {{6,6},  348.0f},   // C–C
+            {{6,7},  305.0f},   // C–N
+            {{6,8},  358.0f},   // C–O
             {{6,9},  485.0f},   // C–F
             {{6,15}, 272.0f},   // C–P
-            {{6,16}, 272.0f},   // C–S  (thioether)
+            {{6,16}, 272.0f},   // C–S
             {{6,17}, 327.0f},   // C–Cl
-            {{6,35}, 285.0f},   // C–Br
-            {{6,53}, 234.0f},   // C–I
 
-            // N–X
-            {{7,7},  163.0f},   // N–N  (hydrazine)
+            // Nitrogen
             {{7,1},  391.0f},   // N–H
-            {{7,8},  201.0f},   // N–O  (hydroxylamine)
+            {{7,7},  163.0f},   // N–N
+            {{7,8},  201.0f},   // N–O
 
-            // O–X
-            {{8,8},  146.0f},   // O–O  (peroxide)
+            // Oxygen
             {{8,1},  463.0f},   // O–H
-            {{8,16}, 265.0f},   // O–S  (sulfoxide)
+            {{8,8},  146.0f},   // O–O
 
             // Halogens
-            {{1,9},   565.0f},  // H–F
-            {{1,17},  431.0f},  // H–Cl
-            {{1,35},  366.0f},  // H–Br
-            {{1,53},  298.0f},  // H–I
-            {{9,9},   159.0f},  // F–F
-            {{17,17}, 243.0f},  // Cl–Cl
-            {{35,35}, 193.0f},  // Br–Br
-            {{53,53}, 151.0f},  // I–I
+            {{1,9},  565.0f},   // H–F
+            {{1,17}, 431.0f},   // H–Cl
+            {{9,9},  159.0f},   // F–F
+            {{17,17},243.0f},   // Cl–Cl
 
-            // P, S, Si
-            {{15,15}, 201.0f},  // P–P
-            {{15,1},  322.0f},  // P–H
-            {{15,8},  360.0f},  // P–O
-            {{16,16}, 226.0f},  // S–S  (disulfide)
-            {{14,14}, 226.0f},  // Si–Si
-            {{14,1},  318.0f},  // Si–H
-            {{14,8},  452.0f},  // Si–O
+            // Phosphorus
+            {{15,1},  322.0f},   // P–H
+            {{15,6},  264.0f},   // P–C
+            {{15,7},  285.0f},   // P–N
+            {{15,8},  360.0f},   // P–O
+            {{15,15}, 201.0f},   // P–P
+            {{15,9},  490.0f},   // P–F
+            {{15,17}, 325.0f},   // P–Cl
+            {{15,16}, 230.0f},   // P–S
 
-            // Metal–carbon (common in catalysis)
-            {{26,6},  180.0f},  // Fe–C  (typical organometallic)
-            {{27,6},  200.0f},  // Co–C
-            {{28,6},  220.0f},  // Ni–C
-            {{29,6},  220.0f},  // Cu–C
-            {{44,6},  280.0f},  // Ru–C
-            {{45,6},  310.0f},  // Rh–C
-            {{46,6},  340.0f},  // Pd–C
-            {{77,6},  380.0f},  // Ir–C
-            {{78,6},  400.0f},  // Pt–C
-            {{79,6},  250.0f},  // Au–C
-
-            // Other common
-            {{5,1},   389.0f},  // B–H
-            {{5,6},   435.0f},  // B–C
-            {{13,8},  502.0f},  // Al–O
+            // Others
+            {{14,8},  452.0f},   // Si–O
+            {{16,16}, 226.0f},   // S–S
         };
 
         float base = 0.0f;
-
         auto key = std::make_pair(Z1, Z2);
         auto it = singleBondEnergy.find(key);
-        if (it != singleBondEnergy.end()) 
+        if (it != singleBondEnergy.end())
             base = it->second;
 
-        switch (type) 
+        switch (type)
         {
-            case sim::fun::BondType::SINGLE:
-                if (base > 0.0f) return base;
+        case sim::fun::BondType::SINGLE:
+            if (base > 0.0f) return base;
+            break;
 
-            case sim::fun::BondType::DOUBLE:
-                if (Z1 == 6 && Z2 == 6) base = 614.0f;     // C=C
-                if (Z1 == 6 && Z2 == 8) base = 799.0f;     // C=O (carbonyl)
-                if (Z1 == 6 && Z2 == 7) base = 607.0f;     // C=N
-                if (Z1 == 7 && Z2 == 8) base = 607.0f;     // N=O
-                if (Z1 == 8 && Z2 == 8) base = 498.0f;     // O=O (molecular oxygen)
-                if (Z1 == 6 && Z2 == 16) base = 536.0f;    // C=S
-                if (Z1 == 15 && Z2 == 8) base = 544.0f;    // P=O
+        case sim::fun::BondType::DOUBLE:
 
-                if (base > 0.0f) return base * 1.65f;      // average double/single ratio
-                break;
+            if      (BONDED(6,6))  base = 614.0f;   // C=C
+            else if (BONDED(6,7))  base = 607.0f;   // C=N
+            else if (BONDED(6,8))  base = 799.0f;   // C=O
+            else if (BONDED(7,8))  base = 607.0f;   // N=O
+            else if (BONDED(8,8))  base = 498.0f;   // O=O
+            else if (BONDED(15,8)) base = 545.0f;   // P=O
+            else if (BONDED(6,16)) base = 536.0f;   // C=S
+            else if (base > 0.0f)  base *= 1.65f;
+            break;
 
-            case sim::fun::BondType::TRIPLE:
-                if (Z1 == 6 && Z2 == 6) base = 837.0f;     // C≡C
-                if (Z1 == 6 && Z2 == 7) base = 887.0f;     // C≡N
-                if (Z1 == 7 && Z2 == 7) base = 941.0f;     // N≡N
-                if (base > 0.0f) return base * 2.40f;
-                break;
+        case sim::fun::BondType::TRIPLE:
+            if      (BONDED(6,6))  base = 837.0f;   // C≡C
+            else if (BONDED(6,7))  base = 887.0f;   // C≡N
+            else if (BONDED(7,7))  base = 941.0f;   // N≡N
+            else if (base > 0.0f)  base *= 2.40f;
+            break;
 
-            case sim::fun::BondType::QUADRUPLE:
-                if (base > 0.0f) return base * 3.2f;
-                break;
+        case sim::fun::BondType::QUADRUPLE:
+            if (base > 0.0f) base *= 3.2f;
+            break;
 
-            default:
-                break;
+        default:
+            break;
         }
 
-        if (base > 0.f)
-            return base; // J/Mol
-
-        if (base == 0.0f) 
+        if (base <= 0.0f)
         {
             float DA = 0.0f, DB = 0.0f;
-            switch (Z1) 
-            {
-                case 1: DA = 436.0f; break;   // H–H
-                case 6: DA = 348.0f; break;   // C–C
-                case 7: DA = 163.0f; break;   // N–N
-                case 8: DA = 146.0f; break;   // O–O
-                case 9: DA = 159.0f; break;   // F–F
-                case 14: DA = 226.0f; break;  // Si–Si
-                case 15: DA = 201.0f; break;  // P–P
-                case 16: DA = 226.0f; break;  // S–S
-                case 17: DA = 243.0f; break;  // Cl–Cl
-                case 35: DA = 193.0f; break;  // Br–Br
-                case 53: DA = 151.0f; break;  // I–I
-            }
-            switch (Z2) 
-            {
-                case 1: DB = 436.0f; break;
-                case 6: DB = 348.0f; break;
-                case 7: DB = 163.0f; break;
-                case 8: DB = 146.0f; break;
-                case 9: DB = 159.0f; break;
-                case 14: DB = 226.0f; break;
-                case 15: DB = 201.0f; break;
-                case 16: DB = 226.0f; break;
-                case 17: DB = 243.0f; break;
-                case 35: DB = 193.0f; break;
-                case 53: DB = 151.0f; break;
-            }
+
+            if (BONDED(1,1))  DA = DB = 436.0f;
+            else if (BONDED(6,6)) DA = DB = 348.0f;
+            else if (BONDED(7,7)) DA = DB = 163.0f;
+            else if (BONDED(8,8)) DA = DB = 146.0f;
+            else if (BONDED(9,9)) DA = DB = 159.0f;
+            else if (BONDED(15,15)) DA = DB = 201.0f;
+            else if (BONDED(16,16)) DA = DB = 226.0f;
+            else if (BONDED(17,17)) DA = DB = 243.0f;
 
             float chiA = getElectronegativity(Z1);
             float chiB = getElectronegativity(Z2);
             float ionic_term = (chiA > 0.0f && chiB > 0.0f) ? 96.5f * (chiA - chiB) * (chiA - chiB) : 0.0f;
 
-            if (DA > 0.0f && DB > 0.0f) 
-            {
+            if (DA > 0.0f && DB > 0.0f)
                 base = 0.5f * (DA + DB) + ionic_term;
-            } 
-            else 
+            else
             {
                 float r1 = covalent_radius[Z1];
                 float r2 = covalent_radius[Z2];
-                if (r1 > 0.0f && r2 > 0.0f) 
-                {
-                    float avg_r = (r1 + r2) * 0.5f;
-                    base = 400.0f * std::exp(-avg_r / 1.0f);
-                } 
-                else 
-                {
-                    base = 250.0f; 
-                }
+                if (r1 > 0.0f && r2 > 0.0f)
+                    base = 400.0f * std::exp(- (r1 + r2) / 2.0f);
+                else
+                    base = 250.0f;
             }
         }
 
-        switch (type) 
-        {
-            case sim::fun::BondType::DOUBLE: base *= 1.65f; break;
-            case sim::fun::BondType::TRIPLE: base *= 2.40f; break;
-            case sim::fun::BondType::QUADRUPLE: base *= 3.20f; break;
-            default: break;
-        }
+        #undef BONDED
 
-        return base;  // J/mol
+        return base;  // in kJ/mol
     }
 
     inline float getAngleHarmonicConstant(uint8_t ZA, uint8_t ZB, uint8_t ZC)
@@ -1076,13 +1072,24 @@ namespace constants
             else if (ANY(1,15)) K = 450.0f;   // H-O-P        phosphoric acid
             else if (ANY(8,16)) K = 700.0f;   // O-S-O        sulfate (extra stiff)
         }
-        else if (ZB == 15)    // ───── PHOSPHORUS ─────
+        else if (ZB == 15)  // Phosphorus central atom
         {
-            if      (ANY(8, 8)) K = 585.0f;   // O-P-O        phosphate
-            else if (ANY(6, 8)) K = 550.0f;   // C-O-P
-            else if (ANY(7, 8)) K = 580.0f;   // N-P-O
-            else if (ANY(1, 8)) K = 500.0f;   // H-O-P
-            else K = 520.0f;
+            K = 520.0f;
+
+            if (ANY(1,1))     K = 460.0f;   // H–P–H    (phosphine PH₃)
+            if (ANY(1,6))     K = 480.0f;   // H–P–C
+            if (ANY(6,6))     K = 520.0f;   // C–P–C    (typical alkylphosphines)
+            if (ANY(6,7))     K = 550.0f;   // C–P–N
+            if (ANY(1,17))    K = 520.0f;   // H–P–Cl
+
+            if (ANY(8,8))     K = 720.0f;   // O–P–O    (phosphate esters, phosphoric acid)
+            if (ANY(8,6))     K = 680.0f;   // O–P–C    (phosphonates)
+            if (ANY(8,7))     K = 700.0f;   // O–P–N    (phosphoramidates)
+            if (ANY(8,9))     K = 780.0f;   // O–P–F    (phosphoryl fluorides)
+            if (ANY(8,17))    K = 720.0f;   // O–P–Cl   (POCl₃, phosphorochloridates)
+
+            if (ANY(8,8) && (ZA == 8 || ZC == 8))
+                K = 820.0f;
         }
         else if (ZB == 16)    // ───── SULFUR ─────
         {

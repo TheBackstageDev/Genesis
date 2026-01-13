@@ -245,7 +245,7 @@ namespace core
         display_universe->clear();
     }
 
-    constexpr int32_t num_smiles_compounds = 31;
+    constexpr int32_t num_smiles_compounds = 29;
 
     void UIHandler::initCompoundPresets()
     {
@@ -268,13 +268,11 @@ namespace core
                 "CCO",
                 "c1ccccc1",
                 "N#N",
-                "C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91",
                 "CC(=O)O",
                 "CC(C)C(=O)O",
                 "O=C(O)CCC",
                 "NC(C)C(=O)O",
                 "C1C(C(C(C(O1)O)O)O)O",
-                "CCCCCCCCCCCCCCCC(=O)O",
                 "O=C(O)CCCCCCCCC",
                 "CCCCCCCC\\C=C/CCCCCCCC(O)=O",
                 "CC(=O)OC1=CC=CC=C1C(=O)O",
@@ -289,8 +287,8 @@ namespace core
                 "S1SSSSSSS1"};
 
         std::array<std::string, num_smiles_compounds> formulas = {
-            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2", "C20",
-            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C16H32O2", "C10H20O2", "C18H34O2", 
+            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2",
+            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C10H20O2", "C18H34O2", 
             "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
             "NaCl", "C22H14", "S8"};
 
@@ -308,13 +306,11 @@ namespace core
             type::ORGANIC,      // Ethanol
             type::ORGANIC,      // Benzene
             type::INORGANIC,    // N2
-            type::NANOMATERIAL, // C20
             type::ORGANIC,      // Acetic acid
             type::ORGANIC,      // Isobutyric acid
             type::ORGANIC,      // Butanoic acid
             type::BIOMOLECULE,  // Alanine
             type::BIOMOLECULE,  // Glucose
-            type::BIOMOLECULE,  // Palmitic acid
             type::BIOMOLECULE,  // Capric Acid
             type::BIOMOLECULE,  // Oleic Acid
             type::ORGANIC,      // Aspirin

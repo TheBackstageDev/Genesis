@@ -20,9 +20,8 @@ void main()
 {
     vec4 viewA = u_view * vec4(a_centerA, 1.0);
     vec4 viewB = u_view * vec4(a_centerB, 1.0);
-
-    v_start     = viewA.xyz;
-    v_end       = viewB.xyz;
+    v_start  = viewA.xyz;
+    v_end    = viewB.xyz;
     v_colorStart = a_colorA;
     v_colorEnd   = a_colorB;
     v_radius    = a_radius;

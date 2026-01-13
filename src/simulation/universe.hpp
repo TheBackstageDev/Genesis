@@ -185,20 +185,10 @@ namespace sim
             sf::Vector3f ljForce(uint32_t i, uint32_t j);
             sf::Vector3f coulombForce(uint32_t i, uint32_t j, sf::Vector3f& dr_vec);
 
-            void calcBondForces();
-            void calcAngleForces();
-            void calcDihedralForces();
-
-            void calcLjForces();
-            void calcElectrostaticForces();
-
             std::vector<sf::Vector3f> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz);
             std::vector<sf::Vector3f> processPartialCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end);
             void calcUnbondedForcesParallel();
             void calcBondedForcesParallel();
-
-            void calcBondedForces(); // deprecated
-            void calcUnbondedForces(); // deprecated
 
             float calculatePressure();
             void setPressure(float bar = 100);

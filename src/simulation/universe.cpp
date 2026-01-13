@@ -502,123 +502,6 @@ namespace sim
             return -forceMag * dr_vec;
         }
 
-        void universe::calcBondForces()
-        {
-            for (int32_t i = 0; i < bonds.size(); ++i)
-            {
-                bond &bond = bonds[i];
-
-                int32_t idx1 = bond.bondedAtom;
-                int32_t idx2 = bond.centralAtom;
-                sf::Vector3f r_vec = minImageVec(pos(idx2) - pos(idx1));
-                float dr = r_vec.length();
-                if (dr <= EPSILON)
-                    continue;
-
-                float delta_r = dr - bond.equilibriumLength;
-                float force_magnitude = bond.k * delta_r;
-
-                sf::Vector3f force_dir = r_vec / dr;
-                sf::Vector3f force = force_magnitude * force_dir;
-
-                add_force(idx1, force);
-                add_force(idx2, -force);
-            }
-        }
-
-        void universe::calcAngleForces()
-        {
-            // int32_t count = 0;
-
-            for (const angle &ang : angles)
-            {
-                int32_t i = ang.A; // left atom
-                int32_t j = ang.B; // central atom
-                int32_t k = ang.C; // right atom
-
-                sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
-                sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
-
-                float len_ji = r_ji.length();
-                float len_jk = r_jk.length();
-
-                if (len_ji < EPSILON || len_jk < EPSILON)
-                    continue;
-
-                sf::Vector3f u_ji = r_ji / len_ji;
-                sf::Vector3f u_jk = r_jk / len_jk;
-
-                float cos_theta = std::clamp(u_ji.dot(u_jk), -1.0f, 1.0f);
-                float sin_theta = 1.0f - cos_theta * cos_theta;
-                sin_theta = std::max(sin_theta, 0.0f);
-                sin_theta = std::sqrt(sin_theta);
-                if (sin_theta < 1e-6f)
-                    sin_theta = 1e-6f;
-
-                float theta = std::acos(cos_theta);
-                float delta_theta = theta - ang.rad;
-
-                sf::Vector3f dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
-                sf::Vector3f dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
-
-                sf::Vector3f F_i = -ang.K * delta_theta * dtheta_dri;
-                sf::Vector3f F_k = -ang.K * delta_theta * dtheta_drk;
-                sf::Vector3f F_j = -F_i - F_k; // Newton’s 3rd law
-
-                add_force(i, F_i);
-                add_force(j, F_j);
-                add_force(k, F_k);
-
-                //++count;
-            }
-
-            // std::cout << "angle forces applied: " << count << std::endl;
-        }
-
-        void universe::calcLjForces()
-        {
-            // int32_t count = 0;
-
-            for (int32_t ix = 0; ix < cx; ++ix)
-                for (int32_t iy = 0; iy < cy; ++iy)
-                    for (int32_t iz = 0; iz < cz; ++iz)
-                    {
-                        int32_t cell_id = ix + cx * (iy + cy * iz);
-
-                        const std::vector<uint32_t> &cell = cells[cell_id];
-
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                            for (int32_t dy = -1; dy <= 1; ++dy)
-                                for (int32_t dx = -1; dx <= 1; ++dx)
-                                {
-                                    int32_t n_ix = (ix + dx + cx) % cx;
-                                    int32_t n_iy = (iy + dy + cy) % cy;
-                                    int32_t n_iz = (iz + dz + cz) % cz;
-                                    int32_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
-
-                                    const std::vector<uint32_t> &neighbour_cell = cells[neighbour_id];
-
-                                    for (int32_t ii = 0; ii < cell.size(); ++ii)
-                                    {
-                                        const int32_t &i = cell[ii];
-                                        for (int32_t jj = 0; jj < neighbour_cell.size(); ++jj)
-                                        {
-                                            const int32_t &j = neighbour_cell[jj];
-
-                                            if (j <= i)
-                                                continue;
-
-                                            sf::Vector3f f = ljForce(i, j);
-                                            add_force(i, f);
-                                            add_force(j, -f);
-                                        }
-                                    }
-                                }
-                    }
-
-            // std::cout << "count: " << count << std::endl;
-        }
-
         float universe::calculateDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
         {
             glm::vec3 v1 = pb - pa;
@@ -640,136 +523,6 @@ namespace sim
             if (phi < 0.f)
                 phi += 2.f * M_PI;
             return phi;
-        }
-
-        void universe::calcDihedralForces()
-        {
-            for (int32_t d = 0; d < dihedral_angles.size(); ++d)
-            {
-                const dihedral_angle &d_angle = dihedral_angles[d];
-
-                const sf::Vector3f &pa = pos(d_angle.A);
-                const sf::Vector3f &pb = pos(d_angle.B);
-                const sf::Vector3f &pc = pos(d_angle.C);
-                const sf::Vector3f &pd = pos(d_angle.D);
-
-                float phi = calculateDihedral(glm::vec3(pa.x, pa.y, pa.z), glm::vec3(pb.x, pb.y, pb.z), glm::vec3(pc.x, pc.y, pc.z), glm::vec3(pd.x, pd.y, pd.z));
-
-                float target = d_angle.rad;
-                if (target == 0.f && d_angle.periodicity == 1)
-                {
-                    int32_t chi = atoms[d_angle.B].chirality ? atoms[d_angle.B].chirality : atoms[d_angle.C].chirality;
-                    if (chi == 1)
-                        target = (phi < static_cast<float>(M_PI)) ? 1.047f : 5.236f; // ~60° / ~300°
-                    else if (chi == 2)
-                        target = (phi < static_cast<float>(M_PI)) ? 5.236f : 1.047f;
-                    else
-                        continue;
-                }
-
-                float diff = phi - target;
-                while (diff > M_PI)
-                    diff -= 2.f * M_PI;
-                while (diff < -M_PI)
-                    diff += 2.f * M_PI;
-
-                sf::Vector3f b1 = pb - pa;
-                sf::Vector3f b2 = pc - pb;
-                sf::Vector3f b3 = pd - pc;
-
-                sf::Vector3f n1 = b1.cross(b2).normalized();
-                sf::Vector3f n2 = b2.cross(b3).normalized();
-                sf::Vector3f u2 = b2.normalized();
-
-                float sin_term = std::sin(d_angle.periodicity * phi - d_angle.rad);
-                float torque_mag = d_angle.K * d_angle.periodicity * sin_term;
-
-                sf::Vector3f axis = (pc - pb).normalized();
-
-                sf::Vector3f rA = (pa - (pb.length() > 0.f ? pb.normalized() : sf::Vector3f{0.f, 0.f, 0.f}));
-                sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_mag;
-
-                sf::Vector3f rD = (pd - pc).normalized();
-                sf::Vector3f torqueD = axis.cross(rD).normalized() * (-torque_mag);
-
-                sf::Vector3f f1 = (torque_mag / b1.length()) * (n1.cross(u2));
-                sf::Vector3f f4 = (torque_mag / b3.length()) * (u2.cross(n2));
-
-                add_force(d_angle.A, -f1);
-                add_force(d_angle.D, -f4);
-                add_force(d_angle.B, f1);
-                add_force(d_angle.C, f4);
-                add_force(d_angle.D, -torqueD * 0.5f);
-            }
-        }
-
-        void universe::calcElectrostaticForces()
-        {
-            for (int32_t ix = 0; ix < cx; ++ix)
-                for (int32_t iy = 0; iy < cy; ++iy)
-                    for (int32_t iz = 0; iz < cz; ++iz)
-                    {
-                        int32_t cell_id = getCellID(ix, iy, iz);
-
-                        const std::vector<uint32_t> &cell = cells[cell_id];
-
-                        for (int32_t ii = 0; ii < cell.size(); ++ii)
-                        {
-                            uint32_t i = cell[ii];
-                            if (data.q[i] == 0.f)
-                                continue;
-                            for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
-                            {
-                                const uint32_t &j = cell[jj];
-
-                                if (j <= i)
-                                    continue;
-                                if (data.q[j] == 0.f)
-                                    continue;
-
-                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                sf::Vector3f force = coulombForce(i, j, dr);
-
-                                add_force(i, force);
-                                add_force(j, -force);
-                            }
-                        }
-
-                        for (int32_t d = 1; d < 14; ++d)
-                        {
-                            int32_t n_ix = ix + offsets[d][0], n_iy = iy + offsets[d][1], n_iz = iz + offsets[d][2];
-                            int32_t neighbour_id = getCellID(n_ix, n_iy, n_iz);
-
-                            const std::vector<uint32_t> &neighbour_cell = cells[neighbour_id];
-
-                            for (int32_t ii = 0; ii < cell.size(); ++ii)
-                            {
-                                const uint32_t &i = cell[ii];
-                                if (data.q[i] == 0.f)
-                                    continue;
-                                for (int32_t jj = 0; jj < neighbour_cell.size(); ++jj)
-                                {
-                                    const uint32_t &j = neighbour_cell[jj];
-
-                                    if (data.q[j] == 0.f)
-                                        continue;
-
-                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                    sf::Vector3f force = coulombForce(i, j, dr);
-
-                                    add_force(i, force);
-                                    add_force(j, -force);
-                                }
-                            }
-                        }
-                    }
-        }
-
-        void universe::calcBondedForces()
-        {
-            calcBondForces();
-            calcAngleForces();
-            calcDihedralForces();
         }
 
         std::vector<sf::Vector3f> universe::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz)
@@ -794,8 +547,8 @@ namespace sim
                     const int32_t j = cell[jj];
                     sf::Vector3f dr = minImageVec(pos(j) - pos(i));
 
-                    float r2 = dr.lengthSquared();
-                    if (r2 > CELL_CUTOFF)
+                    float r = dr.length();
+                    if (r > CELL_CUTOFF)
                         continue;
 
                     if (areBonded(i, j))
@@ -892,8 +645,8 @@ namespace sim
 
                     sf::Vector3f dr = minImageVec(pos(j) - pos(i));
 
-                    float r2 = dr.lengthSquared();
-                    if (r2 > CELL_CUTOFF)
+                    float r = dr.length();
+                    if (r > CELL_CUTOFF)
                         continue;
 
                     if (areBonded(i, j))
@@ -1138,7 +891,7 @@ namespace sim
         {
             const int32_t n_threads = std::thread::hardware_concurrency();
             const int32_t threads_per_top = cells.size() < 9 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
-            constexpr int32_t subdivide_top = 5; // how many of the top cells to subdivide
+            constexpr int32_t subdivide_top = 3; // how many of the top cells to subdivide
 
             struct task
             {
@@ -1264,96 +1017,6 @@ namespace sim
                     add_force(static_cast<int32_t>(i), local_f[i]);
                 }
             }
-        }
-
-        void universe::calcUnbondedForces()
-        {
-            for (int32_t ix = 0; ix < cx; ++ix)
-                for (int32_t iy = 0; iy < cy; ++iy)
-                    for (int32_t iz = 0; iz < cz; ++iz)
-                    {
-                        int32_t cell_id = getCellID(ix, iy, iz);
-                        const auto &cell = cells[cell_id];
-
-                        for (int32_t ii = 0; ii < cell.size(); ++ii)
-                        {
-                            int32_t i = cell[ii];
-
-                            for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
-                            {
-                                int32_t j = cell[jj];
-
-                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                float r2 = dr.lengthSquared();
-                                if (r2 > CELL_CUTOFF)
-                                    continue;
-
-                                if (areBonded(i, j))
-                                    continue;
-
-                                sf::Vector3f cForce = coulombForce(i, j, dr);
-                                sf::Vector3f lForce = ljForce(i, j);
-
-                                sf::Vector3f total_force = cForce + lForce;
-                                add_force(i, total_force);
-                                add_force(j, -total_force);
-
-                                total_virial += dr.x * total_force.x +
-                                                dr.y * total_force.y +
-                                                dr.z * total_force.z;
-                            }
-                        }
-
-                        for (int32_t dx = 0; dx <= 1; ++dx)
-                            for (int32_t dy = -1; dy <= 1; ++dy)
-                                for (int32_t dz = -1; dz <= 1; ++dz)
-                                {
-                                    if (dx == 0 && dy == 0 && dz == 0)
-                                        continue;
-
-                                    int32_t n_ix = ix + dx;
-                                    int32_t n_iy = iy + dy;
-                                    int32_t n_iz = iz + dz;
-                                    int32_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
-
-                                    if (neighbor_id == cell_id)
-                                        continue;
-
-                                    const auto &neighbor_cell = cells[neighbor_id];
-
-                                    for (int32_t ii = 0; ii < cell.size(); ++ii)
-                                    {
-                                        int32_t i = cell[ii];
-
-                                        for (int32_t jj = 0; jj < neighbor_cell.size(); ++jj)
-                                        {
-                                            int32_t j = neighbor_cell[jj];
-
-                                            if (j <= i)
-                                                continue;
-
-                                            sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                            float r = dr.length();
-
-                                            if (r > CELL_CUTOFF)
-                                                continue;
-                                            if (areBonded(i, j))
-                                                continue;
-
-                                            sf::Vector3f cForce = coulombForce(i, j, dr);
-                                            sf::Vector3f lForce = ljForce(i, j);
-
-                                            sf::Vector3f total_force = cForce + lForce;
-                                            add_force(i, total_force);
-                                            add_force(j, -total_force);
-
-                                            total_virial += dr.x * total_force.x +
-                                                            dr.y * total_force.y +
-                                                            dr.z * total_force.z;
-                                        }
-                                    }
-                                }
-                    }
         }
 
         float universe::calculateUncorrectedBondOrder(int32_t i, int32_t j)
