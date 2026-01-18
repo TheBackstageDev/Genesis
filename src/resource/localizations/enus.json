@@ -65,6 +65,8 @@
 
     "Tutorial":
     {
+      "title": "Tutorial",
+      
       "tutorial_types":
       [
         "ENGINE",
@@ -76,22 +78,21 @@
       "titles":
       {
         "ENGINE":
-        [
-          "Controls",
-          "Compound Selector"
-        ],
+        {
+          "TUTORIAL_ENGINE_Controls": "Controls"
+        },
         "CLASSICAL":
-        [
+        {
         
-        ],
+        },
         "QUANTUM":
-        [
+        {
         
-        ],
+        },
         "CHEMISTRY":
-        [
+        {
         
-        ]
+        }
       }
     },
 
@@ -102,7 +103,8 @@
       "scene_types":
       [
         "MOLECULE",
-        "DYNAMICS"
+        "DYNAMICS",
+        "REACTIONS"
       ],
 
       "titles":
@@ -199,6 +201,7 @@
       "DPPC": "Dipalmitoylphosphatidylcholine (C40H80NO8P) is a major phospholipid found in lung surfactant and cell membranes. It consists of a glycerol backbone linked to two palmitic acid chains and a phosphocholine head group. This amphipathic structure allows it to form stable bilayers, reducing surface tension in the lungs and enabling efficient gas exchange. Beyond its biological role, dipalmitoylphosphatidylcholine is widely used in biophysical and biochemical studies as a model membrane component.",
       "Nicotine": "Nicotine (C10H14N2) is a naturally occurring alkaloid found in tobacco plants. It acts as a stimulant by binding to nicotinic acetylcholine receptors in the brain.",
       "Aspirin": "Aspirin (C9H8O4), or acetylsalicylic acid, is a synthetic derivative of salicylic acid used as an analgesic, anti-inflammatory, antipyretic, and antiplatelet agent. It inhibits cyclooxygenase enzymes to reduce pain, fever, and blood clotting.",
+      "Carborane acid": "Carborane acid (H(CHB11Cl11)), also known as fluoroantimonic-like superacid, is one of the strongest known Brønsted acids. It consists of a proton bound to a carborane anion, which is remarkably stable and weakly coordinating. Unlike conventional acids, it does not corrode glass and can protonate extremely weak bases.",
       "Caffeine": "Caffeine (C8H10N4O2) is a methylxanthine alkaloid, a bitter white crystalline compound acting as a central nervous system stimulant. Found in coffee, tea, and cocoa, it blocks adenosine receptors to promote alertness.",
       "Polystyrene (short chain)": "Polystyrene (short chain, (C8H8)n) is a synthetic aromatic hydrocarbon polymer derived from styrene monomers. In short chains, it forms oligomers used in coatings, adhesives, and as precursors for longer-chain materials like packaging and insulation.",
       "PMMA (short chain)": "PMMA (short chain, poly(methyl methacrylate), (C5H8O2)n) is a transparent thermoplastic polymer from methyl methacrylate monomers. Short chains yield oligomers used in coatings, adhesives, and optical applications, known for clarity and weather resistance.",
@@ -227,6 +230,7 @@
       "tooltip_pause": "Pause Simulation",
       "tooltip_screenshot": "Take a screenshot",
       "tooltip_compound_selector": "Add Compound",
+      "tooltip_scenario_disabled": "Disabled due to Scenario",
       "tooltip_emplace_molecule": "Press (G) to emplace Molecule, \n (Right Mouse) to cancel. \n Hold (Shift) to continue placing",
       "tooltip_collision_good": "Good Position",
       "tooltip_collision_bad": "Collision Detected!",
@@ -275,17 +279,29 @@
       "button_exit_desktop": "Exit to Desktop",
       "hint_esc": "Press ESC again to resume",
       "confirm_save": "Save"
+    },
+    "narration_menu":
+    {
+      "button_next": "Next",
+      "button_previous": "Previous",
+      "button_exit": "Exit",
+      "steps": "steps"
     }
   },
 
   "Scenarios":
   {
-    "Tutorials":
+    "TUTORIAL_ENGINE_Controls": 
     {
-      "Controls":
-      {
-      
-      }
+      "description": "Learn the essential controls: camera movement, pausing",
+      "narrations": 
+      [
+        "Welcome to the Controls tutorial!\nWe'll guide you through the basics of navigation and interaction.",
+        "Use the WASD keys to move the camera forward, backward, left, and right.\nHold the right mouse button and drag to look around / rotate the view.",
+        "Great! Now let's control time.\nPress the SPACE key to pause and resume the simulation.\n look closely at the molecules, then press SPACE again to resume.",
+        "When the simulation is paused, you can freely inspect structures without anything moving.\nThis is very useful when you want to add compounds or study a specific moment.",
+        "This is all for this tutorial! press exit to leave."
+      ]
     }
   }
 }

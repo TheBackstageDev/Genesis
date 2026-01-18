@@ -46,17 +46,6 @@ namespace core
         }
     };
 
-    enum class compound_type : uint32_t
-    {
-        ORGANIC,
-        BIOMOLECULE,
-        INORGANIC,
-        ION,
-        NANOMATERIAL,
-        POLYMER,
-        COUNT
-    };
-
     enum class tutorial_type : uint32_t
     {
         ENGINE,
@@ -66,7 +55,7 @@ namespace core
         COUNT
     };
 
-    enum class scenario_type : uint32_t
+    enum class scene_type : uint32_t
     {
         DYNAMICS,
         MOLECULE,
@@ -74,9 +63,9 @@ namespace core
         COUNT
     };
 
-    inline ImVec4 getMoleculeTypeColor(compound_type _type)
+    inline ImVec4 getMoleculeTypeColor(sim::fun::compound_type _type)
     {
-        using type = compound_type;
+        using type = sim::fun::compound_type;
 
         switch(_type)
         {
@@ -90,9 +79,9 @@ namespace core
         }
     }
 
-    inline ImVec4 getMoleculeTypeColorBorder(compound_type _type)
+    inline ImVec4 getMoleculeTypeColorBorder(sim::fun::compound_type _type)
     {
-        using type = compound_type;
+        using type = sim::fun::compound_type;
         switch(_type)
         {
         case type::ORGANIC:      return ImVec4(0.294f, 0.686f, 0.314f, 1.0f);  // #4CAF50 Vibrant Green
@@ -104,18 +93,6 @@ namespace core
         default:                 return ImVec4(0.600f, 0.600f, 0.600f, 1.0f);
         }
     }
-
-    struct compound_preset_info
-    {
-        std::string name;
-        std::string SMILES;
-        std::string formula;
-        float molecular_weight = 0.0f;
-
-        compound_type type;
-        sim::fun::molecule_structure structure;
-        uint32_t id = 0;
-    };
 
     // All options other than BALL_AND_STICK and Letter Mode are WIP
     enum class simulation_render_mode
@@ -220,6 +197,7 @@ namespace core
         size_t m_backgroundDisplays = 0;
         void chooseNewDisplayScenario();
         void drawMenuBackgroundDisplay();
+        void drawLoadingScreen();
 
         uint32_t m_currentDisplay = UINT32_MAX;
         std::vector<std::shared_ptr<sim::fun::universe>> m_backgroundUniverses;
@@ -227,10 +205,15 @@ namespace core
         std::vector<scenario_info> m_savedSandbox;
         std::vector<sim::fun::video> m_SimulationVideos;
 
-        void drawScene(scenario_info& info);
+        ScenarioHandler m_scenarioHandler;
+        
+        void drawTutorialSelection();
         void drawSceneSelection();
-        void drawSceneFrame(scenario_info& info, int32_t id);
+        void drawSceneFrame(scenario_info& info, const std::string& id);
+        void drawScene(scenario_info& info);
         void drawSandboxCreation();
+
+        void startScenario(const std::string& scenario);
 
         void drawSandboxSave(scenario_info& info);
         void drawSavedSimulations();
@@ -269,7 +252,7 @@ namespace core
         void insertGhost();
         void handleGhost();
         void drawCompoundSelector();
-        void drawCompoundView(const compound_preset_info& compound);
+        void drawCompoundView(const sim::fun::compound_preset_info& compound);
         void drawCompoundFulLView();
 
         void pauseMenu();
@@ -277,15 +260,13 @@ namespace core
         void initCompoundPresetsImages();
         void initCompoundPresets();
         void initCompoundXYZ();
-        std::vector<compound_preset_info> compound_presets{};
+        std::vector<sim::fun::compound_preset_info> compound_presets{};
 
         bool compoundSelector = false;
         bool showHUD = true;
 
         bool pauseMenuOpen = false;
         bool exitDesktop = false;
-
-        bool paused_simulation = false;
 
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;

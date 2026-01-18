@@ -152,32 +152,63 @@ namespace sim
             int32_t padding[6];
         };
 
+        
+        struct atom
+        {
+            float mass;            
+            float radius;
+            
+            float epsilon; // LJ 
+            float sigma; // LJ
+            
+            uint8_t electrons;
+            uint8_t ZIndex;
+            uint8_t NCount; // neutrons
+            uint8_t bondCount;
+            
+            int32_t chirality;
+            int8_t padding[12];
+        };
+        
         struct rendering_info
         {
             bool letter = false; 
             bool lennardBall = true; 
             bool spaceFilling = false; 
             bool universeBox = true;
+            bool renderWater = true;
 
             float opacity = 1.0f;
             ImVec4 color_addition{0.0f, 0.0f, 0.0f, 0.0f};
+
+            bool flag_highlights = true;
+            bool flag_arrows = true;
+            std::vector<uint32_t> highlight_indices;
+            std::vector<std::pair<uint32_t, uint32_t>> highlight_bonds; // first and second are the indices of the atoms
+            std::vector<std::pair<uint32_t, uint32_t>> arrows; // first is where the arrow beings, and second is where arrow goes to
         };
 
-        struct atom
+        enum class compound_type : uint32_t
         {
-            float mass;            
-            float radius;
+            ORGANIC,
+            BIOMOLECULE,
+            INORGANIC,
+            ION,
+            NANOMATERIAL,
+            POLYMER,
+            COUNT
+        };
 
-            float epsilon; // LJ 
-            float sigma; // LJ
+        struct compound_preset_info
+        {
+            std::string name;
+            std::string SMILES;
+            std::string formula;
+            float molecular_weight = 0.0f;
 
-            uint8_t electrons;
-            uint8_t ZIndex;
-            uint8_t NCount; // neutrons
-            uint8_t bondCount;
-
-            int32_t chirality;
-            int8_t padding[12];
+            compound_type type;
+            sim::fun::molecule_structure structure;
+            uint32_t id = 0;
         };
 
         struct rendering_simulation_info
@@ -189,8 +220,6 @@ namespace sim
             std::vector<bond>& bonds;
             std::vector<molecule>& molecules;
             glm::vec3 box;
-
-            bool renderWater = false;
         };
     } // namespace fun
 } // namespace sim

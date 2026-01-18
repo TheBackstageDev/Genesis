@@ -45,10 +45,10 @@ namespace sim
 
         struct BondInstance
         {
-            alignas(16) glm::vec3 posA;
-            alignas(16) glm::vec3 posB;
-            alignas(16) glm::vec4 colorA;
-            alignas(16) glm::vec4 colorB;
+            glm::vec4 posA;
+            glm::vec4 posB;
+            glm::vec4 colorA;
+            glm::vec4 colorB;
             alignas(16) float radius;
         };
 
@@ -65,6 +65,11 @@ namespace sim
 
         void bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+
+        // Others
+
+        void drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void drawArrow(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         // Callbacks
 

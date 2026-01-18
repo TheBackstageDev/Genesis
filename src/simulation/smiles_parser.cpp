@@ -839,7 +839,7 @@ namespace sim
 
             const def_atom& atom = nAtoms[centralAtom];
             const uint8_t Z = atom.ZIndex;
-            const char chirality = atom.chirality;
+            const int32_t chirality = atom.chirality;
 
             sf::Vector3f axis(1,0,0);
             if (sub.bondedSubset != UINT32_MAX && sub.bondingSubset != UINT32_MAX)
@@ -927,7 +927,7 @@ namespace sim
                     float dot = cross.dot(v3);
 
                     bool isClockwise = (dot > 0);
-                    bool wantClockwise = (chirality == '@');
+                    bool wantClockwise = (chirality == 1);
 
                     if (isClockwise != wantClockwise)
                         std::swap(ordered[1], ordered[2]);

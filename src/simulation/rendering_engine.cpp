@@ -62,11 +62,11 @@ namespace sim
         glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
 
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, posA));
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, posA));
         glVertexAttribDivisor(0, 1);
 
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, posB));
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, posB));
         glVertexAttribDivisor(1, 1);
 
         glEnableVertexAttribArray(2);
@@ -223,7 +223,8 @@ namespace sim
         {
             for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
             {
-                if (sim_info.positions.size() < i) break;
+                if (sim_info.positions.size() < i)
+                    break;
 
                 const auto &atom = sim_info.atoms[i];
                 float radius = info.spaceFilling
@@ -263,6 +264,8 @@ namespace sim
         {
             std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
         }
+
+        drawHighlight(target, info, sim_info);
     }
 
     void rendering_engine::bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
@@ -283,7 +286,7 @@ namespace sim
             glm::vec4 colorB_norm(colB.r / 255.f, colB.g / 255.f, colB.b / 255.f, info.opacity);
 
             float bondR = 1.0f / 6.f * static_cast<int32_t>(bond.type);
-            instances.emplace_back(sim_info.positions[bond.centralAtom], sim_info.positions[bond.bondedAtom], colorA_norm, colorB_norm, bondR);
+            instances.emplace_back(glm::vec4(sim_info.positions[bond.centralAtom], 1.0f), glm::vec4(sim_info.positions[bond.bondedAtom], 1.0), colorA_norm, colorB_norm, bondR);
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
@@ -297,6 +300,58 @@ namespace sim
 
         GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
         GLint loc_view = glGetUniformLocation(bond_program, "u_view");
+
+        if (loc_projection != -1)
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+
+        if (loc_view != -1)
+            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+
+        glEnable(GL_DEPTH_TEST);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR)
+        {
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
+        }
+    }
+
+    void rendering_engine::drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
+        if (!info.flag_highlights) return;
+
+        std::vector<AtomInstance> instances;
+        instances.reserve(info.highlight_indices.size());
+
+        for (int32_t i = 0; i < info.highlight_indices.size(); ++i)
+        {
+            auto& highlight = info.highlight_indices[i];
+
+            if (sim_info.positions.size() < highlight)
+                break;
+
+            const auto &atom = sim_info.atoms[highlight];
+            float radius = info.spaceFilling
+                               ? constants::VDW_RADII[atom.ZIndex]
+                               : constants::covalent_radius[atom.ZIndex];
+
+            glm::vec4 color_norm(1.f, 1.f, 0.f, 0.3f);
+
+            instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, color_norm);
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
+        glBufferData(GL_ARRAY_BUFFER,
+                     instances.size() * sizeof(AtomInstance),
+                     instances.data(),
+                     GL_DYNAMIC_DRAW);
+
+        glBindVertexArray(color_vao);
+        glUseProgram(atom_program);
+
+        GLint loc_projection = glGetUniformLocation(atom_program, "u_proj");
+        GLint loc_view = glGetUniformLocation(atom_program, "u_view");
 
         if (loc_projection != -1)
             glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));

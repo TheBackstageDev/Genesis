@@ -29,52 +29,89 @@ namespace sim::io
 
         if (BONDED(6, 7))
         {
-            if (distance < 1.18f) return fun::BondType::TRIPLE;     // C≡N     ~1.15–1.17 Å (nitrile)
-            if (distance < 1.32f) return fun::BondType::DOUBLE;     // C=N     ~1.27–1.31 Å (imine)
-            return fun::BondType::SINGLE;                           // C–N     ~1.45–1.47 Å
+            if (distance < 1.18f) return fun::BondType::TRIPLE;
+            if (distance < 1.32f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE; 
         }
 
         if (BONDED(7, 8))
         {
-            if (distance < 1.30f) return fun::BondType::DOUBLE;     // N=O     ~1.22–1.28 Å (nitro, oxime)
-            return fun::BondType::SINGLE;                           // N–O     ~1.40–1.46 Å
+            if (distance < 1.30f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
         }
 
         if (BONDED(6, 16))
         {
-            if (distance < 1.68f) return fun::BondType::DOUBLE;     // C=S     ~1.60–1.67 Å (thio-carbonyl)
-            return fun::BondType::SINGLE;                           // C–S     ~1.78–1.82 Å
+            if (distance < 1.68f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
         }
 
         if (BONDED(15, 8))
         {
-            if (distance < 1.51f) return fun::BondType::DOUBLE;     // P=O     ~1.44–1.51 Å
-            return fun::BondType::SINGLE;                           // P–O     ~1.58–1.65 Å
+            if (distance < 1.51f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
         }
 
         if (BONDED(15, 7))
         {
-            if (distance < 1.55f) return fun::BondType::DOUBLE;     // P=N     ~1.50–1.57 Å
-            return fun::BondType::SINGLE;                           // P–N     ~1.65–1.80 Å
+            if (distance < 1.55f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
         }
 
         if (BONDED(15, 16))
         {
-            if (distance < 1.95f) return fun::BondType::DOUBLE;     // P=S     ~1.90–1.94 Å
-            return fun::BondType::SINGLE;                           // P–S     ~2.05–2.12 Å
+            if (distance < 1.95f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
         }
 
         if (BONDED(7, 7))
         {
-            if (distance < 1.12f) return fun::BondType::TRIPLE;     // N≡N     ~1.10 Å
-            if (distance < 1.25f) return fun::BondType::DOUBLE;     // N=N     ~1.24 Å (azo)
-            return fun::BondType::SINGLE;                           // N–N     ~1.45 Å
+            if (distance < 1.10f) return fun::BondType::TRIPLE;
+            if (distance < 1.24f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
         }
 
         if (BONDED(8, 8))
         {
-            if (distance < 1.23f) return fun::BondType::DOUBLE;     // O=O     ~1.21 Å
-            return fun::BondType::SINGLE;                           // O–O     ~1.48 Å (peroxide)
+            if (distance < 1.21f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
+        }
+
+        if (BONDED(5, 6))   
+        {
+            if (distance < 1.4f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
+        }
+
+        if (BONDED(5, 17))
+        {
+            if (distance < 1.68f) return fun::BondType::DOUBLE;
+            if (distance < 1.88f) return fun::BondType::SINGLE;
+            return fun::BondType::NONE;
+        }
+
+        if (BONDED(5, 5))   
+        {
+            if (distance < 1.5f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
+        }
+
+        if (BONDED(1, 5))  
+        {
+            if (distance < 1.20f) return fun::BondType::SINGLE;
+            return fun::BondType::NONE;
+        }
+
+        if (BONDED(1, 6))  
+        {
+            if (distance < 1.15f) return fun::BondType::SINGLE; 
+            return fun::BondType::NONE;
+        }
+
+        if (BONDED(6, 6))
+        {
+            if (distance < 1.45f) return fun::BondType::DOUBLE;
+            if (distance < 1.58f) return fun::BondType::SINGLE;
         }
 
         float r_single = constants::getBondLength(z1, z2, fun::BondType::SINGLE);

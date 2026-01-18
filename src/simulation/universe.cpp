@@ -19,7 +19,7 @@ namespace sim
             : box(create_info.box), react(create_info.reactive),
               gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
-              render_water(create_info.render_water), HMassRepartitioning(create_info.HMassRepartitioning),
+              HMassRepartitioning(create_info.HMassRepartitioning),
               log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
             if (react)
@@ -30,12 +30,26 @@ namespace sim
             : rendering_eng(rendering_engine)
         {
             loadScene(path);
+
+            if (react)
+                initReaxParams();
         }
 
-        void universe::draw(sf::RenderTarget &target, const rendering_info &info)
+        void universe::draw(sf::RenderTarget &target, rendering_info info)
         {
             rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions, 
                                         .q = data.q, .atoms = atoms, .bonds = bonds, .molecules = molecules, .box = box};
+
+            if (info.flag_highlights)
+            {
+                info.highlight_indices = m_highlightedAtoms;
+                info.highlight_bonds = m_highlightedBonds;
+            }
+
+            if (info.flag_arrows)
+            {
+                info.arrows = m_Arrows;
+            }
 
             rendering_eng.draw(target, info, sim_info);
         }
@@ -1063,7 +1077,7 @@ namespace sim
         {
             int32_t N = atoms.size();
 
-            if (N == 0)
+            if (N == 0 || m_paused)
                 return;
 
             data.forces.assign(N, glm::vec3(0.0f));
@@ -1341,8 +1355,11 @@ namespace sim
 
             json_video["positions"] = nlohmann::json::array();
 
+            size_t id = 0;
             for (const auto& frame : m_frames)
             {
+                if (id % 5 != 0) continue;
+
                 if (frame.positions.size() != nMetadata.num_atoms)
                 {
                     std::cerr << "[Video Save] Frame has wrong atom count! Skipping.\n";
@@ -1357,6 +1374,8 @@ namespace sim
                 }
 
                 json_video["temperatures"].push_back(frame.global_temperature);
+            
+                ++id;
             }
 
             try
@@ -1379,10 +1398,8 @@ namespace sim
             }
 
             video nVideo{};
-            nVideo.frames = std::move(m_frames);
+            nVideo.frames = m_frames;
             nVideo.metadata = std::move(nMetadata);
-
-            m_frames.clear();
 
             return nVideo;
         }
@@ -1494,7 +1511,6 @@ namespace sim
             scene["gravity"] = gravity;
             scene["react"] = react;
             scene["isothermal"] = isothermal;
-            scene["render_water"] = render_water;
             scene["wall_collision"] = wall_collision;
             scene["mag_gravity"] = mag_gravity;
             scene["boxx"] = box.x;
@@ -1563,7 +1579,6 @@ namespace sim
             gravity = scene.value("gravity", false);
             react = scene.value("react", false);
             isothermal = scene.value("isothermal", true);
-            render_water = scene.value("render_water", true);
             wall_collision = scene.value("wall_collision", false);
             mag_gravity = scene.value("mag_gravity", 9.81f);
 

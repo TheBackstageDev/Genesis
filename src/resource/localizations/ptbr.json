@@ -64,33 +64,34 @@
 
     "Tutorial":
     {
+      "title": "Tutorial",
+      
       "tutorial_types":
       [
         "MOTOR",
         "CLASSICO",
         "QUÂNTICO",
-        "QUÍMICA"
+        "QUIMICA"
       ],
 
       "titles":
       {
         "ENGINE":
-        [
-          "Controles",
-          "Selecionador de Compostos"
-        ],
+        {
+          "TUTORIAL_ENGINE_Controls": "Controles"
+        },
         "CLASSICAL":
-        [
+        {
         
-        ],
+        },
         "QUANTUM":
-        [
+        {
         
-        ],
+        },
         "CHEMISTRY":
-        [
+        {
         
-        ]
+        }
       }
     },
 
@@ -186,6 +187,7 @@
       "Heme A": "O grupo heme (C34H32N4O4) é o grupo prostético que contém ferro presente na hemoglobina e na mioglobina. Ele se liga reversivelmente ao oxigênio e dá ao sangue sua cor vermelha.",
       "DPPC": "A dipalmitoilfosfatidilcolina (C40H80NO8P) é um fosfolipídio importante presente no surfactante pulmonar e nas membranas celulares. Ela é composta por uma espinha dorsal de glicerol ligada a duas cadeias de ácido palmítico e a um grupo fosfocolina. Essa estrutura anfipática permite a formação de bicamadas estáveis, reduzindo a tensão superficial nos pulmões e possibilitando uma troca eficiente de gases.",
       "Carbon Nanotube": "Os nanotubos de carbono são nanostruturas cilíndricas formadas por folhas de grafeno enroladas. Eles apresentam resistência mecânica extraordinária e propriedades elétricas notáveis.",
+      "Carborane acid": "Ácido carborano (H(CHB11Cl11)), também conhecido como superácido semelhante ao fluoroantimônico, é um dos ácidos de Brønsted mais fortes já conhecidos. Ele consiste em um próton ligado a um ânion carborano, que é notavelmente estável e fracamente coordenante. Diferente dos ácidos convencionais, não corrói vidro e pode protonar bases extremamente fracas.",
       "ATP": "A adenosina trifosfato (ATP, C10H16N5O13P3) é um nucleotídeo formado por adenina, ribose e três grupos fosfato. É a principal molécula de energia das células vivas, armazenando e transferindo energia para processos biológicos como contração muscular, transmissão de impulsos nervosos e síntese de biomoléculas. A ATP é continuamente regenerada a partir de ADP e fosfato durante a respiração celular e a fotossíntese, sendo essencial para a vida.",
       "Nicotine": "A nicotina (C10H14N2) é um alcaloide natural encontrado nas plantas de tabaco. Atua como estimulante ao se ligar aos receptores nicotínicos de acetilcolina no cérebro.",
       "Aspirin": "A aspirina (C9H8O4), ou ácido acetilsalicílico, é um derivado sintético do ácido salicílico usado como analgésico, anti-inflamatório, antipirético e antiagregante plaquetário. Inibe enzimas ciclo-oxigenases para reduzir dor, febre e coagulação sanguínea.",
@@ -197,7 +199,8 @@
       "Ammonium": "O íon amônio (NH4+) é um cátion poliatômico formado quando a amônia (NH3) recebe um próton. Ele desempenha um papel central no metabolismo do nitrogênio, atuando como intermediário na assimilação de nitrogênio por plantas e microrganismos. Os sais de amônio são amplamente utilizados em fertilizantes, explosivos e processos industriais, e em soluções aquosas contribuem para o equilíbrio ácido-base.",
       "Sodium Chloride": "Cloreto de sódio (NaCl), conhecido popularmente como sal de cozinha, é um composto iônico formado pela união de íons sódio (Na+) e cloreto (Cl-). Essencial para a vida, desempenha papel fundamental na manutenção do equilíbrio hídrico, na transmissão nervosa e na contração muscular dos organismos vivos. Além de sua importância biológica, o cloreto de sódio é amplamente utilizado como tempero e conservante de alimentos.",
       "Picene": "O piceno (C22H14) é um hidrocarboneto aromático policíclico composto por cinco anéis benzênicos fundidos em uma disposição em zigue-zague. É um sólido cristalino com baixa solubilidade em água, estudado por suas propriedades eletrônicas e ópticas. O piceno tem despertado interesse em ciência dos materiais e eletrônica orgânica.",
-      "Octasulfur": "O octassulfeto (S8) é a forma mais estável e comum do enxofre elementar, composto por oito átomos de enxofre dispostos em um anel ondulado. É um sólido cristalino amarelo brilhante, insolúvel em água mas solúvel em solventes orgânicos. O octassulfeto ocorre naturalmente em regiões vulcânicas e é amplamente utilizado na produção de ácido sulfúrico, fertilizantes, vulcanização da borracha e diversos processos industriais."
+      "Octasulfur": "O octassulfeto (S8) é a forma mais estável e comum do enxofre elementar, composto por oito átomos de enxofre dispostos em um anel ondulado. É um sólido cristalino amarelo brilhante, insolúvel em água mas solúvel em solventes orgânicos. O octassulfeto ocorre naturalmente em regiões vulcânicas e é amplamente utilizado na produção de ácido sulfúrico, fertilizantes, vulcanização da borracha e diversos processos industriais.",
+      "Buckminsterfullerene": "Buckminsterfullerene (C60) é um fulereno esférico composto por 60 átomos de carbono dispostos em um icosaedro truncado (padrão de bola de futebol). Descoberto em 1985 e nomeado em homenagem a Buckminster Fuller devido à sua estrutura semelhante a uma cúpula geodésica."
     }
   },
 
@@ -215,6 +218,7 @@
       "tooltip_resume": "Resumir a Simulação",
       "tooltip_pause": "Pausar a Simulação",
       "tooltip_screenshot": "Tirar uma foto",
+      "tooltip_scenario_disabled": "Disabilitado devido ao Cenário",
       "tooltip_compound_selector": "Adicionar Composto",
       "tooltip_emplace_molecule": "Aperte (G) para posicionar a Molécula, (Mouse Direito) para cancelar. Segure (Shift) para continuar.",
       "tooltip_collision_good": "Boa Posição",
@@ -263,6 +267,29 @@
       "cancel": "Cancelar",
       "button_exit_desktop": "Sair para o Desktop",
       "hint_esc": "Aperte ESC novamente para resumir"
+    },
+    "narration_menu":
+    {
+      "button_next": "Próximo",
+      "button_previous": "Anterior",
+      "button_exit": "Sair",
+      "steps": "etapas"
+    }
+  },
+
+  "Scenarios": 
+  {
+    "TUTORIAL_ENGINE_Controls": 
+    {
+      "description": "Aprenda os controles essenciais: movimentação da câmera, pausar",
+      "narrations": 
+      [
+        "Bem-vindo ao tutorial de Controles!\nVamos te guiar pelos básicos de navegação e interação.",
+        "Use as teclas WASD para mover a câmera para frente, trás, esquerda e direita.\nSegure o botão direito do mouse e arraste para olhar ao redor / rotacionar a visão.",
+        "Ótimo! Agora vamos controlar o tempo.\nPressione a tecla ESPAÇO para pausar e retomar a simulação.\nPause agora (congele tudo), observe bem as moléculas, depois pressione ESPAÇO novamente para continuar.",
+        "Quando a simulação está pausada, você pode inspecionar as estruturas livremente sem que nada se mova.\nIsso é muito útil quando quiser adicionar compostos ou estudar um momento específico.",
+        "É só isso nesse tutorial! Pressione sair para voltar ao menu."
+      ]
     }
   }
 }

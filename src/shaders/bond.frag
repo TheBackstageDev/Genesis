@@ -67,10 +67,10 @@ void main()
     vec3 hitPos_view = ro + t * rd;
     vec3 hit_normal = normalize(hitPos_view - center);
 
-    vec4 final_color = mix(v_colorA, v_colorB, h);
+    vec4 final_color = h > 0.5 ? v_colorB : v_colorA;
 
     vec3 normal = normalize(hit - center);
     float NdotL = max(0.0, dot(normal, u_lightDir));
 
-    fragColor = vec4(vec3(1.0, 1.0, 1.0) * (0.2 + 0.8 * NdotL), final_color.w);
+    fragColor = vec4(final_color.xyz * (0.2 + 0.8 * NdotL), final_color.w);
 }

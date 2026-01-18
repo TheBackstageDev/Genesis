@@ -13,10 +13,12 @@ namespace core
 
     size_t count_all_items(std::filesystem::path path)
     {
-        try 
+        try
         {
             return static_cast<std::size_t>(std::distance(std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}));
-        } catch (std::filesystem::filesystem_error const& ex) {
+        }
+        catch (std::filesystem::filesystem_error const &ex)
+        {
             std::cerr << "Error accessing directory: " << ex.what() << std::endl;
             return 0;
         }
@@ -38,8 +40,9 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t& window)
-        : app_options(app_options), m_window(window), rendering_eng(window)
+    UIHandler::UIHandler(options &app_options, window_t &window)
+        : app_options(app_options), m_window(window), rendering_eng(window),
+            m_scenarioHandler(compound_presets)
     {
         write_localization_json(lang);
         std::filesystem::path path = getLocalizationFile(localization::EN_US);
@@ -68,12 +71,14 @@ namespace core
     void UIHandler::initSavedData()
     {
         std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
+        std::filesystem::path scenarios_dir = "src/scenes/scenarios";
         std::filesystem::path saved_menu_displays_dir = "src/scenes/menu display";
 
         loadScenariosFromFolder(saved_sandbox_dir);
+        loadScenariosFromFolder(scenarios_dir);
         loadScenariosFromFolder(saved_menu_displays_dir, true);
     }
-    
+
     void UIHandler::loadScenariosFromFolder(const std::filesystem::path path, bool background)
     {
         if (!std::filesystem::exists(path))
@@ -84,7 +89,7 @@ namespace core
 
         for (const auto &entry : std::filesystem::directory_iterator(path))
         {
-            if (entry.is_regular_file() && entry.path().extension() == ".json")
+            if (entry.is_regular_file() && entry.path().extension() == ".json" && entry.path().filename().string().find("video_") != 0)
             {
                 std::ifstream file(entry.path());
                 if (file.is_open())
@@ -96,22 +101,22 @@ namespace core
                         if (!background)
                         {
                             nlohmann::json scene_json = nlohmann::json::parse(file);
-    
+
                             scenario_info nInfo{};
                             nInfo.file = entry;
                             nInfo.title = entry.path().filename().replace_extension("").string();
-                        
-                            m_savedSandbox.emplace_back(std::move(nInfo));
 
                             videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
                             if (std::filesystem::directory_entry(videoPath).exists())
                                 nInfo.video = videoPath;
                             else
                                 videoPath = "";
-                            
+
                             nInfo.is_sandbox = true;
+
+                            m_savedSandbox.emplace_back(std::move(nInfo));
                         }
-                        else 
+                        else
                         {
                             m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), rendering_eng));
 
@@ -158,13 +163,14 @@ namespace core
 
         std::filesystem::path icons = "src/resource/images/icons";
         std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
-        std::filesystem::path genesis_glass = icons / "Genesis.png";
+        std::filesystem::path genesis_icon = icons / "Genesis.png";
 
         sf::Texture magnifying_texture{};
         sf::Texture genesis_icon_texture{};
 
         resize_texture(magnifying_texture, {64, 64});
         load_texture(magnifying_texture, magnifying_glass);
+        load_texture(genesis_icon_texture, genesis_icon);
 
         textures.emplace("magnifying_texture", std::move(magnifying_texture));
         textures.emplace("genesis_icon", std::move(genesis_icon_texture));
@@ -215,22 +221,22 @@ namespace core
             sf::RenderTexture thumbnail_renderer;
             display_universe->clear();
             display_universe->createMolecule(compound.structure, {0.f, 0.f, 0.f});
-            
+
             float max_radius = 0.f;
             for (const auto &pos : compound.structure.positions)
             {
                 float r = pos.length();
                 if (r > max_radius)
-                max_radius = r;
+                    max_radius = r;
             }
-            
+
             float molecule_radius = max_radius;
             cam.distance = molecule_radius;
             cam.distance = std::max(cam.distance, 10.f);
-            
+
             rendering_info info = getSimulationRenderingInfo(simulation_render_mode::SPACE_FILLING);
             info.universeBox = false;
-            
+
             m_window.clear();
             display_universe->draw(m_window.getWindow(), info);
 
@@ -288,41 +294,41 @@ namespace core
 
         std::array<std::string, num_smiles_compounds> formulas = {
             "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2",
-            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C10H20O2", "C18H34O2", 
+            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C10H20O2", "C18H34O2",
             "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
             "NaCl", "C22H14", "S8"};
 
         using type = compound_type;
         std::array<type, num_smiles_compounds> types = {
-            type::INORGANIC,    // Water
-            type::INORGANIC,    // Ammonia
-            type::INORGANIC,    // CO2
-            type::INORGANIC,    // O2
-            type::INORGANIC,    // Ozone
-            type::ORGANIC,      // Formaldehyde
-            type::ORGANIC,      // Methane
-            type::INORGANIC,    // Carbon Monoxide
-            type::ORGANIC,      // Ethane
-            type::ORGANIC,      // Ethanol
-            type::ORGANIC,      // Benzene
-            type::INORGANIC,    // N2
-            type::ORGANIC,      // Acetic acid
-            type::ORGANIC,      // Isobutyric acid
-            type::ORGANIC,      // Butanoic acid
-            type::BIOMOLECULE,  // Alanine
-            type::BIOMOLECULE,  // Glucose
-            type::BIOMOLECULE,  // Capric Acid
-            type::BIOMOLECULE,  // Oleic Acid
-            type::ORGANIC,      // Aspirin
-            type::ORGANIC,      // Caffeine
-            type::POLYMER,      // Polystyrene
-            type::POLYMER,      // PMMA
-            type::ION,          // Sulfate
-            type::ION,          // Nitrate
-            type::ION,          // Ammonium
-            type::ION,          // Sodium Chloride
-            type::ORGANIC,      // Tetracene
-            type::INORGANIC     // Octasulfur
+            type::INORGANIC,   // Water
+            type::INORGANIC,   // Ammonia
+            type::INORGANIC,   // CO2
+            type::INORGANIC,   // O2
+            type::INORGANIC,   // Ozone
+            type::ORGANIC,     // Formaldehyde
+            type::ORGANIC,     // Methane
+            type::INORGANIC,   // Carbon Monoxide
+            type::ORGANIC,     // Ethane
+            type::ORGANIC,     // Ethanol
+            type::ORGANIC,     // Benzene
+            type::INORGANIC,   // N2
+            type::ORGANIC,     // Acetic acid
+            type::ORGANIC,     // Isobutyric acid
+            type::ORGANIC,     // Butanoic acid
+            type::BIOMOLECULE, // Alanine
+            type::BIOMOLECULE, // Glucose
+            type::BIOMOLECULE, // Capric Acid
+            type::BIOMOLECULE, // Oleic Acid
+            type::ORGANIC,     // Aspirin
+            type::ORGANIC,     // Caffeine
+            type::POLYMER,     // Polystyrene
+            type::POLYMER,     // PMMA
+            type::ION,         // Sulfate
+            type::ION,         // Nitrate
+            type::ION,         // Ammonium
+            type::ION,         // Sodium Chloride
+            type::ORGANIC,     // Tetracene
+            type::INORGANIC    // Octasulfur
         };
 
         for (int32_t i = 0; i < num_smiles_compounds; ++i)
@@ -346,7 +352,7 @@ namespace core
         }
 
         // XYZ types
- 
+
         initCompoundXYZ();
     }
 
@@ -360,7 +366,7 @@ namespace core
         }
 
         size_t id_counter = 0;
-        for (const auto& entry : std::filesystem::directory_iterator(folder))
+        for (const auto &entry : std::filesystem::directory_iterator(folder))
         {
             if (!entry.is_regular_file() || entry.path().extension() != ".xyz")
                 continue;
@@ -389,34 +395,34 @@ namespace core
                 nlohmann::json metaJson;
                 if (metaFile >> metaJson)
                 {
-                    displayName   = metaJson.value("name", filename);
-                    formula       = metaJson.value("formula", formula);
-                    type          = static_cast<compound_type>(metaJson.value("type", 0));
+                    displayName = metaJson.value("name", filename);
+                    formula = metaJson.value("formula", formula);
+                    type = static_cast<compound_type>(metaJson.value("type", 0));
                 }
             }
 
             float molWeight = 0.0f;
-            for (const auto& atom : structure.atoms)
+            for (const auto &atom : structure.atoms)
             {
                 molWeight += atom.ZIndex * MASS_PROTON + atom.NIndex * MASS_NEUTRON;
             }
 
-            compound_preset_info info{};
-            info.id              = num_smiles_compounds + id_counter++;
-            info.name            = displayName;
-            info.formula         = formula;
-            info.SMILES          = "";
-            info.structure       = std::move(structure);
+            sim::fun::compound_preset_info info{};
+            info.id = num_smiles_compounds + id_counter++;
+            info.name = displayName;
+            info.formula = formula;
+            info.SMILES = "";
+            info.structure = std::move(structure);
             info.molecular_weight = molWeight;
-            info.type            = type;
+            info.type = type;
+
+            std::cout << "[Compounds] Loaded XYZ: " << displayName << " (" << formula << ", "
+                      << info.structure.atoms.size() << " atoms)\n";
 
             compound_presets.emplace_back(std::move(info));
-
-            std::cout << "[Compounds] Loaded XYZ: " << displayName << " (" << formula << ", " 
-                    << structure.atoms.size() << " atoms)\n";
         }
 
-        std::cout << "[Compounds] Loaded " << compound_presets.size() << " XYZ compounds\n";
+        std::cout << "[Compounds] Loaded " << compound_presets.size() - num_smiles_compounds << " XYZ compounds\n";
     }
 
     void UIHandler::write_localization_json(localization lang)
@@ -449,23 +455,24 @@ namespace core
         float buttonWidth = 260.0f;
         float buttonHeight = 45.0f;
 
-        // ImGui::Image(textures["genesis_icon"], ImVec2(100, 100));
-
         ImGui::PushFont(regular);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.12f, 0.95f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(15, 15));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 20));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.04f, 0.10f, 0.92f)); // Darker, more elegant
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.96f, 1.0f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(25, 25));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 28));
 
         {
+            
             ImGui::SameLine();
             std::string menu_title = localization_json["Menu"]["title"].get<std::string>().c_str();
             float titleSize = ImGui::CalcTextSize(menu_title.c_str()).x;
-
+            
             float windowWidth = ImGui::GetMainViewport()->GetCenter().x - titleSize;
             ImVec2 titlePos(windowWidth, padding);
             ImGui::SetNextWindowPos(titlePos, ImGuiCond_Always);
             ImGui::Begin("TitleWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+            //ImGui::Image(textures["genesis_icon"], ImVec2(100, 100));
+            ImGui::SameLine();
 
             ImGui::SetWindowFontScale(2.f);
             ImGui::SetCursorPosX((ImGui::GetWindowWidth() - titleSize) * 0.3f);
@@ -510,14 +517,18 @@ namespace core
         }
 
         {
-            ImVec2 infoPos(io.DisplaySize.x - padding, io.DisplaySize.y - padding);
+            ImVec2 infoPos(io.DisplaySize.x - padding - 20, io.DisplaySize.y - padding - 20);
             ImGui::SetNextWindowPos(infoPos, ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-            ImGui::Begin("InfoPanel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-            ImGui::Text(localization_json["Menu"]["info_version"].get<std::string>().c_str());
-            ImGui::Text(localization_json["Menu"]["info_author"].get<std::string>().c_str());
+            ImGui::Begin("InfoPanel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+            ImGui::TextColored(ImVec4(0.6f, 0.7f, 0.9f, 0.8f), "%s", localization_json["Menu"]["info_version"].get<std::string>().c_str());
+            ImGui::TextColored(ImVec4(0.6f, 0.7f, 0.9f, 0.8f), "%s", localization_json["Menu"]["info_author"].get<std::string>().c_str());
+
             ImGui::End();
         }
 
+        if (tutorialSelectionOpen)
+            drawTutorialSelection();
         if (sceneSelectionOpen)
             drawSceneSelection();
         if (sandboxSelectionOpen)
@@ -532,13 +543,9 @@ namespace core
         ImGui::PopFont();
 
         if (getState() != application_state::APP_STATE_MENU)
-        {
             display_universe->clear();
-        }
         else
-        {
             drawMenuBackgroundDisplay();
-        }
     }
 
     constexpr float padding = 20.0f;
@@ -551,21 +558,20 @@ namespace core
         uint32_t newDisplay = 0;
         uint32_t currentTries = 0;
 
-        do 
+        do
         {
             ++currentTries;
 
             srand(time(0));
             newDisplay = rand() % m_backgroundDisplays;
-        }
-        while (newDisplay == m_currentDisplay && currentTries < maxTries);
+        } while (newDisplay == m_currentDisplay && currentTries < maxTries);
 
         m_currentDisplay = newDisplay;
     }
 
     void UIHandler::drawMenuBackgroundDisplay()
     {
-        auto& camera = rendering_eng.camera();
+        auto &camera = rendering_eng.camera();
 
         m_currentDisplayTime += m_deltaTime;
         if (m_currentDisplayTime >= m_displayMaxTime)
@@ -582,12 +588,13 @@ namespace core
             camera.elevation = 25.f;
         }
 
-        auto& current_universe = m_backgroundUniverses[m_currentDisplay];
+        auto &current_universe = m_backgroundUniverses[m_currentDisplay];
         current_universe->draw(m_window.getWindow(), getSimulationRenderingInfo(app_options.sim_options.render_mode));
         camera.rotateAroundTarget(10.f * m_deltaTime, 0.f);
 
         if (current_universe->numFrames() > 0)
-            playFramesUniverse(*current_universe.get());;
+            playFramesUniverse(*current_universe.get());
+        ;
     }
 
     static std::filesystem::path selected_for_delete;
@@ -625,7 +632,7 @@ namespace core
             simulation_universe = std::make_unique<sim::fun::universe>(info.file, rendering_eng);
             savesSelectionOpen = false;
             pauseMenuOpen = false;
-            paused_simulation = false;
+            simulation_universe->unpause();
             setState(application_state::APP_STATE_SIMULATION);
 
             resetVideoData();
@@ -780,7 +787,6 @@ namespace core
 
         if (ImGui::CollapsingHeader(sandbox_creation["header_visual"].get<std::string>().c_str()))
         {
-            ImGui::Checkbox(sandbox_creation["render_water"].get<std::string>().c_str(), &sandbox_info.render_water);
         }
 
         if (ImGui::CollapsingHeader(sandbox_creation["header_logging"].get<std::string>().c_str()))
@@ -799,7 +805,7 @@ namespace core
             rendering_eng.camera().distance = glm::length(sandbox_info.box * 1.2f);
 
             sandboxSelectionOpen = false;
-            paused_simulation = false;
+            simulation_universe->unpause();
 
             setState(application_state::APP_STATE_SIMULATION);
 
@@ -822,19 +828,174 @@ namespace core
         ImGui::End();
     }
 
-    void UIHandler::drawSceneFrame(scenario_info &info, int32_t id)
+    void UIHandler::drawTutorialSelection()
     {
-        ImGui::BeginChild(ImGui::GetID(id), ImVec2());
+        auto &tutorial_json = localization_json["Menu"]["Tutorial"];
+        auto &tutorial_json_default = default_json["Menu"]["Tutorial"];
+        auto &descriptions_json = localization_json["Scenarios"];
+
+        ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_Appearing);
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        if (!ImGui::Begin(tutorial_json["title"].get<std::string>().c_str(), &tutorialSelectionOpen,
+                          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::End();
+            return;
+        }
+
+        if (ImGui::BeginTabBar("TutorialTabs", ImGuiTabBarFlags_DrawSelectedOverline))
+        {
+            for (int32_t i = 0; i < static_cast<int32_t>(tutorial_type::COUNT); ++i)
+            {
+                std::string category = tutorial_json_default["tutorial_types"][i].get<std::string>();
+
+                if (ImGui::BeginTabItem(category.c_str()))
+                {
+                    for (auto &[key, scenario] : m_scenarioHandler.getScenarios())
+                    {
+                        if (key.find("TUTORIAL_" + category + "_") != 0)
+                            continue;
+
+                        ImGui::BeginChild(("tab_content_" + category).c_str(), ImVec2(0, 0), true);
+
+                        scenario_info info{};
+                        info.title = tutorial_json["titles"][category][key];
+                        info.description = descriptions_json[key]["description"];
+                        info.is_sandbox = false;
+                        info.is_locked = false;
+
+                        drawSceneFrame(info, key);
+
+                        ImGui::Dummy(ImVec2(0, 8));
+
+                        ImGui::EndChild();
+                    }
+                    ImGui::EndTabItem();
+                }
+            }
+            ImGui::EndTabBar();
+        }
+
+        ImGui::End();
+    }
+
+    void UIHandler::drawSceneFrame(scenario_info &info, const std::string &id)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.12f, 0.20f, 0.95f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.4f, 0.5f, 0.8f, 0.6f));
+
+        std::string childId = "scene_frame_" + id;
+        ImGui::BeginChild(childId.c_str(), ImVec2(0, 180), true, ImGuiChildFlags_Border);
+
+        ImGui::Columns(2, nullptr, false);
+        ImGui::SetColumnWidth(0, 180);
+
+        const sf::Texture *thumb = &placeholder_texture;
+        std::string thumbKey = info.title + ".png";
+        if (textures.count(thumbKey))
+            thumb = &textures.at(thumbKey);
+
+        ImGui::Image(*thumb, ImVec2(160, 160));
+        ImGui::NextColumn();
+
+        ImGui::PushFont(bold);
+        ImGui::TextColored(ImVec4(0.9f, 0.95f, 1.0f, 1.0f), "%s", info.title.c_str());
+        ImGui::PopFont();
+
+        std::string desc = info.description.empty()
+                               ? "Explore in the simulator."
+                               : info.description;
+
+        ImGui::TextWrapped("%s", desc.c_str());
+
+        std::string buttonText = "Start";
+        if (ImGui::Button(buttonText.c_str(), ImVec2(-1, 40)))
+        {
+            tutorialSelectionOpen = false;
+            sceneSelectionOpen = false;
+
+            startScenario(id);
+        }
+
+        ImGui::Columns(1);
         ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    void UIHandler::drawLoadingScreen()
+    {
     }
 
     void UIHandler::drawSceneSelection()
     {
-        ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        ImGui::Begin(localization_json["Menu"]["Scene_Selection"]["title"].get<std::string>().c_str(), nullptr, ImGuiWindowFlags_NoMove);
+        auto &scene_json = localization_json["Menu"]["Scene_Selection"];
+        auto &scene_json_default = default_json["Menu"]["Scene_Selection"];
+
+        ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_Appearing);
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        if (!ImGui::Begin(scene_json["title"].get<std::string>().c_str(), &tutorialSelectionOpen,
+                          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::End();
+            return;
+        }
+
+        if (ImGui::BeginTabBar("SceneTabs", ImGuiTabBarFlags_DrawSelectedOverline))
+        {
+            for (int32_t i = 0; i < static_cast<int32_t>(scene_type::COUNT); ++i)
+            {
+                std::string category = scene_json_default["scene_types"][i].get<std::string>();
+
+                if (ImGui::BeginTabItem(category.c_str()))
+                {
+                    for (auto &[key, scenario] : m_scenarioHandler.getScenarios())
+                    {
+                        if (key.find("SCENARIO_" + category + "_") != 0)
+                            continue;
+
+                        ImGui::BeginChild(("tab_content_" + category).c_str(), ImVec2(0, 0), true);
+
+                        scenario_info info{};
+                        info.title = key;
+                        info.is_sandbox = false;
+                        info.is_locked = false;
+                        info.description = "Hello World!";
+
+                        drawSceneFrame(info, key);
+
+                        ImGui::Dummy(ImVec2(0, 8));
+
+                        ImGui::EndChild();
+                    }
+
+                    ImGui::EndTabItem();
+                }
+            }
+            ImGui::EndTabBar();
+        }
 
         ImGui::End();
+    }
+
+    void UIHandler::startScenario(const std::string &scenario)
+    {
+        auto &chosen_scenario = m_scenarioHandler.getScenarios().at(scenario);
+
+        simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, rendering_eng);
+
+        m_scenarioHandler.setCurrentUniverse(simulation_universe.get());
+        m_scenarioHandler.chooseScenario(scenario);
+        m_scenarioHandler.startScenario();
+
+        auto &cam = rendering_eng.camera();
+        cam.target = simulation_universe->boxSizes() * 0.5f;
+        cam.distance = glm::length(simulation_universe->boxSizes() * 1.2f);
+
+        setState(core::application_state::APP_STATE_SIMULATION);
     }
 
     void UIHandler::drawOptions()
@@ -969,15 +1130,16 @@ namespace core
         float button_width = 120.0f;
         float button_height = 35.0f;
 
-        std::string timeControlName = paused_simulation ? "Resume" : "Pause";
+        bool sim_paused = simulation_universe->isPaused();
+        std::string timeControlName = sim_paused ? "Resume" : "Pause";
 
         if (ImGui::Button(timeControlName.c_str(), ImVec2(button_width, button_height)))
         {
-            paused_simulation = !paused_simulation;
+            sim_paused ? simulation_universe->unpause() : simulation_universe->pause();
         }
         if (ImGui::IsItemHovered())
         {
-            std::string tooltip = paused_simulation ? sim_ui["tooltip_resume"] : sim_ui["tooltip_pause"];
+            std::string tooltip = sim_paused ? sim_ui["tooltip_resume"] : sim_ui["tooltip_pause"];
             ImGui::SetTooltip(tooltip.c_str());
         }
         ImGui::SameLine();
@@ -990,15 +1152,22 @@ namespace core
             ImGui::SetTooltip(sim_ui["tooltip_screenshot"].get<std::string>().c_str());
         }
 
+        bool compoundSelectorAllowed = m_scenarioHandler.allowedCompoundSelector();
+
         ImGui::SameLine();
+
+        ImGui::BeginDisabled(!compoundSelectorAllowed);
         if (ImGui::Button("Add Compound", ImVec2(button_width, button_height)))
         {
             compoundSelector = !compoundSelector;
         }
+        
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip(sim_ui["tooltip_compound_selector"].get<std::string>().c_str());
+            ImGui::SetTooltip(compoundSelectorAllowed ? sim_ui["tooltip_compound_selector"].get<std::string>().c_str() : sim_ui["tooltip_scenario_disabled"].get<std::string>().c_str());
         }
+
+        ImGui::EndDisabled();
 
         ImGui::Columns(1);
         ImGui::End();
@@ -1011,7 +1180,6 @@ namespace core
 
         if (compoundSelector)
             drawCompoundSelector();
-
 
         ImGui::PopFont();
     }
@@ -1203,7 +1371,7 @@ namespace core
         auto &full_view = comp_sel["full_view"];
         auto &compounds = localization_json["Compounds"];
 
-        const compound_preset_info &compound = compound_presets[selectedCompound];
+        const sim::fun::compound_preset_info &compound = compound_presets[selectedCompound];
 
         ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.0f, 0.0f, 0.0f, 0.7f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, getMoleculeTypeColor(compound.type));
@@ -1304,7 +1472,7 @@ namespace core
             return;
         }
 
-        if (ImGui::BeginTabBar("CompoundTabs"))
+        if (ImGui::BeginTabBar("##CompoundTabs", ImGuiTabBarFlags_DrawSelectedOverline))
         {
             for (int32_t i = 0; i < static_cast<int32_t>(compound_type::COUNT); ++i)
             {
@@ -1374,15 +1542,17 @@ namespace core
 
     void UIHandler::runUniverse()
     {
-        if (paused_simulation) return;
+        if (simulation_universe->isPaused())
+            return;
 
         simulation_universe->update(target_temperature, target_pressure);
 
-        if (m_recordingFrames)
+        if (m_recordingFrames && simulation_universe->timestep())
         {
             simulation_universe->saveFrame();
 
-            if (m_autoFrame) m_currentFrame = simulation_universe->numFrames();
+            if (m_autoFrame)
+                m_currentFrame = simulation_universe->numFrames();
         }
     }
 
@@ -1429,9 +1599,30 @@ namespace core
 
         playFramesUniverse(*simulation_universe.get());
 
+        if (m_scenarioHandler.inScenario())
+        {
+            m_scenarioHandler.draw(localization_json, m_deltaTime);
+            if (m_scenarioHandler.exit())
+            {
+                pauseMenuOpen = false;
+                compoundFullView = false;
+                compoundSelector = false;
+                savesSelectionOpen = false;
+                optionsOpen = false;
+
+                setState(application_state::APP_STATE_MENU);
+
+                m_currentDisplayTime = m_displayMaxTime + 1.f;
+
+                resetVideoData();
+
+                m_scenarioHandler.clear();
+            }
+        }
+
         if (ImGui::IsKeyPressed(ImGuiKey_Space))
         {
-            paused_simulation = !paused_simulation;
+            simulation_universe->isPaused() ? simulation_universe->unpause() : simulation_universe->pause();
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
@@ -1439,7 +1630,7 @@ namespace core
             optionsOpen = false;
             savesSelectionOpen = false;
             compoundSelector = false;
-            paused_simulation = true;
+            simulation_universe->pause();
         }
     }
 
@@ -1516,9 +1707,10 @@ namespace core
 
             target_pressure = 0.f;
             target_temperature = 300.f;
-            paused_simulation = false;
+            simulation_universe->unpause();
             pauseMenuOpen = false;
 
+            m_scenarioHandler.restart();
             resetVideoData();
         }
 
@@ -1564,10 +1756,10 @@ namespace core
                 saved.title = input;
                 saved.is_sandbox = true;
                 saved.file = sandboxSave / (std::string(input) + ".json");
-                
+
                 if (std::find(m_savedSandbox.begin(), m_savedSandbox.end(), saved) == m_savedSandbox.end())
                     m_savedSandbox.emplace_back(std::move(saved));
-                
+
                 simulation_universe->saveScene(sandboxSave, std::string(input));
                 (void)simulation_universe->saveAsVideo(sandboxSave, std::string(input));
 
@@ -1612,6 +1804,8 @@ namespace core
 
                 resetVideoData();
 
+                m_scenarioHandler.clear();
+
                 if (exitDesktop)
                     std::exit(EXIT_SUCCESS);
                 ImGui::CloseCurrentPopup();
@@ -1652,7 +1846,7 @@ namespace core
 
     // Video
 
-    void UIHandler::playFramesUniverse(sim::fun::universe& u)
+    void UIHandler::playFramesUniverse(sim::fun::universe &u)
     {
         if (m_playingVideo && u.numFrames() > 0)
         {
@@ -1660,7 +1854,8 @@ namespace core
 
             m_frameAccumulator += m_deltaTime;
 
-            if (m_frameAccumulator > 2.f) m_frameAccumulator = 1.f; // Prevent too big
+            if (m_frameAccumulator > 2.f)
+                m_frameAccumulator = 1.f; // Prevent too big
             while (m_frameAccumulator >= timePerFrame)
             {
                 m_frameAccumulator -= timePerFrame;
@@ -1689,14 +1884,14 @@ namespace core
 
         if (ImGui::Button("Play"))
         {
-            m_playingVideo = !m_playingVideo; 
+            m_playingVideo = !m_playingVideo;
         }
 
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(m_playingVideo ? video_controller["pause_tooltip"].get<std::string>().c_str() : video_controller["play_tooltip"].get<std::string>().c_str());
-        
+
         ImGui::SameLine();
-        
+
         if (ImGui::Button("Restart"))
         {
             m_currentFrame = 0;
@@ -1726,10 +1921,10 @@ namespace core
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 50);
         if (ImGui::SliderInt("##Frame", &m_currentFrame, 0, simulation_universe->numFrames(),
-                                "Frame %d", ImGuiSliderFlags_AlwaysClamp))
+                             "Frame %d", ImGuiSliderFlags_AlwaysClamp))
         {
             m_playingVideo = false;
-            
+
             if (m_currentFrame != simulation_universe->numFrames())
             {
                 simulation_universe->setDisplayPositions(simulation_universe->getFrame(m_currentFrame).positions);

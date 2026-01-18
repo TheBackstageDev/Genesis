@@ -17,7 +17,6 @@ namespace glm
 	struct vec<3, T, Q>
 	{
 		// -- Implementation detail --
-
 		typedef T value_type;
 		typedef vec<3, T, Q> type;
 		typedef vec<3, bool, Q> bool_type;

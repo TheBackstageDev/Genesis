@@ -44,8 +44,8 @@ namespace sim
             bool reactive = false;
             bool wall_collision = false;
             bool isothermal = true;
-            bool render_water = true;
             bool HMassRepartitioning = false;
+
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
@@ -94,7 +94,7 @@ namespace sim
             void balanceMolecularCharges(subset& mol);
             
             void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
-            void draw(sf::RenderTarget& target, const rendering_info& info);
+            void draw(sf::RenderTarget& target, rendering_info info);
 
             void runVideo(const video& vid);
 
@@ -127,7 +127,18 @@ namespace sim
                 bonds.clear();
                 subsets.clear();
                 rings.clear();
+
+                m_highlightedAtoms.clear();
+                m_highlightedBonds.clear();
+                m_Arrows.clear();
             }
+
+            void pause() { m_paused = true; }
+            void unpause() { m_paused = false; }
+
+            void highlightAtom(uint32_t index) { m_highlightedAtoms.emplace_back(index); }
+            void highlightBond(uint32_t index1, uint32_t index2) { m_highlightedBonds.emplace_back(index1, index2); }
+            void createArrow(uint32_t from, uint32_t to) { m_Arrows.emplace_back(from, to); }
 
             // Gets
 
@@ -138,7 +149,7 @@ namespace sim
 
             float temperature() const { return temp; }
             float pressure() const { return pres; }
-            float timestep() const { return timeStep; }
+            size_t timestep() const { return timeStep; }
 
             glm::vec3 boxSizes() { return box; }
 
@@ -177,6 +188,10 @@ namespace sim
                 dr.z -= box.z * std::round(dr.z / box.z);
                 return dr;
             }
+
+            bool isPaused() { return m_paused; }
+
+            core::camera_t& getRenderingCamera() { return rendering_eng.camera(); }
         private:
             void boundCheck(uint32_t i);
 
@@ -245,7 +260,7 @@ namespace sim
             // CellList
             std::vector<std::vector<uint32_t>> cells;
 
-            glm::vec3 box{0.f, 0.f, 0.f};
+            glm::vec3 box{20.f, 20.f, 20.f};
             uint32_t cx = 0, cy = 0, cz = 0; // cell dimensions
 
             void buildCells();
@@ -297,15 +312,22 @@ namespace sim
             
             // Flags
 
+            bool m_paused = false;
+
             bool gravity = false;
             bool react = false;
             bool isothermal = true;
-            bool render_water = true;
             bool wall_collision = false;
             bool HMassRepartitioning = true;
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
+
+            // Visual
+
+            std::vector<uint32_t> m_highlightedAtoms{};
+            std::vector<std::pair<uint32_t, uint32_t>> m_highlightedBonds{};
+            std::vector<std::pair<uint32_t, uint32_t>> m_Arrows{};
 
             // Logging
             struct ReactionEvent 

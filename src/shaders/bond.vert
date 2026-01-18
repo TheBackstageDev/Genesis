@@ -1,7 +1,7 @@
 #version 330 core
 
-layout(location = 0) in vec3  a_centerA;
-layout(location = 1) in vec3  a_centerB;
+layout(location = 0) in vec4  a_centerA;
+layout(location = 1) in vec4  a_centerB;
 layout(location = 2) in vec4  a_colorA;
 layout(location = 3) in vec4  a_colorB;
 layout(location = 4) in float a_radius;
@@ -18,8 +18,8 @@ out vec3  v_corner;
 
 void main()
 {
-    vec4 viewA = u_view * vec4(a_centerA, 1.0);
-    vec4 viewB = u_view * vec4(a_centerB, 1.0);
+    vec4 viewA = u_view * a_centerA;
+    vec4 viewB = u_view * a_centerB;
     v_start  = viewA.xyz;
     v_end    = viewB.xyz;
     v_colorStart = a_colorA;
