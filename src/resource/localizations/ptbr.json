@@ -155,7 +155,8 @@
       "INORGANICO",
       "ION",
       "NANOMATERIAL",
-      "POLÍMERO"
+      "POLÍMERO",
+      "ELEMENTOS"
     ],
 
     "compound_descriptions":
@@ -249,7 +250,22 @@
           "preview": "Chem Chards TM",
           "description": "Descrição",
           "add_simulation": "Adicionar para a Simulação"
-        }
+        },
+
+        "periodic_title": "Tabela Periódica",
+        "periodic_subtitle": "dos Elementos",
+        "periodic_names": 
+        [
+          ["Hidrogênio", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Hélio"],
+          ["Lítio", "Berílio", "", "", "", "", "", "", "", "", "", "", "Boro", "Carbono", "Nitrogênio", "Oxigênio", "Flúor", "Neônio"],
+          ["Sódio", "Magnésio", "", "", "", "", "", "", "", "", "", "", "Alumínio", "Silício", "Fósforo", "Enxofre", "Cloro", "Argônio"],
+          ["Potássio", "Cálcio", "Escândio", "Titânio", "Vanádio", "Cromo", "Manganês", "Ferro", "Cobalto", "Níquel", "Cobre", "Zinco", "Gálio", "Germânio", "Arsênio", "Selênio", "Bromo", "Criptônio"],
+          ["Rubídio", "Estrôncio", "Ítrio", "Zircônio", "Nióbio", "Molibdênio", "Tecnécio", "Rutênio", "Ródio", "Paládio", "Prata", "Cádmio", "Índio", "Estanho", "Antimônio", "Telúrio", "Iodo", "Xenônio"],
+          ["Césio", "Bário", "Lantânio", "Háfnio", "Tântalo", "Tungstênio", "Rênio", "Ósmio", "Irídio", "Platina", "Ouro", "Mercúrio", "Tálio", "Chumbo", "Bismuto", "Polônio", "Astato", "Radônio"],
+          ["Frâncio", "Rádio", "Actínio", "Rutherfórdio", "Dúbnio", "Seabórgio", "Bóhrio", "Hássio", "Meitnério", "Darmstádio", "Roentgênio", "Copernício", "Nihônio", "Fleróvio", "Moscóvio", "Livermório", "Tennessínio", "Oganessônio"],
+          ["", "", "Cério", "Praseodímio", "Neodímio", "Promécio", "Samário", "Eurípio", "Gadolínio", "Térbio", "Disprósio", "Hólmio", "Érbio", "Túlio", "Itérbio", "Lutécio", "", ""],
+          ["", "", "Tório", "Protactínio", "Urânio", "Netúnio", "Plutônio", "Américo", "Cúrio", "Berquélio", "Califórnio", "Einsteinio", "Férmio", "Mendelévio", "Nobélio", "Laurêncio", "", ""]
+        ]
       }
     },
     "pause_menu":

@@ -15,6 +15,7 @@ namespace core
 
     void ScenarioHandler::initScenarios()
     {
+        Scenario scenario_;
         initTutorials();
     }
 

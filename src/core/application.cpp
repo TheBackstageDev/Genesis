@@ -45,15 +45,21 @@ namespace core
         builder.BuildRanges(&ranges);
 
         ImFont* regular = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Regular.ttf", size, nullptr, ranges.Data);
+        ImFont* regular_small = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Regular.ttf", size * 0.5f, nullptr, ranges.Data);
+        ImFont* regular_big = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Regular.ttf", size * 2.f, nullptr, ranges.Data);
         if (regular == nullptr) throw std::runtime_error("Failed to load Orbitron-Regular.ttf");
 
         ImFont* medium = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Medium.ttf", size, nullptr, ranges.Data);
         ImFont* bold   = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Bold.ttf", size, nullptr, ranges.Data);
+        ImFont* bold_big  = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Bold.ttf", size * 2.f, nullptr, ranges.Data);
         ImFont* black  = io.Fonts->AddFontFromFileTTF("src/resource/fonts/Orbitron-Black.ttf", size, nullptr, ranges.Data);
 
         ui.set_regular_font(regular);
+        ui.set_regular_font_small(regular_small);
+        ui.set_regular_big_font(regular_big);
         ui.set_medium_font(medium);
         ui.set_bold_font(bold);
+        ui.set_bold_big_font(bold_big);
         ui.set_black_font(black);
 
         if (!ImGui::SFML::UpdateFontTexture())

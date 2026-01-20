@@ -157,13 +157,19 @@ namespace core
         // Fonts
 
         void set_regular_font (ImFont* regular_font) { regular = regular_font; }
+        void set_regular_font_small (ImFont* regular_font_small) { regular_small = regular_font_small; }
+        void set_regular_big_font (ImFont* regular_big_font) { regular_big = regular_big_font; }
         void set_medium_font (ImFont* medium_font) { medium = medium_font; }
         void set_bold_font (ImFont* bold_font) { bold = bold_font; }
+        void set_bold_big_font (ImFont* bold_big_font) { bold_big = bold_big_font; }
         void set_black_font (ImFont* black_font) { black = black_font; }
 
         ImFont* regular_font () { return regular; }
+        ImFont* regular_font_small () { return regular_small; }
+        ImFont* regular_big_font () { return regular_big; }
         ImFont* medium_font() { return medium; }
         ImFont* bold_font() { return bold; }
+        ImFont* bold_big_font() { return bold_big; }
         ImFont* black_font() { return black; }
 
         nlohmann::json save();
@@ -253,6 +259,7 @@ namespace core
         void handleGhost();
         void drawCompoundSelector();
         void drawCompoundView(const sim::fun::compound_preset_info& compound);
+        void drawPeriodicTable();
         void drawCompoundFulLView();
 
         void pauseMenu();
@@ -310,8 +317,11 @@ namespace core
 
         // Fonts
         ImFont* regular = nullptr;
+        ImFont* regular_small = nullptr;
+        ImFont* regular_big = nullptr;
         ImFont* medium = nullptr;
         ImFont* bold = nullptr;
+        ImFont* bold_big = nullptr;
         ImFont* black = nullptr;
     };
 } // namespace core

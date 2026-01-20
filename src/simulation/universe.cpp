@@ -68,8 +68,8 @@ namespace sim
             newAtom.epsilon = constants.second;
             newAtom.radius = constants::VDW_RADII[ZIndex] * 1.5f;
             newAtom.electrons = numElectron;
-            newAtom.NCount = numNeutrons;
-            newAtom.mass = ZIndex * MASS_PROTON + numNeutrons * MASS_NEUTRON + numElectron * MASS_ELECTRON;
+            newAtom.NCount = numNeutrons == 0 ? constants::NEUTRON_COUNTS[ZIndex] : numNeutrons;
+            newAtom.mass = ZIndex * MASS_PROTON + newAtom.NCount * MASS_NEUTRON + numElectron * MASS_ELECTRON;
             newAtom.chirality = chirality;
             newAtom.bondCount = 0;
 

@@ -148,6 +148,129 @@ namespace constants
         1.30f,  // Ts 1.30, Og 1.30
     };
 
+    constexpr uint8_t NEUTRON_COUNTS[119] = 
+    {
+        0,   // 0: dummy
+        0,   // 1  H  → ¹H (protium)
+        2,   // 2  He → ⁴He
+        4,   // 3  Li → ⁷Li (most abundant)
+        5,   // 4  Be → ⁹Be
+        6,   // 5  B  → ¹¹B (slightly more abundant)
+        6,   // 6  C  → ¹²C (by definition for atomic mass unit)
+        7,   // 7  N  → ¹⁴N
+        8,   // 8  O  → ¹⁶O
+        10,  // 9  F  → ¹⁹F
+        10,  // 10 Ne → ²⁰Ne
+        12,  // 11 Na → ²³Na
+        14,  // 12 Mg → ²⁴Mg
+        14,  // 13 Al → ²⁷Al
+        14,  // 14 Si → ²⁸Si
+        16,  // 15 P  → ³¹P
+        16,  // 16 S  → ³²S
+        18,  // 17 Cl → ³⁵Cl (most abundant)
+        20,  // 18 Ar → ⁴⁰Ar
+        20,  // 19 K  → ³⁹K
+        20,  // 20 Ca → ⁴⁰Ca
+        24,  // 21 Sc → ⁴⁵Sc
+        26,  // 22 Ti → ⁴⁸Ti
+        28,  // 23 V  → ⁵¹V
+        28,  // 24 Cr → ⁵²Cr
+        30,  // 25 Mn → ⁵⁵Mn
+        30,  // 26 Fe → ⁵⁶Fe
+        32,  // 27 Co → ⁵⁹Co
+        30,  // 28 Ni → ⁵⁸Ni (most abundant)
+        34,  // 29 Cu → ⁶³Cu
+        34,  // 30 Zn → ⁶⁴Zn
+        39,  // 31 Ga → ⁶⁹Ga (slightly more)
+        36,  // 32 Ge → ⁷⁴Ge (most abundant)
+        42,  // 33 As → ⁷⁵As
+        42,  // 34 Se → ⁸⁰Se (most abundant)
+        44,  // 35 Br → ⁷⁹Br (very close to ⁸¹Br)
+        48,  // 36 Kr → ⁸⁴Kr
+        48,  // 37 Rb → ⁸⁵Rb
+        50,  // 38 Sr → ⁸⁸Sr
+        50,  // 39 Y  → ⁸⁹Y
+        50,  // 40 Zr → ⁹⁰Zr
+        52,  // 41 Nb → ⁹³Nb
+        54,  // 42 Mo → ⁹⁸Mo
+        55,  // 43 Tc → ⁹⁸Tc (longest-lived; no stable)
+        58,  // 44 Ru → ¹⁰²Ru (most abundant)
+        58,  // 45 Rh → ¹⁰³Rh
+        64,  // 46 Pd → ¹⁰⁶Pd (most abundant)
+        64,  // 47 Ag → ¹⁰⁷Ag (close to ¹⁰⁹Ag)
+        66,  // 48 Cd → ¹¹²Cd
+        66,  // 49 In → ¹¹⁵In
+        70,  // 50 Sn → ¹²⁰Sn (most abundant)
+        74,  // 51 Sb → ¹²¹Sb (close to ¹²³Sb)
+        76,  // 52 Te → ¹³⁰Te
+        77,  // 53 I  → ¹²⁷I
+        78,  // 54 Xe → ¹³²Xe (most abundant)
+        81,  // 55 Cs → ¹³³Cs
+        82,  // 56 Ba → ¹³⁸Ba
+        82,  // 57 La → ¹³⁹La
+        82,  // 58 Ce → ¹⁴⁰Ce
+        84,  // 59 Pr → ¹⁴¹Pr
+        90,  // 60 Nd → ¹⁴²Nd (most abundant)
+        94,  // 61 Pm → ¹⁴⁵Pm (longest-lived; no stable)
+        90,  // 62 Sm → ¹⁵²Sm
+        94,  // 63 Eu → ¹⁵³Eu (close to ¹⁵¹Eu)
+        98,  // 64 Gd → ¹⁵⁸Gd (most abundant)
+        98,  // 65 Tb → ¹⁵⁹Tb
+        102, // 66 Dy → ¹⁶⁴Dy
+        104, // 67 Ho → ¹⁶⁵Ho
+        104, // 68 Er → ¹⁶⁶Er
+        106, // 69 Tm → ¹⁶⁹Tm
+        104, // 70 Yb → ¹⁷⁴Yb
+        106, // 71 Lu → ¹⁷⁵Lu (¹⁷⁶Lu is long-lived but low abundance)
+        110, // 72 Hf → ¹⁸⁰Hf
+        110, // 73 Ta → ¹⁸¹Ta
+        110, // 74 W  → ¹⁸⁴W
+        114, // 75 Re → ¹⁸⁷Re
+        114, // 76 Os → ¹⁹²Os (most abundant)
+        116, // 77 Ir → ¹⁹³Ir
+        118, // 78 Pt → ¹⁹⁵Pt (most abundant)
+        118, // 79 Au → ¹⁹⁷Au
+        120, // 80 Hg → ²⁰²Hg (most abundant)
+        122, // 81 Tl → ²⁰⁵Tl
+        122, // 82 Pb → ²⁰⁸Pb (most abundant / very stable)
+        124, // 83 Bi → ²⁰⁹Bi (very long-lived; effectively stable)
+        126, // 84 Po → ²¹⁰Po (longest-lived)
+        136, // 85 At → ²¹⁰At or ²¹¹At (~short)
+        136, // 86 Rn → ²²²Rn
+        138, // 87 Fr → ²²³Fr
+        138, // 88 Ra → ²²⁶Ra
+        138, // 89 Ac → ²²⁷Ac
+        140, // 90 Th → ²³²Th
+        140, // 91 Pa → ²³¹Pa
+        146, // 92 U  → ²³⁸U
+        144, // 93 Np → ²³⁷Np
+        150, // 94 Pu → ²⁴⁴Pu (longest-lived)
+        148, // 95 Am → ²⁴³Am
+        150, // 96 Cm → ²⁴⁷Cm or ²⁴⁸Cm
+        150, // 97 Bk → ²⁴⁷Bk
+        150, // 98 Cf → ²⁵¹Cf
+        152, // 99 Es → ²⁵²Es
+        157, // 100 Fm → ²⁵⁷Fm
+        157, // 101 Md → ²⁵⁸Md
+        157, // 102 No → ²⁵⁹No
+        157, // 103 Lr → ²⁶⁰Lr or ²⁶²Lr
+        160, // 104 Rf → ²⁶¹Rf or ²⁶⁷Rf (very short-lived)
+        160, // 105 Db → ~²⁶⁸Db
+        160, // 106 Sg → ~²⁶⁹Sg
+        160, // 107 Bh → ~²⁷⁰Bh
+        160, // 108 Hs → ~²⁶⁹Hs or ²⁷⁰Hs
+        160, // 109 Mt → ~²⁷⁸Mt
+        160, // 110 Ds → ~²⁸¹Ds
+        160, // 111 Rg → ~²⁸⁰Rg or ²⁸²Rg
+        160, // 112 Cn → ~²⁸⁵Cn
+        160, // 113 Nh → ~²⁸⁶Nh
+        160, // 114 Fl → ~²⁸⁹Fl
+        160, // 115 Mc → ~²⁸⁹Mc or ²⁹⁰Mc
+        160, // 116 Lv → ~²⁹³Lv
+        160, // 117 Ts → ~²⁹⁴Ts
+        160   // 118 Og → ~²⁹⁴Og
+    };
+
     constexpr float VDW_RADII[119] = {
         0.00f, 1.20f, 1.40f, 1.82f, 1.53f, 1.92f, 1.70f, 1.55f, 1.52f, 1.47f,
         1.54f, 2.27f, 1.73f, 1.84f, 2.10f, 1.80f, 1.80f, 1.75f, 1.88f, 2.75f,

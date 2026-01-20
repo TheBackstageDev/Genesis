@@ -196,6 +196,7 @@ namespace sim
             ION,
             NANOMATERIAL,
             POLYMER,
+            ELEMENTS,
             COUNT
         };
 

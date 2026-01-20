@@ -9,6 +9,43 @@
 
 namespace core
 {
+    // Periodic Table
+    
+    ImVec4 getElementColor(char type)
+    {
+        switch (type)
+        {
+            case 'K': 
+                return ImVec4(1.00f, 0.40f, 0.40f, 1.00f);
+
+            case 'T':
+                return ImVec4(1.00f, 0.65f, 0.00f, 1.00f);
+
+            case 'Z':
+                return ImVec4(0.40f, 0.70f, 1.00f, 1.00f);
+
+            case 'M':
+                return ImVec4(0.70f, 0.70f, 0.80f, 1.00f);
+
+            case 'N':
+                return ImVec4(0.40f, 0.90f, 0.40f, 1.00f);
+
+            case 'O':
+                return ImVec4(0.80f, 1.00f, 1.00f, 1.00f);
+
+            case 'L':
+                return ImVec4(0.80f, 0.40f, 0.90f, 1.00f);
+
+            case 'A': 
+                return ImVec4(0.60f, 0.20f, 0.80f, 1.00f);
+
+            default:
+                return ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+        }
+
+        return ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+    }
+
     // Helper
 
     size_t count_all_items(std::filesystem::path path)
@@ -64,6 +101,7 @@ namespace core
         }
 
         initCompoundPresets();
+        initCompoundXYZ();
         initImages();
         initSavedData();
     }
@@ -350,10 +388,6 @@ namespace core
 
             compound_presets.emplace_back(std::move(nInfo));
         }
-
-        // XYZ types
-
-        initCompoundXYZ();
     }
 
     void UIHandler::initCompoundXYZ()
@@ -1474,7 +1508,7 @@ namespace core
 
         if (ImGui::BeginTabBar("##CompoundTabs", ImGuiTabBarFlags_DrawSelectedOverline))
         {
-            for (int32_t i = 0; i < static_cast<int32_t>(compound_type::COUNT); ++i)
+            for (int32_t i = 0; i < static_cast<int32_t>(compound_type::COUNT) - 1; ++i)
             {
                 compound_type current_type = static_cast<compound_type>(i);
 
@@ -1509,6 +1543,13 @@ namespace core
                     ImGui::EndTabItem();
                 }
             }
+
+            if (ImGui::BeginTabItem(compounds["compound_types"][static_cast<uint8_t>(compound_type::ELEMENTS)].get<std::string>().c_str()))
+            {
+                drawPeriodicTable();
+                ImGui::EndTabItem();
+            }
+
             ImGui::EndTabBar();
         }
 
@@ -1516,6 +1557,176 @@ namespace core
             drawCompoundFulLView();
 
         ImGui::End();
+    }
+
+    void UIHandler::drawPeriodicTable()
+    {
+        ImGui::BeginChild("##PeriodicTableScroll", ImVec2(0, 0), true);
+
+        constexpr int32_t cols = 18;
+        constexpr int32_t rows = 9;
+
+        constexpr uint8_t Zindices[rows][cols] = 
+        {
+            {1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  2}, 
+            {3,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  5,  6,  7,  8,  9, 10}, 
+            {11, 12, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 13, 14, 15, 16, 17, 18}, 
+            {19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36}, 
+            {37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54}, 
+            {55, 56, 57, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86}, 
+            {87, 88, 89,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118}, 
+            {0,  0, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,  0,  0}, 
+            {0,  0, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,100,101,102,103,  0,  0}  
+        };
+
+        constexpr float atomicMass[9][18] = 
+        {
+            {  1.008f,   0.0f,     0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   4.003f},
+            {  6.941f,   9.012f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,  10.811f, 12.011f, 14.007f, 15.999f, 18.998f, 20.180f },
+            { 22.990f, 24.305f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,  26.982f, 28.085f, 30.974f, 32.06f , 35.45f , 39.948f },
+            { 39.098f, 40.078f, 44.956f, 47.867f, 50.942f, 51.996f, 54.938f, 55.845f, 58.933f, 58.693f, 63.546f, 65.38f , 69.723f, 72.64f , 74.922f, 78.972f, 79.904f, 83.798f },
+            { 85.468f, 87.62f , 88.906f, 91.224f, 92.906f, 95.95f , 98.0f  , 101.07f, 102.906f,105.905f,107.868f,112.414f,114.818f,118.711f,121.760f,127.60f ,126.904f,131.293f },
+            {132.905f,137.33f ,138.905f,178.49f ,180.948f,183.84f ,186.207f,190.23f ,192.217f,195.085f,196.967f,200.592f,204.38f ,207.2f  ,208.980f,209.0f  ,210.0f  ,222.0f   },
+            {223.0f  ,226.0f  ,227.0f  ,232.038f,231.036f,238.029f,237.0f  ,244.0f  ,243.0f  ,247.0f  ,247.0f  ,251.0f  ,252.0f  ,257.0f  ,258.0f  ,259.0f  ,262.0f  ,267.0f   },
+            {  0.0f  ,  0.0f  ,140.116f,140.908f,144.24f ,145.0f  ,150.36f ,151.964f,157.25f ,158.925f,162.500f,164.930f,167.259f,168.934f,173.045f,174.967f,  0.0f  ,  0.0f   },
+            {  0.0f  ,  0.0f  ,227.028f,232.038f,231.036f,238.029f,237.0f  ,244.0f  ,243.0f  ,247.0f  ,247.0f  ,251.0f  ,252.0f  ,257.0f  ,258.0f  ,259.0f  ,262.0f  ,267.0f   }
+        };
+
+        constexpr char ElementType[rows][cols] = 
+        {
+            //  1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18
+            {'N',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'O'},
+            {'K',  'T',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'M',  'N',  'N',  'N',  'N',  'O'},
+            {'K',  'T',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'M',  'M',  'N',  'N',  'N',  'O'},
+            {'K',  'T',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'N',  'N',  'O'},
+            {'K',  'T',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'M',  'N',  'O'},
+            {'K',  'T',  'L',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'M',  'N',  'O'},
+            {'K',  'T',  'A',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'M',  'N',  'O'},
+            {' ',  ' ',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  ' ',  ' '},
+            {' ',  ' ',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  ' ',  ' '}
+        };
+
+        constexpr char ElementBlock[rows][cols] = 
+        {
+            //  1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18
+            {'s',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  's'},
+            {'s',  's',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'p',  'p',  'p',  'p',  'p',  'p'},
+            {'s',  's',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'p',  'p',  'p',  'p',  'p',  'p'},
+            {'s',  's',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
+            {'s',  's',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
+            {'s',  's',  'f',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
+            {'s',  's',  'f',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
+            {' ',  ' ',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  ' ',  ' '},
+            {' ',  ' ',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  ' ',  ' '}
+        };
+
+        auto &comp_sel = localization_json["Simulation"]["universe_ui"]["compound_selector"];
+
+        constexpr float box_size = 54.f;
+
+        ImGui::PushFont(bold_big);
+        std::string title = comp_sel["periodic_title"].get<std::string>();
+        std::string subtitle = comp_sel["periodic_subtitle"].get<std::string>();
+
+        ImVec2 titleSize = ImGui::CalcTextSize(title.c_str());
+        ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x * 0.5f - titleSize.x * 0.5f);
+        
+        ImGui::BeginGroup();
+        
+        ImGui::Text(title.c_str());
+        ImGui::PopFont();
+        
+        ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle.c_str());
+        
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + subtitleSize.x * 0.5f);
+        ImGui::Text(subtitle.c_str());
+        ImGui::EndGroup();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        for (int32_t row = 0; row < rows; ++row)
+        {
+            for (int32_t col = 0; col < cols; ++col)
+            {
+                uint8_t Z = Zindices[row][col];
+                if (Z == 0)
+                {
+                    ImGui::Dummy(ImVec2(box_size, box_size));
+                    if (col < cols - 1) ImGui::SameLine();
+                    continue;
+                }
+
+                ImGui::PushID(Z);
+
+                std::string symbol = constants::getAtomLetter(Z);
+                std::string name = comp_sel["periodic_names"][row][col];
+                char block = ElementBlock[row][col];
+                float mass = atomicMass[row][col];
+
+                ImVec4 color = getElementColor(ElementType[row][col]);
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x*0.8f, color.y*0.8f, color.z*0.8f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x*1.15f, color.y*1.15f, color.z*1.15f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x*0.8f, color.y*0.8f, color.z*0.8f, 1.0f));
+
+                if (ImGui::Button(std::string("##" + symbol).c_str(), ImVec2(box_size, box_size))) 
+                {
+
+                }
+
+                ImVec2 buttonMin = ImGui::GetItemRectMin();
+                ImVec2 buttonMax = ImGui::GetItemRectMax();
+                ImVec2 buttonCenter = ImVec2((buttonMin.x + buttonMax.x) * 0.5f, (buttonMin.y + buttonMax.y) * 0.5f);
+
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%s (%s)", name.c_str(), symbol.c_str());
+                    ImGui::Text("Z = %d\nMass = %.3f u", Z, mass);
+                    ImGui::Text("Block: %c", block);
+                    ImGui::EndTooltip();
+                }
+
+                ImU32 textColor = ImGui::GetColorU32(ImVec4(1,1,1,1));
+                ImU32 smallTextColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                ImU32 nameColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+                ImGui::PushFont(regular_small);
+                draw_list->AddText(ImVec2(buttonMin.x + 4.0f, buttonMin.y + 4.0f),
+                                                smallTextColor,
+                                                std::to_string(Z).c_str());
+                                                
+                draw_list->AddText(ImVec2(buttonCenter.x + (mass > 100 ? 1.f : 6.f), buttonMin.y + 4.0f),
+                                                smallTextColor,
+                                                std::format("{:.1f}", mass).c_str());
+                ImGui::PopFont();
+
+                ImGui::PushFont(bold);
+                ImVec2 symbolSize = ImGui::CalcTextSize(symbol.c_str());
+                draw_list->AddText(ImVec2(buttonCenter.x - symbolSize.x * 0.5f, buttonCenter.y - symbolSize.y * 0.5f - 4.0f),
+                                   textColor,
+                                   symbol.c_str());
+                ImGui::PopFont();
+
+                ImGui::PushFont(regular_small);
+                ImVec2 nameSize = ImGui::CalcTextSize(name.c_str());
+                draw_list->AddText(ImVec2(buttonCenter.x - nameSize.x * 0.5f, buttonMax.y - nameSize.y - 4.0f),
+                                   nameColor,
+                                   name.c_str());
+                ImGui::PopFont();
+
+                ImGui::PopStyleColor(3);
+                
+                if (col < cols - 1) ImGui::SameLine();
+
+                ImGui::PopID();
+            }
+        }
+        
+        ImGui::PopStyleVar();
+        ImGui::EndChild();
     }
 
     rendering_info UIHandler::getSimulationRenderingInfo(simulation_render_mode mode)

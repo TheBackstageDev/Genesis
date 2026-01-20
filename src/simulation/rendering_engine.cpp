@@ -285,8 +285,51 @@ namespace sim
             glm::vec4 colorA_norm(colA.r / 255.f, colA.g / 255.f, colA.b / 255.f, info.opacity);
             glm::vec4 colorB_norm(colB.r / 255.f, colB.g / 255.f, colB.b / 255.f, info.opacity);
 
-            float bondR = 1.0f / 6.f * static_cast<int32_t>(bond.type);
-            instances.emplace_back(glm::vec4(sim_info.positions[bond.centralAtom], 1.0f), glm::vec4(sim_info.positions[bond.bondedAtom], 1.0), colorA_norm, colorB_norm, bondR);
+            int32_t order = static_cast<int32_t>(bond.type);
+
+            glm::vec3 posA = sim_info.positions[bond.bondedAtom];
+            glm::vec3 posB = sim_info.positions[bond.centralAtom];
+
+            glm::vec3 r_vec = posA - posB;
+            if (glm::length(r_vec) > 5.f) continue;
+
+            float baseRadius = 0.15f;
+            float bondR = baseRadius / order;
+            glm::vec3 bondDir = glm::normalize(r_vec);
+
+            glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1,0,0) : glm::vec3(0,1,0);
+            glm::vec3 perp1 = glm::normalize(glm::cross(bondDir, arbitrary));
+            glm::vec3 perp2 = glm::cross(bondDir, perp1);
+
+            const float offsetStep = 0.10f;
+
+            if (order == 1)
+            {
+                instances.emplace_back(
+                    glm::vec4(posA, 1.0f),
+                    glm::vec4(posB, 1.0f),
+                    colorA_norm, colorB_norm, bondR
+                );
+            }
+            else
+            {
+                for (int k = 0; k < order; ++k)
+                {
+                    float angle = (static_cast<float>(k) / order) * glm::two_pi<float>();
+                    float offsetAmount = offsetStep * (order == 2 ? 1.0f : 1.0f);
+
+                    glm::vec3 offset = offsetAmount * (std::cos(angle) * perp1 + std::sin(angle) * perp2);
+
+                    glm::vec3 offsetposA = posA + offset;
+                    glm::vec3 offsetposB = posB   + offset;
+
+                    instances.emplace_back(
+                        glm::vec4(offsetposA, 1.0f),
+                        glm::vec4(offsetposB, 1.0f),
+                        colorA_norm, colorB_norm, bondR
+                    );
+                }
+            }
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
@@ -374,8 +417,8 @@ namespace sim
         if (info.universeBox)
             drawBox(sim_info.box);
 
-        bindColor(target, info, sim_info);
         bindBond(target, info, sim_info);
+        bindColor(target, info, sim_info);
 
         glBindVertexArray(0);
         glUseProgram(0);

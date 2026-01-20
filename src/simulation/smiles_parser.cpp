@@ -228,7 +228,7 @@ namespace sim
 
                 def_atom nAtom{};
                 nAtom.charge = 0;
-                nAtom.NIndex = ZIndex;
+                nAtom.NIndex = 0;
                 nAtom.ZIndex = ZIndex;
                 nAtom.aromatic = aromatic;
 
@@ -244,7 +244,7 @@ namespace sim
                         {
                             sym = two;
                             nAtom.ZIndex = newZ;
-                            nAtom.NIndex = newZ; // Usually yes
+                            nAtom.NIndex = 0;
                             ++i;                            
                             aromatic = false;                 
                         }

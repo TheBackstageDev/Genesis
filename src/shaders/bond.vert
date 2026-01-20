@@ -29,7 +29,7 @@ void main()
     vec3 axis     = v_end - v_start;
     float axisLen = length(axis);
 
-    if (axisLen < 1e-5)
+    if (axisLen < 1e-7)
     {
         gl_Position = vec4(0.0);
         v_corner = vec3(0.0);
@@ -44,7 +44,7 @@ void main()
         (gl_VertexID & 2) - 1.0
     );
 
-    const float expansion = 1.05;
+    const float expansion = 5.0;
     vec3 quadCorner = quadCenter + vec3(uv * v_radius * expansion, 0.0);
     v_corner = quadCorner;
 
