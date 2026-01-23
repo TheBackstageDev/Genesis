@@ -279,6 +279,7 @@ namespace sim
         for (int32_t i = 0; i < sim_info.bonds.size(); ++i)
         {
             const auto &bond = sim_info.bonds[i];
+
             sf::Color colA = constants::getElementColor(sim_info.atoms[bond.bondedAtom].ZIndex) + info.color_addition;
             sf::Color colB = constants::getElementColor(sim_info.atoms[bond.centralAtom].ZIndex) + info.color_addition;
 
@@ -363,7 +364,102 @@ namespace sim
     void rendering_engine::drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (!info.flag_highlights) return;
+        drawAtomHighlight(target, info, sim_info);
+        drawBondHighlight(target, info, sim_info);
+    }
 
+    void rendering_engine::drawBondHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
+        if (info.spaceFilling || !info.lennardBall)
+            return;
+
+        std::vector<BondInstance> instances;
+        instances.reserve(info.highlight_bonds.size() * 4);
+
+        for (int32_t i = 0; i < info.highlight_bonds.size(); ++i)
+        {
+            const auto& predict_bond = info.highlight_bonds[i];
+            const auto &bond = *std::find_if(sim_info.bonds.begin(), sim_info.bonds.end(), [&](const sim::fun::bond& b) 
+                { return b.bondedAtom == predict_bond.first, b.centralAtom == predict_bond.second; });
+            glm::vec4 col(1.0, 1.0, 0.0, 0.3);
+
+            int32_t order = static_cast<int32_t>(bond.type);
+
+            glm::vec3 posA = sim_info.positions[bond.bondedAtom];
+            glm::vec3 posB = sim_info.positions[bond.centralAtom];
+
+            glm::vec3 r_vec = posA - posB;
+            if (glm::length(r_vec) > 5.f) continue;
+
+            float baseRadius = 0.2f;
+            float bondR = baseRadius / order;
+            glm::vec3 bondDir = glm::normalize(r_vec);
+
+            glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1,0,0) : glm::vec3(0,1,0);
+            glm::vec3 perp1 = glm::normalize(glm::cross(bondDir, arbitrary));
+            glm::vec3 perp2 = glm::cross(bondDir, perp1);
+
+            const float offsetStep = 0.10f;
+
+            if (order == 1)
+            {
+                instances.emplace_back(
+                    glm::vec4(posA, 1.0f),
+                    glm::vec4(posB, 1.0f),
+                    col, col, bondR
+                );
+            }
+            else
+            {
+                for (int k = 0; k < order; ++k)
+                {
+                    float angle = (static_cast<float>(k) / order) * glm::two_pi<float>();
+                    float offsetAmount = offsetStep * (order == 2 ? 1.0f : 1.0f);
+
+                    glm::vec3 offset = offsetAmount * (std::cos(angle) * perp1 + std::sin(angle) * perp2);
+
+                    glm::vec3 offsetposA = posA + offset;
+                    glm::vec3 offsetposB = posB   + offset;
+
+                    instances.emplace_back(
+                        glm::vec4(offsetposA, 1.0f),
+                        glm::vec4(offsetposB, 1.0f),
+                        col, col, bondR
+                    );
+                }
+            }
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, bond_vbo);
+        glBufferData(GL_ARRAY_BUFFER,
+                     instances.size() * sizeof(BondInstance),
+                     instances.data(),
+                     GL_DYNAMIC_DRAW);
+
+        glBindVertexArray(bond_vao);
+        glUseProgram(bond_program);
+
+        GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
+        GLint loc_view = glGetUniformLocation(bond_program, "u_view");
+
+        if (loc_projection != -1)
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+
+        if (loc_view != -1)
+            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+
+        glEnable(GL_DEPTH_TEST);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR)
+        {
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
+        }
+    }
+
+    void rendering_engine::drawAtomHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
         std::vector<AtomInstance> instances;
         instances.reserve(info.highlight_indices.size());
 

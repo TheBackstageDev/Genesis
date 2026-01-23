@@ -23,7 +23,7 @@ namespace sim::io
 
         if (BONDED(6, 8))
         {
-            if (distance < 1.24f) return fun::BondType::DOUBLE;     // C=O     ~1.20–1.23 Å (carbonyl)
+            if (distance < 1.21f) return fun::BondType::DOUBLE;     // C=O     ~1.20–1.23 Å (carbonyl)
             return fun::BondType::SINGLE;                           // C–O     ~1.36–1.43 Å
         }
 
@@ -114,49 +114,7 @@ namespace sim::io
             if (distance < 1.58f) return fun::BondType::SINGLE;
         }
 
-        float r_single = constants::getBondLength(z1, z2, fun::BondType::SINGLE);
-        float r_double = constants::getBondLength(z1, z2, fun::BondType::DOUBLE);
-        float r_triple = constants::getBondLength(z1, z2, fun::BondType::TRIPLE);
-
-        if (r_single < 0.3f || r_single > 5.0f) 
-        {
-            r_single = (constants::covalent_radius[z1] + constants::covalent_radius[z2]) * 1.10f;
-        }
-        if (r_double < 0.3f || r_double > 5.0f) 
-        {
-            r_double = r_single * 0.88f;
-        }
-        if (r_triple < 0.3f || r_triple > 5.0f) 
-        {
-            r_triple = r_single * 0.78f;
-        }
-
-        if (distance <= r_triple + 0.05f) 
-        {
-            return fun::BondType::TRIPLE;
-        }
-
-        if (distance >= r_single + 0.35f) 
-        {
-            return fun::BondType::SINGLE;
-        }
-
-        constexpr float pauling_const = 0.30f;
-        float delta = r_single - distance;
-        float bond_order = std::exp(delta / pauling_const);
-
-        bond_order = std::clamp(bond_order, 1.0f, 3.2f);
-
-        if (bond_order >= 2.6f) 
-        {
-            return fun::BondType::TRIPLE;
-        }
-        else if (bond_order >= 1.65f) 
-        {
-            return fun::BondType::DOUBLE;
-        }
-
-        return fun::BondType::SINGLE;
+        return fun::BondType::NONE;
     #undef BONDED
     }
 
@@ -211,7 +169,7 @@ namespace sim::io
             positions.emplace_back(x, y, z);
         }
 
-        constexpr float tolerance = 0.35f;
+        constexpr float tolerance = 0.25f;
 
         bonds.clear();
         for (size_t i = 0; i < atoms.size(); ++i)

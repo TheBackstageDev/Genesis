@@ -245,22 +245,29 @@ namespace core
         
         void runUniverse();
         void drawUniverseUI();
+        void drawStatsWindow();
+        void drawHUD();
+        void drawTimeControl();
+
         sim::fun::rendering_info getSimulationRenderingInfo(simulation_render_mode mode);
 
         bool screenshotToggle = false;
 
+        sim::fun::compound_preset_info m_currentSelectedCompound{};
         uint32_t selectedCompound = UINT32_MAX;
+        uint8_t m_selectedElement = UINT32_MAX;
         bool compoundFullView = false;
         bool newCompoundClicked = false;
         bool ghostDisplay = false;
         bool ghostColliding = false;
 
         void insertGhost();
+        void insertGhostElement(std::string symbol = "H");
         void handleGhost();
         void drawCompoundSelector();
         void drawCompoundView(const sim::fun::compound_preset_info& compound);
+        void drawCompoundFullView();
         void drawPeriodicTable();
-        void drawCompoundFulLView();
 
         void pauseMenu();
 

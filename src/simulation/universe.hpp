@@ -140,11 +140,17 @@ namespace sim
             void highlightBond(uint32_t index1, uint32_t index2) { m_highlightedBonds.emplace_back(index1, index2); }
             void createArrow(uint32_t from, uint32_t to) { m_Arrows.emplace_back(from, to); }
 
+            // Sets
+
+            void setTimescale(float timescale = 1.0f) { m_Timescale = timescale; }
+
             // Gets
 
             int32_t numBonds() { return bonds.size(); }
             int32_t numAtoms() { return atoms.size(); }
             int32_t numMolecules() { return molecules.size(); }
+            float getTimescale() { return m_Timescale; }
+            float getEffectiveDT() { return m_Timescale * DT; }
             const subset& getSubset(int32_t index) { return subsets[index]; }
 
             float temperature() const { return temp; }
@@ -322,6 +328,7 @@ namespace sim
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
+            float m_Timescale = 1.0f;
 
             // Visual
 

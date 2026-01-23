@@ -134,7 +134,7 @@ namespace core
                 {
                     try
                     {
-                        std::filesystem::path videoPath;
+                        std::filesystem::path videoPath = path / ("video_" + entry.path().filename().string());
 
                         if (!background)
                         {
@@ -144,7 +144,6 @@ namespace core
                             nInfo.file = entry;
                             nInfo.title = entry.path().filename().replace_extension("").string();
 
-                            videoPath = entry.path() / ("video_" + entry.path().filename().string() + ".json");
                             if (std::filesystem::directory_entry(videoPath).exists())
                                 nInfo.video = videoPath;
                             else
@@ -158,7 +157,7 @@ namespace core
                         {
                             m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), rendering_eng));
 
-                            if (!videoPath.empty())
+                            if (std::filesystem::directory_entry(videoPath).exists())
                                 m_backgroundUniverses.back()->loadFrames(videoPath);
 
                             ++m_backgroundDisplays;
@@ -617,7 +616,7 @@ namespace core
             camera.target = boxSizes * 0.5f;
 
             float diagonal = glm::length(boxSizes);
-            camera.distance = diagonal * 1.2f;
+            camera.distance = diagonal;
             camera.azimuth = 45.f;
             camera.elevation = 25.f;
         }
@@ -628,7 +627,6 @@ namespace core
 
         if (current_universe->numFrames() > 0)
             playFramesUniverse(*current_universe.get());
-        ;
     }
 
     static std::filesystem::path selected_for_delete;
@@ -847,11 +845,11 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("src/resource/molecules/presets/dna.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("src/resource/molecules/car.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {22, 22, 25}); */
+            simulation_universe->createMolecule(structure, {30, 30, 30}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -1119,6 +1117,23 @@ namespace core
 
     // Universe Simulation
 
+    void UIHandler::drawStatsWindow()
+    {
+    
+    }
+
+    void UIHandler::drawTimeControl()
+    {
+    
+    }
+
+    void UIHandler::drawHUD()
+    {
+        ImGui::Begin("HUD");
+
+        ImGui::End();
+    }
+
     void UIHandler::drawUniverseUI()
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
@@ -1150,7 +1165,7 @@ namespace core
         ImGui::Separator();
         ImGui::Text("%s %.2f K", sim_ui["temperature"].get<std::string>().c_str(), simulation_universe->temperature());
         ImGui::Text("%s %.2f bar", sim_ui["pressure"].get<std::string>().c_str(), simulation_universe->pressure());
-        ImGui::Text("%s %.2f ps", sim_ui["time"].get<std::string>().c_str(), simulation_universe->timestep() * DT);
+        ImGui::Text("%s %.2f ps", sim_ui["time"].get<std::string>().c_str(), simulation_universe->timestep() * simulation_universe->getEffectiveDT());
 
         ImGui::NextColumn();
 
@@ -1237,23 +1252,50 @@ namespace core
             p -= Centroid;
         }
 
+        m_currentSelectedCompound = compound;
+
         ghostDisplay = true;
+    }
+
+    void UIHandler::insertGhostElement(std::string symbol)
+    {
+        molecule_structure element = sim::parseSMILES(symbol, false);
+
+        display_universe->clear();
+        display_universe->createMolecule(element, sf::Vector3f(rendering_eng.camera().target.x, rendering_eng.camera().target.y, rendering_eng.camera().target.z));
+
+        ghostDisplay = true;
+
+        sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
+        for (const auto &p : element.positions)
+        {
+            Centroid += p;
+        }
+        Centroid /= static_cast<float>(element.positions.size());
+
+        for (auto &p : element.positions)
+        {
+            p -= Centroid;
+        }
+
+        compound_preset_info nInfo{};
+        nInfo.structure = element;
+        m_currentSelectedCompound = std::move(nInfo);
     }
 
     void UIHandler::handleGhost()
     {
-        if (!ghostDisplay || selectedCompound == UINT32_MAX)
+        if (!ghostDisplay)
             return;
 
         ghostColliding = false;
 
-        auto &compound = compound_presets[selectedCompound];
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
         auto &cam = rendering_eng.camera();
 
         ImVec2 mousePos = ImGui::GetMousePos();
 
-        const auto &base_positions = compound.structure.positions;
+        const auto &base_positions = m_currentSelectedCompound.structure.positions;
         for (size_t i = 0; i < base_positions.size(); ++i)
         {
             sf::Vector3f pos = base_positions[i] + sf::Vector3f(cam.target.x, cam.target.y, cam.target.z);
@@ -1292,7 +1334,7 @@ namespace core
 
         if (ImGui::IsKeyPressed(ImGuiKey_G) && !ghostColliding)
         {
-            simulation_universe->createMolecule(compound.structure, sf::Vector3f(cam.target.x, cam.target.y, cam.target.z));
+            simulation_universe->createMolecule(m_currentSelectedCompound.structure, sf::Vector3f(cam.target.x, cam.target.y, cam.target.z));
 
             if (!ImGui::IsKeyDown(ImGuiKey_LeftShift))
             {
@@ -1399,11 +1441,14 @@ namespace core
         ImGui::PopID();
     }
 
-    void UIHandler::drawCompoundFulLView()
+    void UIHandler::drawCompoundFullView()
     {
         auto &comp_sel = localization_json["Simulation"]["universe_ui"]["compound_selector"];
         auto &full_view = comp_sel["full_view"];
         auto &compounds = localization_json["Compounds"];
+
+        // Do elements later
+        bool isElement = m_selectedElement != UINT32_MAX;
 
         const sim::fun::compound_preset_info &compound = compound_presets[selectedCompound];
 
@@ -1472,7 +1517,9 @@ namespace core
             ImGui::Dummy(ImVec2(0, 15));
 
             ImGui::TextDisabled(full_view["description"].get<std::string>().c_str());
-            ImGui::TextWrapped(compounds["compound_descriptions"][compound.name].get<std::string>().c_str());
+
+            //std::string description = localization_json["Compounds"].count(compound.name) == 0 ? compounds["compound_descriptions"][compound.name] : localization_json[default_json["Compounds"]["compound_names"][compound.id]];
+            ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]].get<std::string>().c_str());
 
             ImGui::Dummy(ImVec2(0, 20));
 
@@ -1554,7 +1601,7 @@ namespace core
         }
 
         if (compoundFullView)
-            drawCompoundFulLView();
+            drawCompoundFullView();
 
         ImGui::End();
     }
@@ -1673,7 +1720,13 @@ namespace core
 
                 if (ImGui::Button(std::string("##" + symbol).c_str(), ImVec2(box_size, box_size))) 
                 {
-
+                    m_selectedElement = Z;
+                    compoundFullView = true;
+                    
+                    // upper part is for when implement fullview for elements
+                    insertGhostElement(symbol);
+                    compoundSelector = false;
+                    compoundFullView = false;
                 }
 
                 ImVec2 buttonMin = ImGui::GetItemRectMin();

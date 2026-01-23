@@ -50,5 +50,11 @@ void main()
     gl_FragDepth = viewPosToDepth(hitPos_view);
 
     float NdotL = max(0.0, dot(hit_normal, u_lightDir));
-    fragColor = vec4(v_color.rgb * (0.2 + 0.8 * NdotL), v_color.w);
+    vec3 final_color = v_color.rgb * (0.2 + 0.8 * NdotL);
+    
+    vec3 viewDir = normalize(-hitPos_view);
+    float fresnel = pow(1.0 - abs(dot(hit_normal, viewDir)), 4.0);
+    final_color += vec3(0.9, 0.9, 1.0) * fresnel * 0.4;
+
+    fragColor = vec4(final_color * (0.3 + 0.8 * NdotL), v_color.w);
 }

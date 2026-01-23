@@ -513,7 +513,7 @@ namespace sim
                 return {0.f, 0.f, 0.f};
 
             float forceMag = COULOMB_K * qq / (dr * dr * dr);
-            return -forceMag * dr_vec;
+            return forceMag * dr_vec;
         }
 
         float universe::calculateDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
@@ -947,11 +947,10 @@ namespace sim
 
                 if (rank < subdivide_top)
                 {
-                    int32_t slice_size = static_cast<int32_t>((n + threads_per_top - 1) / threads_per_top);
+                    int32_t slice_size = static_cast<int32_t>((n + threads_per_top) / threads_per_top);
                     for (int32_t p = 0; p < threads_per_top; ++p)
                     {
                         int32_t start = p * slice_size;
-                        if (p != 0) start += 1;
                         int32_t end = std::min(start + slice_size, static_cast<int32_t>(n));
                         if (start >= end)
                             break;
@@ -1094,18 +1093,20 @@ namespace sim
             setPressure(targetPressure);
             setTemperature(targetTemperature);
 
+            float dt = DT * m_Timescale;
+
             for (int32_t i = 0; i < N; ++i)
             {
                 sf::Vector3f accel = force(i) / atoms[i].mass;
-                add_vel(i, accel * (0.5f * DT));
+                add_vel(i, accel * (0.5f * dt));
 
                 if (gravity)
-                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * DT));
+                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * dt));
             }
 
             for (int32_t i = 0; i < N; ++i)
             {
-                sf::Vector3f dPos = vel(i) * DT;
+                sf::Vector3f dPos = vel(i) * dt;
                 add_pos(i, dPos);
                 boundCheck(i);
             }
@@ -1123,10 +1124,10 @@ namespace sim
             for (int32_t i = 0; i < N; ++i)
             {
                 sf::Vector3f accel = force(i) / atoms[i].mass;
-                add_vel(i, accel * (0.5f * DT));
+                add_vel(i, accel * (0.5f * dt));
 
                 if (gravity)
-                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * DT));
+                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * dt));
             }
 
             buildCells();
@@ -1337,6 +1338,8 @@ namespace sim
 
         video universe::saveAsVideo(const std::filesystem::path path, const std::string name)
         {
+            if (m_frames.size() == 0) return {};
+
             nlohmann::json json_video{};
 
             videoMetaData nMetadata{};
@@ -1350,7 +1353,7 @@ namespace sim
                     {"title", nMetadata.title},
                     {"description", "Molecular dynamics trajectory"},
                     {"atoms", nMetadata.num_atoms},
-                    {"frames", nMetadata.num_frames},
+                    {"frames", nMetadata.num_frames / 5},
                     {"box", {box.x, box.y, box.z}}};
 
             json_video["positions"] = nlohmann::json::array();
@@ -1389,7 +1392,7 @@ namespace sim
                 file << json_video.dump();
                 file.close();
 
-                std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames to " << path << '\n';
+                std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " <<json_video["metadata"]["atoms"] << " atoms to " << path << '\n';
             }
             catch (std::exception &e)
             {

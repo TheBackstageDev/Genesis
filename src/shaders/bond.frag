@@ -13,19 +13,8 @@ uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
 
 out vec4 fragColor;
 
-vec2 sphIntersect(in vec3 ro, in vec3 rd, in vec3 ce, in float ra)
+vec2 cylIntersect(in vec3 ro, in vec3 rd, in vec3 c0, in vec3 c1, in float ra) 
 {
-    vec3 oc = ro - ce;
-    float b = dot( oc, rd );
-    float c = dot( oc, oc ) - ra*ra;
-    float h = b*b - c;
-    
-    if( h<0.0 ) return vec2(-1.0);
-    h = sqrt( h );
-    return vec2( -b-h, -b+h );
-}
-
-vec2 cylIntersect(in vec3 ro, in vec3 rd, in vec3 c0, in vec3 c1, in float ra) {
     vec3  ba = c1 - c0;
     vec3  ca = ro - c0;
     float baba = dot(ba, ba);
@@ -80,21 +69,22 @@ void main()
     float len2 = dot(ba, ba);
     float h = dot(hit - v_start, ba) / len2;
 
-    if (h < -0.1 || h > 1.1) 
+    if (h < 0.0 || h > 1.0) 
     {
         discard;
     }
 
     gl_FragDepth = viewPosToDepth(hit);
 
-    vec3 hitPos_view = ro + t * rd;
-    vec3 hit_normal = normalize(hitPos_view - center);
-
     vec3 closest = v_start + h * ba;
 
     vec3 normal = normalize(hit - closest);
     vec4 final_color = mix(v_colorStart, v_colorEnd, clamp(h, 0.0, 1.0));
 
+    vec3 viewDir = normalize(-closest);
+    float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 4.0);
+    final_color += vec4(0.9, 0.9, 1.0, 1.0) * fresnel * 0.4;
+
     float NdotL = max(0.0, dot(normal, u_lightDir));
-    fragColor = vec4(final_color.xyz * (0.2 + 0.8 * NdotL), final_color.w);
+    fragColor = vec4(final_color.xyz * (0.1 + 0.8 * NdotL), final_color.w);
 }

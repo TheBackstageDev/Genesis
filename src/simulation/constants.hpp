@@ -24,7 +24,6 @@ namespace constants
 
 #define EPSILON 0.1f
 #define DT 0.001f // ps
-#define DECREASED_DT 0.0005f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
@@ -58,94 +57,136 @@ namespace constants
 
 #define COUNT_ATOMS 118
 
-    inline constexpr std::array<float, 119> covalent_radius = 
-    {
-        0.00f,  // Z=0 (dummy)
-        0.31f,  // H
-        0.28f,  // He
-        1.28f,  // Li
-        0.96f,  // Be
-        0.84f,  // B
-        0.76f,  // C
-        0.71f,  // N
-        0.66f,  // O
-        0.57f,  // F
-        0.58f,  // Ne
-        1.66f,  // Na
-        1.41f,  // Mg
-        1.21f,  // Al
-        1.11f,  // Si
-        1.07f,  // P
-        1.05f,  // S
-        1.02f,  // Cl
-        1.00f,  // Ar
-        2.03f,  // K
-        1.76f,  // Ca
-        1.70f,  // Sc
-        1.60f,  // Ti
-        1.50f,  // V
-        1.42f,  // Cr
-        1.46f,  // Mn
-        1.48f,  // Fe
-        1.40f,  // Co
-        1.37f,  // Ni
-        1.39f,  // Cu
-        1.25f,  // Zn
-        1.46f,  // Ga
-        1.21f,  // Ge
-        1.07f,  // As
-        1.05f,  // Se
-        1.02f,  // Br
-        1.00f,  // Kr
-        2.20f,  // Rb
-        1.95f,  // Sr
-        1.90f,  // Y
-        1.75f,  // Zr
-        1.65f,  // Nb
-        1.55f,  // Mo
-        1.45f,  // Tc
-        1.40f,  // Ru
-        1.39f,  // Rh
-        1.35f,  // Pd
-        1.30f,  // Ag
-        1.25f,  // Cd
-        1.35f,  // In
-        1.22f,  // Sn
-        1.20f,  // Sb
-        1.19f,  // Te
-        1.20f,  // I
-        1.20f,  // Xe
-        2.44f,  // Cs
-        2.15f,  // Ba
-        2.05f,  // La
-        2.00f,  // Hf (Lu=1.75, but grouped)
-        1.90f,  // Ta
-        1.85f,  // W
-        1.80f,  // Re
-        1.75f,  // Os
-        1.75f,  // Ir
-        1.75f,  // Pt
-        1.55f,  // Au
-        1.45f,  // Hg
-        1.60f,  // Tl
-        1.50f,  // Pb
-        1.45f,  // Bi
-        1.45f,  // Po
-        1.40f,  // At
-        1.40f,  // Rn
-        2.60f,  // Fr
-        2.25f,  // Ra
-        0.00f,  // Ac
+    inline constexpr std::array<float, 119> covalent_radius = {
+        0.00f,   // Z=0 (dummy)
 
-        1.80f,  // Ce 1.80, Pr 1.80, Nd 1.80, Pm 1.80, Sm 1.80, Eu 1.80, Gd 1.80,
-        1.80f,  // Tb 1.75, Dy 1.75, Ho 1.75, Er 1.75, Tm 1.75, Yb 1.75, Lu 1.75
+        0.32f,   // 1  H   (Pyykkö 32 pm)
+        0.46f,   // 2  He  (estimated for rare cases)
 
-        1.70f,  // Th 1.75, Pa 1.70, U 1.65, Np 1.65, Pu 1.65, Am 1.65, Cm 1.65,
-        1.65f,  // Bk 1.65, Cf 1.65, Es 1.65, Fm 1.65, Md 1.65, No 1.65
+        1.33f,   // 3  Li
+        0.98f,   // 4  Be
+        0.85f,   // 5  B
+        0.75f,   // 6  C
+        0.71f,   // 7  N
+        0.63f,   // 8  O
+        0.64f,   // 9  F
+        0.58f,   // 10 Ne
 
-        1.60f,  // Rf 1.60, Db 1.60, Sg 1.60, Bh 1.60, Hs 1.60, Mt 1.50,
-        1.50f,  // Ds 1.40, Rg 1.35, Cn 1.30, Nh 1.30, Fl 1.30, Mc 1.30, Lv 1.30,
-        1.30f,  // Ts 1.30, Og 1.30
+        1.55f,   // 11 Na
+        1.39f,   // 12 Mg
+        1.26f,   // 13 Al
+        1.16f,   // 14 Si
+        1.11f,   // 15 P
+        1.03f,   // 16 S
+        0.99f,   // 17 Cl
+        0.96f,   // 18 Ar
+
+        1.96f,   // 19 K
+        1.71f,   // 20 Ca
+        1.48f,   // 21 Sc
+        1.36f,   // 22 Ti
+        1.34f,   // 23 V
+        1.22f,   // 24 Cr
+        1.19f,   // 25 Mn
+        1.16f,   // 26 Fe
+        1.11f,   // 27 Co
+        1.10f,   // 28 Ni
+        1.12f,   // 29 Cu
+        1.18f,   // 30 Zn
+        1.24f,   // 31 Ga
+        1.21f,   // 32 Ge
+        1.21f,   // 33 As
+        1.16f,   // 34 Se
+        1.14f,   // 35 Br
+        1.17f,   // 36 Kr
+
+        2.10f,   // 37 Rb
+        1.85f,   // 38 Sr
+        1.63f,   // 39 Y
+        1.54f,   // 40 Zr
+        1.47f,   // 41 Nb
+        1.38f,   // 42 Mo
+        1.28f,   // 43 Tc
+        1.25f,   // 44 Ru
+        1.25f,   // 45 Rh
+        1.20f,   // 46 Pd
+        1.28f,   // 47 Ag
+        1.36f,   // 48 Cd
+        1.42f,   // 49 In
+        1.40f,   // 50 Sn
+        1.40f,   // 51 Sb
+        1.36f,   // 52 Te
+        1.33f,   // 53 I
+        1.31f,   // 54 Xe
+
+        2.32f,   // 55 Cs
+        1.96f,   // 56 Ba
+        1.80f,   // 57 La
+        1.63f,   // 58 Ce
+        1.76f,   // 59 Pr
+        1.74f,   // 60 Nd
+        1.73f,   // 61 Pm
+        1.72f,   // 62 Sm
+        1.68f,   // 63 Eu
+        1.69f,   // 64 Gd
+        1.68f,   // 65 Tb
+        1.67f,   // 66 Dy
+        1.66f,   // 67 Ho
+        1.65f,   // 68 Er
+        1.64f,   // 69 Tm
+        1.70f,   // 70 Yb
+        1.62f,   // 71 Lu
+
+        1.52f,   // 72 Hf
+        1.46f,   // 73 Ta
+        1.37f,   // 74 W
+        1.31f,   // 75 Re
+        1.29f,   // 76 Os
+        1.22f,   // 77 Ir
+        1.23f,   // 78 Pt
+        1.24f,   // 79 Au
+        1.33f,   // 80 Hg
+        1.44f,   // 81 Tl
+        1.51f,   // 82 Pb
+        1.45f,   // 83 Bi
+        1.47f,   // 84 Po
+        1.42f,   // 85 At
+        1.42f,   // 86 Rn
+
+        2.23f,   // 87 Fr
+        2.01f,   // 88 Ra
+
+        1.86f,   // 89 Ac
+        1.75f,   // 90 Th
+        1.69f,   // 91 Pa
+        1.70f,   // 92 U
+        1.71f,   // 93 Np
+        1.72f,   // 94 Pu
+        1.66f,   // 95 Am
+        1.66f,   // 96 Cm
+        1.68f,   // 97 Bk
+        1.68f,   // 98 Cf
+        1.65f,   // 99 Es
+        1.67f,   // 100 Fm
+        1.73f,   // 101 Md
+        1.76f,   // 102 No
+        1.61f,   // 103 Lr
+
+        1.57f,   // 104 Rf
+        1.49f,   // 105 Db
+        1.43f,   // 106 Sg
+        1.41f,   // 107 Bh
+        1.34f,   // 108 Hs
+        1.29f,   // 109 Mt
+        1.28f,   // 110 Ds
+        1.21f,   // 111 Rg
+        1.22f,   // 112 Cn
+        1.36f,   // 113 Nh
+        1.62f,   // 114 Fl
+        1.75f,   // 115 Mc
+        1.65f,   // 116 Lv
+        1.57f,   // 117 Ts
+        1.57f    // 118 Og
     };
 
     constexpr uint8_t NEUTRON_COUNTS[119] = 
@@ -271,19 +312,138 @@ namespace constants
         160   // 118 Og → ~²⁹⁴Og
     };
 
-    constexpr float VDW_RADII[119] = {
-        0.00f, 1.20f, 1.40f, 1.82f, 1.53f, 1.92f, 1.70f, 1.55f, 1.52f, 1.47f,
-        1.54f, 2.27f, 1.73f, 1.84f, 2.10f, 1.80f, 1.80f, 1.75f, 1.88f, 2.75f,
-        2.31f, 2.30f, 2.20f, 2.15f, 2.10f, 2.05f, 2.00f, 1.95f, 1.90f, 1.85f,
-        1.80f, 2.02f, 2.11f, 1.85f, 1.90f, 1.85f, 2.02f, 3.03f, 2.49f, 2.40f,
-        2.35f, 2.30f, 2.25f, 2.20f, 2.15f, 2.10f, 2.05f, 2.02f, 1.98f, 1.93f,
-        2.17f, 2.06f, 2.06f, 1.98f, 2.16f, 3.43f, 2.98f, 2.70f, 2.65f, 2.60f,
-        2.55f, 2.50f, 2.45f, 2.40f, 2.35f, 2.30f, 2.25f, 2.20f, 2.15f, 2.10f,
-        2.50f, 2.45f, 2.40f, 2.35f, 2.30f, 2.25f, 2.20f, 2.15f, 2.10f, 2.05f,
-        2.00f, 1.95f, 1.90f, 1.85f, 1.80f, 1.75f, 1.70f, 1.65f, 1.60f, 1.55f,
-        1.50f, 1.45f, 1.40f, 1.35f, 1.30f, 1.25f, 1.20f, 1.15f, 1.10f, 1.05f,
-        1.00f, 0.95f, 0.90f, 0.85f, 0.80f, 0.75f, 0.70f, 0.65f, 0.60f, 0.55f,
-        0.50f, 0.45f, 0.40f, 0.35f, 0.30f, 0.25f, 0.20f, 0.15f, 0.10f
+    inline constexpr float VDW_RADII[119] = 
+    {
+        0.00f,   // Z=0 (dummy)
+
+        1.10f,   //  1  H 
+        1.40f,   //  2  He
+
+        1.81f,   //  3  Li
+        1.53f,   //  4  Be
+        1.92f,   //  5  B
+        1.70f,   //  6  C
+        1.55f,   //  7  N
+        1.52f,   //  8  O
+        1.47f,   //  9  F
+        1.54f,   // 10 Ne
+
+        2.27f,   // 11 Na
+        1.73f,   // 12 Mg
+        1.84f,   // 13 Al
+        2.10f,   // 14 Si
+        1.80f,   // 15 P
+        1.80f,   // 16 S
+        1.75f,   // 17 Cl
+        1.88f,   // 18 Ar
+
+        2.75f,   // 19 K
+        2.31f,   // 20 Ca
+        2.11f,   // 21 Sc
+        2.00f,   // 22 Ti
+        2.00f,   // 23 V
+        2.00f,   // 24 Cr
+        2.00f,   // 25 Mn
+        2.00f,   // 26 Fe
+        2.00f,   // 27 Co
+        1.63f,   // 28 Ni 
+        1.40f,   // 29 Cu 
+        1.39f,   // 30 Zn
+        1.87f,   // 31 Ga
+        2.11f,   // 32 Ge
+        1.85f,   // 33 As
+        1.90f,   // 34 Se
+        1.83f,   // 35 Br
+        2.02f,   // 36 Kr
+
+        3.03f,   // 37 Rb
+        2.49f,   // 38 Sr
+        2.00f,   // 39 Y 
+        2.00f,   // 40 Zr
+        2.00f,   // 41 Nb
+        2.00f,   // 42 Mo
+        2.00f,   // 43 Tc
+        2.00f,   // 44 Ru
+        2.00f,   // 45 Rh
+        1.63f,   // 46 Pd 
+        1.72f,   // 47 Ag
+        1.58f,   // 48 Cd
+        1.93f,   // 49 In
+        2.17f,   // 50 Sn
+        2.06f,   // 51 Sb
+        2.06f,   // 52 Te
+        1.98f,   // 53 I
+        2.16f,   // 54 Xe
+
+        3.43f,   // 55 Cs
+        2.68f,   // 56 Ba
+
+        2.35f,   // 57 La
+        2.30f,   // 58 Ce
+        2.30f,   // 59 Pr
+        2.30f,   // 60 Nd
+        2.30f,   // 61 Pm
+        2.30f,   // 62 Sm
+        2.30f,   // 63 Eu
+        2.30f,   // 64 Gd
+        2.30f,   // 65 Tb
+        2.30f,   // 66 Dy
+        2.30f,   // 67 Ho
+        2.30f,   // 68 Er
+        2.30f,   // 69 Tm
+        2.30f,   // 70 Yb
+        2.30f,   // 71 Lu
+
+        2.23f,   // 72 Hf   
+        2.00f,   // 73 Ta
+        2.00f,   // 74 W
+        2.00f,   // 75 Re
+        2.00f,   // 76 Os
+        2.00f,   // 77 Ir
+        1.75f,   // 78 Pt   
+        1.66f,   // 79 Au
+        1.55f,   // 80 Hg   
+        1.96f,   // 81 Tl
+        2.02f,   // 82 Pb
+        2.07f,   // 83 Bi
+        1.97f,   // 84 Po
+        2.02f,   // 85 At
+        2.20f,   // 86 Rn
+
+        3.48f,   // 87 Fr
+        2.83f,   // 88 Ra
+
+        2.40f,   // 89 Ac
+        2.40f,   // 90 Th
+        2.30f,   // 91 Pa
+        2.30f,   // 92 U
+        2.30f,   // 93 Np
+        2.30f,   // 94 Pu
+        2.30f,   // 95 Am
+        2.30f,   // 96 Cm
+        2.30f,   // 97 Bk
+        2.30f,   // 98 Cf
+        2.30f,   // 99 Es
+        2.30f,   //100 Fm
+        2.30f,   //101 Md
+        2.30f,   //102 No
+        2.30f,   //103 Lr
+
+        2.20f,   //104 Rf
+        2.10f,   //105 Db
+        2.00f,   //106 Sg
+        2.00f,   //107 Bh
+        2.00f,   //108 Hs
+        2.00f,   //109 Mt
+        2.00f,   //110 Ds
+        2.00f,   //111 Rg
+        2.00f,   //112 Cn
+        2.00f,   //113 Nh
+        2.00f,   //114 Fl
+        2.00f,   //115 Mc
+        2.00f,   //116 Lv
+        2.00f,   //117 Ts
+        2.00f    //118 Og
     };
 
     inline sf::Color getElementColor(uint8_t Z)
@@ -988,8 +1148,85 @@ namespace constants
             else if (BONDED(29,6))  base = 1.90f;   // Cu–C
             else if (BONDED(46,6))  base = 2.05f;   // Pd–C
             else if (BONDED(78,6))  base = 2.00f;   // Pt–C
+            else if (BONDED(47,1)) base = 1.62f;   // Ag–H
+            else if (BONDED(48,1)) base = 1.66f;   // Cd–H
+            else if (BONDED(79,1)) base = 1.52f;   // Au–H
+            else if (BONDED(80,1)) base = 1.74f;   // Hg–H
 
             else if (BONDED(6,6))   base = 1.39f;
+
+            // Hydrides
+
+            if (BONDED(3,1))  base = 1.60f;   // Li–H
+            else if (BONDED(4,1))  base = 1.34f;   // Be–H (in BeH2 polymeric ~1.34 Å)
+            else if (BONDED(11,1)) base = 1.96f;   // Na–H
+            else if (BONDED(12,1)) base = 1.89f;   // Mg–H
+            else if (BONDED(19,1)) base = 2.32f;   // K–H
+            else if (BONDED(20,1)) base = 2.04f;   // Ca–H
+            else if (BONDED(21,1)) base = 1.92f;   // Sc–H 
+            else if (BONDED(22,1)) base = 1.70f;   // Ti–H
+            else if (BONDED(23,1)) base = 1.68f;   // V–H
+            else if (BONDED(24,1)) base = 1.66f;   // Cr–H
+            else if (BONDED(25,1)) base = 1.62f;   // Mn–H
+            else if (BONDED(26,1)) base = 1.60f;   // Fe–H
+            else if (BONDED(27,1)) base = 1.58f;   // Co–H
+            else if (BONDED(28,1)) base = 1.56f;   // Ni–H
+            else if (BONDED(29,1)) base = 1.55f;   // Cu–H
+            else if (BONDED(30,1)) base = 1.60f;   // Zn–H
+            else if (BONDED(37,1)) base = 2.45f;   // Rb–H
+            else if (BONDED(38,1)) base = 2.20f;   // Sr–H
+            else if (BONDED(39,1)) base = 2.05f;   // Y–H
+            else if (BONDED(40,1)) base = 1.85f;   // Zr–H
+            else if (BONDED(41,1)) base = 1.82f;   // Nb–H
+            else if (BONDED(42,1)) base = 1.80f;   // Mo–H
+            else if (BONDED(43,1)) base = 1.78f;   // Tc–H 
+            else if (BONDED(44,1)) base = 1.75f;   // Ru–H
+            else if (BONDED(45,1)) base = 1.72f;   // Rh–H
+            else if (BONDED(46,1)) base = 1.70f;   // Pd–H
+            else if (BONDED(47,1)) base = 1.62f;   // Ag–H
+            else if (BONDED(48,1)) base = 1.66f;   // Cd–H
+            else if (BONDED(55,1)) base = 2.60f;   // Cs–H
+            else if (BONDED(56,1)) base = 2.35f;   // Ba–H
+            else if (BONDED(57,1)) base = 2.06f;   // La–H
+            else if (BONDED(58,1)) base = 2.04f;   // Ce–H
+            else if (BONDED(59,1)) base = 2.02f;   // Pr–H
+            else if (BONDED(60,1)) base = 2.01f;   // Nd–H
+
+            if (BONDED(61,1)) base = 2.00f;   // Pm–H 
+            else if (BONDED(62,1)) base = 1.99f;   // Sm–H
+            else if (BONDED(63,1)) base = 1.98f;   // Eu–H
+            else if (BONDED(64,1)) base = 1.97f;   // Gd–H
+            else if (BONDED(65,1)) base = 1.96f;   // Tb–H
+            else if (BONDED(66,1)) base = 1.95f;   // Dy–H
+            else if (BONDED(67,1)) base = 1.94f;   // Ho–H
+            else if (BONDED(68,1)) base = 1.93f;   // Er–H
+            else if (BONDED(69,1)) base = 1.92f;   // Tm–H
+            else if (BONDED(70,1)) base = 1.91f;   // Yb–H
+            else if (BONDED(71,1)) base = 1.90f;   // Lu–H
+            else if (BONDED(72,1)) base = 1.88f;   // Hf–H
+            else if (BONDED(73,1)) base = 1.86f;   // Ta–H
+            else if (BONDED(74,1)) base = 1.84f;   // W–H
+            else if (BONDED(75,1)) base = 1.82f;   // Re–H
+            else if (BONDED(76,1)) base = 1.80f;   // Os–H
+            else if (BONDED(77,1)) base = 1.78f;   // Ir–H
+            else if (BONDED(78,1)) base = 1.76f;   // Pt–H
+            else if (BONDED(79,1)) base = 1.52f;   // Au–H
+            else if (BONDED(80,1)) base = 1.74f;   // Hg–H
+            else if (BONDED(81,1)) base = 1.70f;   // Tl–H
+            else if (BONDED(82,1)) base = 1.90f;   // Pb–H
+            else if (BONDED(83,1)) base = 1.85f;   // Bi–H
+            else if (BONDED(84,1)) base = 1.80f;   // Po–H 
+            else if (BONDED(85,1)) base = 1.75f;   // At–H 
+            else if (BONDED(87,1)) base = 2.80f;   // Fr–H 
+            else if (BONDED(88,1)) base = 2.50f;   // Ra–H 
+            else if (BONDED(89,1)) base = 2.20f;   // Ac–H
+            else if (BONDED(90,1)) base = 2.00f;   // Th–H
+            else if (BONDED(92,1)) base = 1.95f;   // U–H
+
+            // Lanthanides
+            else if (BONDED(57,1)) base = 2.06f;   // La–H
+            else if (BONDED(64,1)) base = 1.97f;   // Gd–H
+
             break;
 
         case sim::fun::BondType::DOUBLE:
