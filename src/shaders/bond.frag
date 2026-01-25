@@ -10,6 +10,7 @@ in vec3  v_corner;
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
+uniform bool licorice = false;
 
 out vec4 fragColor;
 
@@ -80,10 +81,14 @@ void main()
 
     vec3 normal = normalize(hit - closest);
     vec4 final_color = mix(v_colorStart, v_colorEnd, clamp(h, 0.0, 1.0));
+    final_color = licorice ? final_color = h > 0.5 ? v_colorEnd : v_colorStart : final_color;
 
-    vec3 viewDir = normalize(-closest);
-    float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 4.0);
-    final_color += vec4(0.9, 0.9, 1.0, 1.0) * fresnel * 0.4;
+    float VdotN = dot(normalize(-hit), normal);
+    float rim = smoothstep(0.3, 0.0, abs(VdotN));
+    rim = pow(rim, 1.6);
+
+    vec3 rimColor = vec3(0.9, 0.95, 1.0);
+    final_color.rgb += rimColor * rim * 0.55;
 
     float NdotL = max(0.0, dot(normal, u_lightDir));
     fragColor = vec4(final_color.xyz * (0.1 + 0.8 * NdotL), final_color.w);

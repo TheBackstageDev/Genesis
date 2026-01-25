@@ -33,6 +33,7 @@
       {
         "ball_and_stick": "Bola e Palito",
         "letter_and_stick": "Letra e Palito",
+        "licorice": "Licorice",
         "space_filling": "Preenchedor de Espaço"
       }
     },
@@ -217,6 +218,8 @@
 
       "tooltip_resume": "Resumir a Simulação",
       "tooltip_pause": "Pausar a Simulação",
+      "tooltip_speedup": "Aumentar velocidade da simulação",
+      "tooltip_slowdown": "Diminuir velocidade da simulação",
       "tooltip_screenshot": "Tirar uma foto",
       "tooltip_scenario_disabled": "Disabilitado devido ao Cenário",
       "tooltip_compound_selector": "Adicionar Composto",

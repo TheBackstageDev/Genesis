@@ -34,6 +34,7 @@
       {
         "ball_and_stick": "Ball And Stick",
         "letter_and_stick": "Letter And Stick",
+        "licorice": "Licorice",
         "space_filling": "Space Filling"
       }
     },
@@ -230,6 +231,8 @@
 
       "tooltip_resume": "Resume Simulation",
       "tooltip_pause": "Pause Simulation",
+      "tooltip_speedup": "Increase simulation speed",
+      "tooltip_slowdown": "Decrease simulation speed",
       "tooltip_screenshot": "Take a screenshot",
       "tooltip_compound_selector": "Add Compound",
       "tooltip_scenario_disabled": "Disabled due to Scenario",

@@ -219,7 +219,7 @@ namespace sim
         std::vector<AtomInstance> instances;
         instances.reserve(sim_info.atoms.size());
 
-        if (info.lennardBall)
+        if (info.lennardBall || info.licorice)
         {
             for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
             {
@@ -227,9 +227,14 @@ namespace sim
                     break;
 
                 const auto &atom = sim_info.atoms[i];
-                float radius = info.spaceFilling
-                                   ? constants::VDW_RADII[atom.ZIndex] * 0.8f
-                                   : constants::covalent_radius[atom.ZIndex] * 0.7f;
+                float radius = 0.f;
+
+                if (info.licorice)
+                    radius = licorice_radius;
+                else
+                    radius = info.spaceFilling
+                                 ? constants::VDW_RADII[atom.ZIndex] * 0.8f
+                                 : constants::covalent_radius[atom.ZIndex] * 0.7f;
 
                 sf::Color col = constants::getElementColor(atom.ZIndex) + info.color_addition;
                 glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, info.opacity);
@@ -270,7 +275,7 @@ namespace sim
 
     void rendering_engine::bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (info.spaceFilling || !info.lennardBall)
+        if (info.spaceFilling || (!info.lennardBall && !info.licorice))
             return;
 
         std::vector<BondInstance> instances;
@@ -292,13 +297,22 @@ namespace sim
             glm::vec3 posB = sim_info.positions[bond.centralAtom];
 
             glm::vec3 r_vec = posA - posB;
-            if (glm::length(r_vec) > 5.f) continue;
+            if (glm::length(r_vec) > 5.f)
+                continue;
+
+            if (info.licorice)
+            {
+                instances.emplace_back(
+                glm::vec4(posA, 1.0f),
+                glm::vec4(posB, 1.0f),
+                colorA_norm, colorB_norm, licorice_radius);
+            }
 
             float baseRadius = 0.15f;
             float bondR = baseRadius / order;
             glm::vec3 bondDir = glm::normalize(r_vec);
 
-            glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1,0,0) : glm::vec3(0,1,0);
+            glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
             glm::vec3 perp1 = glm::normalize(glm::cross(bondDir, arbitrary));
             glm::vec3 perp2 = glm::cross(bondDir, perp1);
 
@@ -309,8 +323,7 @@ namespace sim
                 instances.emplace_back(
                     glm::vec4(posA, 1.0f),
                     glm::vec4(posB, 1.0f),
-                    colorA_norm, colorB_norm, bondR
-                );
+                    colorA_norm, colorB_norm, bondR);
             }
             else
             {
@@ -322,13 +335,12 @@ namespace sim
                     glm::vec3 offset = offsetAmount * (std::cos(angle) * perp1 + std::sin(angle) * perp2);
 
                     glm::vec3 offsetposA = posA + offset;
-                    glm::vec3 offsetposB = posB   + offset;
+                    glm::vec3 offsetposB = posB + offset;
 
                     instances.emplace_back(
                         glm::vec4(offsetposA, 1.0f),
                         glm::vec4(offsetposB, 1.0f),
-                        colorA_norm, colorB_norm, bondR
-                    );
+                        colorA_norm, colorB_norm, bondR);
                 }
             }
         }
@@ -344,12 +356,16 @@ namespace sim
 
         GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
         GLint loc_view = glGetUniformLocation(bond_program, "u_view");
+        GLint loc_licorice = glGetUniformLocation(bond_program, "licorice");
 
         if (loc_projection != -1)
             glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+
+        if (loc_licorice != -1)
+            glUniform1i(loc_licorice, static_cast<uint8_t>(info.licorice));
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -363,7 +379,8 @@ namespace sim
 
     void rendering_engine::drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (!info.flag_highlights) return;
+        if (!info.flag_highlights)
+            return;
         drawAtomHighlight(target, info, sim_info);
         drawBondHighlight(target, info, sim_info);
     }
@@ -378,9 +395,9 @@ namespace sim
 
         for (int32_t i = 0; i < info.highlight_bonds.size(); ++i)
         {
-            const auto& predict_bond = info.highlight_bonds[i];
-            const auto &bond = *std::find_if(sim_info.bonds.begin(), sim_info.bonds.end(), [&](const sim::fun::bond& b) 
-                { return b.bondedAtom == predict_bond.first, b.centralAtom == predict_bond.second; });
+            const auto &predict_bond = info.highlight_bonds[i];
+            const auto &bond = *std::find_if(sim_info.bonds.begin(), sim_info.bonds.end(), [&](const sim::fun::bond &b)
+                                             { return b.bondedAtom == predict_bond.first, b.centralAtom == predict_bond.second; });
             glm::vec4 col(1.0, 1.0, 0.0, 0.3);
 
             int32_t order = static_cast<int32_t>(bond.type);
@@ -389,13 +406,14 @@ namespace sim
             glm::vec3 posB = sim_info.positions[bond.centralAtom];
 
             glm::vec3 r_vec = posA - posB;
-            if (glm::length(r_vec) > 5.f) continue;
+            if (glm::length(r_vec) > 5.f)
+                continue;
 
             float baseRadius = 0.2f;
             float bondR = baseRadius / order;
             glm::vec3 bondDir = glm::normalize(r_vec);
 
-            glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1,0,0) : glm::vec3(0,1,0);
+            glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
             glm::vec3 perp1 = glm::normalize(glm::cross(bondDir, arbitrary));
             glm::vec3 perp2 = glm::cross(bondDir, perp1);
 
@@ -406,8 +424,7 @@ namespace sim
                 instances.emplace_back(
                     glm::vec4(posA, 1.0f),
                     glm::vec4(posB, 1.0f),
-                    col, col, bondR
-                );
+                    col, col, bondR);
             }
             else
             {
@@ -419,13 +436,12 @@ namespace sim
                     glm::vec3 offset = offsetAmount * (std::cos(angle) * perp1 + std::sin(angle) * perp2);
 
                     glm::vec3 offsetposA = posA + offset;
-                    glm::vec3 offsetposB = posB   + offset;
+                    glm::vec3 offsetposB = posB + offset;
 
                     instances.emplace_back(
                         glm::vec4(offsetposA, 1.0f),
                         glm::vec4(offsetposB, 1.0f),
-                        col, col, bondR
-                    );
+                        col, col, bondR);
                 }
             }
         }
@@ -465,7 +481,7 @@ namespace sim
 
         for (int32_t i = 0; i < info.highlight_indices.size(); ++i)
         {
-            auto& highlight = info.highlight_indices[i];
+            auto &highlight = info.highlight_indices[i];
 
             if (sim_info.positions.size() < highlight)
                 break;

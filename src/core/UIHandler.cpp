@@ -10,37 +10,37 @@
 namespace core
 {
     // Periodic Table
-    
+
     ImVec4 getElementColor(char type)
     {
         switch (type)
         {
-            case 'K': 
-                return ImVec4(1.00f, 0.40f, 0.40f, 1.00f);
+        case 'K':
+            return ImVec4(1.00f, 0.40f, 0.40f, 1.00f);
 
-            case 'T':
-                return ImVec4(1.00f, 0.65f, 0.00f, 1.00f);
+        case 'T':
+            return ImVec4(1.00f, 0.65f, 0.00f, 1.00f);
 
-            case 'Z':
-                return ImVec4(0.40f, 0.70f, 1.00f, 1.00f);
+        case 'Z':
+            return ImVec4(0.40f, 0.70f, 1.00f, 1.00f);
 
-            case 'M':
-                return ImVec4(0.70f, 0.70f, 0.80f, 1.00f);
+        case 'M':
+            return ImVec4(0.70f, 0.70f, 0.80f, 1.00f);
 
-            case 'N':
-                return ImVec4(0.40f, 0.90f, 0.40f, 1.00f);
+        case 'N':
+            return ImVec4(0.40f, 0.90f, 0.40f, 1.00f);
 
-            case 'O':
-                return ImVec4(0.80f, 1.00f, 1.00f, 1.00f);
+        case 'O':
+            return ImVec4(0.80f, 1.00f, 1.00f, 1.00f);
 
-            case 'L':
-                return ImVec4(0.80f, 0.40f, 0.90f, 1.00f);
+        case 'L':
+            return ImVec4(0.80f, 0.40f, 0.90f, 1.00f);
 
-            case 'A': 
-                return ImVec4(0.60f, 0.20f, 0.80f, 1.00f);
+        case 'A':
+            return ImVec4(0.60f, 0.20f, 0.80f, 1.00f);
 
-            default:
-                return ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+        default:
+            return ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
         }
 
         return ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -79,7 +79,7 @@ namespace core
 
     UIHandler::UIHandler(options &app_options, window_t &window)
         : app_options(app_options), m_window(window), rendering_eng(window),
-            m_scenarioHandler(compound_presets)
+          m_scenarioHandler(compound_presets)
     {
         write_localization_json(lang);
         std::filesystem::path path = getLocalizationFile(localization::EN_US);
@@ -200,17 +200,42 @@ namespace core
 
         std::filesystem::path icons = "src/resource/images/icons";
         std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
+        std::filesystem::path pause = icons / "pause.png";
+        std::filesystem::path resume = icons / "resume.png";
+        std::filesystem::path right_arrow = icons / "right_arrow.png";
+        std::filesystem::path left_arrow = icons / "left_arrow.png";
+        std::filesystem::path plus = icons / "plus.png";
         std::filesystem::path genesis_icon = icons / "Genesis.png";
 
         sf::Texture magnifying_texture{};
+        sf::Texture pause_texture{};
+        sf::Texture resume_texture{};
+        sf::Texture right_arrow_texture{};
+        sf::Texture left_arrow_texture{};
+        sf::Texture plus_texture{};
         sf::Texture genesis_icon_texture{};
 
         resize_texture(magnifying_texture, {64, 64});
+        resize_texture(pause_texture, {32, 32});
+        resize_texture(resume_texture, {32, 32});
+        resize_texture(right_arrow_texture, {32, 32});
+        resize_texture(left_arrow_texture, {32, 32});
+        resize_texture(plus_texture, {32, 32});
         load_texture(magnifying_texture, magnifying_glass);
         load_texture(genesis_icon_texture, genesis_icon);
+        load_texture(pause_texture, pause);
+        load_texture(resume_texture, resume);
+        load_texture(right_arrow_texture, right_arrow);
+        load_texture(left_arrow_texture, left_arrow);
+        load_texture(plus_texture, plus);
 
         textures.emplace("magnifying_texture", std::move(magnifying_texture));
         textures.emplace("genesis_icon", std::move(genesis_icon_texture));
+        textures.emplace("pause_icon", std::move(pause_texture));
+        textures.emplace("resume_icon", std::move(resume_texture));
+        textures.emplace("right_arrow_icon", std::move(right_arrow_texture));
+        textures.emplace("left_arrow_icon", std::move(left_arrow_texture));
+        textures.emplace("plus_icon", std::move(plus_texture));
 
         std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
         if (!std::filesystem::exists(saved_sandbox_dir))
@@ -495,16 +520,16 @@ namespace core
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 28));
 
         {
-            
+
             ImGui::SameLine();
             std::string menu_title = localization_json["Menu"]["title"].get<std::string>().c_str();
             float titleSize = ImGui::CalcTextSize(menu_title.c_str()).x;
-            
+
             float windowWidth = ImGui::GetMainViewport()->GetCenter().x - titleSize;
             ImVec2 titlePos(windowWidth, padding);
             ImGui::SetNextWindowPos(titlePos, ImGuiCond_Always);
             ImGui::Begin("TitleWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-            //ImGui::Image(textures["genesis_icon"], ImVec2(100, 100));
+            // ImGui::Image(textures["genesis_icon"], ImVec2(100, 100));
             ImGui::SameLine();
 
             ImGui::SetWindowFontScale(2.f);
@@ -576,7 +601,11 @@ namespace core
         ImGui::PopFont();
 
         if (getState() != application_state::APP_STATE_MENU)
+        {
             display_universe->clear();
+            m_playingVideo = false;
+            m_replaySpeed = 100.0f;
+        }
         else
             drawMenuBackgroundDisplay();
     }
@@ -619,6 +648,9 @@ namespace core
             camera.distance = diagonal;
             camera.azimuth = 45.f;
             camera.elevation = 25.f;
+            m_playingVideo = true;
+            m_replaySpeed = 100.0f;
+            m_currentFrame = 0;
         }
 
         auto &current_universe = m_backgroundUniverses[m_currentDisplay];
@@ -1048,17 +1080,19 @@ namespace core
             ImGui::Text(options["tab_graphics"].get<std::string>().c_str());
 
             static std::string ball_and_stick = "";
+            static std::string licorice = "";
             static std::string letter_and_stick = "";
             static std::string space_filling = "";
 
             ball_and_stick = options["render_modes"]["ball_and_stick"].get<std::string>();
             letter_and_stick = options["render_modes"]["letter_and_stick"].get<std::string>();
             space_filling = options["render_modes"]["space_filling"].get<std::string>();
+            licorice = options["render_modes"]["licorice"].get<std::string>();
 
             const char *modes[] =
                 {
                     ball_and_stick.c_str(),
-                    letter_and_stick.c_str(),
+                    licorice.c_str(),
                     space_filling.c_str()};
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
@@ -1119,33 +1153,91 @@ namespace core
 
     void UIHandler::drawStatsWindow()
     {
-    
-    }
-
-    void UIHandler::drawTimeControl()
-    {
-    
-    }
-
-    void UIHandler::drawHUD()
-    {
-        ImGui::Begin("HUD");
+        ImGui::Begin("SimStats");
 
         ImGui::End();
     }
 
-    void UIHandler::drawUniverseUI()
+    void UIHandler::drawTimeControl()
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
 
         ImGuiIO &io = ImGui::GetIO();
-        const float panel_height = 180.0f;
+
+        bool sim_paused = simulation_universe->isPaused();
+        const std::string mode = sim_paused ? "resume_icon" : "pause_icon";
+
+        ImVec2 timecontrol_pos(0, io.DisplaySize.y);
+        ImVec2 timecontrol_size(panel_height * 5.f, panel_height);
+        ImGui::SetNextWindowPos(timecontrol_pos, ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+
+        ImGui::Dummy(ImVec2(20, 0));
+
+        ImGui::BeginChild("TimeControl", timecontrol_size);
+
+        if (ImGui::ImageButton("##timebutton", textures[mode], ImVec2(32.f, 32.f)))
+        {
+            sim_paused ? simulation_universe->unpause() : simulation_universe->pause();
+        }
+
+        std::string resume_tooltip = sim_ui.value("tooltip_resume", "Resume Simulation");
+        std::string pause_tooltip  = sim_ui.value("tooltip_pause", "Pause Simulation");
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(sim_paused ? resume_tooltip.c_str() : pause_tooltip.c_str());
+
+        ImGui::SameLine();
+
+        ImGui::Text(" %.2f ps   %.1f fs/s ", simulation_universe->timestep() * FEMTOSECOND, simulation_universe->getTimescale());
+
+        ImGui::SameLine();
+
+        if (ImGui::ImageButton("##slowdownbutton", textures["left_arrow_icon"], ImVec2(32.f, 32.f)))
+        {
+            simulation_universe->setTimescale(simulation_universe->getTimescale() * 0.9f);
+        }
+        
+        if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            simulation_universe->setTimescale(simulation_universe->getTimescale() * 0.99f);
+        }
+        
+        std::string slowdown_tooltip  = sim_ui.value("tooltip_slowdown", "Decrease simulation speed");
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(slowdown_tooltip.c_str());
+
+        ImGui::SameLine();
+
+        if (ImGui::ImageButton("##speedupbutton", textures["right_arrow_icon"], ImVec2(32.f, 32.f)))
+        {
+            simulation_universe->setTimescale(simulation_universe->getTimescale() * 1.1f);
+        }
+
+        if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            simulation_universe->setTimescale(simulation_universe->getTimescale() * 1.01f);
+        }
+
+        std::string speedup_tooltip  = sim_ui.value("tooltip_speedup", "Increase simulation speed");
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(speedup_tooltip.c_str());
+
+        ImGui::EndChild();
+    }
+
+    void UIHandler::drawHUD()
+    {
+        auto &sim_ui = localization_json["Simulation"]["universe_ui"];
+
+        ImGuiIO &io = ImGui::GetIO();
 
         ImGui::PushFont(regular);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.15f, 0.8f));
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.25f, 0.35f, 0.60f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(25, 20));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(20, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5, 5));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
 
@@ -1158,68 +1250,22 @@ namespace core
                                      ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         ImGui::Begin("HUD", &showHUD, hud_flags);
-        ImGui::Columns(2, "HUDColumns", false);
-        ImGui::SetColumnWidth(0, io.DisplaySize.x * 0.2f);
 
-        ImGui::TextColored(ImVec4(0.7f, 0.8f, 1.0f, 1.0f), "%s", sim_ui["stats_title"].get<std::string>().c_str());
-        ImGui::Separator();
-        ImGui::Text("%s %.2f K", sim_ui["temperature"].get<std::string>().c_str(), simulation_universe->temperature());
-        ImGui::Text("%s %.2f bar", sim_ui["pressure"].get<std::string>().c_str(), simulation_universe->pressure());
-        ImGui::Text("%s %.2f ps", sim_ui["time"].get<std::string>().c_str(), simulation_universe->timestep() * simulation_universe->getEffectiveDT());
+        drawTimeControl();
 
-        ImGui::NextColumn();
-
-        ImGui::SetNextItemWidth(150.f);
-        ImGui::DragFloat(sim_ui["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.01f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::SetNextItemWidth(150.f);
-        ImGui::DragFloat(sim_ui["slider_pressure"].get<std::string>().c_str(), &target_pressure, 1.0f, 0.01f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-
-        ImGui::SameLine();
-
-        float button_width = 120.0f;
-        float button_height = 35.0f;
-
-        bool sim_paused = simulation_universe->isPaused();
-        std::string timeControlName = sim_paused ? "Resume" : "Pause";
-
-        if (ImGui::Button(timeControlName.c_str(), ImVec2(button_width, button_height)))
-        {
-            sim_paused ? simulation_universe->unpause() : simulation_universe->pause();
-        }
-        if (ImGui::IsItemHovered())
-        {
-            std::string tooltip = sim_paused ? sim_ui["tooltip_resume"] : sim_ui["tooltip_pause"];
-            ImGui::SetTooltip(tooltip.c_str());
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Screenshot", ImVec2(button_width, button_height)))
-        {
-            screenshotToggle = true;
-        }
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip(sim_ui["tooltip_screenshot"].get<std::string>().c_str());
-        }
-
-        bool compoundSelectorAllowed = m_scenarioHandler.allowedCompoundSelector();
-
-        ImGui::SameLine();
-
-        ImGui::BeginDisabled(!compoundSelectorAllowed);
-        if (ImGui::Button("Add Compound", ImVec2(button_width, button_height)))
+        //ImGui::PushStyleVar(ImGuiStyleVar_)
+        
+        if (ImGui::ImageButton("##compoundsbutton", textures["plus_icon"], ImVec2(32.f, 32.f)))
         {
             compoundSelector = !compoundSelector;
         }
-        
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip(compoundSelectorAllowed ? sim_ui["tooltip_compound_selector"].get<std::string>().c_str() : sim_ui["tooltip_scenario_disabled"].get<std::string>().c_str());
-        }
 
-        ImGui::EndDisabled();
-
-        ImGui::Columns(1);
         ImGui::End();
+    }
+
+    void UIHandler::drawUniverseUI()
+    {
+        drawHUD();
 
         if (videoPlayerOpen)
             drawVideoControls();
@@ -1518,7 +1564,7 @@ namespace core
 
             ImGui::TextDisabled(full_view["description"].get<std::string>().c_str());
 
-            //std::string description = localization_json["Compounds"].count(compound.name) == 0 ? compounds["compound_descriptions"][compound.name] : localization_json[default_json["Compounds"]["compound_names"][compound.id]];
+            // std::string description = localization_json["Compounds"].count(compound.name) == 0 ? compounds["compound_descriptions"][compound.name] : localization_json[default_json["Compounds"]["compound_names"][compound.id]];
             ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]].get<std::string>().c_str());
 
             ImGui::Dummy(ImVec2(0, 20));
@@ -1613,59 +1659,55 @@ namespace core
         constexpr int32_t cols = 18;
         constexpr int32_t rows = 9;
 
-        constexpr uint8_t Zindices[rows][cols] = 
-        {
-            {1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  2}, 
-            {3,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  5,  6,  7,  8,  9, 10}, 
-            {11, 12, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 13, 14, 15, 16, 17, 18}, 
-            {19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36}, 
-            {37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54}, 
-            {55, 56, 57, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86}, 
-            {87, 88, 89,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118}, 
-            {0,  0, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,  0,  0}, 
-            {0,  0, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,100,101,102,103,  0,  0}  
-        };
+        constexpr uint8_t Zindices[rows][cols] =
+            {
+                {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+                {3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 8, 9, 10},
+                {11, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 14, 15, 16, 17, 18},
+                {19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36},
+                {37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54},
+                {55, 56, 57, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86},
+                {87, 88, 89, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118},
+                {0, 0, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 0, 0},
+                {0, 0, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 0, 0}};
 
-        constexpr float atomicMass[9][18] = 
-        {
-            {  1.008f,   0.0f,     0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   4.003f},
-            {  6.941f,   9.012f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,  10.811f, 12.011f, 14.007f, 15.999f, 18.998f, 20.180f },
-            { 22.990f, 24.305f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,  26.982f, 28.085f, 30.974f, 32.06f , 35.45f , 39.948f },
-            { 39.098f, 40.078f, 44.956f, 47.867f, 50.942f, 51.996f, 54.938f, 55.845f, 58.933f, 58.693f, 63.546f, 65.38f , 69.723f, 72.64f , 74.922f, 78.972f, 79.904f, 83.798f },
-            { 85.468f, 87.62f , 88.906f, 91.224f, 92.906f, 95.95f , 98.0f  , 101.07f, 102.906f,105.905f,107.868f,112.414f,114.818f,118.711f,121.760f,127.60f ,126.904f,131.293f },
-            {132.905f,137.33f ,138.905f,178.49f ,180.948f,183.84f ,186.207f,190.23f ,192.217f,195.085f,196.967f,200.592f,204.38f ,207.2f  ,208.980f,209.0f  ,210.0f  ,222.0f   },
-            {223.0f  ,226.0f  ,227.0f  ,232.038f,231.036f,238.029f,237.0f  ,244.0f  ,243.0f  ,247.0f  ,247.0f  ,251.0f  ,252.0f  ,257.0f  ,258.0f  ,259.0f  ,262.0f  ,267.0f   },
-            {  0.0f  ,  0.0f  ,140.116f,140.908f,144.24f ,145.0f  ,150.36f ,151.964f,157.25f ,158.925f,162.500f,164.930f,167.259f,168.934f,173.045f,174.967f,  0.0f  ,  0.0f   },
-            {  0.0f  ,  0.0f  ,227.028f,232.038f,231.036f,238.029f,237.0f  ,244.0f  ,243.0f  ,247.0f  ,247.0f  ,251.0f  ,252.0f  ,257.0f  ,258.0f  ,259.0f  ,262.0f  ,267.0f   }
-        };
+        constexpr float atomicMass[9][18] =
+            {
+                {1.008f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 4.003f},
+                {6.941f, 9.012f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.811f, 12.011f, 14.007f, 15.999f, 18.998f, 20.180f},
+                {22.990f, 24.305f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 26.982f, 28.085f, 30.974f, 32.06f, 35.45f, 39.948f},
+                {39.098f, 40.078f, 44.956f, 47.867f, 50.942f, 51.996f, 54.938f, 55.845f, 58.933f, 58.693f, 63.546f, 65.38f, 69.723f, 72.64f, 74.922f, 78.972f, 79.904f, 83.798f},
+                {85.468f, 87.62f, 88.906f, 91.224f, 92.906f, 95.95f, 98.0f, 101.07f, 102.906f, 105.905f, 107.868f, 112.414f, 114.818f, 118.711f, 121.760f, 127.60f, 126.904f, 131.293f},
+                {132.905f, 137.33f, 138.905f, 178.49f, 180.948f, 183.84f, 186.207f, 190.23f, 192.217f, 195.085f, 196.967f, 200.592f, 204.38f, 207.2f, 208.980f, 209.0f, 210.0f, 222.0f},
+                {223.0f, 226.0f, 227.0f, 232.038f, 231.036f, 238.029f, 237.0f, 244.0f, 243.0f, 247.0f, 247.0f, 251.0f, 252.0f, 257.0f, 258.0f, 259.0f, 262.0f, 267.0f},
+                {0.0f, 0.0f, 140.116f, 140.908f, 144.24f, 145.0f, 150.36f, 151.964f, 157.25f, 158.925f, 162.500f, 164.930f, 167.259f, 168.934f, 173.045f, 174.967f, 0.0f, 0.0f},
+                {0.0f, 0.0f, 227.028f, 232.038f, 231.036f, 238.029f, 237.0f, 244.0f, 243.0f, 247.0f, 247.0f, 251.0f, 252.0f, 257.0f, 258.0f, 259.0f, 262.0f, 267.0f}};
 
-        constexpr char ElementType[rows][cols] = 
-        {
-            //  1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18
-            {'N',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'O'},
-            {'K',  'T',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'M',  'N',  'N',  'N',  'N',  'O'},
-            {'K',  'T',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'M',  'M',  'N',  'N',  'N',  'O'},
-            {'K',  'T',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'N',  'N',  'O'},
-            {'K',  'T',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'M',  'N',  'O'},
-            {'K',  'T',  'L',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'M',  'N',  'O'},
-            {'K',  'T',  'A',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'Z',  'M',  'M',  'M',  'M',  'N',  'O'},
-            {' ',  ' ',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  'L',  ' ',  ' '},
-            {' ',  ' ',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  'A',  ' ',  ' '}
-        };
+        constexpr char ElementType[rows][cols] =
+            {
+                //  1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18
+                {'N', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'O'},
+                {'K', 'T', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'M', 'N', 'N', 'N', 'N', 'O'},
+                {'K', 'T', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'M', 'M', 'N', 'N', 'N', 'O'},
+                {'K', 'T', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'M', 'M', 'M', 'N', 'N', 'O'},
+                {'K', 'T', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'M', 'M', 'M', 'M', 'N', 'O'},
+                {'K', 'T', 'L', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'M', 'M', 'M', 'M', 'N', 'O'},
+                {'K', 'T', 'A', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'Z', 'M', 'M', 'M', 'M', 'N', 'O'},
+                {' ', ' ', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', ' ', ' '},
+                {' ', ' ', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', ' ', ' '}};
 
-        constexpr char ElementBlock[rows][cols] = 
-        {
-            //  1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18
-            {'s',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  's'},
-            {'s',  's',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'p',  'p',  'p',  'p',  'p',  'p'},
-            {'s',  's',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  ' ',  'p',  'p',  'p',  'p',  'p',  'p'},
-            {'s',  's',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
-            {'s',  's',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
-            {'s',  's',  'f',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
-            {'s',  's',  'f',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'd',  'p',  'p',  'p',  'p',  'p',  'p'},
-            {' ',  ' ',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  ' ',  ' '},
-            {' ',  ' ',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  'f',  ' ',  ' '}
-        };
+        constexpr char ElementBlock[rows][cols] =
+            {
+                //  1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18
+                {'s', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 's'},
+                {'s', 's', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'p', 'p', 'p', 'p', 'p', 'p'},
+                {'s', 's', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'p', 'p', 'p', 'p', 'p', 'p'},
+                {'s', 's', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'p', 'p', 'p', 'p', 'p', 'p'},
+                {'s', 's', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'p', 'p', 'p', 'p', 'p', 'p'},
+                {'s', 's', 'f', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'p', 'p', 'p', 'p', 'p', 'p'},
+                {'s', 's', 'f', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'p', 'p', 'p', 'p', 'p', 'p'},
+                {' ', ' ', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', ' ', ' '},
+                {' ', ' ', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', ' ', ' '}};
 
         auto &comp_sel = localization_json["Simulation"]["universe_ui"]["compound_selector"];
 
@@ -1677,21 +1719,21 @@ namespace core
 
         ImVec2 titleSize = ImGui::CalcTextSize(title.c_str());
         ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x * 0.5f - titleSize.x * 0.5f);
-        
+
         ImGui::BeginGroup();
-        
+
         ImGui::Text(title.c_str());
         ImGui::PopFont();
-        
+
         ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle.c_str());
-        
+
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + subtitleSize.x * 0.5f);
         ImGui::Text(subtitle.c_str());
         ImGui::EndGroup();
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
 
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
         for (int32_t row = 0; row < rows; ++row)
         {
@@ -1701,7 +1743,8 @@ namespace core
                 if (Z == 0)
                 {
                     ImGui::Dummy(ImVec2(box_size, box_size));
-                    if (col < cols - 1) ImGui::SameLine();
+                    if (col < cols - 1)
+                        ImGui::SameLine();
                     continue;
                 }
 
@@ -1714,15 +1757,15 @@ namespace core
 
                 ImVec4 color = getElementColor(ElementType[row][col]);
 
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x*0.8f, color.y*0.8f, color.z*0.8f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x*1.15f, color.y*1.15f, color.z*1.15f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x*0.8f, color.y*0.8f, color.z*0.8f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x * 0.8f, color.y * 0.8f, color.z * 0.8f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x * 1.15f, color.y * 1.15f, color.z * 1.15f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x * 0.8f, color.y * 0.8f, color.z * 0.8f, 1.0f));
 
-                if (ImGui::Button(std::string("##" + symbol).c_str(), ImVec2(box_size, box_size))) 
+                if (ImGui::Button(std::string("##" + symbol).c_str(), ImVec2(box_size, box_size)))
                 {
                     m_selectedElement = Z;
                     compoundFullView = true;
-                    
+
                     // upper part is for when implement fullview for elements
                     insertGhostElement(symbol);
                     compoundSelector = false;
@@ -1742,18 +1785,18 @@ namespace core
                     ImGui::EndTooltip();
                 }
 
-                ImU32 textColor = ImGui::GetColorU32(ImVec4(1,1,1,1));
+                ImU32 textColor = ImGui::GetColorU32(ImVec4(1, 1, 1, 1));
                 ImU32 smallTextColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
                 ImU32 nameColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
                 ImGui::PushFont(regular_small);
                 draw_list->AddText(ImVec2(buttonMin.x + 4.0f, buttonMin.y + 4.0f),
-                                                smallTextColor,
-                                                std::to_string(Z).c_str());
-                                                
+                                   smallTextColor,
+                                   std::to_string(Z).c_str());
+
                 draw_list->AddText(ImVec2(buttonCenter.x + (mass > 100 ? 1.f : 6.f), buttonMin.y + 4.0f),
-                                                smallTextColor,
-                                                std::format("{:.1f}", mass).c_str());
+                                   smallTextColor,
+                                   std::format("{:.1f}", mass).c_str());
                 ImGui::PopFont();
 
                 ImGui::PushFont(bold);
@@ -1771,13 +1814,14 @@ namespace core
                 ImGui::PopFont();
 
                 ImGui::PopStyleColor(3);
-                
-                if (col < cols - 1) ImGui::SameLine();
+
+                if (col < cols - 1)
+                    ImGui::SameLine();
 
                 ImGui::PopID();
             }
         }
-        
+
         ImGui::PopStyleVar();
         ImGui::EndChild();
     }
@@ -1789,16 +1833,17 @@ namespace core
 
         if (mode == simulation_render_mode::BALL_AND_STICK)
         {
-            info.lennardBall = info.letter = true;
+            info.lennardBall = true;
+            info.licorice = false;
         }
-        else if (mode == simulation_render_mode::LETTER_AND_STICK)
+        else if (mode == simulation_render_mode::LICORICE)
         {
-            info.lennardBall = false;
-            info.letter = true;
+            info.lennardBall = info.licorice = true;
         }
         else if (mode == simulation_render_mode::SPACE_FILLING)
         {
-            info.lennardBall = info.letter = info.spaceFilling = true;
+            info.lennardBall = info.spaceFilling = true;
+            info.licorice = false;
         }
 
         return info;
@@ -2136,7 +2181,7 @@ namespace core
     {
         auto &video_controller = localization_json["Simulation"]["universe_ui"]["video_controller"];
 
-        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetMainViewport()->Size.y - 220), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetMainViewport()->Size.y - panel_height * 1.8f), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(ImGui::GetMainViewport()->Size.x, 50), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.85f);
 

@@ -23,7 +23,7 @@ namespace constants
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
 #define EPSILON 0.1f
-#define DT 0.001f // ps
+#define FEMTOSECOND 0.001f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f

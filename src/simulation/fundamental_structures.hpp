@@ -172,8 +172,8 @@ namespace sim
         
         struct rendering_info
         {
-            bool letter = false; 
             bool lennardBall = true; 
+            bool licorice = false; 
             bool spaceFilling = false; 
             bool universeBox = true;
             bool renderWater = true;

@@ -1093,7 +1093,7 @@ namespace sim
             setPressure(targetPressure);
             setTemperature(targetTemperature);
 
-            float dt = DT * m_Timescale;
+            float dt = FEMTOSECOND * m_Timescale;
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -1340,12 +1340,19 @@ namespace sim
         {
             if (m_frames.size() == 0) return {};
 
+            int32_t m_framesToSaveFactor = 5;
+
             nlohmann::json json_video{};
 
             videoMetaData nMetadata{};
             nMetadata.box = box;
             nMetadata.num_atoms = atoms.size();
-            nMetadata.num_frames = m_frames.size();
+            size_t savedFrameCount = 0;
+            for (size_t i = 0; i < m_frames.size(); ++i)
+            {
+                if (i % m_framesToSaveFactor == 0) ++savedFrameCount;
+            }
+            nMetadata.num_frames = savedFrameCount;
             nMetadata.title = name.empty() ? formatTime() : name;
 
             json_video["metadata"] =
@@ -1353,16 +1360,16 @@ namespace sim
                     {"title", nMetadata.title},
                     {"description", "Molecular dynamics trajectory"},
                     {"atoms", nMetadata.num_atoms},
-                    {"frames", nMetadata.num_frames / 5},
+                    {"frames", nMetadata.num_frames},
                     {"box", {box.x, box.y, box.z}}};
 
             json_video["positions"] = nlohmann::json::array();
 
-            size_t id = 0;
-            for (const auto& frame : m_frames)
+            for (int32_t i = 0; i < m_frames.size(); ++i)
             {
-                if (id % 5 != 0) continue;
+                if (i % m_framesToSaveFactor != 0) continue;
 
+                const auto& frame = m_frames[i];
                 if (frame.positions.size() != nMetadata.num_atoms)
                 {
                     std::cerr << "[Video Save] Frame has wrong atom count! Skipping.\n";
@@ -1377,8 +1384,6 @@ namespace sim
                 }
 
                 json_video["temperatures"].push_back(frame.global_temperature);
-            
-                ++id;
             }
 
             try
@@ -1391,14 +1396,14 @@ namespace sim
                 file.flush();
                 file << json_video.dump();
                 file.close();
-
-                std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " <<json_video["metadata"]["atoms"] << " atoms to " << path << '\n';
             }
             catch (std::exception &e)
             {
                 std::cout << "[Recorder] Failed to save trajectory: " << e.what() << std::endl;
                 return video{};
             }
+ 
+            std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " <<json_video["metadata"]["atoms"] << " atoms to " << path << '\n';
 
             video nVideo{};
             nVideo.frames = m_frames;
@@ -1794,12 +1799,12 @@ namespace sim
             }
 
             auto& posArray = j["positions"];
-            if (posArray.size() != expectedFrames * expectedAtoms * 3)
+/*             if (posArray.size() != expectedFrames * expectedAtoms * 3)
             {
                 std::cerr << "[Video Load] Position array size mismatch! Expected "
                         << expectedFrames * expectedAtoms * 3 << ", got " << posArray.size() << "\n";
                 return;
-            }
+            } */
 
             std::vector<float> temperatures;
             if (j.contains("temperatures") && j["temperatures"].is_array())

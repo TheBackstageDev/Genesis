@@ -150,7 +150,7 @@ namespace sim
             int32_t numAtoms() { return atoms.size(); }
             int32_t numMolecules() { return molecules.size(); }
             float getTimescale() { return m_Timescale; }
-            float getEffectiveDT() { return m_Timescale * DT; }
+            float getEffectiveDT() { return m_Timescale * FEMTOSECOND; }
             const subset& getSubset(int32_t index) { return subsets[index]; }
 
             float temperature() const { return temp; }

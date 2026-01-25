@@ -52,6 +52,8 @@ namespace sim
             alignas(16) float radius;
         };
 
+        const float licorice_radius = 0.22f;
+
         void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);
         void drawRings(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);

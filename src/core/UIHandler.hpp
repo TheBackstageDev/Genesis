@@ -98,7 +98,8 @@ namespace core
     enum class simulation_render_mode
     {
         BALL_AND_STICK,
-        LETTER_AND_STICK,
+        LICORICE,
+        //LETTER_AND_STICK,
         SPACE_FILLING,
         COUNT
     };
@@ -197,7 +198,7 @@ namespace core
 
         const float image_size = 200.f;
 
-        const float m_displayMaxTime = 15.f;
+        const float m_displayMaxTime = 7.f;
         float m_currentDisplayTime = m_displayMaxTime + 1.f; // trigger initial setup on menu
 
         size_t m_backgroundDisplays = 0;
@@ -237,6 +238,8 @@ namespace core
         bool savedSimulation = false;
 
         float m_deltaTime = 0.0f;
+
+        const float panel_height = 64.0f;
 
         // Universe
 
