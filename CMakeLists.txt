@@ -43,7 +43,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ImGui-SFML)
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
+file(GLOB_RECURSE SRC_FILES src/*.cpp include/imgui/*.cpp)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
@@ -51,6 +51,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src/
     include/
     include/glad/
+    include/imgui/
 )
 
 target_sources(${PROJECT_NAME} PRIVATE

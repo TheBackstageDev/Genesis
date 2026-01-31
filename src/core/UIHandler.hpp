@@ -12,6 +12,7 @@
 #include "json.hpp"
 
 #include "core/ScenarioHandler.hpp"
+#include "simulation/reaction_engine.hpp"
 #include "simulation/universe.hpp"
 
 namespace core
@@ -99,7 +100,7 @@ namespace core
     {
         BALL_AND_STICK,
         LICORICE,
-        //LETTER_AND_STICK,
+        HYPER_BALLS,
         SPACE_FILLING,
         COUNT
     };
@@ -233,6 +234,7 @@ namespace core
         bool challengeSelectionOpen = false;
         bool challengeViewOpen = false;
         bool optionsOpen = false;
+        bool statsOpen = false;
         bool videoPlayerOpen = true;
 
         bool savedSimulation = false;
@@ -285,10 +287,13 @@ namespace core
         bool pauseMenuOpen = false;
         bool exitDesktop = false;
 
+        bool m_reactive = false;
+
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
 
-        sim::rendering_engine rendering_eng;
+        sim::rendering_engine m_rendering_eng;
+        sim::reaction_engine m_reaction_eng;
 
         // Callbacks
         
@@ -296,6 +301,9 @@ namespace core
         std::function<application_state()> getState;
 
         // Video
+
+        std::vector<float> temperature_log{};
+        std::vector<int32_t> time_log{};
 
         void resetVideoData() 
         { 
@@ -305,6 +313,8 @@ namespace core
             m_playingVideo = false;
 
             m_currentFrame = 0;
+
+            temperature_log.clear();
 
             simulation_universe->clearDisplayPositions();
             display_universe->clearDisplayPositions();

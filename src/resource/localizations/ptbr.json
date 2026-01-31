@@ -32,6 +32,7 @@
       "render_modes":
       {
         "ball_and_stick": "Bola e Palito",
+        "hyper_balls": "Hiper Bolas",
         "letter_and_stick": "Letra e Palito",
         "licorice": "Licorice",
         "space_filling": "Preenchedor de Espaço"
@@ -98,7 +99,30 @@
 
     "Scene_Selection":
     {
-      "title": "Seleção de Cenários"
+      "title": "Scene Selection",
+
+      "scene_types":
+      [
+        "MOLÉCULA",
+        "DINÂMICA",
+        "REAÇÕES"
+      ],
+
+      "titles":
+      {
+        "MOLECULE":
+        {
+        
+        },
+        "DYNAMICS":
+        {
+          "Brownian Motion": "Movimentação Browniana"
+        },
+        "REACTIONS":
+        {
+        
+        }
+      }
     },
 
     "Simulation_Loading":
@@ -168,6 +192,8 @@
       "Ethane": "O etano (C2H6) é um hidrocarboneto saturado da série dos alcanos, composto por dois átomos de carbono ligados por ligação simples e cercados por seis átomos de hidrogênio. É um gás incolor e inodoro em condições padrão e ocorre naturalmente no petróleo e no gás natural.",
       "Ethanol": "O etanol (C2H5OH) é um composto orgânico constituído por dois átomos de carbono, seis de hidrogênio e um de oxigênio, classificado como um álcool simples. É um líquido volátil, inflamável, com odor característico, amplamente usado como solvente, combustível e na produção de bebidas alcoólicas.",
       "Benzene": "O benzeno (C6H6) é um hidrocarboneto aromático formado por seis átomos de carbono dispostos em anel com ligações duplas alternadas, estabilizado por ressonância. É um líquido incolor, volátil, com odor doce, amplamente usado como precursor na produção de plásticos, resinas, fibras sintéticas e inúmeros compostos químicos.",
+      "Cubane": "Cubano (C8H8) é um hidrocarboneto altamente tensionado, composto por oito átomos de carbono dispostos nos vértices de um cubo, cada um ligado a um átomo de hidrogênio. Apesar da intensa tensão angular, é surpreendentemente estável em condições normais. O cubano é um sólido cristalino incolor e desperta grande interesse em pesquisas, com potenciais aplicações em materiais de alta energia, farmacêuticos e síntese química avançada.",
+      "Cuban-cetamol": "O Cuban-cetamol é um análogo hipotético do paracetamol baseado em cubano, criado pela substituição do anel aromático de benzeno por uma estrutura cúbica de cubano. Ele combina o núcleo hidrocarboneto altamente tensionado com grupos hidroxila e acetamida, imitando as funções químicas do paracetamol.",
       "Nitrogen": "O nitrogênio (N2) é uma molécula diatômica composta por dois átomos de nitrogênio unidos por uma forte ligação tripla, tornando-o quimicamente estável e inerte na maioria das condições. É um gás incolor e inodoro que constitui cerca de 78% da atmosfera terrestre.",
       "Oxygen": "O oxigênio (O2) é uma molécula diatômica essencial para a vida, composta por dois átomos de oxigênio. É um gás incolor e inodoro que representa cerca de 21% da atmosfera terrestre. O oxigênio é vital para a respiração celular na maioria dos organismos e sustenta a combustão. Embora necessário para a sobrevivência, concentrações muito altas podem ser tóxicas e níveis baixos podem causar hipóxia.",
       "C20 Fullerene": "O fulereno C20 é o menor fulereno, formado por 20 átomos de carbono em uma estrutura em forma de gaiola dodecaédrica. Sua alta tensão o torna menos estável que fulerenos maiores, como o C60.",
@@ -209,12 +235,35 @@
   {
     "universe_ui":
     {
-      "stats_title": "Estatisticas do Universo",
-      "temperature": "Temperatura (K):",
-      "pressure": "Pressão (Bar):",
-      "time": "Tempo (Ps):",
-      "slider_temperature": "Temperatura Alvo",
-      "slider_pressure": "Pressão Alvo",
+      "stats":
+      {
+        "title": "Estatisticas do Universo",
+        
+        "core_stats":
+        {
+          "title": "Estatisticas Centrais",
+          "temperature": "Temperatura",
+          "pressure": "Pressão",
+          "time": "Tempo",
+          "particles": "Partículas",
+          "molecules": "Moléculas",
+          "slider_temperature": "T Alvo (K):",
+          "slider_pressure": "P Alvo (Bar):"
+        },
+        "energy_stats":
+        {
+          "title": "Energia & Cinéticas",
+          "kinetic_energy": "Energia cinética",
+          "potential_energy": "Energia potencial",
+          "total_energy": "Energia total"
+        },
+        "graphs_stats":
+        {
+          "title": "Gráficos & Plotagens",
+          "warning": "Frames precisam ser gravados em ordem para os graficos funcionarem!",
+          "temperature_v_time": "Temperatura X Tempo"
+        }
+      },
 
       "tooltip_resume": "Resumir a Simulação",
       "tooltip_pause": "Pausar a Simulação",
@@ -297,6 +346,15 @@
 
   "Scenarios": 
   {
+    "SCENARIO_DYNAMICS_Brownian_Motion":
+    {
+      "description": "Neste cenário, você verá partículas em movimento aleatório, um exemplo clássico do movimento browniano.",
+      "narrations":
+      [
+        "Bem-vindo(a) ao Cenário de Movimento Browniano! Neste cenário, veremos o movimento browniano e o que ele significa.",
+        "Mas o que exatamente é o Movimento Browniano?\nÉ o movimento aleatório e agitado de partículas causado por inúmeras colisões com moléculas ao redor. Esses impactos invisíveis fazem as partículas se moverem de forma imprevisível, uma dança microscópica impulsionada pela energia térmica."
+      ]
+    },
     "TUTORIAL_ENGINE_Controls": 
     {
       "description": "Aprenda os controles essenciais: movimentação da câmera, pausar",

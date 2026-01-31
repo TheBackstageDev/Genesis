@@ -80,6 +80,14 @@ namespace sim
         glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radius));
         glVertexAttribDivisor(4, 1);
+
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radiusA));
+        glVertexAttribDivisor(5, 1);
+
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radiusB));
+        glVertexAttribDivisor(6, 1);
     }
 
     void rendering_engine::drawBox(const glm::vec3 &box)
@@ -142,11 +150,12 @@ namespace sim
     {
         const std::filesystem::path shader_root = "src/shaders";
 
-        initColorShaders(shader_root / "color.vert", shader_root / "color.frag");
-        initBondShaders(shader_root / "bond.vert", shader_root / "bond.frag");
+        initShaders(shader_root / "color.vert", shader_root / "color.frag", atom_program);
+        initShaders(shader_root / "bond.vert", shader_root / "bond.frag", bond_program);
+        initShaders(shader_root / "hyper_balls.vert", shader_root / "hyper_balls.frag", hyperballs_program);
     }
 
-    void rendering_engine::initColorShaders(const std::filesystem::path vert, const std::filesystem::path frag)
+    void rendering_engine::initShaders(const std::filesystem::path vert, const std::filesystem::path frag, GLuint& program)
     {
         std::string vertex = loadShaderSource(vert);
         std::string fragment = loadShaderSource(frag);
@@ -161,51 +170,17 @@ namespace sim
         glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
         glCompileShader(fragment_shader);
 
-        atom_program = glCreateProgram();
-        glAttachShader(atom_program, vertex_shader);
-        glAttachShader(atom_program, fragment_shader);
-        glLinkProgram(atom_program);
+        program = glCreateProgram();
+        glAttachShader(program, vertex_shader);
+        glAttachShader(program, fragment_shader);
+        glLinkProgram(program);
 
         GLint success = 0;
-        glGetProgramiv(atom_program, GL_LINK_STATUS, &success);
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
         if (!success)
         {
             char info[1024] = {};
-            glGetProgramInfoLog(atom_program, 1024, nullptr, info);
-            std::cerr << info << "\n";
-            throw std::runtime_error(std::string("[Shader link failed]: ") + info);
-        }
-
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-    }
-
-    void rendering_engine::initBondShaders(const std::filesystem::path vert, const std::filesystem::path frag)
-    {
-        std::string vertex = loadShaderSource(vert);
-        std::string fragment = loadShaderSource(frag);
-
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        const char *vertex_src = vertex.c_str();
-        glShaderSource(vertex_shader, 1, &vertex_src, nullptr);
-        glCompileShader(vertex_shader);
-
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        const char *fragment_src = fragment.c_str();
-        glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
-        glCompileShader(fragment_shader);
-
-        bond_program = glCreateProgram();
-        glAttachShader(bond_program, vertex_shader);
-        glAttachShader(bond_program, fragment_shader);
-        glLinkProgram(bond_program);
-
-        GLint success = 0;
-        glGetProgramiv(bond_program, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            char info[1024] = {};
-            glGetProgramInfoLog(bond_program, 1024, nullptr, info);
+            glGetProgramInfoLog(program, 1024, nullptr, info);
             std::cerr << info << "\n";
             throw std::runtime_error(std::string("[Shader link failed]: ") + info);
         }
@@ -216,6 +191,8 @@ namespace sim
 
     void rendering_engine::bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
+        if (info.hyperBalls) return;
+
         std::vector<AtomInstance> instances;
         instances.reserve(sim_info.atoms.size());
 
@@ -275,7 +252,7 @@ namespace sim
 
     void rendering_engine::bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (info.spaceFilling || (!info.lennardBall && !info.licorice))
+        if (info.spaceFilling || (!info.lennardBall && !info.licorice && !info.hyperBalls))
             return;
 
         std::vector<BondInstance> instances;
@@ -300,16 +277,20 @@ namespace sim
             if (glm::length(r_vec) > 5.f)
                 continue;
 
-            if (info.licorice)
+            /* if (info.licorice)
             {
                 instances.emplace_back(
                 glm::vec4(posA, 1.0f),
                 glm::vec4(posB, 1.0f),
                 colorA_norm, colorB_norm, licorice_radius);
-            }
+                
+                continue;
+            } */
 
+            float radiusA = constants::covalent_radius[sim_info.atoms[bond.bondedAtom].ZIndex];
+            float radiusB = constants::covalent_radius[sim_info.atoms[bond.centralAtom].ZIndex];
             float baseRadius = 0.15f;
-            float bondR = baseRadius / order;
+            float bondR = info.licorice ? licorice_radius / order : baseRadius / order;
             glm::vec3 bondDir = glm::normalize(r_vec);
 
             glm::vec3 arbitrary = (std::abs(bondDir.x) < 0.9f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
@@ -318,12 +299,12 @@ namespace sim
 
             const float offsetStep = 0.10f;
 
-            if (order == 1)
+            if (order == 1 || info.hyperBalls)
             {
                 instances.emplace_back(
                     glm::vec4(posA, 1.0f),
                     glm::vec4(posB, 1.0f),
-                    colorA_norm, colorB_norm, bondR);
+                    colorA_norm, colorB_norm, bondR, radiusA, radiusB);
             }
             else
             {
@@ -340,7 +321,7 @@ namespace sim
                     instances.emplace_back(
                         glm::vec4(offsetposA, 1.0f),
                         glm::vec4(offsetposB, 1.0f),
-                        colorA_norm, colorB_norm, bondR);
+                        colorA_norm, colorB_norm, bondR, radiusA, radiusB);
                 }
             }
         }
@@ -352,7 +333,8 @@ namespace sim
                      GL_DYNAMIC_DRAW);
 
         glBindVertexArray(bond_vao);
-        glUseProgram(bond_program);
+
+        info.hyperBalls ? glUseProgram(hyperballs_program) : glUseProgram(bond_program);
 
         GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
         GLint loc_view = glGetUniformLocation(bond_program, "u_view");
@@ -364,8 +346,12 @@ namespace sim
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
 
-        if (loc_licorice != -1)
-            glUniform1i(loc_licorice, static_cast<uint8_t>(info.licorice));
+        if (!info.hyperBalls) 
+        {
+            GLint loc_licorice = glGetUniformLocation(bond_program, "licorice");
+            if (loc_licorice != -1)
+                glUniform1i(loc_licorice, static_cast<uint8_t>(info.licorice));
+        }
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));

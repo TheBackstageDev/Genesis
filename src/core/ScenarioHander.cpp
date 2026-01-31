@@ -15,7 +15,23 @@ namespace core
 
     void ScenarioHandler::initScenarios()
     {
-        Scenario scenario_;
+        const std::filesystem::path scenario_path = "src/scenes/scenarios";
+        Scenario scenario_brownian_motion{};
+        scenario_brownian_motion.file = scenario_path / "SCENARIO_DYNAMICS_brownian_motion.json";
+        scenario_brownian_motion.steps = 
+        {
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 5.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = false,
+                .minDisplayTime_s = 5.0f,
+            }
+        };
+        
+        m_Scenarios.emplace("SCENARIO_DYNAMICS_browinian_motion", std::move(scenario_brownian_motion));
+
         initTutorials();
     }
 

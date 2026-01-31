@@ -1,6 +1,7 @@
 #include "application.hpp"
 
 #include <imgui-SFML.h>
+#include <implot.h>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -12,6 +13,8 @@ namespace core
     {
         if (!ImGui::SFML::Init(window.getWindow(), false))
             throw std::runtime_error("Error! failed to init Imgui");
+
+        ImPlot::CreateContext();
 
         ui.set_language(app_options.lang);
         ui.setApplicationStateCallback([&](application_state newState)
@@ -71,6 +74,7 @@ namespace core
     application::~application()
     {
         save();
+        ImPlot::DestroyContext();
         ImGui::SFML::Shutdown(window.getWindow());
     }
 
@@ -88,11 +92,19 @@ namespace core
             window.refresh();
             window.clear();
 
+            auto start = std::chrono::high_resolution_clock::now();
+
             if (current_state == application_state::APP_STATE_MENU)
                 ui.drawMenu();
             if (current_state == application_state::APP_STATE_SIMULATION)
                 ui.drawUniverse();
-            
+
+            auto end = std::chrono::high_resolution_clock::now();
+
+            std::chrono::duration<double, std::milli> duration = end - start;
+
+            //std::cout << "UI execution time: " << duration.count() << " milliseconds" << std::endl;
+                
             ImGui::SFML::Render(window.getWindow());
             window.display();
         }

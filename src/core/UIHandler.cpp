@@ -4,6 +4,8 @@
 #include <iostream>
 #include <random>
 
+#include <implot.h>
+
 #include "simulation/smiles_parser.hpp"
 #include "simulation/format_loader.hpp"
 
@@ -78,7 +80,7 @@ namespace core
     }
 
     UIHandler::UIHandler(options &app_options, window_t &window)
-        : app_options(app_options), m_window(window), rendering_eng(window),
+        : app_options(app_options), m_window(window), m_rendering_eng(window),
           m_scenarioHandler(compound_presets)
     {
         write_localization_json(lang);
@@ -102,8 +104,8 @@ namespace core
 
         initCompoundPresets();
         initCompoundXYZ();
-        initImages();
         initSavedData();
+        initImages();
     }
 
     void UIHandler::initSavedData()
@@ -155,7 +157,7 @@ namespace core
                         }
                         else
                         {
-                            m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), rendering_eng));
+                            m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), m_rendering_eng));
 
                             if (std::filesystem::directory_entry(videoPath).exists())
                                 m_backgroundUniverses.back()->loadFrames(videoPath);
@@ -205,6 +207,7 @@ namespace core
         std::filesystem::path right_arrow = icons / "right_arrow.png";
         std::filesystem::path left_arrow = icons / "left_arrow.png";
         std::filesystem::path plus = icons / "plus.png";
+        std::filesystem::path stats = icons / "stats.png";
         std::filesystem::path genesis_icon = icons / "Genesis.png";
 
         sf::Texture magnifying_texture{};
@@ -213,6 +216,7 @@ namespace core
         sf::Texture right_arrow_texture{};
         sf::Texture left_arrow_texture{};
         sf::Texture plus_texture{};
+        sf::Texture stats_texture{};
         sf::Texture genesis_icon_texture{};
 
         resize_texture(magnifying_texture, {64, 64});
@@ -228,6 +232,7 @@ namespace core
         load_texture(right_arrow_texture, right_arrow);
         load_texture(left_arrow_texture, left_arrow);
         load_texture(plus_texture, plus);
+        load_texture(stats_texture, stats);
 
         textures.emplace("magnifying_texture", std::move(magnifying_texture));
         textures.emplace("genesis_icon", std::move(genesis_icon_texture));
@@ -236,8 +241,10 @@ namespace core
         textures.emplace("right_arrow_icon", std::move(right_arrow_texture));
         textures.emplace("left_arrow_icon", std::move(left_arrow_texture));
         textures.emplace("plus_icon", std::move(plus_texture));
+        textures.emplace("stats_icon", std::move(stats_texture));
 
-        std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
+        const std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
+        const std::filesystem::path scenarios_dir = "src/scenes/scenarios";
         if (!std::filesystem::exists(saved_sandbox_dir))
         {
             std::filesystem::create_directories(saved_sandbox_dir);
@@ -258,6 +265,27 @@ namespace core
                 textures.emplace(entry.path().filename().string(), std::move(scenario_texture));
             }
         }
+
+        if (!std::filesystem::exists(scenarios_dir))
+        {
+            std::filesystem::create_directories(scenarios_dir);
+            return;
+        }
+
+        for (const auto &entry : std::filesystem::directory_iterator(scenarios_dir))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".png")
+            {
+                sf::Texture scenario_texture{};
+                if (!scenario_texture.loadFromFile(entry.path()))
+                {
+                    std::cerr << "[UI HANDLER]: Couldn't load scenario image!" << entry.path() << "\n";
+                    continue;
+                }
+
+                textures.emplace(entry.path().filename().string(), std::move(scenario_texture));
+            }
+        }
     }
 
     void UIHandler::initCompoundPresetsImages()
@@ -268,8 +296,8 @@ namespace core
         display_info.box.z = 100.f;
         display_info.wall_collision = false;
 
-        display_universe = std::make_unique<sim::fun::universe>(display_info, rendering_eng);
-        auto &cam = rendering_eng.camera();
+        display_universe = std::make_unique<sim::fun::universe>(display_info, m_rendering_eng);
+        auto &cam = m_rendering_eng.camera();
         cam.target = {0.f, 0.f, 0.f};
         cam.distance = 0.f;
         cam.azimuth = 200.f;
@@ -510,68 +538,93 @@ namespace core
     {
         ImGuiIO &io = ImGui::GetIO();
         float padding = 100.0f;
-        float buttonWidth = 260.0f;
+        float buttonWidth = 200.0f;
         float buttonHeight = 45.0f;
 
         ImGui::PushFont(regular);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.04f, 0.10f, 0.92f)); // Darker, more elegant
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.96f, 1.0f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(25, 25));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 28));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 10));
 
         {
+            ImVec2 title_pos(0, (io.DisplaySize.y - 600) * 0.5f);
+            ImGui::SetNextWindowPos(title_pos, ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(600, 600));
+            ImGui::Begin("TitleOverlay", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
 
-            ImGui::SameLine();
-            std::string menu_title = localization_json["Menu"]["title"].get<std::string>().c_str();
-            float titleSize = ImGui::CalcTextSize(menu_title.c_str()).x;
+            ImVec2 window_size = ImGui::GetWindowSize();
 
-            float windowWidth = ImGui::GetMainViewport()->GetCenter().x - titleSize;
-            ImVec2 titlePos(windowWidth, padding);
-            ImGui::SetNextWindowPos(titlePos, ImGuiCond_Always);
-            ImGui::Begin("TitleWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-            // ImGui::Image(textures["genesis_icon"], ImVec2(100, 100));
-            ImGui::SameLine();
+            float aspect_ratio = 5.f / 2.f;
 
-            ImGui::SetWindowFontScale(2.f);
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - titleSize) * 0.3f);
-            ImGui::Text(menu_title.c_str());
-            ImGui::SetWindowFontScale(1.f);
+            float image_width = window_size.x * 0.8f;
+            float image_height = image_width / aspect_ratio;
 
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth()));
-            std::string menu_subtitle = localization_json["Menu"]["subtitle"].get<std::string>().c_str();
+            if (image_height > window_size.y * 0.8f) 
+            {
+                image_height = window_size.y * 0.8f;
+                image_width = image_height * aspect_ratio;
+            }
 
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(menu_subtitle.c_str()).x) * 0.5f);
-            ImGui::Text(menu_subtitle.c_str());
+            ImGui::Image(textures["genesis_icon"], ImVec2(image_width, image_height));
 
             ImGui::End();
         }
 
-        {
-            ImVec2 panelPos(padding, io.DisplaySize.y - padding);
-            ImGui::SetNextWindowPos(panelPos, ImGuiCond_Always, ImVec2(0.0f, 1.0f));
-            ImGui::SetNextWindowSize(ImVec2(buttonWidth + 40, 0));
-            ImGui::Begin("NavigationPanel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.04f, 0.18f, 0.28f, 0.88f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.08f, 0.32f, 0.48f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.42f, 0.62f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
 
+        {
+            float total_button_height = 6 * (buttonHeight + 28.0f);
+            ImVec2 panel_pos(100, (io.DisplaySize.y - total_button_height) * 0.6f + 80.0f);
+            ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(buttonWidth + 60, 0));
+
+            ImGui::Begin("NavigationPanel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground);
+
+            // Buttons with consistent style
             if (ImGui::Button(localization_json["Menu"]["button_tutorials"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 tutorialSelectionOpen = !tutorialSelectionOpen;
+
             if (ImGui::Button(localization_json["Menu"]["button_scenarios"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 sceneSelectionOpen = !sceneSelectionOpen;
+
             if (ImGui::Button(localization_json["Menu"]["button_load"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 savesSelectionOpen = !savesSelectionOpen;
+
             if (ImGui::Button(localization_json["Menu"]["button_sandbox"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 sandboxSelectionOpen = !sandboxSelectionOpen;
-            if (ImGui::Button(localization_json["Menu"]["button_challenges"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
-                challengeSelectionOpen = !challengeSelectionOpen;
-            if (ImGui::Button(localization_json["Menu"]["button_achievements"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
-                challengeViewOpen = !challengeViewOpen;
+
             if (ImGui::Button(localization_json["Menu"]["button_options"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
                 optionsOpen = !optionsOpen;
+
             if (ImGui::Button(localization_json["Menu"]["button_quit"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
             {
-                std::exit(EXIT_SUCCESS);
+                ImGui::OpenPopup("ConfirmQuit");
             }
-
             ImGui::End();
+        }
+
+        if (ImGui::BeginPopupModal("ConfirmQuit", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Are you sure you want to exit GENESIS?");
+            ImGui::Dummy(ImVec2(0, 16));
+            ImGui::Separator();
+
+            if (ImGui::Button("Yes - Exit", ImVec2(180, 50)))
+                std::exit(EXIT_SUCCESS);
+
+            ImGui::SameLine();
+            if (ImGui::Button("No - Cancel", ImVec2(180, 50)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::EndPopup();
         }
 
         {
@@ -596,8 +649,8 @@ namespace core
         if (savesSelectionOpen)
             drawSavedSimulations();
 
-        ImGui::PopStyleVar(2);
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(4);
+        ImGui::PopStyleColor(6);
         ImGui::PopFont();
 
         if (getState() != application_state::APP_STATE_MENU)
@@ -633,7 +686,7 @@ namespace core
 
     void UIHandler::drawMenuBackgroundDisplay()
     {
-        auto &camera = rendering_eng.camera();
+        auto &camera = m_rendering_eng.camera();
 
         m_currentDisplayTime += m_deltaTime;
         if (m_currentDisplayTime >= m_displayMaxTime)
@@ -644,7 +697,7 @@ namespace core
             const glm::vec3 boxSizes = m_backgroundUniverses[m_currentDisplay]->boxSizes();
             camera.target = boxSizes * 0.5f;
 
-            float diagonal = glm::length(boxSizes);
+            float diagonal = glm::length(boxSizes) * 0.8f;
             camera.distance = diagonal;
             camera.azimuth = 45.f;
             camera.elevation = 25.f;
@@ -693,7 +746,7 @@ namespace core
         ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
         if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(info.file, rendering_eng);
+            simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
             savesSelectionOpen = false;
             pauseMenuOpen = false;
             simulation_universe->unpause();
@@ -831,7 +884,7 @@ namespace core
 
             ImGui::BeginDisabled();
             ImGui::Checkbox(sandbox_creation["isothermal"].get<std::string>().c_str(), &sandbox_info.isothermal);
-            ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reactive);
+            ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &m_reactive);
             ImGui::EndDisabled();
         }
 
@@ -864,9 +917,9 @@ namespace core
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, rendering_eng);
-            rendering_eng.camera().target = sandbox_info.box / 2.f;
-            rendering_eng.camera().distance = glm::length(sandbox_info.box * 1.2f);
+            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            m_rendering_eng.camera().target = sandbox_info.box / 2.f;
+            m_rendering_eng.camera().distance = glm::length(sandbox_info.box * 1.2f);
 
             sandboxSelectionOpen = false;
             simulation_universe->unpause();
@@ -877,7 +930,7 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("src/resource/molecules/car.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("src/resource/molecules/gears.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
 
@@ -957,11 +1010,14 @@ namespace core
         ImGui::SetColumnWidth(0, 180);
 
         const sf::Texture *thumb = &placeholder_texture;
-        std::string thumbKey = info.title + ".png";
+        std::string thumbKey = id + ".png";
         if (textures.count(thumbKey))
             thumb = &textures.at(thumbKey);
 
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.2f, 1.0f, 1.0f, 0.5f));
         ImGui::Image(*thumb, ImVec2(160, 160));
+        ImGui::PopStyleColor();
+
         ImGui::NextColumn();
 
         ImGui::PushFont(bold);
@@ -997,6 +1053,7 @@ namespace core
     void UIHandler::drawSceneSelection()
     {
         auto &scene_json = localization_json["Menu"]["Scene_Selection"];
+        auto &descriptions_json = localization_json["Scenarios"];
         auto &scene_json_default = default_json["Menu"]["Scene_Selection"];
 
         ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_Appearing);
@@ -1024,10 +1081,10 @@ namespace core
                         ImGui::BeginChild(("tab_content_" + category).c_str(), ImVec2(0, 0), true);
 
                         scenario_info info{};
-                        info.title = key;
+                        info.title = scene_json["titles"][category][key];
                         info.is_sandbox = false;
                         info.is_locked = false;
-                        info.description = "Hello World!";
+                        info.description = descriptions_json[key]["description"];
 
                         drawSceneFrame(info, key);
 
@@ -1049,13 +1106,16 @@ namespace core
     {
         auto &chosen_scenario = m_scenarioHandler.getScenarios().at(scenario);
 
-        simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, rendering_eng);
+        simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng);
+
+        if (!chosen_scenario.file.empty())
+            simulation_universe->loadScene(chosen_scenario.file);
 
         m_scenarioHandler.setCurrentUniverse(simulation_universe.get());
         m_scenarioHandler.chooseScenario(scenario);
         m_scenarioHandler.startScenario();
 
-        auto &cam = rendering_eng.camera();
+        auto &cam = m_rendering_eng.camera();
         cam.target = simulation_universe->boxSizes() * 0.5f;
         cam.distance = glm::length(simulation_universe->boxSizes() * 1.2f);
 
@@ -1082,17 +1142,20 @@ namespace core
             static std::string ball_and_stick = "";
             static std::string licorice = "";
             static std::string letter_and_stick = "";
+            static std::string hyper_balls = "";
             static std::string space_filling = "";
 
             ball_and_stick = options["render_modes"]["ball_and_stick"].get<std::string>();
             letter_and_stick = options["render_modes"]["letter_and_stick"].get<std::string>();
             space_filling = options["render_modes"]["space_filling"].get<std::string>();
+            hyper_balls = options["render_modes"]["hyper_balls"].get<std::string>();
             licorice = options["render_modes"]["licorice"].get<std::string>();
 
             const char *modes[] =
                 {
                     ball_and_stick.c_str(),
                     licorice.c_str(),
+                    hyper_balls.c_str(),
                     space_filling.c_str()};
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
@@ -1153,9 +1216,92 @@ namespace core
 
     void UIHandler::drawStatsWindow()
     {
-        ImGui::Begin("SimStats");
+        auto &sim_ui = localization_json["Simulation"]["universe_ui"]["stats"];
 
-        ImGui::End();
+        ImGuiIO& io = ImGui::GetIO();
+
+        ImVec2 size(600, 600);
+
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.12f, 0.95f));
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.15f, 0.15f, 0.25f, 1.0f));
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize |
+                                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+
+        std::string window_title = sim_ui["title"];
+        if (ImGui::Begin(window_title.c_str(), &statsOpen, flags))
+        {
+            ImGui::PushFont(bold);
+            ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), window_title.c_str());
+            ImGui::PopFont();
+            ImGui::Separator();
+
+            auto &core_json = sim_ui["core_stats"];
+            auto &energy_json = sim_ui["energy_stats"];
+            auto &graph_json = sim_ui["graphs_stats"];
+
+            std::string time_string = core_json["time"].get<std::string>().c_str();
+            std::string temperature_string = core_json["temperature"].get<std::string>().c_str();
+
+            // Basic stats
+            if (ImGui::CollapsingHeader(core_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            {
+
+                ImGui::Text("%s: %.2f K", temperature_string.c_str(), simulation_universe->temperature());
+                ImGui::Text("%s:    %.2f bar", core_json["pressure"].get<std::string>().c_str(), simulation_universe->pressure());
+
+                ImGui::SetNextItemWidth(100.f);
+                ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature);
+                ImGui::SetNextItemWidth(100.f);
+                ImGui::DragFloat(core_json["slider_pressure"].get<std::string>().c_str(), &target_pressure);
+                ImGui::Text("%s:        %.2f ps", time_string.c_str(), simulation_universe->timestep() * FEMTOSECOND);
+                ImGui::Text("%s:   %zu", core_json["particles"].get<std::string>().c_str(), simulation_universe->numAtoms());
+                ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
+            }
+
+            // Energy stats
+            if (ImGui::CollapsingHeader(energy_json["title"].get<std::string>().c_str()))
+            {
+                float ke = simulation_universe->calculateKineticEnergy() / 1000.f;
+                ImGui::Text("%s: %.2e kJ", energy_json["kinetic_energy"].get<std::string>().c_str(), ke);
+                ImGui::Text("%s: N/A", energy_json["potential_energy"].get<std::string>().c_str());
+                ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
+            }
+
+            if (ImGui::CollapsingHeader(graph_json["title"].get<std::string>().c_str())) {
+                ImGui::Text(graph_json["warning"].get<std::string>().c_str());
+
+                const float* time = reinterpret_cast<const float*>(time_log.data());
+                const float* temperature = reinterpret_cast<const float*>(temperature_log.data());
+                int count = static_cast<int>(std::min(time_log.size(), temperature_log.size()));
+
+                if (ImPlot::BeginPlot(graph_json["temperature_v_time"].get<std::string>().c_str())) 
+                {
+                    std::string x_label = std::format("{} (fs)", time_string); 
+                    std::string y_label = std::format("{} (°K)", temperature_string); 
+                    ImPlot::SetupAxes(x_label.c_str(), y_label.c_str()); 
+
+                    ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, 1000.f, ImPlotCond_Always);
+
+                    ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_None);
+
+                    ImPlot::PlotLine(temperature_string.c_str(), time, temperature, count);
+                    ImPlot::PlotScatter(time_string.c_str(), time, temperature, count);
+
+                    ImPlot::EndPlot();
+                }
+            }
+
+            ImGui::End();
+        }
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
     }
 
     void UIHandler::drawTimeControl()
@@ -1167,9 +1313,7 @@ namespace core
         bool sim_paused = simulation_universe->isPaused();
         const std::string mode = sim_paused ? "resume_icon" : "pause_icon";
 
-        ImVec2 timecontrol_pos(0, io.DisplaySize.y);
         ImVec2 timecontrol_size(panel_height * 5.f, panel_height);
-        ImGui::SetNextWindowPos(timecontrol_pos, ImGuiCond_Always, ImVec2(0.0f, 1.0f));
 
         ImGui::Dummy(ImVec2(20, 0));
 
@@ -1188,6 +1332,7 @@ namespace core
 
         ImGui::SameLine();
 
+        ImGui::SetNextItemWidth(100.f);
         ImGui::Text(" %.2f ps   %.1f fs/s ", simulation_universe->timestep() * FEMTOSECOND, simulation_universe->getTimescale());
 
         ImGui::SameLine();
@@ -1230,51 +1375,97 @@ namespace core
     void UIHandler::drawHUD()
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
-
         ImGuiIO &io = ImGui::GetIO();
 
-        ImGui::PushFont(regular);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.15f, 0.8f));
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.25f, 0.35f, 0.60f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5, 5));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 10));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 5));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.04f, 0.18f, 0.28f, 0.88f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.08f, 0.32f, 0.48f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.42f, 0.62f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
 
         ImVec2 panel_pos(0, io.DisplaySize.y);
         ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always, ImVec2(0.0f, 1.0f));
         ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, panel_height), ImGuiCond_Always);
 
         ImGuiWindowFlags hud_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                                     ImGuiWindowFlags_NoBringToFrontOnFocus;
+                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                    ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse;
 
         ImGui::Begin("HUD", &showHUD, hud_flags);
 
+        ImGui::SetCursorPosX((io.DisplaySize.x) * 0.5f);
+
         drawTimeControl();
 
-        //ImGui::PushStyleVar(ImGuiStyleVar_)
-        
+        ImGui::SameLine();
+
+        ImGui::BeginGroup();
+
+        ImGui::SetCursorPosX((io.DisplaySize.x - 80.0f) * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.7f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
+
         if (ImGui::ImageButton("##compoundsbutton", textures["plus_icon"], ImVec2(32.f, 32.f)))
         {
             compoundSelector = !compoundSelector;
         }
 
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(sim_ui.value("tooltip_compound_selector", "Add Compound").c_str());
+
+        ImGui::SameLine();
+        ImGui::SetCursorPosX((io.DisplaySize.x - 64.0f));
+
+        if (ImGui::ImageButton("##statsbutton", textures["stats_icon"], ImVec2(32.f, 32.f)))
+        {
+            statsOpen = !statsOpen;
+        }
+
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar(2);
+
+        ImGui::EndGroup();
+
         ImGui::End();
+
+        ImGui::PopStyleVar(4);
+        ImGui::PopStyleColor();
     }
 
     void UIHandler::drawUniverseUI()
     {
+        ImGui::PushFont(regular);
         drawHUD();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.04f, 0.18f, 0.28f, 0.88f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.08f, 0.32f, 0.48f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.42f, 0.62f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
+        if (statsOpen)
+            drawStatsWindow();
 
         if (videoPlayerOpen)
             drawVideoControls();
 
-        ImGui::PopStyleVar(4);
-        ImGui::PopStyleColor(2);
-
         if (compoundSelector)
             drawCompoundSelector();
+
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar(2);
 
         ImGui::PopFont();
     }
@@ -1284,7 +1475,7 @@ namespace core
         auto &compound = compound_presets[selectedCompound];
 
         display_universe->clear();
-        display_universe->createMolecule(compound.structure, sf::Vector3f(rendering_eng.camera().target.x, rendering_eng.camera().target.y, rendering_eng.camera().target.z));
+        display_universe->createMolecule(compound.structure, sf::Vector3f(m_rendering_eng.camera().target.x, m_rendering_eng.camera().target.y, m_rendering_eng.camera().target.z));
 
         sf::Vector3f Centroid = sf::Vector3f{0.f, 0.f, 0.f};
         for (const auto &p : compound.structure.positions)
@@ -1308,7 +1499,7 @@ namespace core
         molecule_structure element = sim::parseSMILES(symbol, false);
 
         display_universe->clear();
-        display_universe->createMolecule(element, sf::Vector3f(rendering_eng.camera().target.x, rendering_eng.camera().target.y, rendering_eng.camera().target.z));
+        display_universe->createMolecule(element, sf::Vector3f(m_rendering_eng.camera().target.x, m_rendering_eng.camera().target.y, m_rendering_eng.camera().target.z));
 
         ghostDisplay = true;
 
@@ -1337,7 +1528,7 @@ namespace core
         ghostColliding = false;
 
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
-        auto &cam = rendering_eng.camera();
+        auto &cam = m_rendering_eng.camera();
 
         ImVec2 mousePos = ImGui::GetMousePos();
 
@@ -1467,15 +1658,11 @@ namespace core
         }
 
         ImGui::Dummy(ImVec2(0.0f, 12.0f));
-
         ImGui::PushID(ImGui::GetID(compound.name.c_str()));
 
-        std::string button_add = comp_sel["button_add"].get<std::string>();
-        ImVec2 add_size = ImGui::CalcTextSize(button_add.c_str());
-
-        ImGui::SetCursorPosX((row_width - add_size.x) * 0.5f);
+        ImGui::SetCursorPosX(row_width * 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        if (ImGui::Button(button_add.c_str(), ImVec2(0.f, 40.0f)))
+        if (ImGui::ImageButton("##addcompound", textures["plus_icon"].getNativeHandle(), ImVec2(32.0f, 32.0f)))
         {
             compoundSelector = false;
             selectedCompound = compound.id;
@@ -1555,17 +1742,13 @@ namespace core
             ImGui::SameLine();
             ImGui::Text("%.3f g/mol", compound.molecular_weight);
 
-            ImGui::TextDisabled("SMILES:");
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.8f, 1.0f, 1.0f));
-            ImGui::TextWrapped("%s", compound.SMILES.c_str());
-            ImGui::PopStyleColor();
-
             ImGui::Dummy(ImVec2(0, 15));
 
             ImGui::TextDisabled(full_view["description"].get<std::string>().c_str());
 
             // std::string description = localization_json["Compounds"].count(compound.name) == 0 ? compounds["compound_descriptions"][compound.name] : localization_json[default_json["Compounds"]["compound_names"][compound.id]];
-            ImGui::TextWrapped(compounds["compound_descriptions"][default_json["Compounds"]].get<std::string>().c_str());
+            std::string description = compounds["compound_descriptions"][compound.name];
+            ImGui::TextWrapped(description.c_str());
 
             ImGui::Dummy(ImVec2(0, 20));
 
@@ -1598,6 +1781,13 @@ namespace core
             ImGui::End();
             return;
         }
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.04f, 0.18f, 0.28f, 0.88f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.08f, 0.32f, 0.48f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.42f, 0.62f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
 
         if (ImGui::BeginTabBar("##CompoundTabs", ImGuiTabBarFlags_DrawSelectedOverline))
         {
@@ -1648,6 +1838,9 @@ namespace core
 
         if (compoundFullView)
             drawCompoundFullView();
+
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar(2);
 
         ImGui::End();
     }
@@ -1840,6 +2033,11 @@ namespace core
         {
             info.lennardBall = info.licorice = true;
         }
+        else if (mode == simulation_render_mode::HYPER_BALLS)
+        {
+            info.lennardBall = info.licorice = info.spaceFilling = false;
+            info.hyperBalls = true;
+        }
         else if (mode == simulation_render_mode::SPACE_FILLING)
         {
             info.lennardBall = info.spaceFilling = true;
@@ -1854,10 +2052,24 @@ namespace core
         if (simulation_universe->isPaused())
             return;
 
+        auto start = std::chrono::high_resolution_clock::now();
+
         simulation_universe->update(target_temperature, target_pressure);
+
+        if (m_reactive) m_reaction_eng.update(*simulation_universe.get());
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> duration = end - start;
+
+        //std::cout << "Simulation execution time: " << duration.count() << " milliseconds" << std::endl;
 
         if (m_recordingFrames && simulation_universe->timestep())
         {
+            if (simulation_universe->timestep() % 100 == 0)
+            {
+                temperature_log.emplace_back(simulation_universe->temperature());
+                time_log.emplace_back(simulation_universe->timestep());
+            }
             simulation_universe->saveFrame();
 
             if (m_autoFrame)
@@ -1873,7 +2085,7 @@ namespace core
         info.universeBox = !(screenshotToggle && savedSimulation);
 
         simulation_universe->draw(m_window.getWindow(), info);
-        rendering_eng.handleCamera();
+        m_rendering_eng.handleCamera();
 
         if (screenshotToggle)
         {
@@ -1988,6 +2200,13 @@ namespace core
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 20));
 
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.04f, 0.18f, 0.28f, 0.88f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.08f, 0.32f, 0.48f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.42f, 0.62f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
         ImGui::Begin("##pause menu", &pauseMenuOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
         ImGui::SetWindowFontScale(2.8f);
@@ -2011,8 +2230,8 @@ namespace core
 
         if (ImGui::Button(pause_menu["button_restart"].get<std::string>().c_str(), buttonSize))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, rendering_eng);
-            rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
+            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            m_rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             target_pressure = 0.f;
             target_temperature = 300.f;
@@ -2106,6 +2325,8 @@ namespace core
                 compoundSelector = false;
                 savesSelectionOpen = false;
                 optionsOpen = false;
+                ghostDisplay = false;
+                statsOpen = false;
 
                 setState(application_state::APP_STATE_MENU);
 
@@ -2149,8 +2370,8 @@ namespace core
 
         ImGui::End();
 
-        ImGui::PopStyleVar(2);
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(4);
+        ImGui::PopStyleColor(6);
     }
 
     // Video

@@ -33,6 +33,7 @@
       "render_modes":
       {
         "ball_and_stick": "Ball And Stick",
+        "hyper_balls": "Hyper Balls",
         "letter_and_stick": "Letter And Stick",
         "licorice": "Licorice",
         "space_filling": "Space Filling"
@@ -110,7 +111,18 @@
 
       "titles":
       {
-      
+        "MOLECULE":
+        {
+        
+        },
+        "DYNAMICS":
+        {
+          "SCENARIO_DYNAMICS_browinian_motion": "Brownian Motion"
+        },
+        "REACTIONS":
+        {
+        
+        }
       }
     },
     
@@ -181,6 +193,8 @@
       "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
+      "Cubane": "Cubane (C8H8) is a highly strained hydrocarbon consisting of eight carbon atoms arranged at the corners of a cube, each bonded to a hydrogen atom. Despite its extreme angle strain, it is remarkably stable under normal conditions. Cubane is a colorless crystalline solid and serves as a fascinating molecule in research, with potential applications in high-energy materials, pharmaceuticals, and advanced chemical synthesis.",
+      "Cuban-cetamol": "Cuban-cetamol is a hypothetical cubane-based analogue of paracetamol, designed by replacing the aromatic benzene ring with a cubane cage. It combines the strained cubic hydrocarbon core with hydroxyl and acetamide substituents, mimicking the functional groups of paracetamol.",
       "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
       "Oxygen": "Oxygen (O2) is a diatomic molecule essential for life, composed of two oxygen atoms. It is a colorless, odorless gas that makes up about 21% of Earth's atmosphere. Oxygen is vital for cellular respiration in most organisms and supports combustion. While necessary for survival, high concentrations can be toxic, and low levels can cause hypoxia.",
       "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C60",
@@ -222,12 +236,35 @@
   {
     "universe_ui":
     {
-      "stats_title": "Universe Stats",
-      "temperature": "Temperature (K):",
-      "pressure": "Pressure (Bar):",
-      "time": "Time (Ps):",
-      "slider_temperature": "Target Temperature",
-      "slider_pressure": "Target Pressure",
+      "stats":
+      {
+        "title": "Universe Stats",
+
+        "core_stats":
+        {
+          "title": "Core Stats",
+          "temperature": "Temperature (K):",
+          "pressure": "Pressure (Bar):",
+          "time": "Time",
+          "particles": "Particles",
+          "molecules": "Molecules",
+          "slider_temperature": "Target T (K):",
+          "slider_pressure": "Target P (Bar):"
+        },
+        "energy_stats":
+        {
+          "title": "Energy & Kinetics",
+          "kinetic_energy": "Kinetic Energy",
+          "potential_energy": "Potential Energy",
+          "total_energy": "Total Energy"
+        },
+        "graphs_stats":
+        {
+          "title": "Graphs & Plots",
+          "warning": "Frames need to be recorded in order for graphs to work!",
+          "temperature_v_time": "Temperature X time"
+        }
+      },
 
       "tooltip_resume": "Resume Simulation",
       "tooltip_pause": "Pause Simulation",
@@ -311,6 +348,15 @@
 
   "Scenarios":
   {
+    "SCENARIO_DYNAMICS_browinian_motion":
+    {
+      "description": "In this scenario, you will see particles moving randomly, a classic example of Brownian motion.",
+      "narrations":
+      [
+        "Welcome to the Brownian Motion Scenario! In this scenario, we'll see Brownian motion and what is it.",
+        "But what exactly is Brownian Motion?\nIt is the random, jittery movement of particles caused by countless collisions with surrounding molecules. These invisible impacts make the particles wander unpredictably, a microscopic dance driven by thermal energy."
+      ]
+    },
     "TUTORIAL_ENGINE_Controls": 
     {
       "description": "Learn the essential controls: camera movement, pausing",

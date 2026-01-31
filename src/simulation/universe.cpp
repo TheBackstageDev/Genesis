@@ -16,23 +16,17 @@ namespace sim
     {
 
         universe::universe(const universe_create_info &create_info, rendering_engine &rendering_engine)
-            : box(create_info.box), react(create_info.reactive),
-              gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
+            : box(create_info.box), gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
               HMassRepartitioning(create_info.HMassRepartitioning),
               log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
-            if (react)
-                initReaxParams();
         }
 
         universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine)
             : rendering_eng(rendering_engine)
         {
             loadScene(path);
-
-            if (react)
-                initReaxParams();
         }
 
         void universe::draw(sf::RenderTarget &target, rendering_info info)
@@ -119,7 +113,7 @@ namespace sim
 
             if (deltaEN > 0.1f) // Significant electronegativity difference
             {
-                float charge = deltaEN * 0.34f;
+                float charge = deltaEN * 0.31f;
 
                 if (EN1 > EN2)
                 {
@@ -202,8 +196,6 @@ namespace sim
             nMolecule.atomBegin = baseAtomIndex;
             nMolecule.atomCount = structure.atoms.size();
 
-            if (!react)
-            {
                 int32_t baseBondIndex = bonds.size();
                 for (int32_t b = 0; b < structure.bonds.size(); ++b)
                 {
@@ -259,8 +251,6 @@ namespace sim
 
                 nMolecule.dihedralBegin = baseDihedral;
                 nMolecule.dihedralCount = structure.dihedral_angles.size();
-
-            }
 
             molecules.emplace_back(std::move(nMolecule));
         }
@@ -466,17 +456,20 @@ namespace sim
             float dr = dr_vec.length();
 
             const float sigma = sqrtf(sigma_i * sigma_j);
+            const float epsilon = sqrtf(epsilon_i * epsilon_j);
 
             if (dr < sigma * CUTOFF && dr > EPSILON)
             {
+                float inv_r2 = 1.0f / (dr * dr);
+                float inv_r6 = inv_r2 * inv_r2 * inv_r2;
+                float inv_r12 = inv_r6 * inv_r6;
+
                 float sigma6 = powf(sigma, 6);
                 float sigma12 = sigma6 * sigma6;
 
-                float epsilon = sqrtf(epsilon_i * epsilon_j);
-                float r8 = sigma6 / powf(dr, 8);
-                float r14 = 2.f * sigma12 / powf(dr, 14);
-                float du_dr = 24.0f * epsilon * (r14 - r8);
-                return (du_dr / dr) * dr_vec;
+                float force_mag = 24.0f * epsilon * inv_r2 * (2.0f * sigma12 * inv_r12 - sigma6 * inv_r6);
+
+                return force_mag * dr_vec;
             }
 
             return sf::Vector3f{0.f, 0.f, 0.f};
@@ -565,7 +558,7 @@ namespace sim
                     if (r > CELL_CUTOFF)
                         continue;
 
-                    if (areBonded(i, j))
+                    if (areNearNeighbours(i, j, 2))
                         continue;
 
                     sf::Vector3f cForce = coulombForce(i, j, dr);
@@ -615,7 +608,7 @@ namespace sim
                                 if (r > CELL_CUTOFF)
                                     continue;
 
-                                if (areBonded(i, j))
+                                if (areNearNeighbours(i, j, 2))
                                     continue;
 
                                 sf::Vector3f cForce = coulombForce(i, j, dr);
@@ -838,7 +831,9 @@ namespace sim
                     const sf::Vector3f &pc = pos(da.C);
                     const sf::Vector3f &pd = pos(da.D);
 
-                    float phi = calculateDihedral(glm::vec3(pa.x, pa.y, pa.z), glm::vec3(pb.x, pb.y, pb.z), glm::vec3(pc.x, pc.y, pc.z), glm::vec3(pd.x, pd.y, pd.z));
+                    glm::vec3 pb_g = glm::vec3(pb.x, pb.y, pb.z);
+
+                    float phi = calculateDihedral(glm::vec3(pa.x, pa.y, pa.z), pb_g, glm::vec3(pc.x, pc.y, pc.z), glm::vec3(pd.x, pd.y, pd.z));
 
                     float target = da.rad;
                     if (target == 0.0f && da.periodicity == 1)
@@ -856,33 +851,40 @@ namespace sim
                     while (diff < -M_PI)
                         diff += 2.0f * M_PI;
 
-                    sf::Vector3f b1 = pb - pa;
-                    sf::Vector3f b2 = pc - pb;
-                    sf::Vector3f b3 = pd - pc;
+                    glm::vec3 b1 = pb_g - glm::vec3(pa.x, pa.y, pa.z);
+                    glm::vec3 b2 = glm::vec3(pc.x, pc.y, pc.z) -pb_g;
+                    glm::vec3 b3 = glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z);
 
-                    sf::Vector3f n1 = b1.cross(b2).normalized();
-                    sf::Vector3f n2 = b2.cross(b3).normalized();
-                    sf::Vector3f u2 = b2.normalized();
+                    glm::vec3 n1 = glm::cross(b1, b2);
+                    glm::vec3 n2 = glm::cross(b2, b3);
+
+                    n1 = glm::normalize(n1);
+                    n2 = glm::normalize(n2);
+                    glm::vec3 u2 = glm::normalize(b2);
 
                     float sin_term = std::sin(da.periodicity * phi - da.rad);
                     float torque_mag = da.K * da.periodicity * sin_term;
 
-                    sf::Vector3f axis = (pc - pb).normalized();
+                    glm::vec3 axis = glm::normalize(glm::vec3(pc.x, pc.y, pc.z) - pb_g);
 
-                    sf::Vector3f rA = (pa - (pb.length() > 0.f ? pb.normalized() : sf::Vector3f{0.f, 0.f, 0.f}));
-                    sf::Vector3f torqueA = axis.cross(rA).normalized() * torque_mag;
+                    glm::vec3 rA = glm::vec3(pa.x, pa.y, pa.z) - pb_g;
+                    glm::vec3 torqueA = glm::normalize(glm::cross(axis, rA)) * torque_mag;
 
-                    sf::Vector3f rD = (pd - pc).normalized();
-                    sf::Vector3f torqueD = axis.cross(rD).normalized() * (-torque_mag);
+                    glm::vec3 rD = glm::normalize(glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z));
+                    glm::vec3 torqueD = glm::normalize(glm::cross(axis, rD)) * (-torque_mag);
 
-                    sf::Vector3f f1 = (torque_mag / b1.length()) * (n1.cross(u2));
-                    sf::Vector3f f4 = (torque_mag / b3.length()) * (u2.cross(n2));
+                    glm::vec3 f1 = (torque_mag / glm::length(b1) + 0.0001f) * (glm::cross(n1, u2));
+                    glm::vec3 f4 = (torque_mag / glm::length(b3) + 0.0001f) * (glm::cross(u2, n2));
 
-                    lf[da.A] += -f1;
-                    lf[da.D] += -f4;
-                    lf[da.B] += f1;
-                    lf[da.C] += f4;
-                    lf[da.D] += -torqueD * 0.5f;
+                    sf::Vector3f f1_s = sf::Vector3f(f1.x, f1.y, f1.z);
+                    sf::Vector3f torqueD_s = sf::Vector3f(torqueD.x, torqueD.y, torqueD.z);
+                    sf::Vector3f f4_s = sf::Vector3f(f4.x, f4.y, f4.z);
+
+                    lf[da.A] += -f1_s;
+                    lf[da.D] += -f4_s;
+                    lf[da.B] += f1_s;
+                    lf[da.C] += f4_s;
+                    lf[da.D] += -torqueD_s * 0.5f;
                 }
             };
 
@@ -1032,44 +1034,12 @@ namespace sim
             }
         }
 
-        float universe::calculateUncorrectedBondOrder(int32_t i, int32_t j)
-        {
-            sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
-            float r = dr_vec.length();
-            if (r > REACTION_CUTOFF)
-                return 0.0f;
-
-            uint8_t Zi = atoms[i].ZIndex;
-            uint8_t Zj = atoms[j].ZIndex;
-
-            auto &pi = constants::getParams(Zi);
-            auto &pj = constants::getParams(Zj);
-
-            float r_sigma = (pi.r0_sigma + pj.r0_sigma) / 2.0f;
-            float r_pi = (pi.r0_pi + pj.r0_pi) / 2.0f;
-            float r_pp = (pi.r0_pp + pj.r0_pp) / 2.0f;
-
-            float bo_sigma = std::exp(pi.p_bo1 * std::pow(r / r_sigma, pi.p_bo2));
-            float bo_pi = std::exp(pi.p_bo3 * std::pow(r / r_pi, pi.p_bo4));
-            float bo_pp = std::exp(pi.p_bo5 * std::pow(r / r_pp, pi.p_bo6));
-
-            return bo_sigma + bo_pi + bo_pp;
-        }
-
         float universe::calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp)
         {
             auto &parami = constants::getParams(atoms[i].ZIndex);
             auto &paramj = constants::getParams(atoms[j].ZIndex);
 
             return -(sqrt(parami.De_sigma * paramj.De_sigma) * bo_sigma + sqrt(parami.De_pi * paramj.De_pi) * bo_pi + sqrt(parami.De_pp * paramj.De_pp) * bo_pp);
-        }
-
-        void universe::processReactivePair(int32_t i, int32_t j, float cutoff, float vis_thresh)
-        {
-        }
-
-        void universe::handleReactiveForces()
-        {
         }
 
         void universe::update(float targetTemperature, float targetPressure)
@@ -1082,13 +1052,8 @@ namespace sim
             data.forces.assign(N, glm::vec3(0.0f));
             total_virial = 0.0f;
 
-            if (!react)
-            {
-                calcBondedForcesParallel();
-                calcUnbondedForcesParallel();
-            }
-            else
-                handleReactiveForces();
+            calcBondedForcesParallel();
+            calcUnbondedForcesParallel();
 
             setPressure(targetPressure);
             setTemperature(targetTemperature);
@@ -1113,13 +1078,8 @@ namespace sim
 
             data.forces.assign(N, glm::vec3(0.0f));
 
-            if (!react)
-            {
-                calcBondedForcesParallel();
-                calcUnbondedForcesParallel();
-            }
-            else
-                handleReactiveForces();
+            calcBondedForcesParallel();
+            calcUnbondedForcesParallel();
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -1149,7 +1109,7 @@ namespace sim
             float P_virial = -total_virial / (3.0f * volume);
 
             float pressure = P_ideal + P_virial;
-            return pressure;
+            return pressure / 100.f;
         }
 
         void universe::setPressure(float Target_P_Bar)
@@ -1215,7 +1175,7 @@ namespace sim
 
         void universe::buildCells()
         {
-            const float cutoff = react ? REACTION_CUTOFF : CELL_CUTOFF;
+            const float cutoff = CELL_CUTOFF;
             if ((cutoff - box.x) > EPSILON || timeStep == 0)
             {
                 cx = static_cast<int32_t>(std::ceil(cutoff / box.x));
@@ -1517,7 +1477,6 @@ namespace sim
             }
 
             scene["gravity"] = gravity;
-            scene["react"] = react;
             scene["isothermal"] = isothermal;
             scene["wall_collision"] = wall_collision;
             scene["mag_gravity"] = mag_gravity;
@@ -1573,7 +1532,6 @@ namespace sim
             dihedral_angles.clear();
             subsets.clear();
             molecules.clear();
-            reactive_bonds.clear();
             data.positions.clear();
             data.velocities.clear();
             data.q.clear();
@@ -1585,13 +1543,9 @@ namespace sim
             box.z = scene.value("boxz", 50.0f);
 
             gravity = scene.value("gravity", false);
-            react = scene.value("react", false);
             isothermal = scene.value("isothermal", true);
             wall_collision = scene.value("wall_collision", false);
             mag_gravity = scene.value("mag_gravity", 9.81f);
-
-            if (react)
-                initReaxParams();
 
             const auto &posx = scene["posx"];
             const auto &posy = scene["posy"];

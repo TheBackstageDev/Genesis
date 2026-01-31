@@ -22,7 +22,7 @@ namespace constants
 #define MASS_NEUTRON 1.0008    // Daltons
 #define MASS_ELECTRON 1 / 1337 // Daltons
 
-#define EPSILON 0.1f
+#define EPSILON 0.001f
 #define FEMTOSECOND 0.001f // ps
 #define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
@@ -31,11 +31,11 @@ namespace constants
 #define JOULE_TO_CAL 1/4.164f
 #define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
-#define VERLET_SKIN 1.f
-#define CUTOFF 2.5f
+#define VERLET_SKIN 2.f
+#define CUTOFF 3.5f
 #define COULOMB_CUTOFF 12.f * MULT_FACTOR
 
-#define CELL_CUTOFF 10 + VERLET_SKIN
+#define CELL_CUTOFF 12 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
@@ -45,7 +45,7 @@ namespace constants
 #define THERMOSTAT_INTERVAL 5
 #define BAROSTAT_INTERVAL 5
 
-#define COULOMB_K 1389.3546f // kJ·mol⁻¹· Å ·e⁻²
+#define COULOMB_K 1389.354576f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 340000.f        // Harmonic force constant
 #define ANGLE_K 12000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.f
@@ -455,7 +455,7 @@ namespace constants
             case  3: return sf::Color(204, 128, 255);    // Li - Lithium      (Violet)
             case  4: return sf::Color(178, 255, 255);    // Be - Beryllium    (Light Green)
             case  5: return sf::Color(128, 128, 128);    // B  - Boron        (Dark Gray)
-            case  6: return sf::Color(144, 144, 144);    // C  - Carbon       (Gray)
+            case  6: return sf::Color(138, 138, 138);    // C  - Carbon       (Gray)
             case  7: return sf::Color( 48,  80, 248);    // N  - Nitrogen     (Blue)
             case  8: return sf::Color(255,  13,  13);    // O  - Oxygen       (Red)
             case  9: return sf::Color(  0, 233, 233);    // F  - Fluorine     (Cyan)
@@ -850,7 +850,7 @@ namespace constants
         std::pair<float, float> constants; // {sigma (Å), epsilon (kJ/mol)}
         switch (ZIndex)
         {
-            case   1: constants = {2.886f, 0.184f}; break; // H  Hydrogen
+            case   1: constants = {2.532f, 0.184f}; break; // H  Hydrogen
             case   2: constants = {2.362f, 0.0844f}; break; // He Helium
             case   3: constants = {3.345f, 0.335f}; break; // Li Lithium
             case   4: constants = {3.051f, 0.418f}; break; // Be Beryllium
@@ -1047,8 +1047,8 @@ namespace constants
 
         switch (type)
         {
-        case sim::fun::BondType::SINGLE:
-
+            case sim::fun::BondType::SINGLE:
+            
             if      (BONDED(6,1))  base = 1.09f;   // C–H
             else if (BONDED(6,3))  base = 1.82f;   // C–Li 
             else if (BONDED(6,4))  base = 1.70f;   // C–Be 

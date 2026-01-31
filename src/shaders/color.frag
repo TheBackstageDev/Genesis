@@ -56,5 +56,5 @@ void main()
     float fresnel = pow(1.0 - abs(dot(hit_normal, viewDir)), 4.0);
     final_color += vec3(0.9, 0.9, 1.0) * fresnel * 0.4;
 
-    fragColor = vec4(final_color * (0.3 + 0.8 * NdotL), v_color.w);
+    fragColor = vec4(final_color, v_color.w);
 }

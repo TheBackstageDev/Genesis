@@ -34,7 +34,7 @@ namespace sim
         core::window_t &window;
 
         GLuint color_vao, color_vbo, bond_vao, bond_vbo;
-        GLuint atom_program, bond_program;
+        GLuint atom_program, bond_program, hyperballs_program;
 
         struct AtomInstance 
         {
@@ -45,11 +45,13 @@ namespace sim
 
         struct BondInstance
         {
-            glm::vec4 posA;
-            glm::vec4 posB;
-            glm::vec4 colorA;
-            glm::vec4 colorB;
-            alignas(16) float radius;
+            glm::vec4 posA{0.0f};
+            glm::vec4 posB{0.0f};
+            glm::vec4 colorA{1.0f};
+            glm::vec4 colorB{1.0f};
+            alignas(16) float radius = 0.0f;
+            alignas(16) float radiusA = 0.5f;
+            alignas(16) float radiusB = 0.5f;
         };
 
         const float licorice_radius = 0.22f;
@@ -62,8 +64,7 @@ namespace sim
         // Init
 
         void initShaders();
-        void initColorShaders(const std::filesystem::path vert, const std::filesystem::path frag);
-        void initBondShaders(const std::filesystem::path vert, const std::filesystem::path frag);
+        void initShaders(const std::filesystem::path vert, const std::filesystem::path frag, GLuint& program);
 
         void bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);

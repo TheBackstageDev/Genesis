@@ -98,14 +98,6 @@ namespace sim
             float strength = 0.f;
         };
 
-        struct reactive_bond
-        {
-            uint32_t i, j;
-            float bo;
-            BondType type = BondType::NONE;
-            int32_t padding;
-        };
-
         struct bond 
         {
             uint32_t bondedAtom; 
@@ -117,6 +109,13 @@ namespace sim
             int32_t padding;
         };
 
+        enum class functionalGroup
+        {
+            RADICAL,
+            ANY,
+            COUNT
+        };
+
         struct subset
         {
             uint32_t mainAtomIdx;              
@@ -124,12 +123,12 @@ namespace sim
             uint32_t bondingSubsetIdx  = UINT32_MAX;      // Index of the next subset (optional, max(uint32_t) if none)
             
             uint32_t hydrogenBegin     = UINT32_MAX;
-            uint32_t hydrogenCount     = UINT32_MAX;
+            uint32_t hydrogenCount     = 0;
             
             uint32_t connectedBegin    = UINT32_MAX;
-            uint32_t connectedCount    = UINT32_MAX;
+            uint32_t connectedCount    = 0;
 
-            int32_t padding;
+            functionalGroup group{functionalGroup::ANY};
         };
 
         struct molecule
@@ -174,6 +173,7 @@ namespace sim
         {
             bool lennardBall = true; 
             bool licorice = false; 
+            bool hyperBalls = false;
             bool spaceFilling = false; 
             bool universeBox = true;
             bool renderWater = true;

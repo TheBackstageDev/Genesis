@@ -6,6 +6,7 @@
 
 #include <thread>
 #include <future>
+#include <queue>
 #include <atomic>
 #include <filesystem>
 #include <json.hpp>
@@ -41,7 +42,6 @@ namespace sim
         struct universe_create_info
         {
             bool has_gravity = false;
-            bool reactive = false;
             bool wall_collision = false;
             bool isothermal = true;
             bool HMassRepartitioning = false;
@@ -144,31 +144,6 @@ namespace sim
 
             void setTimescale(float timescale = 1.0f) { m_Timescale = timescale; }
 
-            // Gets
-
-            int32_t numBonds() { return bonds.size(); }
-            int32_t numAtoms() { return atoms.size(); }
-            int32_t numMolecules() { return molecules.size(); }
-            float getTimescale() { return m_Timescale; }
-            float getEffectiveDT() { return m_Timescale * FEMTOSECOND; }
-            const subset& getSubset(int32_t index) { return subsets[index]; }
-
-            float temperature() const { return temp; }
-            float pressure() const { return pres; }
-            size_t timestep() const { return timeStep; }
-
-            glm::vec3 boxSizes() { return box; }
-
-            _NODISCARD std::vector<glm::vec3> positions() const 
-            {
-                return data.positions;
-            }
-
-            void clearDisplayPositions()
-            {
-                m_displayPositions.clear();
-            }
-            
             void setDisplayPositions(const std::vector<glm::vec3>& nPositions)
             {
                 m_displayPositions = nPositions;
@@ -183,8 +158,49 @@ namespace sim
             {
                 data.positions[i] = p;
             }
+            
+            void addVelocity(size_t i, glm::vec3 v)
+            {
+                data.velocities[i] += v;
+            }
+
+            // Gets
+            
+            core::camera_t& getRenderingCamera() { return rendering_eng.camera(); }
+            bool isPaused() { return m_paused; }
+
+            const std::vector<atom>& getAtoms() const { return atoms; }
+            std::vector<subset>& getSubsets() { return subsets; }
+            int32_t numBonds() { return bonds.size(); }
+            int32_t numAtoms() { return atoms.size(); }
+            int32_t numMolecules() { return molecules.size(); }
+            float getTimescale() { return m_Timescale; }
+            float getEffectiveDT() { return m_Timescale * FEMTOSECOND; }
+            const subset& getSubset(int32_t index) { return subsets[index]; }
+
+            float temperature() const { return temp; }
+            float pressure() { return calculatePressure(); }
+            size_t timestep() const { return timeStep; }
+
+            glm::vec3 boxSizes() { return box; }
+
+            _NODISCARD std::vector<glm::vec3> positions() const 
+            {
+                return data.positions;
+            }
+
+            void clearDisplayPositions()
+            {
+                m_displayPositions.clear();
+            }
+
+            glm::vec3 getPosition(size_t i)
+            {
+                return data.positions[i];
+            }
 
             // Helper Funcs
+
             sf::Vector3f minImageVec(sf::Vector3f dr)
             {
                 if (wall_collision) return dr;
@@ -195,10 +211,27 @@ namespace sim
                 return dr;
             }
 
-            bool isPaused() { return m_paused; }
+            glm::vec3 minImageVec(glm::vec3 dr)
+            {
+                if (wall_collision) return dr;
 
-            core::camera_t& getRenderingCamera() { return rendering_eng.camera(); }
-        private:
+                dr.x -= box.x * std::round(dr.x / box.x);
+                dr.y -= box.y * std::round(dr.y / box.y);
+                dr.z -= box.z * std::round(dr.z / box.z);
+                return dr;
+            }
+
+            inline bool areBonded(uint32_t i, uint32_t j) const
+            {
+                if (i >= bondedBits.size() || j >= bondedBits[i].size() * 64) return false;
+                size_t word = j / 64;
+                size_t bit  = j % 64;
+                return (bondedBits[i][word] & (1ull << bit)) != 0;
+            }
+
+            // Energies
+            float calculateKineticEnergy();
+        private:            
             void boundCheck(uint32_t i);
 
             float ljPot(uint32_t i, uint32_t j);
@@ -217,16 +250,8 @@ namespace sim
             float calculateDihedral(const glm::vec3& pa, const glm::vec3& pb, const glm::vec3& pc, const glm::vec3& pd);
 
             // Energies
-            float calculateKineticEnergy();
             float calculateAtomTemperature(int32_t i);
             float calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp);
-
-            // Reactions
-            float calculateUncorrectedBondOrder(int32_t i, int32_t j);
-            void processReactivePair(int32_t i, int32_t j, float cutoff = CELL_CUTOFF, float vis_thresh = 0.3f);
-            void calcUnbondedForcesReactive();
-            void calcReactiveAngleForces();
-            void handleReactiveForces();
 
             rendering_engine& rendering_eng;
 
@@ -259,7 +284,6 @@ namespace sim
             std::vector<dihedral_angle> dihedral_angles;
             
             std::vector<bond> bonds;
-            std::vector<reactive_bond> reactive_bonds;
 
             std::vector<std::vector<uint32_t>> rings; // for drawing on non-reactive mode;
 
@@ -284,14 +308,39 @@ namespace sim
             float pres = 0;
             size_t timeStep = 0;
 
-            inline bool areBonded(uint32_t i, uint32_t j) const
+            inline bool areNearNeighbours(uint32_t i, uint32_t j, uint32_t n) const
             {
-                if (i >= bondedBits.size() || j >= bondedBits[i].size() * 64) return false;
-                size_t word = j / 64;
-                size_t bit  = j % 64;
-                return (bondedBits[i][word] & (1ull << bit)) != 0;
+                if (i >= bondedBits.size() || j >= bondedBits.size()) return false;
+                if (n == 0) return i == j;
+                if (n == 1) return areBonded(i, j);
+
+                std::queue<std::pair<uint32_t,uint32_t>> q;
+                std::vector<bool> visited(bondedBits.size(), false);
+
+                q.push({i, 0});
+                visited[i] = true;
+
+                while (!q.empty()) {
+                    auto [current, depth] = q.front();
+                    q.pop();
+
+                    if (depth == n) {
+                        if (current == j) return true;
+                        continue;
+                    }
+
+                    for (uint32_t k = 0; k < bondedBits.size(); ++k) 
+                    {
+                        if (!visited[k] && areBonded(current, k)) {
+                            visited[k] = true;
+                            q.push({k, depth + 1});
+                        }
+                    }
+                }
+
+                return false;
             }
-            
+
             void rebuildBondTopology()
             {
                 int32_t N = atoms.size();
@@ -321,7 +370,6 @@ namespace sim
             bool m_paused = false;
 
             bool gravity = false;
-            bool react = false;
             bool isothermal = true;
             bool wall_collision = false;
             bool HMassRepartitioning = true;
@@ -337,15 +385,7 @@ namespace sim
             std::vector<std::pair<uint32_t, uint32_t>> m_Arrows{};
 
             // Logging
-            struct ReactionEvent 
-            {
-                enum Type { BOND_FORM, BOND_BREAK, PROTON_TRANSFER } type;
-                uint32_t atom1, atom2;
-                float old_bo, new_bo;
-                float time;
-            };
 
-            std::vector<ReactionEvent> m_reactionLog{};
             std::vector<frame> m_frames;
 
             // Other
