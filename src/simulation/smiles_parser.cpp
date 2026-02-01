@@ -14,6 +14,7 @@ namespace sim
         std::vector<def_atom> nAtoms{};
         std::vector<angle> nAngles{};
         std::vector<dihedral_angle> nDihedralAngles{};
+        std::vector<dihedral_angle> nImproperAngles{};
         std::vector<sf::Vector3f> npositions{};
 
         if (molecule.empty())
@@ -337,7 +338,7 @@ namespace sim
 
         npositions.resize(nAtoms.size());
         organizeSubsets(nSubsets, nAtoms, nBonds);
-        organizeAngles(nSubsets, nAtoms, nBonds, nDihedralAngles, nAngles);
+        organizeAngles(nSubsets, nAtoms, nBonds, nDihedralAngles, nImproperAngles, nAngles);
         positionAtoms(molecule, nBonds, rings, nAtoms, nSubsets, npositions, nAngles);
 
         nStructure.atoms = std::move(nAtoms);
@@ -345,6 +346,7 @@ namespace sim
         nStructure.subsets = std::move(nSubsets);
         nStructure.angles = std::move(nAngles);
         nStructure.dihedral_angles = std::move(nDihedralAngles);
+        nStructure.improper_angles = std::move(nImproperAngles);
         nStructure.positions = std::move(npositions);
 
         return nStructure;
@@ -357,7 +359,7 @@ namespace sim
     };
 
     void organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
-                            std::vector<dihedral_angle>& dihedral_angles, std::vector<angle>& angles)
+                            std::vector<dihedral_angle>& dihedral_angles, std::vector<dihedral_angle>& improper_angles, std::vector<angle>& angles)
     {
         std::unordered_map<std::pair<uint32_t, uint32_t>, def_bond, pair_hash> bond_map;
         for (const auto& b : nBonds) 
@@ -400,7 +402,7 @@ namespace sim
                     ang.C = neigh[j];
                     ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
                     ang.K   = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
-                    angles.push_back(ang);
+                    angles.emplace_back(std::move(ang));
                 }
             }
 
@@ -423,6 +425,37 @@ namespace sim
                 {
                     if (bond.centralAtomIdx == C) neigh_C.push_back(bond.bondingAtomIdx);
                     else if (bond.bondingAtomIdx == C) neigh_C.push_back(bond.centralAtomIdx);
+                }
+
+                if (sub.connectedIdx.size() + sub.hydrogensIdx.size() == 3 || nAtoms[sub.mainAtomIdx].aromatic)
+                {
+                    uint32_t B = sub.mainAtomIdx;
+                    uint8_t centralZ = nAtoms[B].ZIndex;
+
+                    if (centralZ != 6 && centralZ != 7) continue;
+
+                    std::vector<uint32_t> bonded3;
+                    bonded3.reserve(3);
+
+                    for (uint32_t idx : sub.connectedIdx)   bonded3.push_back(idx);
+                    for (uint32_t idx : sub.hydrogensIdx)   bonded3.push_back(idx);
+
+                    if (bonded3.size() != 3) continue;
+
+                    dihedral_angle imp{};
+                    imp.A = bonded3[0];
+                    imp.B = B;
+                    imp.C = bonded3[1];
+                    imp.D = bonded3[2];
+
+                    imp.K           = 10.0f;
+                    imp.periodicity = 2.0f;
+                    imp.rad         = M_PI;
+
+                    if (nAtoms[B].aromatic)
+                        imp.K = 20.0f;
+
+                    improper_angles.emplace_back(std::move(imp));
                 }
 
                 for (uint32_t A : neigh_B) 
@@ -462,7 +495,7 @@ namespace sim
                             dh.periodicity = 1;
                         }
 
-                        dihedral_angles.push_back(dh);
+                        dihedral_angles.emplace_back(std::move(dh));
                     }
                 }
             }
@@ -1020,9 +1053,9 @@ namespace sim
 
         const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
-        constexpr float   repulse     = 2.2f;
-        constexpr float   k_angle     = 0.8f;
-        constexpr float   k_spring    = 5.0f;
+        constexpr float   repulse     = 6.0f;
+        constexpr float   k_angle     = 1.0f;
+        constexpr float   k_spring    = 1.0f;
         constexpr float   convergence = 0.01f;
 
         for (int32_t it = 0; it < max_iters; ++it)

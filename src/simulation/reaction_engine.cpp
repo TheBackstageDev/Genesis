@@ -28,32 +28,50 @@ namespace sim
         m_universe = &u;
 
         auto& subsets = u.getSubsets();
-        for (int32_t i = 0; i < subsets.size(); ++i)
+        for (auto& sub : subsets)
         {
-            auto& subset_i = subsets[i];
-            if (subset_i.group != fun::functionalGroup::RADICAL)
+            bool was_radical = (sub.group == fun::functionalGroup::RADICAL);
+
+            if (isRadical(sub, u))
             {
-                if (isRadical(subset_i, u))
+                if (!was_radical)
                 {
-                    subset_i.group = fun::functionalGroup::RADICAL;
-                    std::cout << "subset " << subset_i.mainAtomIdx << " is a radical! \n";
-                }
-                else
-                {
-                    subset_i.group = fun::functionalGroup::ANY;
+                    sub.group = fun::functionalGroup::RADICAL;
+                    std::cout << "[Radical detected] Subset centered on atom " 
+                              << sub.mainAtomIdx << " (Z=" 
+                              << u.getAtoms()[sub.mainAtomIdx].ZIndex << ")\n";
                 }
             }
-
-            for (int32_t j = i + 1; j < subsets.size(); ++j)
+            else
             {
-                auto& subset_j = subsets[j];
+                sub.group = fun::functionalGroup::ANY;
+            }
+        }
 
-                float dr = glm::length(u.minImageVec(u.getPosition(subset_i.mainAtomIdx) - u.getPosition(subset_j.mainAtomIdx)));
-                if (dr < 2.5f)
+        for (size_t i = 0; i < subsets.size(); ++i)
+        {
+            auto& subA = subsets[i];
+            glm::vec3 posA = u.getPosition(subA.mainAtomIdx);
+
+            for (size_t j = i + 1; j < subsets.size(); ++j)
+            {
+                auto& subB = subsets[j];
+                glm::vec3 posB = u.getPosition(subB.mainAtomIdx);
+
+                float dist = glm::length(u.minImageVec(posB - posA));
+
+                if (dist > 2.f) continue;
+
                 for (auto& rule : m_rules)
                 {
-                    if (rule.match(subset_i.group, subset_i.hydrogenCount, subset_j.group, subset_j.hydrogenCount))
-                        rule.action(subset_i, subset_j, *this);
+                    if (rule.match(subA.group, subA.hydrogenCount,
+                                   subB.group, subB.hydrogenCount))
+                    {
+                        std::cout << "[Reaction check] Rule matched between subsets " 
+                                  << i << " and " << j << " (dist = " << dist << " Å)\n";
+
+                        rule.action(subA, subB, *this);
+                    }
                 }
             }
         }
@@ -117,13 +135,43 @@ namespace sim
     bool reaction_engine::isRadical(const fun::subset& sub, fun::universe& u)
     {
         const auto& atoms = u.getAtoms();
+        int32_t unpaired = 0;
 
-        int32_t unpairedElectrons = 0;
+        if (sub.hydrogenCount == 0 && atoms[sub.mainAtomIdx].ZIndex == 1) // Hydrogen H* Radical
+            return true;
 
-        const fun::atom& mainAtom = atoms[sub.mainAtomIdx]; 
-        int32_t expectedMainCount = constants::getUsualBonds(mainAtom.ZIndex);
-        unpairedElectrons += std::max(0, expectedMainCount - mainAtom.bondCount);
+        if (sub.mainAtomIdx < atoms.size())
+        {
+            const fun::atom& main = atoms[sub.mainAtomIdx];
+            int expected = constants::getUsualBonds(main.ZIndex);
+            unpaired += std::max(0, expected - main.bondCount);
+        }
 
-        return unpairedElectrons > 0;
+        if (sub.connectedCount != UINT32_MAX && sub.connectedBegin != UINT32_MAX)
+        {
+            for (uint32_t k = 0; k < sub.connectedCount; ++k)
+            {
+                uint32_t idx = sub.connectedBegin + k;
+                if (idx >= atoms.size()) continue;
+
+                const fun::atom& a = atoms[idx];
+                int expected = constants::getUsualBonds(a.ZIndex);
+                unpaired += std::max(0, expected - a.bondCount);
+            }
+        }
+
+        if (sub.hydrogenCount != UINT32_MAX && sub.hydrogenBegin != UINT32_MAX)
+        {
+            for (uint32_t k = 0; k < sub.hydrogenCount; ++k)
+            {
+                uint32_t idx = sub.hydrogenBegin + k;
+                if (idx >= atoms.size()) continue;
+
+                const fun::atom& h = atoms[idx];
+                unpaired += std::max(0, 1 - h.bondCount); 
+            }
+        }
+
+        return unpaired > 1;
     }
 } // namespace sim

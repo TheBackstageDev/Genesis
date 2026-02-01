@@ -85,7 +85,7 @@
         },
         "CLASSICAL":
         {
-        
+          "TUTORIAL_CLASSICAL_VanDerWaals": "Van Der Waals Force"
         },
         "QUANTUM":
         {
@@ -149,7 +149,6 @@
       "Formaldehyde",
       "Methane",
       "Carbon Monoxide",
-      "Ethane",
       "Ethanol",
       "Benzene",
       "Nitrogen",
@@ -162,8 +161,6 @@
       "Oleic Acid",
       "Aspirin",
       "Caffeine",
-      "Polystyrene (short chain)",
-      "PMMA (short chain)",
       "Sulfate",
       "Nitrate",
       "Ammonium",
@@ -179,7 +176,6 @@
       "INORGANIC",
       "ION",
       "NANOMATERIAL",
-      "POLYMER",
       "ELEMENTS"
     ],
 
@@ -342,6 +338,7 @@
       "button_next": "Next",
       "button_previous": "Previous",
       "button_exit": "Exit",
+      "button_close": "Close",
       "steps": "steps"
     }
   },
@@ -353,8 +350,8 @@
       "description": "In this scenario, you will see particles moving randomly, a classic example of Brownian motion.",
       "narrations":
       [
-        "Welcome to the Brownian Motion Scenario! In this scenario, we'll see Brownian motion and what is it.",
-        "But what exactly is Brownian Motion?\nIt is the random, jittery movement of particles caused by countless collisions with surrounding molecules. These invisible impacts make the particles wander unpredictably, a microscopic dance driven by thermal energy."
+        "Welcome to the Brownian Motion Scenario! In this scenario, we'll see Brownian motion and what is it. There is an Oganesson (Z=118) Atom surrounded by helium (Z=2) gas.",
+        "But what exactly is Brownian Motion?\nIt is the random, jittery movement of particles caused by countless collisions with surrounding molecules. These invisible impacts make the particles wander unpredictably, a microscopic dance driven by thermal energy.\n(Turn the SpaceFilling mode for better views!)"
       ]
     },
     "TUTORIAL_ENGINE_Controls": 

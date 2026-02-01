@@ -88,6 +88,7 @@ namespace sim
             std::vector<angle> angles;
             std::vector<std::vector<uint32_t>> rings_aromatic; // for drawing
             std::vector<dihedral_angle> dihedral_angles;
+            std::vector<dihedral_angle> improper_angles;
             std::vector<sf::Vector3f> positions;
         };
 
@@ -195,7 +196,6 @@ namespace sim
             INORGANIC,
             ION,
             NANOMATERIAL,
-            POLYMER,
             ELEMENTS,
             COUNT
         };

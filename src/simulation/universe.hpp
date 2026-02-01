@@ -282,6 +282,7 @@ namespace sim
             
             std::vector<angle> angles;
             std::vector<dihedral_angle> dihedral_angles;
+            std::vector<dihedral_angle> improper_angles;
             
             std::vector<bond> bonds;
 

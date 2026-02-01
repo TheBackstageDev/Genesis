@@ -17,7 +17,8 @@ namespace core
     {
         const std::filesystem::path scenario_path = "src/scenes/scenarios";
         Scenario scenario_brownian_motion{};
-        scenario_brownian_motion.file = scenario_path / "SCENARIO_DYNAMICS_brownian_motion.json";
+        scenario_brownian_motion.close_not_exit = true;
+        scenario_brownian_motion.file = scenario_path / "SCENARIO_DYNAMICS_browinian_motion.json";
         scenario_brownian_motion.steps = 
         {
             {
@@ -106,6 +107,12 @@ namespace core
             }
         };
 
+        Scenario TUTORIAL_CLASSICAL_VanDerWaals{};
+        TUTORIAL_CLASSICAL_VanDerWaals.steps = 
+        {
+        };
+
+        m_Scenarios.emplace("TUTORIAL_ENGINE_VanDerWaals", std::move(TUTORIAL_CLASSICAL_VanDerWaals));
         m_Scenarios.emplace("TUTORIAL_ENGINE_Controls", std::move(tutorial_engine_controls));
     }
 
@@ -370,9 +377,11 @@ namespace core
 
             std::string button_next = "";
 
+            bool close = m_Scenarios[m_currentScenarioKey].close_not_exit;
             if (m_currentStepIdx >= getCurrentScenarioStepCount() - 1)
             {
-                button_next = current_json["button_exit"].get<std::string>().c_str();
+                std::string exit_str = close ? current_json["button_close"] : current_json["button_exit"];
+                button_next = exit_str.c_str();
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 0.8f));  // red
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 0.9f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.2f, 0.2f, 0.8f));
@@ -391,7 +400,8 @@ namespace core
                 else
                 {
                     clear();
-                    m_exitFlag = true;
+                    if (!close)
+                        m_exitFlag = true;
                 }
             }
 

@@ -148,7 +148,6 @@
       "formaldeído",
       "Metano",
       "Monóxido de Carbono",
-      "Etano",
       "Etanol",
       "Benzeno",
       "Nitrogênio",
@@ -161,8 +160,6 @@
       "Ácido Oleico",
       "Aspirina",
       "Cafeína",
-      "Poliestireno (cadeia curta)",
-      "PMMA (cadeia curta)",
       "Sulfato",
       "Nitrato",
       "Amônio",
@@ -178,7 +175,6 @@
       "INORGANICO",
       "ION",
       "NANOMATERIAL",
-      "POLÍMERO",
       "ELEMENTOS"
     ],
 
@@ -340,6 +336,7 @@
       "button_next": "Próximo",
       "button_previous": "Anterior",
       "button_exit": "Sair",
+      "button_close": "Fechar",
       "steps": "etapas"
     }
   },
@@ -351,8 +348,8 @@
       "description": "Neste cenário, você verá partículas em movimento aleatório, um exemplo clássico do movimento browniano.",
       "narrations":
       [
-        "Bem-vindo(a) ao Cenário de Movimento Browniano! Neste cenário, veremos o movimento browniano e o que ele significa.",
-        "Mas o que exatamente é o Movimento Browniano?\nÉ o movimento aleatório e agitado de partículas causado por inúmeras colisões com moléculas ao redor. Esses impactos invisíveis fazem as partículas se moverem de forma imprevisível, uma dança microscópica impulsionada pela energia térmica."
+        "Bem-vindo(a) ao Cenário de Movimento Browniano! Neste cenário, veremos o movimento browniano e o que ele significa. Há um átomo de Oganessônio (Z=118) com gas hélio (Z=2) ao redor.",
+        "Mas o que exatamente é o Movimento Browniano?\nÉ o movimento aleatório e agitado de partículas causado por inúmeras colisões com moléculas ao redor. Esses impactos invisíveis fazem as partículas se moverem de forma imprevisível, uma dança microscópica impulsionada pela energia térmica.\n(Ative o modo preenchedor de espaço para ter uma visão melhor!)"
       ]
     },
     "TUTORIAL_ENGINE_Controls": 

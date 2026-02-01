@@ -75,7 +75,6 @@ namespace core
         case type::BIOMOLECULE:  return ImVec4(0.650f, 0.300f, 0.000f, 1.0f);  // Burnt Orange    #A64D00
         case type::ION:          return ImVec4(0.380f, 0.080f, 0.450f, 1.0f);  // Deep Purple     #611475
         case type::NANOMATERIAL: return ImVec4(0.300f, 0.300f, 0.300f, 1.0f);  // Dark Gray       #4D4D4D
-        case type::POLYMER:      return ImVec4(0.650f, 0.100f, 0.080f, 1.0f);  // Dark Red        #A61A14
         default:                 return ImVec4(0.200f, 0.200f, 0.200f, 1.0f);  // Neutral dark
         }
     }
@@ -90,7 +89,6 @@ namespace core
         case type::BIOMOLECULE:  return ImVec4(1.000f, 0.596f, 0.000f, 1.0f);  // #FF9800 Warm Orange
         case type::ION:          return ImVec4(0.612f, 0.153f, 0.690f, 1.0f);  // #9C27B0 Electric Purple
         case type::NANOMATERIAL: return ImVec4(0.620f, 0.620f, 0.620f, 1.0f);  // #9E9E9E Sleek Gray
-        case type::POLYMER:      return ImVec4(0.957f, 0.263f, 0.212f, 1.0f);  // #F44336 Deep Red
         default:                 return ImVec4(0.600f, 0.600f, 0.600f, 1.0f);
         }
     }

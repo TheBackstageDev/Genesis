@@ -1040,7 +1040,7 @@ namespace constants
     inline float getBondLength(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)
     {
         float base = (getAtomConstants(Z1).first + getAtomConstants(Z2).first) 
-                    / (2.0f * MULT_FACTOR) * BOND_LENGTH_FACTOR;
+                    / (4.0f * MULT_FACTOR) * BOND_LENGTH_FACTOR;
         float original = base;
 
         #define BONDED(a, b) ((Z1 == (a) && Z2 == (b)) || (Z1 == (b) && Z2 == (a)))

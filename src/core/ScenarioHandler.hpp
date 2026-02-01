@@ -59,6 +59,7 @@ namespace core
 
         bool allow_previous = false;
         bool allow_compoundSelector = false;
+        bool close_not_exit = false;
     };
         
     class ScenarioHandler

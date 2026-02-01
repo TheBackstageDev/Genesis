@@ -63,11 +63,11 @@ namespace core
         }
     }
 
-    std::filesystem::path sandboxSave = std::filesystem::path("src/scenes/saved");
+    std::filesystem::path sandboxSave = std::filesystem::path("scenes/saved");
 
     std::filesystem::path getLocalizationFile(localization lang)
     {
-        std::filesystem::path localization_path = "src/resource/localizations";
+        std::filesystem::path localization_path = "resource/localizations";
         switch (lang)
         {
         case localization::EN_US:
@@ -110,9 +110,9 @@ namespace core
 
     void UIHandler::initSavedData()
     {
-        std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
-        std::filesystem::path scenarios_dir = "src/scenes/scenarios";
-        std::filesystem::path saved_menu_displays_dir = "src/scenes/menu display";
+        std::filesystem::path saved_sandbox_dir = "scenes/saved";
+        std::filesystem::path scenarios_dir = "scenes/scenarios";
+        std::filesystem::path saved_menu_displays_dir = "scenes/menu display";
 
         loadScenariosFromFolder(saved_sandbox_dir);
         loadScenariosFromFolder(scenarios_dir);
@@ -200,7 +200,7 @@ namespace core
         placeholder_image.createMaskFromColor(sf::Color(80, 80, 90), 255); // Dark gray
         placeholder_texture_id = placeholder_texture.getNativeHandle();
 
-        std::filesystem::path icons = "src/resource/images/icons";
+        std::filesystem::path icons = "resource/images/icons";
         std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
         std::filesystem::path pause = icons / "pause.png";
         std::filesystem::path resume = icons / "resume.png";
@@ -243,8 +243,8 @@ namespace core
         textures.emplace("plus_icon", std::move(plus_texture));
         textures.emplace("stats_icon", std::move(stats_texture));
 
-        const std::filesystem::path saved_sandbox_dir = "src/scenes/saved";
-        const std::filesystem::path scenarios_dir = "src/scenes/scenarios";
+        const std::filesystem::path saved_sandbox_dir = "scenes/saved";
+        const std::filesystem::path scenarios_dir = "scenes/scenarios";
         if (!std::filesystem::exists(saved_sandbox_dir))
         {
             std::filesystem::create_directories(saved_sandbox_dir);
@@ -341,7 +341,7 @@ namespace core
         display_universe->clear();
     }
 
-    constexpr int32_t num_smiles_compounds = 29;
+    constexpr int32_t num_smiles_compounds = 26;
 
     void UIHandler::initCompoundPresets()
     {
@@ -360,7 +360,6 @@ namespace core
                 "C=O",
                 "C",
                 "[C-]#[O+]",
-                "CC",
                 "CCO",
                 "c1ccccc1",
                 "N#N",
@@ -373,8 +372,6 @@ namespace core
                 "CCCCCCCC\\C=C/CCCCCCCC(O)=O",
                 "CC(=O)OC1=CC=CC=C1C(=O)O",
                 "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-                "c1ccccc1CCc2ccccc2CC",
-                "C(C(=O)OC)C",
                 "[O-]S(=O)(=O)[O-]",
                 "[O-][N+](=O)[O-]",
                 "[NH4+]",
@@ -383,9 +380,9 @@ namespace core
                 "S1SSSSSSS1"};
 
         std::array<std::string, num_smiles_compounds> formulas = {
-            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H6", "C2H5OH", "C6H6", "N2",
+            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H5OH", "C6H6", "N2",
             "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C10H20O2", "C18H34O2",
-            "C9H8O4", "C8H10N4O2", "(C8H8)n", "(C5H8O2)n", "SO4-2", "NO3-", "NH4+",
+            "C9H8O4", "C8H10N4O2", "SO4-2", "NO3-", "NH4+",
             "NaCl", "C22H14", "S8"};
 
         using type = compound_type;
@@ -398,7 +395,6 @@ namespace core
             type::ORGANIC,     // Formaldehyde
             type::ORGANIC,     // Methane
             type::INORGANIC,   // Carbon Monoxide
-            type::ORGANIC,     // Ethane
             type::ORGANIC,     // Ethanol
             type::ORGANIC,     // Benzene
             type::INORGANIC,   // N2
@@ -411,8 +407,6 @@ namespace core
             type::BIOMOLECULE, // Oleic Acid
             type::ORGANIC,     // Aspirin
             type::ORGANIC,     // Caffeine
-            type::POLYMER,     // Polystyrene
-            type::POLYMER,     // PMMA
             type::ION,         // Sulfate
             type::ION,         // Nitrate
             type::ION,         // Ammonium
@@ -444,7 +438,7 @@ namespace core
 
     void UIHandler::initCompoundXYZ()
     {
-        std::filesystem::path folder = "src/resource/molecules/compounds";
+        std::filesystem::path folder = "resource/molecules/compounds";
         if (!std::filesystem::exists(folder) || !std::filesystem::is_directory(folder))
         {
             std::cerr << "[Compounds] Folder not found: " << folder << "\n";
@@ -467,7 +461,7 @@ namespace core
             }
 
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
-            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
+            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
             std::string displayName = filename;
             std::string formula = "Unknown";
@@ -930,7 +924,7 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("src/resource/molecules/gears.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("src/resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
 
@@ -1256,7 +1250,7 @@ namespace core
                 ImGui::Text("%s:    %.2f bar", core_json["pressure"].get<std::string>().c_str(), simulation_universe->pressure());
 
                 ImGui::SetNextItemWidth(100.f);
-                ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature);
+                ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.0f, 20000.f);
                 ImGui::SetNextItemWidth(100.f);
                 ImGui::DragFloat(core_json["slider_pressure"].get<std::string>().c_str(), &target_pressure);
                 ImGui::Text("%s:        %.2f ps", time_string.c_str(), simulation_universe->timestep() * FEMTOSECOND);

@@ -210,8 +210,8 @@ namespace sim
                     radius = licorice_radius;
                 else
                     radius = info.spaceFilling
-                                 ? constants::VDW_RADII[atom.ZIndex] * 0.8f
-                                 : constants::covalent_radius[atom.ZIndex] * 0.7f;
+                                 ? constants::VDW_RADII[atom.ZIndex] * 0.9f
+                                 : constants::covalent_radius[atom.ZIndex] * 0.8f;
 
                 sf::Color col = constants::getElementColor(atom.ZIndex) + info.color_addition;
                 glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, info.opacity);

@@ -229,7 +229,7 @@ namespace sim
                     angle.B += baseAtomIndex;
                     angle.C += baseAtomIndex;
 
-                    angles.emplace_back(angle);
+                    angles.emplace_back(std::move(angle));
                 }
 
                 rings.insert(rings.end(), structure.rings_aromatic.begin(), structure.rings_aromatic.end());
@@ -246,7 +246,19 @@ namespace sim
                     angle.C += baseAtomIndex;
                     angle.D += baseAtomIndex;
 
-                    dihedral_angles.emplace_back(angle);
+                    dihedral_angles.emplace_back(std::move(angle));
+                }
+
+                int32_t baseImproper = improper_angles.size();
+                for (int32_t a = 0; a < structure.improper_angles.size(); ++a)
+                {
+                    dihedral_angle angle = structure.improper_angles[a];
+                    angle.A += baseAtomIndex;
+                    angle.B += baseAtomIndex;
+                    angle.C += baseAtomIndex;
+                    angle.D += baseAtomIndex;
+
+                    improper_angles.emplace_back(std::move(angle));
                 }
 
                 nMolecule.dihedralBegin = baseDihedral;
@@ -506,7 +518,7 @@ namespace sim
                 return {0.f, 0.f, 0.f};
 
             float forceMag = COULOMB_K * qq / (dr * dr * dr);
-            return forceMag * dr_vec;
+            return forceMag * -dr_vec;
         }
 
         float universe::calculateDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
@@ -574,7 +586,7 @@ namespace sim
                 }
             }
 
-            for (int32_t dx = 0; dx <= 1; ++dx)
+            for (int32_t dx = -1; dx <= 1; ++dx)
                 for (int32_t dy = -1; dy <= 1; ++dy)
                     for (int32_t dz = -1; dz <= 1; ++dz)
                     {
@@ -671,7 +683,7 @@ namespace sim
                                     dr.z * total_force.z;
                 }
 
-                for (int32_t dx = 0; dx <= 1; ++dx)
+                for (int32_t dx = -1; dx <= 1; ++dx)
                     for (int32_t dy = -1; dy <= 1; ++dy)
                         for (int32_t dz = -1; dz <= 1; ++dz)
                         {
@@ -895,6 +907,72 @@ namespace sim
                 futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
             }
 
+            auto improper_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf)
+            {
+                for (int32_t d = start; d < end; ++d)
+                {
+                    const dihedral_angle& imp = improper_angles[d];
+
+                    const sf::Vector3f &pa = pos(imp.A);
+                    const sf::Vector3f &pb = pos(imp.B);
+                    const sf::Vector3f &pc = pos(imp.C);
+                    const sf::Vector3f &pd = pos(imp.D);
+
+                    glm::vec3 pb_g(pb.x, pb.y, pb.z);
+
+                    float phi = calculateDihedral(
+                        glm::vec3(pa.x, pa.y, pa.z),
+                        pb_g,
+                        glm::vec3(pc.x, pc.y, pc.z),
+                        glm::vec3(pd.x, pd.y, pd.z)
+                    );
+
+                    float diff = phi - imp.rad;
+                    while (diff > M_PI) diff -= 2.0f * M_PI;
+                    while (diff < -M_PI) diff += 2.0f * M_PI;
+
+                    float dE_dphi = imp.K * diff;
+
+                    glm::vec3 b1 = pb_g - glm::vec3(pa.x, pa.y, pa.z);
+                    glm::vec3 b2 = glm::vec3(pc.x, pc.y, pc.z) - pb_g;
+                    glm::vec3 b3 = glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z);
+
+                    glm::vec3 n1 = glm::normalize(glm::cross(b1, b2));
+                    glm::vec3 n2 = glm::normalize(glm::cross(b2, b3));
+                    glm::vec3 u2 = glm::normalize(b2);
+
+                    float sin_term = std::sin(imp.periodicity * phi - imp.rad);
+                    float torque_mag = imp.K * imp.periodicity * sin_term;
+
+                    glm::vec3 axis = glm::normalize(glm::vec3(pc.x, pc.y, pc.z) - pb_g);
+
+                    glm::vec3 rA = glm::vec3(pa.x, pa.y, pa.z) - pb_g;
+                    glm::vec3 torqueA = glm::normalize(glm::cross(axis, rA)) * torque_mag;
+
+                    glm::vec3 rD = glm::normalize(glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z));
+                    glm::vec3 torqueD = glm::normalize(glm::cross(axis, rD)) * (-torque_mag);
+
+                    glm::vec3 f1 = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
+                    glm::vec3 f4 = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
+
+                    sf::Vector3f f1_s(f1.x, f1.y, f1.z);
+                    sf::Vector3f f4_s(f4.x, f4.y, f4.z);
+                    sf::Vector3f torqueD_s(torqueD.x, torqueD.y, torqueD.z);
+
+                    lf[imp.A] += -f1_s;
+                    lf[imp.D] += -f4_s;
+                    lf[imp.B] += f1_s + f4_s;
+                    lf[imp.C] += -torqueD_s * 0.5f;
+                }
+            };
+
+            for (int t = 0; t < n_threads; ++t) 
+            {
+                int start = improper_angles.size() * t / n_threads;
+                int end   = improper_angles.size() * (t + 1) / n_threads;
+                futures.emplace_back(std::async(std::launch::async, make_task(improper_func), start, end));
+            }
+
             for (auto &fut : futures)
             {
                 auto local_f = fut.get();
@@ -907,7 +985,7 @@ namespace sim
         {
             const int32_t n_threads = std::thread::hardware_concurrency();
             const int32_t threads_per_top = cells.size() < 9 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
-            constexpr int32_t subdivide_top = 3; // how many of the top cells to subdivide
+            constexpr int32_t subdivide_top = 4; // how many of the top cells to subdivide
 
             struct task
             {
