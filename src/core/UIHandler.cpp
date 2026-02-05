@@ -341,7 +341,7 @@ namespace core
         display_universe->clear();
     }
 
-    constexpr int32_t num_smiles_compounds = 26;
+    constexpr int32_t num_smiles_compounds = 25;
 
     void UIHandler::initCompoundPresets()
     {
@@ -361,7 +361,6 @@ namespace core
                 "C",
                 "[C-]#[O+]",
                 "CCO",
-                "c1ccccc1",
                 "N#N",
                 "CC(=O)O",
                 "CC(C)C(=O)O",
@@ -380,7 +379,7 @@ namespace core
                 "S1SSSSSSS1"};
 
         std::array<std::string, num_smiles_compounds> formulas = {
-            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H5OH", "C6H6", "N2",
+            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H5OH", "N2",
             "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C10H20O2", "C18H34O2",
             "C9H8O4", "C8H10N4O2", "SO4-2", "NO3-", "NH4+",
             "NaCl", "C22H14", "S8"};
@@ -396,7 +395,6 @@ namespace core
             type::ORGANIC,     // Methane
             type::INORGANIC,   // Carbon Monoxide
             type::ORGANIC,     // Ethanol
-            type::ORGANIC,     // Benzene
             type::INORGANIC,   // N2
             type::ORGANIC,     // Acetic acid
             type::ORGANIC,     // Isobutyric acid
@@ -924,11 +922,11 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("src/resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
-            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.angles);
+            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {30, 30, 30}); */
+            simulation_universe->createMolecule(structure, {13, 13, 13}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -1252,8 +1250,8 @@ namespace core
                 ImGui::SetNextItemWidth(100.f);
                 ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.0f, 20000.f);
                 ImGui::SetNextItemWidth(100.f);
-                ImGui::DragFloat(core_json["slider_pressure"].get<std::string>().c_str(), &target_pressure);
-                ImGui::Text("%s:        %.2f ps", time_string.c_str(), simulation_universe->timestep() * FEMTOSECOND);
+                ImGui::DragFloat(core_json["slider_pressure"].get<std::string>().c_str(), &target_pressure, 1.0f, 0.0f, 1000.f);
+                ImGui::Text("%s:        %.2f ps", time_string.c_str(), simulation_universe->getAccumulatedTime());
                 ImGui::Text("%s:   %zu", core_json["particles"].get<std::string>().c_str(), simulation_universe->numAtoms());
                 ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
             }
@@ -1284,10 +1282,10 @@ namespace core
 
                     ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_None);
 
-                    ImPlot::PlotLine(temperature_string.c_str(), time, temperature, count);
-                    ImPlot::PlotScatter(time_string.c_str(), time, temperature, count);
+                    ImPlot::PlotLine(time_string.c_str(), time, temperature, count);
+                    ImPlot::PlotScatter(temperature_string.c_str(), time, temperature, count);
 
-                    ImPlot::EndPlot();
+                    ImPlot::EndPlot(); 
                 }
             }
 
@@ -1327,7 +1325,7 @@ namespace core
         ImGui::SameLine();
 
         ImGui::SetNextItemWidth(100.f);
-        ImGui::Text(" %.2f ps   %.1f fs/s ", simulation_universe->timestep() * FEMTOSECOND, simulation_universe->getTimescale());
+        ImGui::Text(" %.2f ps   %.1f fs/s ", simulation_universe->getAccumulatedTime(), simulation_universe->getTimescale());
 
         ImGui::SameLine();
 
@@ -2117,6 +2115,8 @@ namespace core
         if (m_scenarioHandler.inScenario())
         {
             m_scenarioHandler.draw(localization_json, m_deltaTime);
+            target_temperature = m_scenarioHandler.getWantedTemperature();
+            
             if (m_scenarioHandler.exit())
             {
                 pauseMenuOpen = false;

@@ -149,7 +149,6 @@
       "Metano",
       "Monóxido de Carbono",
       "Etanol",
-      "Benzeno",
       "Nitrogênio",
       "Ácido Acético",
       "Ácido Isobutírico",
@@ -268,7 +267,7 @@
       "tooltip_screenshot": "Tirar uma foto",
       "tooltip_scenario_disabled": "Disabilitado devido ao Cenário",
       "tooltip_compound_selector": "Adicionar Composto",
-      "tooltip_emplace_molecule": "Aperte (G) para posicionar a Molécula, (Mouse Direito) para cancelar. Segure (Shift) para continuar.",
+      "tooltip_emplace_molecule": "Aperte (G) para posicionar a Molécula,\n(Mouse Direito) para cancelar.\nSegure (Shift) para continuar.",
       "tooltip_collision_good": "Boa Posição",
       "tooltip_collision_bad": "Colisão Detectada!",
 
@@ -354,14 +353,36 @@
     },
     "TUTORIAL_ENGINE_Controls": 
     {
-      "description": "Aprenda os controles essenciais: movimentação da câmera, pausar",
+      "description": "Domine os controles básicos: mova a câmera, pause o tempo, adicione compostos e muito mais.",
       "narrations": 
       [
-        "Bem-vindo ao tutorial de Controles!\nVamos te guiar pelos básicos de navegação e interação.",
-        "Use as teclas WASD para mover a câmera para frente, trás, esquerda e direita.\nSegure o botão direito do mouse e arraste para olhar ao redor / rotacionar a visão.",
-        "Ótimo! Agora vamos controlar o tempo.\nPressione a tecla ESPAÇO para pausar e retomar a simulação.\nPause agora (congele tudo), observe bem as moléculas, depois pressione ESPAÇO novamente para continuar.",
-        "Quando a simulação está pausada, você pode inspecionar as estruturas livremente sem que nada se mova.\nIsso é muito útil quando quiser adicionar compostos ou estudar um momento específico.",
-        "É só isso nesse tutorial! Pressione sair para voltar ao menu."
+        "Bem-vindo ao tutorial de Controles!\nVamos aprender rapidinho tudo o que você precisa para explorar e interagir com a simulação.",
+        "Use **WASD** para mover a câmera para frente, trás, esquerda e direita.\nSegure o **botão direito do mouse** e arraste para olhar ao redor e girar a visão.\nExperimente agora - mexa um pouco!",
+        "Ótimo! Agora vamos adicionar algo.\nPressione **Q** ou clique no **botão +** na barra inferior para abrir o seletor de compostos.",
+        "Esse é o seletor de compostos. Você pode escolher entre várias moléculas - mais serão adicionadas em cada atualização.\nClique na **lupa** ao lado de qualquer composto para ver uma prévia maior e detalhes.",
+        "Você pode adicionar compostos enquanto a simulação está rodando... mas às vezes é mais fácil quando tudo está parado.\nPressione **ESPAÇO** para pausar e retomar a simulação.",
+        "Quando pausado, as moléculas congelam - perfeito para inspecionar estruturas, adicionar compostos ou estudar um momento específico.\nOlhe ao redor livremente, depois aperte **ESPAÇO** novamente para continuar.",
+        "Você também pode controlar a velocidade do tempo: use as setas na barra inferior para acelerar ou desacelerar.\nExperimente acelerar um pouco! (Aviso: Acelerar demais pode causar instabilidade na simulação!)",
+        "Pronto! Esse é o básico.\nAgora você já pode explorar, construir e experimentar à vontade.\nClique em **Sair** para terminar o tutorial - ou fique mais um pouco brincando!"
+      ]
+    },
+    "TUTORIAL_CLASSICAL_VanDerWaals": 
+    {
+      "description": "Explore as forças de van der Waals: descubra por que átomos neutros se atraem a médias distâncias e se repelem fortemente quando muito próximos - a razão oculta por trás de líquidos, sólidos e da 'cola' do dia a dia.",
+      "narrations": 
+      [
+        "Bem-vindo ao tutorial sobre Forças de van der Waals!\nHoje você vai conhecer uma das forças fracas mais importantes da natureza e entender por que os átomos se comportam como se comportam.",
+        "Aqui temos dois átomos de argônio neutros. Sem nenhuma carga elétrica. Então... por que eles estão se aproximando devagar? Vamos rodar a simulação e observar com atenção.",
+        "Olha só - eles estão sendo puxados um para o outro... mas, quando chegam bem perto, de repente se repelem com força!\nEssa atração seguida de forte repulsão é exatamente o que chamamos de **força de van der Waals**.",
+        "Como dois átomos neutros podem se atrair? Mesmo sem carga líquida, as nuvens de elétrons estão sempre em movimento. Em um dado instante, um lado pode ficar ligeiramente mais negativo - criando um **dipolo induzido temporário**. O outro átomo responde deslocando seus elétrons também... e cargas opostas se atraem. Essa é a **atração de van der Waals**.",
+        "Agora vamos adicionar mais... por diversão e ciência!",
+        "Existe uma distância perfeita em que atração e repulsão se equilibram exatamente - ela é chamada de **distância de equilíbrio** (cerca de 3,8 Å para o argônio). Nessa distância a força resultante é quase zero e os átomos ficam bem acomodados. É por isso que as moléculas têm um tamanho natural e não colapsam umas nas outras.",
+        "Quando as nuvens de elétrons se sobrepõem demais, entra em ação o **princípio de exclusão de Pauli**: dois elétrons com o mesmo estado quântico não podem ocupar exatamente o mesmo lugar. O custo energético fica enorme - então os átomos se empurram com muita força!",
+        "Essa repulsão forte é o motivo pelo qual nada realmente “encosta” no sentido clássico - tudo são forças!\nAs forças de van der Waals são fracas individualmente, mas estão em tudo: seguram os líquidos juntos, permitem que lagartixas escalem paredes lisas, criam tensão superficial e até fazem a tela do celular parecer suave ao toque.",
+        "Agora, para demonstrar como essa força é fraca, vamos aumentar a temperatura. Saiba que a simulação está rodando a 500 fs/s e a 0,01 Kelvin - bem frio!",
+        "Agora que aumentamos a temperatura, a força não consegue mais segurar as partículas juntas. O argônio sólido virou gás rapidamente... e agora a 5 fs/s.",
+        "E congelar novamente!",
+        "É isso a força de van der Waals em ação.\nVocê acabou de ver uma das razões fundamentais pelo comportamento que a matéria tem no dia a dia. Parabéns!"
       ]
     }
   }

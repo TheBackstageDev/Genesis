@@ -78,7 +78,6 @@ namespace sim
             atoms.emplace_back(std::move(newAtom));
             data.q.emplace_back(ZIndex - numElectron);
             data.forces.resize(atoms.size());
-            data.bond_orders.resize(atoms.size());
             data.temperature.resize(atoms.size());
 
             frozen_atoms.emplace_back(false);
@@ -1171,6 +1170,7 @@ namespace sim
             buildCells();
 
             ++timeStep;
+            m_accumulatedTime += dt;
         }
 
         float universe::calculatePressure()
@@ -1468,7 +1468,6 @@ namespace sim
 
                 scene["charge"].emplace_back(data.q[x]);
                 scene["temperature"].emplace_back(data.temperature[x]);
-                scene["bondOrder"].emplace_back(data.bond_orders[x]);
 
                 scene["ZIndex"].emplace_back(atoms[x].ZIndex);
                 scene["neutrons"].emplace_back(atoms[x].NCount);
@@ -1614,7 +1613,6 @@ namespace sim
             data.velocities.clear();
             data.q.clear();
             data.temperature.clear();
-            data.bond_orders.clear();
 
             box.x = scene.value("boxx", 50.0f);
             box.y = scene.value("boxy", 50.0f);
@@ -1647,7 +1645,6 @@ namespace sim
             data.velocities.reserve(N);
             data.q.reserve(N);
             data.temperature.reserve(N);
-            data.bond_orders.reserve(N);
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -1674,7 +1671,6 @@ namespace sim
 
                 data.q.emplace_back(charges[i]);
                 data.temperature.emplace_back(temperatures[i]);
-                data.bond_orders.emplace_back(bondorders[i]);
             }
 
             data.forces.assign(N, glm::vec3(0.0f));

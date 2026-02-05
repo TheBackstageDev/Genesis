@@ -1,5 +1,7 @@
 #include "ScenarioHandler.hpp"
 
+#include <random>
+
 namespace core
 {
     ScenarioHandler::ScenarioHandler(std::vector<sim::fun::compound_preset_info>& compounds)
@@ -15,31 +17,72 @@ namespace core
 
     void ScenarioHandler::initScenarios()
     {
-        const std::filesystem::path scenario_path = "src/scenes/scenarios";
-        Scenario scenario_brownian_motion{};
-        scenario_brownian_motion.close_not_exit = true;
-        scenario_brownian_motion.file = scenario_path / "SCENARIO_DYNAMICS_browinian_motion.json";
-        scenario_brownian_motion.steps = 
+        const std::filesystem::path scenario_path = "scenes/scenarios";
+        Scenario SCENARIO_DYNAMICS_BrownianMotion{};
+        SCENARIO_DYNAMICS_BrownianMotion.close_not_exit = true;
+        SCENARIO_DYNAMICS_BrownianMotion.file = scenario_path / "SCENARIO_DYNAMICS_browinian_motion.json";
+        SCENARIO_DYNAMICS_BrownianMotion.steps = 
         {
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 5.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.setTimescale(3.f);
+                    m_wantedTemperature = 30.f;
+                },
             },
             {
                 .autoAdvanceAfterNarration = false,
                 .minDisplayTime_s = 5.0f,
             }
         };
+
+        Scenario SCENARIO_DYNAMICS_CrystalNucleation{};
+        SCENARIO_DYNAMICS_CrystalNucleation.close_not_exit = true;
+        SCENARIO_DYNAMICS_CrystalNucleation.file = scenario_path / "SCENARIO_DYNAMICS_CrystalNucleation.json";
+        SCENARIO_DYNAMICS_CrystalNucleation.steps =
+        {
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 6.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.setTimescale(40.f);
+                    m_wantedTemperature = 118.f;
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 15.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.setTimescale(70.f);
+                    m_wantedTemperature = 30.f;
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 15.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = false,
+                .minDisplayTime_s = 10.0f,  
+            }
+        };
         
-        m_Scenarios.emplace("SCENARIO_DYNAMICS_browinian_motion", std::move(scenario_brownian_motion));
+        m_Scenarios.emplace("SCENARIO_DYNAMICS_browinian_motion", std::move(SCENARIO_DYNAMICS_BrownianMotion));
+        m_Scenarios.emplace("SCENARIO_DYNAMICS_CrystalNucleation", std::move(SCENARIO_DYNAMICS_CrystalNucleation));
 
         initTutorials();
     }
 
     void ScenarioHandler::initTutorials()
     {
-        Scenario tutorial_engine_controls{};
-        tutorial_engine_controls.steps = 
+        const std::filesystem::path scenario_path = "scenes/scenarios";
+
+        Scenario TUTORIAL_ENGINE_Controls{};
+        TUTORIAL_ENGINE_Controls.steps = 
         {
             {
                 .autoAdvanceAfterNarration = true,
@@ -82,15 +125,12 @@ namespace core
                 },
             },
             {
-                .actions = 
-                {
-                    { .special = ScenarioAction::specialScenarioAction::PAUSE_SIMULATION },
-                },
                 .autoAdvanceAfterNarration = false,
                 .minDisplayTime_s = 3.0f,
                 .advanceWhen = [](sim::fun::universe& u) { return !u.isPaused(); },
                 .onEnter = [](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
                 {
+                    u.pause();
                     u.createMolecule(compounds.at(6).structure, sf::Vector3f(u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f));
                 }
             }, 
@@ -108,12 +148,151 @@ namespace core
         };
 
         Scenario TUTORIAL_CLASSICAL_VanDerWaals{};
+        TUTORIAL_CLASSICAL_VanDerWaals.file = scenario_path / "TUTORIAL_CLASSICAL_VDW.json";
         TUTORIAL_CLASSICAL_VanDerWaals.steps = 
+        {
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 5.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.pause();
+                    u.setTimescale(300.f);
+                    m_wantedTemperature = 0.015f;
+                }
+            },
+            {
+                .actions = 
+                {
+                    /* { 
+                        .special = ScenarioAction::specialScenarioAction::DRAW_ARROW, 
+                        .fromAtom = 0, .toAtom = 1
+                    } */
+                },
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 5.0f,
+                .onExit =  [&](sim::fun::universe& u)
+                {
+                    u.unpause();
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 15.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 20.0f,
+            },
+            {
+                .actions =
+                {
+                    {
+                        .customAction = [&](sim::fun::universe& u)
+                        {
+                            static int32_t numAdded = 0;
+                            const int32_t targetCount = 50;
+
+                            if (numAdded >= targetCount) return;
+
+                            const glm::vec3 center = (u.getPosition(0) + u.getPosition(1)) * 0.5f;
+
+                            std::random_device rd;
+                            std::mt19937 gen(rd());
+                            std::uniform_real_distribution<float> distPos(-12.0f, 12.0f);
+                            std::uniform_real_distribution<float> distVel(-0.1f, 0.1f);
+
+                            auto positions = u.positions();
+
+                            for (int32_t attempt = 0; numAdded < targetCount && attempt < 300; ++attempt)
+                            {
+                                glm::vec3 candidate = center + glm::vec3(distPos(gen), distPos(gen), distPos(gen));
+
+                                bool tooClose = false;
+                                float minDist = 9999.0f;
+                                for (const auto& p : positions)
+                                {
+                                    float d = glm::length(p - candidate);
+                                    if (d < 2.8f)
+                                    {
+                                        tooClose = true;
+                                        break;
+                                    }
+                                    minDist = std::min(minDist, d);
+                                }
+
+                                if (!tooClose)
+                                {
+                                    u.createAtom(
+                                        candidate,
+                                        glm::vec3(distVel(gen), distVel(gen), distVel(gen)),
+                                        18,
+                                        18,
+                                        18,
+                                        0
+                                    );
+
+                                    ++numAdded;
+                                    positions = u.positions();
+                                }
+                            }
+                        }
+                    }
+                },
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.setTimescale(500.f);
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 7.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 15.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 15.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.setTimescale(5.f);
+                    m_wantedTemperature = 120.f;
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+                .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
+                {
+                    u.setTimescale(500.f);
+                    m_wantedTemperature = 0.01f;
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = false,
+            },
+        };
+
+        Scenario TUTORIAL_CLASSICAL_CoulombForce{};
+        TUTORIAL_CLASSICAL_CoulombForce.steps = 
         {
         };
 
-        m_Scenarios.emplace("TUTORIAL_ENGINE_VanDerWaals", std::move(TUTORIAL_CLASSICAL_VanDerWaals));
-        m_Scenarios.emplace("TUTORIAL_ENGINE_Controls", std::move(tutorial_engine_controls));
+        m_Scenarios.emplace("TUTORIAL_ENGINE_Controls", std::move(TUTORIAL_ENGINE_Controls));
+        m_Scenarios.emplace("TUTORIAL_CLASSICAL_VanDerWaals", std::move(TUTORIAL_CLASSICAL_VanDerWaals));
+        m_Scenarios.emplace("TUTORIAL_CLASSICAL_CoulombForce", std::move(TUTORIAL_CLASSICAL_CoulombForce));
     }
 
     void ScenarioHandler::startScenario()
@@ -247,7 +426,7 @@ namespace core
         }
         case type::DRAW_ARROW:
         {
-            if (action.toAtom && action.fromAtom)
+            if (action.toAtom != UINT32_MAX && action.fromAtom != UINT32_MAX)
                 m_universe->createArrow(action.fromAtom, action.toAtom);
 
             break;

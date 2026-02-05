@@ -406,7 +406,8 @@ namespace sim
                 }
             }
 
-            for (uint32_t c_idx = 0; c_idx < neigh.size(); ++c_idx) {
+            for (uint32_t c_idx = 0; c_idx < neigh.size(); ++c_idx) 
+            {
                 const uint32_t C = neigh[c_idx];
 
                 uint32_t a = B, b = C;
@@ -415,8 +416,6 @@ namespace sim
                 auto it = bond_map.find({a, b});
                 if (it != bond_map.end()) bc_bond = &it->second;
                 if (!bc_bond) continue;
-
-                if (nAtoms[a].aromatic || nAtoms[b].aromatic) continue;
 
                 const auto& neigh_B = neigh; 
 
@@ -431,8 +430,6 @@ namespace sim
                 {
                     uint32_t B = sub.mainAtomIdx;
                     uint8_t centralZ = nAtoms[B].ZIndex;
-
-                    if (centralZ != 6 && centralZ != 7) continue;
 
                     std::vector<uint32_t> bonded3;
                     bonded3.reserve(3);
@@ -457,6 +454,8 @@ namespace sim
 
                     improper_angles.emplace_back(std::move(imp));
                 }
+                
+                if (nAtoms[a].aromatic || nAtoms[b].aromatic) continue;
 
                 for (uint32_t A : neigh_B) 
                 {
@@ -1054,8 +1053,8 @@ namespace sim
         const int32_t max_iters = 25 * static_cast<int32_t>(nAtoms.size());
         constexpr float   dt          = 0.01f;
         constexpr float   repulse     = 6.0f;
-        constexpr float   k_angle     = 1.0f;
-        constexpr float   k_spring    = 1.0f;
+        constexpr float   k_angle     = 1.3f;
+        constexpr float   k_spring    = 3.0f;
         constexpr float   convergence = 0.01f;
 
         for (int32_t it = 0; it < max_iters; ++it)
@@ -1076,7 +1075,7 @@ namespace sim
                     continue;
                 }
 
-                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.3f;
+                float r0 = constants::getBondLength(nAtoms[i].ZIndex, nAtoms[j].ZIndex, BondType::SINGLE) * 1.2f;
                 if (dist < r0)
                 {
                     float f = repulse * (r0 - dist) / dist;

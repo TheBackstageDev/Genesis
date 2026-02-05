@@ -12,7 +12,7 @@ in vec3  v_corner;
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
-uniform float hyperLambda = 0.85f;
+uniform float hyperLambda = 0.85;
 
 out vec4 fragColor;
 
@@ -80,39 +80,65 @@ void main()
         }
     }
 
-    // Hyperboloid bond
     if (t < 0.0)
     {
-        vec3 ba = normalize(C2 - C1);
-        float d = length(C2 - C1) / 10.f;
+        vec3 ba     = C2 - C1;
+        float lenBA = length(ba);
+        if (lenBA < 0.001) discard;
 
-        vec3 oc = ro - C1;
-        float proj_oc = dot(oc, ba);
-        vec3 oc_perp = oc - proj_oc * ba;
+        vec3 dir    = ba / lenBA;
+        vec3 oc     = ro - C1;
+        float proj  = dot(oc, dir);
+        vec3 oc_perp = oc - proj * dir;
 
-        float proj_rd = dot(rd, ba);
-        vec3 rd_perp = rd - proj_rd * ba;
+        float rd_proj = dot(rd, dir);
+        vec3 rd_perp  = rd - rd_proj * dir;
 
-        float lambda = hyperLambda;
-        float a = 1.0 - lambda * lambda * proj_rd * proj_rd;
-        float b = 2.0 * (proj_oc * proj_rd * lambda * lambda - dot(oc_perp, rd_perp));
-        float c = dot(oc_perp, oc_perp) - lambda * lambda * proj_oc * proj_oc - r1 * r1;
+        float ll = hyperLambda * hyperLambda;
 
-        float disc = b * b - 4.0 * a * c;
+        float qa = dot(rd_perp, rd_perp) - ll * rd_proj * rd_proj;
+        float qb = 2.0 * (dot(oc_perp, rd_perp) - ll * proj * rd_proj);
+        float qc = dot(oc_perp, oc_perp) - ll * proj * proj - r1*r1;
+
+        float disc = qb*qb - 4.0*qa*qc;
         if (disc < 0.0) discard;
+
         float sqrtD = sqrt(disc);
-        t = (-b - sqrtD) / (2.0 * a);
-        if (t < 0.001) t = (-b + sqrtD) / (2.0 * a);
+        float t0 = (-qb - sqrtD) / (2.0 * qa);
+        float t1 = (-qb + sqrtD) / (2.0 * qa);
+
+        t = -1.0;
+        if (t0 > 0.001) t = t0;
+        if (t1 > 0.001 && (t < 0.0 || t1 < t)) t = t1;
+
         if (t < 0.001) discard;
 
         hitPos = ro + t * rd;
 
-        vec3 toA = hitPos - C1;
-        vec3 toB = hitPos - C2;
-        normal = normalize(toA / (r1 * r1) + toB / (r2 * r2));
+        float h = dot(hitPos - C1, dir);
 
-        float h = dot(hitPos - C1, C2 - C1) / dot(C2 - C1, C2 - C1);
-        baseColor = mix(v_colorStart, v_colorEnd, clamp(h, 0.0, 1.0));
+        float margin = 0.05 * lenBA;
+
+        if (h < -margin || h > lenBA + margin)
+        {
+            discard;
+        }
+
+        vec3 closestPoint = C1 + h * dir;
+        float distToAxis = length(hitPos - closestPoint);
+        float expectedR = mix(r1, r2, clamp(h / lenBA, 0.0, 1.0));
+
+        if (abs(distToAxis - expectedR) > 0.25 * expectedR)
+        {
+            discard;
+        }
+
+        vec3 posA = hitPos - C1;
+        vec3 posB = hitPos - C2;
+        normal = normalize(posA / (r1*r1) + posB / (r2*r2));
+
+        float interp = clamp(h / lenBA, 0.0, 1.0);
+        baseColor = mix(v_colorStart, v_colorEnd, interp);
     }
 
     if (t < 0.0) discard;
@@ -123,8 +149,8 @@ void main()
     float VdotN = dot(normalize(-hitPos), normal);
     float rim = smoothstep(0.3, 0.0, abs(VdotN));
     rim = pow(rim, 1.6);
-    vec3 rimColor = vec3(0.9, 0.95, 1.0);
 
+    vec3 rimColor = vec3(0.9, 0.95, 1.0);
     vec3 litColor = baseColor.rgb * (0.1 + 0.8 * NdotL);
     litColor += rimColor * rim * 0.55;
 

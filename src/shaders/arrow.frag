@@ -2,15 +2,13 @@
 
 in vec3  v_start;
 in vec3  v_end;
-in vec4  v_colorStart;
-in vec4  v_colorEnd;
+in vec4  v_color;
 in float v_radius;
 in vec3  v_corner;
 
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
-uniform bool licorice = false;
 
 out vec4 fragColor;
 
@@ -80,8 +78,7 @@ void main()
     vec3 closest = v_start + h * ba;
 
     vec3 normal = normalize(hit - closest);
-    vec4 final_color = h > 0.5 ? v_colorEnd : v_colorStart;
-
+    vec4 final_color = v_color;
     float VdotN = dot(normalize(-hit), normal);
     float rim = smoothstep(0.3, 0.0, abs(VdotN));
     rim = pow(rim, 1.6);

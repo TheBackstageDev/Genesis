@@ -33,8 +33,8 @@ namespace sim
     private:
         core::window_t &window;
 
-        GLuint color_vao, color_vbo, bond_vao, bond_vbo;
-        GLuint atom_program, bond_program, hyperballs_program;
+        GLuint color_vao, color_vbo, bond_vao, bond_vbo, arrow_vao, arrow_vbo;
+        GLuint atom_program, bond_program, hyperballs_program, arrow_program;
 
         struct AtomInstance 
         {
@@ -54,10 +54,17 @@ namespace sim
             alignas(16) float radiusB = 0.5f;
         };
 
+        struct ArrowInstance
+        {
+            glm::vec4 posA{0.0f};
+            glm::vec4 posB{0.0f};
+            glm::vec4 color{1.0f};
+            alignas(16) float radius = 0.0f;
+        };
+
         const float licorice_radius = 0.22f;
 
         void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);
-        void drawRings(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawBox(const glm::vec3 &box);
         
@@ -68,13 +75,13 @@ namespace sim
 
         void bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void bindArrow(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         // Others
 
         void drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void drawBondHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void drawAtomHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
-        void drawArrow(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         // Callbacks
 

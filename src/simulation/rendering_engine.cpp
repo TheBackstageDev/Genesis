@@ -88,6 +88,27 @@ namespace sim
         glEnableVertexAttribArray(6);
         glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radiusB));
         glVertexAttribDivisor(6, 1);
+        
+        glGenVertexArrays(1, &arrow_vao);
+        glGenBuffers(1, &arrow_vbo);
+        glBindVertexArray(arrow_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, arrow_vbo);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, posA));
+        glVertexAttribDivisor(0, 1);
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, posB));
+        glVertexAttribDivisor(1, 1);
+
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, color));
+        glVertexAttribDivisor(2, 1);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, radius));
+        glVertexAttribDivisor(3, 1);
     }
 
     void rendering_engine::drawBox(const glm::vec3 &box)
@@ -153,6 +174,7 @@ namespace sim
         initShaders(shader_root / "color.vert", shader_root / "color.frag", atom_program);
         initShaders(shader_root / "bond.vert", shader_root / "bond.frag", bond_program);
         initShaders(shader_root / "hyper_balls.vert", shader_root / "hyper_balls.frag", hyperballs_program);
+        initShaders(shader_root / "arrow.vert", shader_root / "arrow.frag", arrow_program);
     }
 
     void rendering_engine::initShaders(const std::filesystem::path vert, const std::filesystem::path frag, GLuint& program)
@@ -211,7 +233,7 @@ namespace sim
                 else
                     radius = info.spaceFilling
                                  ? constants::VDW_RADII[atom.ZIndex] * 0.9f
-                                 : constants::covalent_radius[atom.ZIndex] * 0.8f;
+                                 : constants::covalent_radius[atom.ZIndex] * 0.5f;
 
                 sf::Color col = constants::getElementColor(atom.ZIndex) + info.color_addition;
                 glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, info.opacity);
@@ -352,6 +374,54 @@ namespace sim
             if (loc_licorice != -1)
                 glUniform1i(loc_licorice, static_cast<uint8_t>(info.licorice));
         }
+
+        glEnable(GL_DEPTH_TEST);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR)
+        {
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
+        }
+    }
+
+    void rendering_engine::bindArrow(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
+        if (!info.flag_arrows) return;
+
+        std::vector<ArrowInstance> instances;
+        instances.reserve(info.arrows.size());
+
+        for (int32_t i = 0; i < info.arrows.size(); ++i)
+        {
+            auto& atom_indices = info.arrows[i];
+
+            ArrowInstance nInstance{};
+            nInstance.color = glm::vec4(0.8, 0.8, 0.8, 1.0);
+            nInstance.posA = glm::vec4(sim_info.positions[atom_indices.first], 1.0);
+            nInstance.posB = glm::vec4(sim_info.positions[atom_indices.second], 1.0);
+            nInstance.radius = 1.0f;
+
+            instances.emplace_back(std::move(nInstance));
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, arrow_vbo);
+        glBufferData(GL_ARRAY_BUFFER,
+                     instances.size() * sizeof(ArrowInstance),
+                     instances.data(),
+                     GL_DYNAMIC_DRAW);
+
+        glBindVertexArray(arrow_vao);
+        glUseProgram(arrow_program);
+
+        GLint loc_projection = glGetUniformLocation(arrow_program, "u_proj");
+        GLint loc_view = glGetUniformLocation(arrow_program, "u_view");
+
+        if (loc_projection != -1)
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+
+        if (loc_view != -1)
+            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -517,6 +587,7 @@ namespace sim
 
         bindBond(target, info, sim_info);
         bindColor(target, info, sim_info);
+        bindArrow(target, info, sim_info);
 
         glBindVertexArray(0);
         glUseProgram(0);
@@ -531,13 +602,6 @@ namespace sim
 
     void rendering_engine::drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)
     {
-    }
-
-    void rendering_engine::drawRings(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)
-    {
-        constexpr float visualRadius = 0.5f;
-        constexpr float visualThickness = 0.1f;
-        constexpr uint32_t segments = 60;
     }
 
     void rendering_engine::drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info)

@@ -88,12 +88,12 @@ namespace sim
             return;
         
         uint32_t incomingAtom = incoming.mainAtomIdx;
-        uint32_t bestAtom = getClosestAtom(target, incoming);
-        
-        if (m_universe->areBonded(incomingAtom, bestAtom))
+        uint32_t targetAtom = target.mainAtomIdx;
+
+        if (m_universe->areBonded(incomingAtom, targetAtom))
             return;
 
-        m_universe->createBond(incomingAtom, bestAtom);
+        m_universe->createBond(incomingAtom, targetAtom);
     }
 
     void reaction_engine::breakBond(fun::subset& a, fun::subset& b)

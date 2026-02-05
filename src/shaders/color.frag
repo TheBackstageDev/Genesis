@@ -8,6 +8,7 @@ in vec2  v_uv;
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
+uniform vec3 u_campos = vec3(0, 0, 0);
 
 out vec4 fragColor;
 
@@ -55,6 +56,12 @@ void main()
     vec3 viewDir = normalize(-hitPos_view);
     float fresnel = pow(1.0 - abs(dot(hit_normal, viewDir)), 4.0);
     final_color += vec3(0.9, 0.9, 1.0) * fresnel * 0.4;
+
+    vec3 reflectDir = reflect(-u_lightDir, viewDir);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = 10.f * spec * v_color.rgb;   
+
+    fragColor.xyz += specular;
 
     fragColor = vec4(final_color, v_color.w);
 }

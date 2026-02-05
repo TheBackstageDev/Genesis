@@ -24,7 +24,7 @@ namespace sim
             alignas(64) std::vector<glm::vec3> positions;
             alignas(64) std::vector<glm::vec3> velocities;
             alignas(64) std::vector<glm::vec3> forces;
-            alignas(64) std::vector<float> q, bond_orders, temperature;
+            alignas(64) std::vector<float> q, temperature;
         };
 
         constexpr int32_t offsets[14][3] = 
@@ -120,13 +120,16 @@ namespace sim
                 data.forces.clear();
                 data.q.clear();
                 data.temperature.clear();
-                data.bond_orders.clear();
 
                 molecules.clear();
                 atoms.clear();
                 bonds.clear();
                 subsets.clear();
                 rings.clear();
+
+                angles.clear();
+                dihedral_angles.clear();
+                improper_angles.clear();
 
                 m_highlightedAtoms.clear();
                 m_highlightedBonds.clear();
@@ -171,11 +174,12 @@ namespace sim
 
             const std::vector<atom>& getAtoms() const { return atoms; }
             std::vector<subset>& getSubsets() { return subsets; }
-            int32_t numBonds() { return bonds.size(); }
-            int32_t numAtoms() { return atoms.size(); }
-            int32_t numMolecules() { return molecules.size(); }
-            float getTimescale() { return m_Timescale; }
-            float getEffectiveDT() { return m_Timescale * FEMTOSECOND; }
+            int32_t numBonds() const { return bonds.size(); }
+            int32_t numAtoms() const { return atoms.size(); }
+            int32_t numMolecules() const { return molecules.size(); }
+            float getTimescale() const { return m_Timescale; }
+            float getEffectiveDT() const { return m_Timescale * FEMTOSECOND; }
+            float getAccumulatedTime() const { return m_accumulatedTime; }
             const subset& getSubset(int32_t index) { return subsets[index]; }
 
             float temperature() const { return temp; }
@@ -223,15 +227,15 @@ namespace sim
 
             inline bool areBonded(uint32_t i, uint32_t j) const
             {
-                if (i >= bondedBits.size() || j >= bondedBits[i].size() * 64) return false;
-                size_t word = j / 64;
-                size_t bit  = j % 64;
-                return (bondedBits[i][word] & (1ull << bit)) != 0;
+                if (i >= bondedBits.size() || j >= bondedBits[i].size() * 32) return false;
+                uint32_t word = j / 32;
+                uint32_t bit  = j % 32;
+                return (bondedBits[i][word] & (1u << bit)) != 0;
             }
 
             // Energies
             float calculateKineticEnergy();
-        private:            
+        private:          
             void boundCheck(uint32_t i);
 
             float ljPot(uint32_t i, uint32_t j);
@@ -258,18 +262,18 @@ namespace sim
             simData data;
             std::vector<glm::vec3> m_displayPositions{};
 
-            std::vector<std::vector<uint64_t>> bondedBits;
+            std::vector<std::vector<uint32_t>> bondedBits;
             void markBonded(uint32_t i, uint32_t j)
             {
                 if (i >= bondedBits.size()) bondedBits.resize(atoms.size());
                 if (j >= bondedBits.size()) bondedBits.resize(atoms.size());
-                while (bondedBits[i].size() * 64 <= j) bondedBits[i].push_back(0);
-                while (bondedBits[j].size() * 64 <= i) bondedBits[j].push_back(0);
+                while (bondedBits[i].size() * 32 <= j) bondedBits[i].push_back(0);
+                while (bondedBits[j].size() * 32 <= i) bondedBits[j].push_back(0);
 
-                size_t word_i = j / 64;
-                size_t bit_i  = j % 64;
-                size_t word_j = i / 64;
-                size_t bit_j  = i % 64;
+                uint32_t word_i = j / 32;
+                uint32_t bit_i  = j % 32;
+                uint32_t word_j = i / 32;
+                uint32_t bit_j  = i % 32;
 
                 bondedBits[i][word_i] |= (1ull << bit_i);
                 bondedBits[j][word_j] |= (1ull << bit_j);
@@ -307,6 +311,7 @@ namespace sim
 
             float temp = 0;
             float pres = 0;
+            float m_accumulatedTime = 0.f;
             size_t timeStep = 0;
 
             inline bool areNearNeighbours(uint32_t i, uint32_t j, uint32_t n) const
@@ -393,16 +398,6 @@ namespace sim
             std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
             void drawBox(core::window_t& window);
 
-            inline float& bo(uint32_t i, uint32_t j) 
-            {
-                if (i > j) std::swap(i, j);
-                return data.bond_orders[i * atoms.size() + j];
-            }
-            inline float bo(uint32_t i, uint32_t j) const 
-            {
-                if (i > j) std::swap(i, j);
-                return data.bond_orders[i * atoms.size() + j];
-            }
             inline sf::Vector3f pos(uint32_t i) const   { return {data.positions[i].x, data.positions[i].y, data.positions[i].z}; }
             inline sf::Vector3f vel(uint32_t i) const   { return {data.velocities[i].x, data.velocities[i].y, data.velocities[i].z}; }
             inline sf::Vector3f force(uint32_t i) const { return {data.forces[i].x, data.forces[i].y, data.forces[i].z}; }

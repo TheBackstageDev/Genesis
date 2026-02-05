@@ -152,7 +152,6 @@ namespace sim
             int32_t padding[6];
         };
 
-        
         struct atom
         {
             float mass;            

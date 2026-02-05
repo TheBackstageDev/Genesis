@@ -126,7 +126,13 @@ namespace core
 
             return true;
         }
+
+        // Gets
+
+        float getWantedTemperature() const { return m_wantedTemperature; }
     private:
+        friend ScenarioStep;
+
         void initScenarios();
         void initTutorials();
 
@@ -190,5 +196,8 @@ namespace core
         sim::fun::universe* m_universe = nullptr;
 
         std::vector<sim::fun::compound_preset_info>& m_compounds;
+        
+        // "Flags"
+        float m_wantedTemperature = 300.f;
     };
 } // namespace core

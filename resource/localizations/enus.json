@@ -85,7 +85,8 @@
         },
         "CLASSICAL":
         {
-          "TUTORIAL_CLASSICAL_VanDerWaals": "Van Der Waals Force"
+          "TUTORIAL_CLASSICAL_VanDerWaals": "Van Der Waals Force",
+          "TUTORIAL_CLASSICAL_CoulombForce": "Coulomb Force"
         },
         "QUANTUM":
         {
@@ -117,7 +118,8 @@
         },
         "DYNAMICS":
         {
-          "SCENARIO_DYNAMICS_browinian_motion": "Brownian Motion"
+          "SCENARIO_DYNAMICS_browinian_motion": "Brownian Motion",
+          "SCENARIO_DYNAMICS_CrystalNucleation": "Crystal Nucleation"
         },
         "REACTIONS":
         {
@@ -150,7 +152,6 @@
       "Methane",
       "Carbon Monoxide",
       "Ethanol",
-      "Benzene",
       "Nitrogen",
       "Acetic Acid",
       "Isobutyric Acid",
@@ -269,7 +270,7 @@
       "tooltip_screenshot": "Take a screenshot",
       "tooltip_compound_selector": "Add Compound",
       "tooltip_scenario_disabled": "Disabled due to Scenario",
-      "tooltip_emplace_molecule": "Press (G) to emplace Molecule, \n (Right Mouse) to cancel. \n Hold (Shift) to continue placing",
+      "tooltip_emplace_molecule": "Press (G) to emplace Molecule,\n(Right Mouse) to cancel.\nHold (Shift) to continue placing",
       "tooltip_collision_good": "Good Position",
       "tooltip_collision_bad": "Collision Detected!",
 
@@ -354,16 +355,62 @@
         "But what exactly is Brownian Motion?\nIt is the random, jittery movement of particles caused by countless collisions with surrounding molecules. These invisible impacts make the particles wander unpredictably, a microscopic dance driven by thermal energy.\n(Turn the SpaceFilling mode for better views!)"
       ]
     },
-    "TUTORIAL_ENGINE_Controls": 
+    "SCENARIO_DYNAMICS_CrystalNucleation": 
     {
-      "description": "Learn the essential controls: camera movement, pausing",
+      "description": "Watch krypton atoms in the liquid phase cool rapidly and spontaneously organize into a tiny crystal lattice. Order emerging from disorder.",
       "narrations": 
       [
-        "Welcome to the Controls tutorial!\nWe'll guide you through the basics of navigation and interaction.",
-        "Use the WASD keys to move the camera forward, backward, left, and right.\nHold the right mouse button and drag to look around / rotate the view.",
-        "Great! Now let's control time.\nPress the SPACE key to pause and resume the simulation.\n look closely at the molecules, then press SPACE again to resume.",
-        "When the simulation is paused, you can freely inspect structures without anything moving.\nThis is very useful when you want to add compounds or study a specific moment.",
-        "This is all for this tutorial! press exit to leave."
+        "Here we have a small sample of liquid krypton at low temperature, the atoms are moving around in a disordered way.",
+        "Now we're cooling it further and further... notice how the motion slows down and small ordered patches start to appear.",
+        "Look, a tiny crystal nucleus has formed! Once it appears, it grows quickly as nearby atoms join the ordered structure.",
+        "The crystal continues to grow until most of the liquid has turned into a small piece of solid krypton lattice.\nThis process is called **nucleation and crystal growth**, it's how all crystals, from snowflakes to diamonds, begin."
+      ]
+    },
+    "TUTORIAL_ENGINE_Controls": 
+    {
+      "description": "Master the basic controls: move the camera, pause time, add compounds, and more.",
+      "narrations": 
+      [
+        "Welcome to the Controls tutorial!\nLet's quickly go over everything you need to explore and interact with the simulation.",
+        "Use **WASD** to move the camera forward, backward, left, and right.\nHold the **right mouse button** and drag to look around and rotate the view.\nTry it now - move around a bit!",
+        "Great! Now let's add something.\nPress **Q** or click the **+ button** in the bottom bar to open the compound selector.",
+        "This is the compound selector. You can choose from many molecules - more are added with every update.\nClick the **magnifying glass** next to any compound to see a bigger preview and details.",
+        "You can add compounds while the simulation is running... but sometimes it's easier when everything is still.\nPress **SPACE** to pause and resume the simulation.",
+        "When paused, the molecules freeze - perfect for inspecting structures, adding new compounds, or studying a specific moment.\nLook around freely, then press **SPACE** again to continue.",
+        "You can also control time speed: the arrows in the bottom bar to speed up or slow down.\nTry speeding it up a little! (Warning: Speeding up too much may cause instability in the simulation!)",
+        "That covers the essentials!\nYou're now ready to explore, build, and experiment.\nPress **Exit** to finish the tutorial - or stay and play around a bit more."
+      ]
+    },
+    "TUTORIAL_CLASSICAL_VanDerWaals": 
+    {
+      "description": "Explore the Van der Waals forces: discover why neutral atoms attract each other at medium distances and strongly repel when too close. The hidden reason behind liquids, solids, and everyday stickiness.",
+      "narrations": 
+      [
+        "Welcome to the Van der Waals Forces tutorial! Today you'll see one of the most important weak forces in nature, and why atoms behave the way they do.",
+        "Here we have two neutral Argon atoms. No electric charge at all. So... why do you think they're slowly moving toward each other? Let's run the simulation and watch closely.",
+        "Look at that, they're being pulled together... but then, when they get very close, they suddenly push apart! That attraction followed by strong repulsion is exactly what we call the **Van der Waals force**.",
+        "How can two neutral atoms attract? Even though the atoms have no net charge, their electrons are constantly moving. At any moment, one side can become slightly more negative - creating a temporary **induced dipole**. The other atom responds by shifting its electrons too... and the opposite charges attract each other. That weak attraction is the **Van der Waals attraction**.",
+        "Now Let's add more.. for fun and science!",
+        "There's a perfect distance where attraction and repulsion exactly balance, that's called the **equilibrium distance** (about 3.8 Å for Argon). Here the net force is almost zero, and the atoms settle comfortably. This is why molecules have a natural “size” and don't collapse into each other.",
+        "When the electron clouds overlap too much, the **Pauli exclusion principle** kicks in: no two electrons can occupy the same space with the same quantum state. The energy cost becomes enormous - so the atoms push back very hard!",
+        "That push-back is why nothing ever truly 'touches' in the classical world, it's all forces! Van der Waals forces are weak on their own, but they're everywhere: they hold liquids together, allow geckos to climb smooth walls, create surface tension, and even make your phone screen feel smooth.",
+        "Now, to demonstrate how weak is this force, we'll increase the temperature, first know that the simulation is running at 500 fs/s, and at 0.01 Kelvin, really cold!",
+        "Now that we've increased the temperature, the force is not enough to hold the particles together, solid argon quickly became a gas.. and now at 5 fs/s",
+        "And Freeze Again!",
+        "That's the Van der Waals force in action. You just witnessed one of the fundamental reasons everyday matter behaves the way it does. Great job!"
+      ]
+    },
+    "TUTORIAL_CLASSICAL_CoulombForce": 
+    {
+      "description": "Understand Coulomb forces: see how opposite charges attract powerfully and like charges repel. The foundation of ionic bonding and much of chemistry.",
+      "narrations": 
+      [
+        "Welcome to the Coulomb Forces tutorial!\nHere you'll discover one of the strongest and most important forces in the universe, the electrostatic force between charged particles.",
+        "Look at these two ions: a positively charged sodium ion (Na+) and a negatively charged chloride ion (Cl-).\nThey have opposite charges... so what do you think will happen? Let's run the simulation and see.",
+        "See that? They rush toward each other very quickly! Opposite charges attract with a strong force.\nThis force gets much stronger as the distance decreases, it follows the inverse-square law: double the distance, force drops to one-fourth.",
+        "Now let's try two ions with the same charge: two sodium ions (Na⁺ and Na⁺).\nWatch... they push each other away violently! Like charges repel.",
+        "Coulomb forces are everywhere in chemistry and biology: they hold ionic compounds together, control how proteins fold, power nerve signals, and make batteries work.\nYou just saw the force that shapes so much of the world around us!",
+        "Well done! You now understand the Coulomb force - one of the four fundamental forces of nature."
       ]
     }
   }
