@@ -110,13 +110,6 @@ namespace sim
             int32_t padding;
         };
 
-        enum class functionalGroup
-        {
-            RADICAL,
-            ANY,
-            COUNT
-        };
-
         struct subset
         {
             uint32_t mainAtomIdx;              
@@ -129,7 +122,7 @@ namespace sim
             uint32_t connectedBegin    = UINT32_MAX;
             uint32_t connectedCount    = 0;
 
-            functionalGroup group{functionalGroup::ANY};
+            uint32_t pad;
         };
 
         struct molecule

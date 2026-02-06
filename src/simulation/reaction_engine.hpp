@@ -18,23 +18,7 @@ namespace sim
 
     struct reaction_rule
     {
-        fun::functionalGroup subsetA;
-        uint32_t numHydrogenA = 0;
 
-        fun::functionalGroup subsetB;
-        uint32_t numHydrogenB = 0;
-
-        std::function<void(fun::subset&, fun::subset&, reaction_engine&)> action;
-        float priority = 1.0f;
-
-        bool match(fun::functionalGroup groupA, uint32_t numhydrogenA, fun::functionalGroup groupB, uint32_t numhydrogenB)
-        {
-            bool matchesA = groupA == subsetA && numhydrogenA == numHydrogenA, matchesB = groupB == subsetB && numhydrogenB == numHydrogenB;
-            bool anyA = groupA == fun::functionalGroup::ANY, anyB = groupB == fun::functionalGroup::ANY;
-            
-            return matchesA && matchesB || (anyA && anyB)
-                    || anyA && matchesB || anyB && matchesA || groupA == fun::functionalGroup::RADICAL && groupB == fun::functionalGroup::RADICAL;
-        }
     };
 
     class reaction_engine
@@ -61,8 +45,5 @@ namespace sim
         // Bond-related
         void createBond(fun::subset& incoming, fun::subset& target);
         void breakBond(fun::subset& a, fun::subset& b);
-        void transferHydrogen(fun::subset& donor, fun::subset& acceptor);
-        void breakWeakestBond(const fun::subset& root);
-        void adjustBondOrders(std::vector<fun::subset>& subsets, std::vector<fun::bond>& bonds);
     };
 } // namespace sim

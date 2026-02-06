@@ -153,7 +153,7 @@ namespace sim::io
             std::getline(file, line);
             std::istringstream iss(line);
             std::string symbol;
-            double x, y, z;
+            float x, y, z;
 
             if (!(iss >> symbol >> x >> y >> z)) 
             {

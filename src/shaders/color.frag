@@ -54,14 +54,11 @@ void main()
     vec3 final_color = v_color.rgb * (0.2 + 0.8 * NdotL);
     
     vec3 viewDir = normalize(-hitPos_view);
-    float fresnel = pow(1.0 - abs(dot(hit_normal, viewDir)), 4.0);
-    final_color += vec3(0.9, 0.9, 1.0) * fresnel * 0.4;
 
-    vec3 reflectDir = reflect(-u_lightDir, viewDir);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = 10.f * spec * v_color.rgb;   
-
-    fragColor.xyz += specular;
-
+    vec3 reflectDir = reflect(-u_lightDir, hit_normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 40.0);
+    vec3 specular =  0.1f * spec * vec3(1.0, 1.0, 1.0);   
+    
+    final_color += specular;
     fragColor = vec4(final_color, v_color.w);
 }

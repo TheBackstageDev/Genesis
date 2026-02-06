@@ -153,7 +153,8 @@ namespace core
 
                             nInfo.is_sandbox = true;
 
-                            m_savedSandbox.emplace_back(std::move(nInfo));
+                            if (path != "scenes/scenarios")
+                                m_savedSandbox.emplace_back(std::move(nInfo));
                         }
                         else
                         {
@@ -921,12 +922,12 @@ namespace core
             target_pressure = 0.f;
             target_temperature = 300.f;
 
-            /* sim::fun::molecule_structure structure{};
+            sim::fun::molecule_structure structure{};
             sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {13, 13, 13}); */
+            simulation_universe->createMolecule(structure, {10, 10, 10});
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))

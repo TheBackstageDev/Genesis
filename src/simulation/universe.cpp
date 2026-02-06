@@ -1217,28 +1217,30 @@ namespace sim
             }
         }
 
+        //Bussi–Donadio–Parrinello (CSVR) velocity rescaling
         void universe::setTemperature(float kelvin)
         {
-            if (timeStep % THERMOSTAT_INTERVAL != 0)
-                return;
+            if (timeStep % THERMOSTAT_INTERVAL != 0) return;
 
-            if (atoms.size() == 0)
-                return;
+            float d = 3.0f * atoms.size() - 3.0f;
+            if (d <= 0) d = 1;
 
-            float avg_KE = calculateKineticEnergy() / atoms.size();
-            temp = (2.0f / 3.0f) * (avg_KE * KB);
-            float lambda = sqrtf(kelvin / (temp + 1e-5f));
+            float KE = calculateKineticEnergy();
+            float current_temp = (2.0f * KE) / (d * KB);
+            temp = current_temp;
 
-            if (timeStep > 100)
-            {
-                constexpr float tau = 0.6f;
-                lambda = 1.0f + (lambda - 1.0f) / tau;
-            }
+            float target_KE = 0.5f * d * KB * kelvin;
+            float c = target_KE / (KE + std::numeric_limits<float>::epsilon());
 
-            for (int32_t i = 0; i < data.velocities.size(); ++i)
-            {
-                data.velocities[i] *= lambda;
-            }
+            float r = gauss_random();
+            float chi = r * sqrtf(2.0f / d);
+
+            float alpha = sqrtf(c * (1.0f + chi + 0.5f * chi * chi));
+
+            // alpha = sqrtf((c + sigma * r)^2 / 2 + c * (1 - c) * chi²(d-1) / d)
+            
+            for (auto& v : data.velocities)
+                v *= alpha;
         }
 
         // Energy Calculation

@@ -48,8 +48,8 @@ namespace core
                 .minDisplayTime_s = 6.0f,
                 .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
                 {
-                    u.setTimescale(40.f);
-                    m_wantedTemperature = 118.f;
+                    u.setTimescale(200.f);
+                    m_wantedTemperature = 200.f;
                 }
             },
             {
@@ -57,8 +57,8 @@ namespace core
                 .minDisplayTime_s = 15.0f,
                 .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
                 {
-                    u.setTimescale(70.f);
-                    m_wantedTemperature = 30.f;
+                    u.setTimescale(500.f);
+                    m_wantedTemperature = 100.f;
                 }
             },
             {
@@ -157,8 +157,8 @@ namespace core
                 .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
                 {
                     u.pause();
-                    u.setTimescale(300.f);
-                    m_wantedTemperature = 0.015f;
+                    u.setTimescale(500.f);
+                    m_wantedTemperature = 2.0f;
                 }
             },
             {
@@ -248,7 +248,7 @@ namespace core
             },
             {
                 .autoAdvanceAfterNarration = true,
-                .minDisplayTime_s = 7.0f,
+                .minDisplayTime_s = 15.0f,
             },
             {
                 .autoAdvanceAfterNarration = true,
@@ -267,7 +267,7 @@ namespace core
                 .minDisplayTime_s = 10.0f,
                 .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
                 {
-                    u.setTimescale(5.f);
+                    u.setTimescale(30.f);
                     m_wantedTemperature = 120.f;
                 }
             },
@@ -277,7 +277,7 @@ namespace core
                 .onEnter = [&](sim::fun::universe& u, std::vector<sim::fun::compound_preset_info>& compounds)
                 {
                     u.setTimescale(500.f);
-                    m_wantedTemperature = 0.01f;
+                    m_wantedTemperature = 2.0f;
                 }
             },
             {

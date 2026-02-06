@@ -10,6 +10,7 @@
 #include <atomic>
 #include <filesystem>
 #include <json.hpp>
+#include <random>
 
 #ifndef _NODISCARD
 #define _NODISCARD
@@ -256,6 +257,15 @@ namespace sim
             // Energies
             float calculateAtomTemperature(int32_t i);
             float calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp);
+
+            float gauss_random()
+            {
+                static std::random_device rd;
+                static std::mt19937 gen(rd());
+                static std::normal_distribution<float> dist(0.0f, 1.0f);
+
+                return dist(gen);
+            }
 
             rendering_engine& rendering_eng;
 

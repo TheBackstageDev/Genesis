@@ -39,21 +39,16 @@ namespace constants
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
-#define KB (BOLTZMAN_CONSTANT * AVOGADRO * ANGSTROM) / PICOSECOND // A^2 D ps^-2 K^-1
+#define KB 0.008314462618f // A^2 D ps^-2 K^-1
 
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 5
-#define BAROSTAT_INTERVAL 5
+#define THERMOSTAT_INTERVAL 20
+#define BAROSTAT_INTERVAL 20
 
 #define COULOMB_K 1389.354576f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 340000.f        // Harmonic force constant
 #define ANGLE_K 12000.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.f
-
-#define REACTION_INTERVAL 3 // time steps
-#define REACTION_CUTOFF 10.f * MULT_FACTOR
-#define REACTION_UPDATE_Q 2
-#define REACTION_CUT_BO 0.3f
 
 #define COUNT_ATOMS 118
 

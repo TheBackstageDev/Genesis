@@ -2,10 +2,10 @@
 
 namespace sim
 {
-    class simulation_analyzer
+    class simulation_inspector
     {
     public:
-        simulation_analyzer();
+        simulation_inspector();
     private:
     }; 
 } // namespace sim

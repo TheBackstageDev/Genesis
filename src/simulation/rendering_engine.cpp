@@ -232,7 +232,7 @@ namespace sim
                     radius = licorice_radius;
                 else
                     radius = info.spaceFilling
-                                 ? constants::VDW_RADII[atom.ZIndex] * 0.9f
+                                 ? constants::VDW_RADII[atom.ZIndex]
                                  : constants::covalent_radius[atom.ZIndex] * 0.5f;
 
                 sf::Color col = constants::getElementColor(atom.ZIndex) + info.color_addition;
@@ -299,19 +299,9 @@ namespace sim
             if (glm::length(r_vec) > 5.f)
                 continue;
 
-            /* if (info.licorice)
-            {
-                instances.emplace_back(
-                glm::vec4(posA, 1.0f),
-                glm::vec4(posB, 1.0f),
-                colorA_norm, colorB_norm, licorice_radius);
-                
-                continue;
-            } */
-
             float radiusA = constants::covalent_radius[sim_info.atoms[bond.bondedAtom].ZIndex];
             float radiusB = constants::covalent_radius[sim_info.atoms[bond.centralAtom].ZIndex];
-            float baseRadius = 0.15f;
+            float baseRadius = 0.12f;
             float bondR = info.licorice ? licorice_radius / order : baseRadius / order;
             glm::vec3 bondDir = glm::normalize(r_vec);
 
