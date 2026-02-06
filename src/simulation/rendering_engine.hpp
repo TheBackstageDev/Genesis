@@ -33,8 +33,8 @@ namespace sim
     private:
         core::window_t &window;
 
-        GLuint color_vao, color_vbo, bond_vao, bond_vbo, arrow_vao, arrow_vbo;
-        GLuint atom_program, bond_program, hyperballs_program, arrow_program;
+        GLuint box_vao, box_vbo, color_vao, color_vbo, bond_vao, bond_vbo, arrow_vao, arrow_vbo;
+        GLuint box_program, atom_program, bond_program, hyperballs_program, arrow_program;
 
         struct AtomInstance 
         {
@@ -66,7 +66,7 @@ namespace sim
 
         void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);
         void drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
-        void drawBox(const glm::vec3 &box);
+        void drawBox(const glm::vec3 &box, sf::RenderTarget &target);
         
         // Init
 

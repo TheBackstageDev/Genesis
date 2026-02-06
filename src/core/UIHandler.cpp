@@ -922,12 +922,12 @@ namespace core
             target_pressure = 0.f;
             target_temperature = 300.f;
 
-            sim::fun::molecule_structure structure{};
+            /* sim::fun::molecule_structure structure{};
             sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {10, 10, 10});
+            simulation_universe->createMolecule(structure, {10, 10, 10}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -2063,7 +2063,11 @@ namespace core
                 temperature_log.emplace_back(simulation_universe->temperature());
                 time_log.emplace_back(simulation_universe->timestep());
             }
-            simulation_universe->saveFrame();
+
+            if (simulation_universe->timestep() % 5 == 0)
+            {
+                simulation_universe->saveFrame();
+            }
 
             if (m_autoFrame)
                 m_currentFrame = simulation_universe->numFrames();

@@ -64,36 +64,24 @@ namespace core
                 window.close();
                 return false;
             }
-            if (event.is<sf::Event::Resized>())
-            {
-                const auto& resizedEvent = event.getIf<sf::Event::Resized>()->size;
-                width = resizedEvent.x;
-                height = resizedEvent.y;
+if (event.is<sf::Event::Resized>())
+{
+    const auto& resizedEvent = event.getIf<sf::Event::Resized>()->size;
+    width = resizedEvent.x;
+    height = resizedEvent.y;
 
-                glViewport(0, 0, width, height);
+    glViewport(0, 0, width, height);
 
-                view.setSize(sf::Vector2f(boxSize, boxSize));
-                float windowAspect = static_cast<float>(width) / height;
-                float simAspect = 1.0f;
-                if (windowAspect > simAspect)
-                {
-                    float viewportWidth = simAspect / windowAspect;
-                    sf::FloatRect rect(sf::Vector2((1.0f - viewportWidth) / 2.0f, 0.0f), sf::Vector2(viewportWidth, 1.0f));
-                    view.setViewport(rect);
-                }
-                else
-                {
-                    float viewportHeight = windowAspect / simAspect;
-                    sf::FloatRect rect(sf::Vector2(0.0f, (1.0f - viewportHeight) / 2.0f), sf::Vector2(1.0f, viewportHeight));
-                    view.setViewport(rect);
-                }
+    // Make the view cover the full window
+    view.setViewport(sf::Rect(sf::Vector2f(0.f, 0.f), sf::Vector2f(1.f, 1.f)));
 
-                float boxSizeAspect = simAspect * boxSize;
-                view.setCenter(sf::Vector2f(boxSizeAspect / 2.0f, boxSizeAspect / 2.0f));
-                view.setSize(sf::Vector2f(boxSizeAspect, boxSizeAspect));
-                window.setView(view);
-                window.setSize(sf::Vector2u(width, height));
-            }
+    // Adjust view size to match window size directly
+    view.setSize(sf::Vector2f(width, height));
+    view.setCenter(sf::Vector2f(width / 2.f, height / 2.f));
+
+    window.setView(view);
+}
+
         }
 
         return true;

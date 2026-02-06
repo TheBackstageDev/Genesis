@@ -28,7 +28,7 @@ void main()
     v_center = center_view.xyz;
     vec2 uv = vec2(((gl_VertexID << 1) & 2) - 1.0, (gl_VertexID & 2) - 1.0) * 1.2f;
 
-    v_uv = uv;
+    v_uv = uv * 1.2f;
 
     vec4 pos_view = vec4(center_view.xyz, 1.0) + vec4(uv * a_radius, 0.0, 0.0);
     vec4 pos = u_proj * pos_view;

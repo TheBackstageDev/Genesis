@@ -383,6 +383,24 @@
         "E congelar novamente!",
         "É isso a força de van der Waals em ação.\nVocê acabou de ver uma das razões fundamentais pelo comportamento que a matéria tem no dia a dia. Parabéns!"
       ]
+    },
+    "TUTORIAL_CLASSICAL_CoulombForce": 
+    {
+      "description": "Veja como partículas carregadas interagem por meio das forças de Coulomb: cargas opostas se atraem fortemente, cargas iguais se repelem violentamente. A base da ligação iônica, dos sais e de muito da química.",
+      "narrations": 
+      [
+        "Bem-vindo ao tutorial de Forças de Coulomb! Essa é uma das forças mais fortes do dia a dia no universo - e tudo tem a ver com cargas elétricas. Vamos ver ela em ação.",
+        "Aqui temos dois íons: um íon de sódio carregado positivamente (Na+ azul) e um íon de cloreto carregado negativamente (Cl- verde). Eles estão bem afastados… mas observe com atenção. O que você acha que vai acontecer?",
+        "Nossa - eles correm um em direção ao outro muito rápido! Cargas opostas se atraem com uma força muito poderosa. Quanto mais perto ficam, mais forte fica a atração - é exatamente a lei de Coulomb em ação: a força aumenta com 1/distância ao quadrado.",
+        "Agora vamos tentar dois íons com a mesma carga: dois íons de sódio (Na+ e Na+).",
+        "Observe… eles se empurram violentamente para longe! Cargas iguais se repelem - e quanto mais perto estão, mais forte é o empurrão.",
+        "Esse empurra-empurra é o motivo pelo qual os sais existem. Metais como o sódio doam elétrons e ficam positivos; ametais como o cloro aceitam elétrons e ficam negativos. Cargas opostas então os mantêm bem presos um ao outro.",
+        "Veja o que acontece quando muitos deles se juntam: um cristal de cloreto de sódio (sal de cozinha). Observe o lindo padrão repetitivo - íons positivos e negativos se alternando em uma grade perfeita. Essa é a configuração de menor energia e mais estável.",
+        "Mas e quando colocamos água? As moléculas de água têm suas próprias cargas pequenas - o oxigênio é ligeiramente negativo, os hidrogênios ligeiramente positivos. Elas rodeiam e blindam os íons, enfraquecendo a atração entre Na+ e Cl-.",
+        "É exatamente por isso que o sal se dissolve na água: as moléculas de água puxam os íons para longe uns dos outros e os mantêm separados. O cristal se desfaz - o sal 'desaparece' na solução, mesmo que os íons ainda estejam lá.",
+        "As forças de Coulomb estão em todos os lugares: mantêm os compostos iônicos unidos, controlam como as proteínas se dobram, fazem seus nervos enviarem sinais e alimentam baterias. É uma das quatro forças fundamentais que moldam o mundo ao nosso redor.",
+        "Você acabou de ver como a carga cria ordem e estrutura na matéria. Excelente trabalho - agora você entende a força de Coulomb!"
+      ]
     }
   }
 }

@@ -25,7 +25,7 @@ namespace sim
             alignas(64) std::vector<glm::vec3> positions;
             alignas(64) std::vector<glm::vec3> velocities;
             alignas(64) std::vector<glm::vec3> forces;
-            alignas(64) std::vector<float> q, temperature;
+            alignas(64) std::vector<float> q;
         };
 
         constexpr int32_t offsets[14][3] = 
@@ -66,8 +66,6 @@ namespace sim
         struct frame
         {
             alignas(64) std::vector<glm::vec3> positions{};
-            std::vector<float> temperatures{};
-
             std::unordered_map<uint32_t, float> energyLog{};
 
             float global_temperature = 0.0f;
@@ -380,6 +378,8 @@ namespace sim
 
                 return UINT32_MAX;
             }
+
+            void COMDrift();
             
             // Flags
 

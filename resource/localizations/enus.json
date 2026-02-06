@@ -401,15 +401,20 @@
     },
     "TUTORIAL_CLASSICAL_CoulombForce": 
     {
-      "description": "Understand Coulomb forces: see how opposite charges attract powerfully and like charges repel. The foundation of ionic bonding and much of chemistry.",
+      "description": "See how charged particles interact through Coulomb forces: opposite charges attract strongly, like charges repel violently. The foundation of ionic bonding, salts, and much of chemistry.",
       "narrations": 
       [
-        "Welcome to the Coulomb Forces tutorial!\nHere you'll discover one of the strongest and most important forces in the universe, the electrostatic force between charged particles.",
-        "Look at these two ions: a positively charged sodium ion (Na+) and a negatively charged chloride ion (Cl-).\nThey have opposite charges... so what do you think will happen? Let's run the simulation and see.",
-        "See that? They rush toward each other very quickly! Opposite charges attract with a strong force.\nThis force gets much stronger as the distance decreases, it follows the inverse-square law: double the distance, force drops to one-fourth.",
-        "Now let's try two ions with the same charge: two sodium ions (Na⁺ and Na⁺).\nWatch... they push each other away violently! Like charges repel.",
-        "Coulomb forces are everywhere in chemistry and biology: they hold ionic compounds together, control how proteins fold, power nerve signals, and make batteries work.\nYou just saw the force that shapes so much of the world around us!",
-        "Well done! You now understand the Coulomb force - one of the four fundamental forces of nature."
+        "Welcome to the Coulomb Forces tutorial! This is one of the strongest everyday forces in the universe - and it's all about electric charges. Let's see it in action.",
+        "Here we have two ions: a positively charged sodium ion (Na+ blue) and a negatively charged chloride ion (Cl- green). They're far apart... but watch closely. What do you think will happen?",
+        "Wow - they rush toward each other incredibly fast! Opposite charges attract with a very powerful force. The closer they get, the stronger the pull becomes - that's Coulomb's law in action: force increases with 1/distance squared.",
+        "Now let's try two ions with the same charge: two sodium ions (Na+ and Na+).",
+        "Watch... they push each other away violently! Like charges repel - and the closer they are, the stronger the push.",
+        "This push-and-pull is why salts exist. Metals like sodium give away electrons and become positive; non-metals like chlorine accept electrons and become negative. Opposite charges then hold them tightly together.",
+        "Here's what happens when many of them come together: a crystal of sodium chloride (table salt). Look at the beautiful repeating pattern - positive and negative ions alternating in a perfect grid. This is the lowest-energy, most stable arrangement.",
+        "But what happens when we add water? Water molecules have their own tiny charges - oxygen is slightly negative, hydrogens slightly positive. They surround and shield the ions, weakening the attraction between Na+ and Cl-.",
+        "That's why salt dissolves in water: the water molecules pull the ions apart and keep them separated. The crystal breaks down - the salt 'disappears' into solution, even though the ions are still there.",
+        "Coulomb forces are everywhere: they hold ionic compounds together, control how proteins fold, make your nerves send signals, and power batteries. It's one of the four fundamental forces that shape the world around us.",
+        "You just witnessed how charge creates order and structure in matter. Amazing work - you now understand the Coulomb force!"
       ]
     }
   }

@@ -39,6 +39,15 @@ namespace sim
     {
         initShaders();
 
+        glGenVertexArrays(1, &box_vao);
+        glGenBuffers(1, &box_vbo);
+        glBindVertexArray(box_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, box_vbo);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+        glVertexAttribDivisor(0, 0);
+
         glGenVertexArrays(1, &color_vao);
         glGenBuffers(1, &color_vbo);
         glBindVertexArray(color_vao);
@@ -111,66 +120,69 @@ namespace sim
         glVertexAttribDivisor(3, 1);
     }
 
-    void rendering_engine::drawBox(const glm::vec3 &box)
+    void rendering_engine::drawBox(const glm::vec3 &box, sf::RenderTarget &target)
     {
-        const std::array<glm::vec3, 8> corners =
-            {{{0.f, 0.f, 0.f},
-              {box.x, 0.f, 0.f},
-              {box.x, box.y, 0.f},
-              {0.f, box.y, 0.f},
-              {0.f, 0.f, box.z},
-              {box.x, 0.f, box.z},
-              {box.x, box.y, box.z},
-              {0.f, box.y, box.z}}};
+        const std::array<glm::vec3, 8> corners = {{
+            {0.f, 0.f, 0.f},
+            {box.x, 0.f, 0.f},
+            {box.x, box.y, 0.f},
+            {0.f, box.y, 0.f},
+            {0.f, 0.f, box.z},
+            {box.x, 0.f, box.z},
+            {box.x, box.y, box.z},
+            {0.f, box.y, box.z}
+        }};
 
-        const std::array<std::pair<int32_t, int32_t>, 12> edges =
-            {{
-                {0, 1}, {1, 2}, {2, 3}, {3, 0}, // bottom face
-                {4, 5},
-                {5, 6},
-                {6, 7},
-                {7, 4}, // top face
-                {0, 4},
-                {1, 5},
-                {2, 6},
-                {3, 7} // vertical pillars
-            }};
+        const std::array<std::pair<int32_t, int32_t>, 12> edges = {{
+            {0, 1}, {1, 2}, {2, 3}, {3, 0}, // bottom
+            {4, 5}, {5, 6}, {6, 7}, {7, 4}, // top
+            {0, 4}, {1, 5}, {2, 6}, {3, 7}  // verticals
+        }};
 
-        sf::VertexArray lines(sf::PrimitiveType::Lines, edges.size() * 2);
-        sf::Color edgeColor(200, 200, 200, 180);
-
-        int32_t idx = 0;
-        for (const auto &[i, j] : edges)
+        std::vector<glm::vec3> lineVertices;
+        lineVertices.reserve(edges.size() * 2);
+        for (auto [i, j] : edges) 
         {
-            glm::vec2 p1 = project(corners[i]);
-            glm::vec2 p2 = project(corners[j]);
-
-            if (p1.x < -1000.f || p2.x < -1000.f)
-                continue;
-
-            const glm::vec3 &a = corners[i];
-            const glm::vec3 &b = corners[j];
-
-            glm::vec3 cam_eye = cam.eye();
-            glm::vec3 camToA = a - glm::vec3(cam_eye.x, cam_eye.y, cam_eye.z);
-            glm::vec3 camToB = b - glm::vec3(cam_eye.x, cam_eye.y, cam_eye.z);
-
-            float dot = glm::dot(glm::normalize(camToA), glm::normalize(camToB));
-            const float THRESHOLD = 0.3f;
-            if (dot < THRESHOLD)
-                continue;
-
-            lines[idx++] = sf::Vertex(sf::Vector2f(p1.x, p1.y), edgeColor);
-            lines[idx++] = sf::Vertex(sf::Vector2f(p2.x, p2.y), edgeColor);
+            lineVertices.push_back(corners[i]);
+            lineVertices.push_back(corners[j]);
         }
 
-        window.getWindow().draw(lines);
+        glBindBuffer(GL_ARRAY_BUFFER, box_vbo);
+        glBufferData(GL_ARRAY_BUFFER,
+                    lineVertices.size() * sizeof(glm::vec3),
+                    lineVertices.data(),
+                    GL_DYNAMIC_DRAW);
+
+        glBindVertexArray(box_vao);
+        glUseProgram(box_program);
+
+        GLint loc_projection = glGetUniformLocation(box_program, "u_proj");
+        GLint loc_view = glGetUniformLocation(box_program, "u_view");
+
+        if (loc_projection != -1)
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE,
+                            glm::value_ptr(cam.getProjectionMatrix(target)));
+
+        if (loc_view != -1)
+            glUniformMatrix4fv(loc_view, 1, GL_FALSE,
+                            glm::value_ptr(cam.getViewMatrix()));
+
+        glEnable(GL_DEPTH_TEST);
+        glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVertices.size()));
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR) 
+        {
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x"
+                    << std::hex << err << "\n";
+        }
     }
 
     void rendering_engine::initShaders()
     {
         const std::filesystem::path shader_root = "src/shaders";
 
+        initShaders(shader_root / "box.vert", shader_root / "box.frag", box_program);
         initShaders(shader_root / "color.vert", shader_root / "color.frag", atom_program);
         initShaders(shader_root / "bond.vert", shader_root / "bond.frag", bond_program);
         initShaders(shader_root / "hyper_balls.vert", shader_root / "hyper_balls.frag", hyperballs_program);
@@ -222,7 +234,7 @@ namespace sim
         {
             for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
             {
-                if (sim_info.positions.size() < i)
+                if (sim_info.positions.size() - 1 < i)
                     break;
 
                 const auto &atom = sim_info.atoms[i];
@@ -283,6 +295,8 @@ namespace sim
         for (int32_t i = 0; i < sim_info.bonds.size(); ++i)
         {
             const auto &bond = sim_info.bonds[i];
+
+            if (sim_info.positions.size() - 1 < bond.bondedAtom || sim_info.positions.size() - 1 < bond.centralAtom) break;
 
             sf::Color colA = constants::getElementColor(sim_info.atoms[bond.bondedAtom].ZIndex) + info.color_addition;
             sf::Color colB = constants::getElementColor(sim_info.atoms[bond.centralAtom].ZIndex) + info.color_addition;
@@ -573,7 +587,7 @@ namespace sim
     void rendering_engine::draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (info.universeBox)
-            drawBox(sim_info.box);
+            drawBox(sim_info.box, target);
 
         bindBond(target, info, sim_info);
         bindColor(target, info, sim_info);
@@ -604,7 +618,7 @@ namespace sim
 
     glm::vec2 rendering_engine::project(const glm::vec3 &p) const
     {
-        auto size = window.getWindow().getView().getSize();
+        auto size = window.getWindow().getSize();
         return cam.project(p, size.x, size.y);
     }
 

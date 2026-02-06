@@ -1171,6 +1171,9 @@ namespace sim
 
             ++timeStep;
             m_accumulatedTime += dt;
+
+            if (timeStep % 1000 == 0)
+                COMDrift(); // fixes simulation box COM drift from numerical errors
         }
 
         float universe::calculatePressure()
@@ -1296,6 +1299,25 @@ namespace sim
         {
             float ke = 0.5f * atoms[i].mass * vel(i).lengthSquared();
             return (2.0f / 3.0f) * ke * KB;
+        }
+
+        void universe::COMDrift()
+        {
+            glm::vec3 totalMomentum{0.f};
+            float totalMass = 0.f;
+
+            for (int32_t i = 0; i < atoms.size(); ++i)
+            {
+                totalMomentum += atoms[i].mass * data.velocities[i];
+                totalMass += atoms[i].mass;
+            }
+
+            glm::vec3 correction = totalMomentum / totalMass;
+
+            for (auto& v : data.velocities)
+            {
+                v -= correction;
+            }
         }
 
         // TO DO

@@ -32,18 +32,18 @@ namespace constants
 #define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
 #define VERLET_SKIN 2.f
-#define CUTOFF 4.f
-#define COULOMB_CUTOFF 12.f * MULT_FACTOR
+#define CUTOFF 5.f
+#define COULOMB_CUTOFF 15.f * MULT_FACTOR
 
-#define CELL_CUTOFF 12 + VERLET_SKIN
+#define CELL_CUTOFF 15 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB 0.008314462618f // A^2 D ps^-2 K^-1
 
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 20
-#define BAROSTAT_INTERVAL 20
+#define THERMOSTAT_INTERVAL 10
+#define BAROSTAT_INTERVAL 10
 
 #define COULOMB_K 1389.354576f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 340000.f        // Harmonic force constant
