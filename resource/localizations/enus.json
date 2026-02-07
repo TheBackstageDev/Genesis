@@ -114,12 +114,15 @@
       {
         "MOLECULE":
         {
-        
+          "SCENARIO_MOLECULE_Water": "Water Molecule (H2O)",
+          "SCENARIO_MOLECULE_Benzene": "Benzene Molecule (C6H6)",
+          "SCENARIO_MOLECULE_CarbonDioxide": "Carbon Dioxide (CO2)"
         },
         "DYNAMICS":
         {
           "SCENARIO_DYNAMICS_browinian_motion": "Brownian Motion",
-          "SCENARIO_DYNAMICS_CrystalNucleation": "Crystal Nucleation"
+          "SCENARIO_DYNAMICS_CrystalNucleation": "Crystal Nucleation",
+          "SCENARIO_DYNAMICS_DropletFormation": "Droplet Formation"
         },
         "REACTIONS":
         {
@@ -142,33 +145,9 @@
   "Compounds":
   {
     "compound_names": 
-    [
-      "Water",
-      "Ammonia",
-      "Carbon Dioxide",
-      "Oxygen",
-      "Ozone",
-      "Formaldehyde",
-      "Methane",
-      "Carbon Monoxide",
-      "Ethanol",
-      "Nitrogen",
-      "Acetic Acid",
-      "Isobutyric Acid",
-      "Butyric acid",
-      "Alanine",
-      "Beta-D-Glucose",
-      "Capric Acid",
-      "Oleic Acid",
-      "Aspirin",
-      "Caffeine",
-      "Sulfate",
-      "Nitrate",
-      "Ammonium",
-      "Sodium Chloride",
-      "Picene",
-      "Octasulfur"
-    ],
+    {
+      "Empty because it's the default": ""
+    },
 
     "compound_types":
     [
@@ -189,6 +168,7 @@
       "Carbon Monoxide": "Carbon monoxide (CO) is a colorless, odorless, and tasteless gas composed of one carbon atom bonded to one oxygen atom. It is produced by the incomplete combustion of carbon-containing fuels such as wood, coal, gasoline, and natural gas. Carbon monoxide binds strongly to hemoglobin in the blood, reducing oxygen transport and making it highly toxic to humans and animals.",
       "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
+      "Methanol": "Methanol (CH3OH) is the simplest alcohol, consisting of one methyl group and a hydroxyl group. It is a colorless, volatile, and flammable liquid with a faintly sweet odor. Methanol mixes completely with water and is widely used as a solvent, fuel, especially in the production of formaldehyde and acetic acid. Despite its industrial importance, methanol is highly toxic to humans, and exposure or ingestion can cause blindness, organ damage, or death.",
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
       "Cubane": "Cubane (C8H8) is a highly strained hydrocarbon consisting of eight carbon atoms arranged at the corners of a cube, each bonded to a hydrogen atom. Despite its extreme angle strain, it is remarkably stable under normal conditions. Cubane is a colorless crystalline solid and serves as a fascinating molecule in research, with potential applications in high-energy materials, pharmaceuticals, and advanced chemical synthesis.",
       "Cuban-cetamol": "Cuban-cetamol is a hypothetical cubane-based analogue of paracetamol, designed by replacing the aromatic benzene ring with a cubane cage. It combines the strained cubic hydrocarbon core with hydroxyl and acetamide substituents, mimicking the functional groups of paracetamol.",
@@ -200,16 +180,19 @@
       "Acetic Acid": "Acetic acid (CH3COOH) is a carboxylic acid, the main component of vinegar, giving it a sour taste and pungent smell. It is a key industrial chemical used in producing plastics, solvents, and foods, and plays a role in metabolism.",
       "Pyridine": "Pyridine (C5H5N) is a heterocyclic aromatic compound containing a nitrogen atom in its ring. It is a colorless liquid with a distinctive odor, widely used as a solvent and chemical intermediate. Pyridine plays a key role in the synthesis of pharmaceuticals, agrochemicals, and vitamins, and serves as a base in many organic reactions due to its ability to accept protons.",
       "Isobutyric Acid": "Isobutyric acid ((CH3)2CHCOOH), also known as 2-methylpropanoic acid, is a branched short-chain fatty acid with a rancid butter-like odor. It occurs naturally in some foods and is used in flavors, perfumes, and as a chemical intermediate.",
-      "Butyric acid": "Butyric acid (CH3CH2CH2COOH) is a short-chain fatty acid with a rancid butter odor, found in dairy products and produced by gut bacteria. It contributes to flavors in foods and has roles in energy metabolism and health.",
+      "Butanoic Acid": "Butanoic acid (C4H8O2), also known as butyric acid, is a short-chain carboxylic acid with a rancid odor reminiscent of butter or vomit. It occurs naturally in dairy products and is produced by intestinal bacteria. Butanoic acid contributes to flavors in certain foods and plays roles in energy metabolism and gut health. It is also used in the manufacture of esters for perfumes and flavorings.",
+      "Cyclohexane": "Cyclohexane (C6H12) is a saturated cyclic hydrocarbon consisting of six carbon atoms arranged in a ring, each bonded to two hydrogen atoms. It is a colorless, flammable liquid with a mild odor, commonly used as a solvent and in the production of nylon and other industrial chemicals.",
       "Alanine": "Alanine (C3H7NO2) is a non-essential alpha-amino acid with a methyl side chain, used in protein biosynthesis. It plays key roles in metabolism, including the glucose-alanine cycle, and serves as an energy source for muscles and the brain.",
       "Beta-D-Glucose": "Beta-D-glucose (C6H12O6) is a monosaccharide and the beta anomer of glucose, a primary energy source in biology. It forms the building block of cellulose in plants and is crucial in carbohydrate metabolism and energy production.",
       "Palmitic Acid": "Palmitic acid (C16H32O2) is a saturated long-chain fatty acid, abundant in palm oil, animal fats, and human tissues. It is a major component of cell membranes and used in soaps, cosmetics, and food production.",
       "Capric Acid": "Capric acid (C10H20O2), also known as decanoic acid, is a saturated fatty acid with a 10-carbon chain. It occurs naturally in coconut oil, palm kernel oil, and in the milk of cows and goats. Capric acid is a white crystalline solid with a melting point around 31 °C and a boiling point near 270 °C. It has a characteristic odor reminiscent of goats, from which its name derives (Latin 'caper/capra').",
+      "Sulfuric Acid": "Sulfuric acid (H2SO4) is a strong mineral acid composed of hydrogen, sulfur, and oxygen. It is a dense, oily liquid that is highly corrosive and widely used in industry for fertilizer production, chemical synthesis, petroleum refining, and battery electrolytes.",
       "Oleic Acid": "Oleic acid (C18H34O2) is a monounsaturated fatty acid with an 18-carbon chain and one cis double bond at the ninth carbon (omega-9). It is the most abundant fatty acid in nature, found in olive oil, canola oil, and animal fats. Oleic acid is a colorless to pale yellow liquid at room temperature, insoluble in water but soluble in organic solvents.",
       "Cholesterol": "Cholesterol (C27H46O) is a sterol essential for cell membranes and hormone production. While vital, excess cholesterol in the blood can lead to plaque buildup in arteries, increasing the risk of heart disease and stroke.",
       "Diamond": "Diamond is a metastable allotrope of carbon with a face-centered cubic lattice. It is the hardest known natural material and an excellent thermal conductor.",
       "Heme A": "The heme group (C34H32N4O4) is the iron-containing prosthetic group in hemoglobin and myoglobin. It binds oxygen reversibly and gives blood its red color.",
       "Carbon Nanotube": "Carbon nanotubes are cylindrical nanostructures of rolled graphene sheets. They exhibit extraordinary tensile strength and electrical properties.",
+      "Vitamin A": "Vitamin A (C20H30O) is a fat-soluble vitamin essential for vision, immune function, and cell growth. It occurs in several forms, including retinol, retinal, and retinoic acid, and is obtained from animal sources and carotenoids in plants.",
       "Paracetamol": "Paracetamol (C8H9NO2), also known as acetaminophen, is a common analgesic and antipyretic. It relieves pain and reduces fever but has minimal anti-inflammatory effects compared to NSAIDs.",
       "ATP": "Adenosine triphosphate (ATP, C10H16N5O13P3) is a nucleotide composed of adenine, ribose, and three phosphate groups. It is the primary energy carrier in living cells, storing and transferring energy for biological processes such as muscle contraction, nerve impulse transmission, and biosynthesis. ATP is continuously regenerated from ADP and phosphate during cellular respiration and photosynthesis, making it essential for life.",
       "DPPC": "Dipalmitoylphosphatidylcholine (C40H80NO8P) is a major phospholipid found in lung surfactant and cell membranes. It consists of a glycerol backbone linked to two palmitic acid chains and a phosphocholine head group. This amphipathic structure allows it to form stable bilayers, reducing surface tension in the lungs and enabling efficient gas exchange. Beyond its biological role, dipalmitoylphosphatidylcholine is widely used in biophysical and biochemical studies as a model membrane component.",
@@ -345,6 +328,48 @@
 
   "Scenarios":
   {
+    "SCENARIO_MOLECULE_Water": 
+    {
+      "description": "The water molecule (H2O) - bent shape due to lone pairs, with a real bond angle of 104.5°. The foundation of hydrogen bonding and life as we know it.",
+      "narrations": 
+      [
+        "This is the water molecule - H2O. One oxygen atom bonded to two hydrogen atoms.",
+        "Notice the shape is not linear. The two hydrogen atoms are bent toward each other. Why? Because oxygen has two lone pairs of electrons that repel the bonding pairs.",
+        "According to VSEPR theory, oxygen has four electron domains: two bonding pairs and two lone pairs. These four domains arrange themselves in a tetrahedral geometry to stay as far apart as possible.",
+        "But the molecular shape only counts the atoms - so we see a bent or V-shaped molecule.",
+        "The ideal tetrahedral angle is 109.5°, but the lone pairs push harder than bonding pairs, squeezing the H-O-H angle down to 104.5° in real life.",
+        "That small difference matters a lot - it's why water is polar, forms hydrogen bonds, dissolves so many substances, and makes life possible.",
+        "Water - simple, yet extraordinary."
+      ]
+    },
+    "SCENARIO_MOLECULE_Benzene": 
+    {
+      "description": "Benzene (C6H6) - the classic aromatic ring. Every carbon has a 120° bond angle and the electrons are delocalized, giving the molecule exceptional stability.",
+      "narrations": 
+      [
+        "This is benzene - C6H6 - one of the most famous and important molecules in chemistry.",
+        "Look at the six carbon atoms arranged in a perfect hexagon. Each carbon is bonded to two other carbons and one hydrogen.",
+        "The bond angle at every carbon is exactly 120° - that's the signature of trigonal planar geometry.",
+        "But benzene is special. The six pi electrons are not stuck between pairs of carbons - they are delocalized around the entire ring.",
+        "This delocalization is often shown as a circle inside the hexagon. It makes the molecule much more stable than if it had three separate double bonds.",
+        "That stability is called aromaticity. It's why benzene doesn't react like a normal alkene and why so many important molecules contain benzene rings.",
+        "Benzene - simple, symmetrical, and incredibly stable."
+      ]
+    },
+    "SCENARIO_MOLECULE_CarbonDioxide": 
+    {
+      "description": "Carbon dioxide (CO2) - a linear molecule with 180° bond angles. A simple yet crucial molecule for life and climate.",
+      "narrations": 
+      [
+        "This is carbon dioxide - CO2. One carbon atom double-bonded to two oxygen atoms.",
+        "Notice the perfectly straight, linear shape. The two oxygen atoms are exactly opposite each other across the carbon.",
+        "According to VSEPR theory, carbon has two electron domains - both are bonding pairs (double bonds count as one domain each). Two domains arrange themselves as far apart as possible: 180° apart.",
+        "The result is a linear molecular geometry with a bond angle of exactly 180°.",
+        "This linearity is why CO2 is non-polar even though it has polar bonds - the dipoles cancel out perfectly.",
+        "CO2 plays a huge role in the world: plants use it for photosynthesis, it traps heat in the atmosphere as a greenhouse gas, and it's what we exhale.",
+        "Simple structure, massive impact."
+      ]
+    },
     "SCENARIO_DYNAMICS_browinian_motion":
     {
       "description": "In this scenario, you will see particles moving randomly, a classic example of Brownian motion.",
@@ -365,6 +390,22 @@
         "The crystal continues to grow until most of the liquid has turned into a small piece of solid krypton lattice.\nThis process is called **nucleation and crystal growth**, it's how all crystals, from snowflakes to diamonds, begin."
       ]
     },
+    "SCENARIO_DYNAMICS_DropletFormation": 
+    {
+      "description": "Watch neutral atoms condense from a chaotic gas into beautiful liquid droplets - a stunning demonstration of how van der Waals forces create liquids from scattered particles.",
+      "narrations": 
+      [
+        "This is the Droplet Formation scenario. You're seeing something really special: how a hot, disorganized gas turns into organized liquid droplets.",
+        "We start with 150 Argon atoms at high temperature - about 1000 K. They're flying around fast, colliding randomly... pure gas behavior, no order at all.",
+        "Now the cooling begins. As the temperature drops, the atoms slow down... and something beautiful starts to happen. Small, dense patches appear!",
+        "These little clusters are growing because van der Waals forces are gently pulling atoms together whenever they get close enough. The attraction is weak, but with enough particles, it becomes powerful.",
+        "Look at the small droplets starting to meet... and when two touch, they quickly merge into one larger droplet. This is coalescence - the same process that grows raindrops in clouds.",
+        "now we have fewer but much bigger droplets.",
+        "And here's the end result: a few large, rounded droplets. The entire scattered gas cloud has transformed into many liquid spheroids - all thanks to those weak attractions between neutral atoms.",
+        "This is how liquids form in the real world: gases condense, droplets merge, and eventually you get oceans, lakes, and rain. Van der Waals forces may be small, but they shape the entire liquid world around us.",
+        "Incredible to watch, isn't it? One of nature's most elegant transformations - from chaos to order, just by cooling."
+      ]
+    },  
     "TUTORIAL_ENGINE_Controls": 
     {
       "description": "Master the basic controls: move the camera, pause time, add compounds, and more.",

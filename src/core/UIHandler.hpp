@@ -275,7 +275,6 @@ namespace core
         void pauseMenu();
 
         void initCompoundPresetsImages();
-        void initCompoundPresets();
         void initCompoundXYZ();
         std::vector<sim::fun::compound_preset_info> compound_presets{};
 

@@ -24,13 +24,14 @@ namespace sim::io
         if (BONDED(6, 8))
         {
             if (distance < 1.21f) return fun::BondType::DOUBLE;     // C=O     ~1.20–1.23 Å (carbonyl)
+            if (distance < 1.13f) return fun::BondType::TRIPLE;     // C#O
             return fun::BondType::SINGLE;                           // C–O     ~1.36–1.43 Å
         }
 
         if (BONDED(6, 7))
         {
             if (distance < 1.18f) return fun::BondType::TRIPLE;
-            if (distance < 1.35f) return fun::BondType::DOUBLE;
+            if (distance < 1.36f) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE; 
         }
 
@@ -49,6 +50,12 @@ namespace sim::io
         if (BONDED(16, 6))
         {
             if (distance < 1.68f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
+        }
+
+        if (BONDED(16, 16))
+        {
+            if (distance < 1.90) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE;
         }
 
@@ -159,7 +166,7 @@ namespace sim::io
             std::getline(file, line);
             std::istringstream iss(line);
             std::string symbol;
-            float x, y, z;
+            float x, y, z, q = 0.0f;
 
             if (!(iss >> symbol >> x >> y >> z)) 
             {
@@ -167,15 +174,17 @@ namespace sim::io
                 continue;
             }
 
+            iss >> q; // custom charge, if it is unable to read, it stays at 0.0f
+
             fun::def_atom nAtom{};
             nAtom.aromatic = false;
-            nAtom.charge = 0.f;
+            nAtom.charge = q;
             nAtom.chirality = 0;
             nAtom.hydrogenize = false;
             nAtom.nBonds = 0;
             nAtom.nHydrogens = 0;
             nAtom.ZIndex = constants::symbolToZ(symbol);
-            nAtom.NIndex = nAtom.ZIndex;
+            nAtom.NIndex = constants::NEUTRON_COUNTS[nAtom.ZIndex];
 
             atoms.emplace_back(std::move(nAtom));
             positions.emplace_back(x, y, z);
@@ -202,7 +211,8 @@ namespace sim::io
                         nBond.bondingAtomIdx = i;
                         nBond.centralAtomIdx = j;
                     } 
-                    else if (z2 == 1) {
+                    else if (z2 == 1) 
+                    {
                         nBond.bondingAtomIdx = j;
                         nBond.centralAtomIdx = i;
                     } 

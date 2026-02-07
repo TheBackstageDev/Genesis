@@ -56,8 +56,8 @@ void main()
     vec3 viewDir = normalize(-hitPos_view);
 
     vec3 reflectDir = reflect(-u_lightDir, hit_normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64.0);
-    vec3 specular =  0.12f * spec * vec3(1.0, 1.0, 1.0);   
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    vec3 specular =  0.15f * spec * vec3(1.0, 1.0, 1.0);   
     
     final_color += specular;
     fragColor = vec4(final_color, v_color.w);

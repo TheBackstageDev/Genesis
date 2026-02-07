@@ -160,8 +160,7 @@ namespace sim
         GLint loc_view = glGetUniformLocation(box_program, "u_view");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE,
-                            glm::value_ptr(cam.getProjectionMatrix(target)));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE,
@@ -241,7 +240,7 @@ namespace sim
                 float radius = 0.f;
 
                 if (info.licorice)
-                    radius = licorice_radius;
+                    radius = licorice_radius * 1.18f;
                 else
                     radius = info.spaceFilling
                                  ? constants::VDW_RADII[atom.ZIndex]
@@ -267,7 +266,7 @@ namespace sim
         GLint loc_view = glGetUniformLocation(atom_program, "u_view");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
@@ -315,7 +314,7 @@ namespace sim
 
             float radiusA = constants::covalent_radius[sim_info.atoms[bond.bondedAtom].ZIndex];
             float radiusB = constants::covalent_radius[sim_info.atoms[bond.centralAtom].ZIndex];
-            float baseRadius = 0.12f;
+            float baseRadius = 0.10f;
             float bondR = info.licorice ? licorice_radius / order : baseRadius / order;
             glm::vec3 bondDir = glm::normalize(r_vec);
 
@@ -323,7 +322,7 @@ namespace sim
             glm::vec3 perp1 = glm::normalize(glm::cross(bondDir, arbitrary));
             glm::vec3 perp2 = glm::cross(bondDir, perp1);
 
-            const float offsetStep = 0.10f;
+            const float offsetStep = 0.08f;
 
             if (order == 1 || info.hyperBalls)
             {
@@ -367,7 +366,7 @@ namespace sim
         GLint loc_licorice = glGetUniformLocation(bond_program, "licorice");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
@@ -422,7 +421,7 @@ namespace sim
         GLint loc_view = glGetUniformLocation(arrow_program, "u_view");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
@@ -519,7 +518,7 @@ namespace sim
         GLint loc_view = glGetUniformLocation(bond_program, "u_view");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
@@ -569,7 +568,7 @@ namespace sim
         GLint loc_view = glGetUniformLocation(atom_program, "u_view");
 
         if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target)));
+            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
 
         if (loc_view != -1)
             glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
@@ -604,6 +603,72 @@ namespace sim
         return x * x * (3.0f - 2.0f * x);
     }
 
+    void rendering_engine::drawAngle(ImDrawList* draw_list,
+                                    const glm::vec3& a,
+                                    const glm::vec3& b,
+                                    const glm::vec3& c)
+    {
+        constexpr ImU32 arc_color  = IM_COL32(220, 60, 40, 220);
+        constexpr ImU32 text_color = IM_COL32(255, 255, 255, 255);
+        constexpr int arc_segments = 32;
+        
+        glm::vec3 cam_pos = cam.eye();
+        glm::vec3& cam_target = cam.target;
+        float dist_to_cam = glm::length(b - cam_pos);
+
+        float arc_radius = 450.0f / dist_to_cam;
+        float text_offset = 80.0f / dist_to_cam;
+
+        glm::vec2 screen_a = project(a);
+        glm::vec2 screen_b = project(b);
+        glm::vec2 screen_c = project(c);
+
+        if (glm::length(screen_a) < 1e-6f || glm::length(screen_b) < 1e-6f || glm::length(screen_c) < 1e-6f)
+            return;
+
+        glm::vec2 dir_ba = glm::normalize(screen_a - screen_b);
+        glm::vec2 dir_bc = glm::normalize(screen_c - screen_b);
+
+        float angle_rad = std::acosf(glm::clamp(glm::dot(dir_ba, dir_bc), -1.0f, 1.0f));
+
+        float cross = dir_ba.x * dir_bc.y - dir_ba.y * dir_bc.x;
+        bool clockwise = true;
+
+        float start_angle = atan2f(dir_ba.y, dir_ba.x);
+        float delta_angle = clockwise ? -angle_rad : angle_rad;
+        float end_angle   = start_angle + delta_angle;
+
+        if (angle_rad > 179.0f || angle_rad < 181.0f)
+            delta_angle = -angle_rad;
+
+        draw_list->PathArcTo(
+            ImVec2(screen_b.x, screen_b.y),
+            arc_radius,
+            start_angle,
+            end_angle,
+            arc_segments
+        );
+        draw_list->PathStroke(arc_color, false, 2.5f);
+
+        float mid_angle = start_angle + delta_angle * 0.5f;
+        glm::vec2 text_pos = screen_b + glm::vec2(cosf(mid_angle), sinf(mid_angle)) * (arc_radius + text_offset);
+
+        glm::vec3 dir_ba_world = glm::normalize(a - b);
+        glm::vec3 dir_bc_world = glm::normalize(c - b);
+
+        float angle_rad_world = std::acosf(glm::clamp(glm::dot(dir_ba_world, dir_bc_world), -1.0f, 1.0f));
+
+        char text[16];
+        std::snprintf(text, sizeof(text), "%.1f°", glm::degrees(angle_rad_world));
+
+        ImVec2 text_size = ImGui::CalcTextSize(text);
+        draw_list->AddText(
+            ImVec2(text_pos.x - text_size.x * 0.5f, text_pos.y - text_size.y * 0.5f),
+            text_color,
+            text
+        );
+    }
+
     void rendering_engine::drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)
     {
     }
@@ -618,7 +683,7 @@ namespace sim
 
     glm::vec2 rendering_engine::project(const glm::vec3 &p) const
     {
-        auto size = window.getWindow().getSize();
+        auto size = window.getWindow().getView().getSize();
         return cam.project(p, size.x, size.y);
     }
 

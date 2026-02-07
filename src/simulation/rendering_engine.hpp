@@ -25,6 +25,7 @@ namespace sim
         ~rendering_engine() = default;
 
         void draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void drawAngle(ImDrawList* draw_list, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
 
         void drawDebug();
         void handleCamera();
@@ -62,12 +63,12 @@ namespace sim
             alignas(16) float radius = 0.0f;
         };
 
-        const float licorice_radius = 0.22f;
+        const float licorice_radius = 0.2f;
 
         void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);
         void drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
         void drawBox(const glm::vec3 &box, sf::RenderTarget &target);
-        
+
         // Init
 
         void initShaders();

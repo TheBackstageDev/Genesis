@@ -78,7 +78,6 @@ namespace sim
             atoms.emplace_back(std::move(newAtom));
             data.q.emplace_back(ZIndex - numElectron);
             data.forces.resize(atoms.size());
-            data.temperature.resize(atoms.size());
 
             frozen_atoms.emplace_back(false);
 
@@ -1103,7 +1102,9 @@ namespace sim
 
             for (auto &fut : futures)
             {
-                auto local_f = fut.get();
+                auto local_f = fut.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready 
+                    ? fut.get() 
+                    : std::vector<sf::Vector3f>(atoms.size(), {0, 0, 0});
                 for (size_t i = 0; i < atoms.size(); ++i)
                 {
                     add_force(static_cast<int32_t>(i), local_f[i]);
@@ -1190,7 +1191,7 @@ namespace sim
             float P_virial = -total_virial / (3.0f * volume);
 
             float pressure = P_ideal + P_virial;
-            return pressure / 100.f;
+            return pressure;
         }
 
         void universe::setPressure(float Target_P_Bar)
@@ -1491,8 +1492,6 @@ namespace sim
                 scene["velz"].emplace_back(data.velocities[x].z);
 
                 scene["charge"].emplace_back(data.q[x]);
-                scene["temperature"].emplace_back(data.temperature[x]);
-
                 scene["ZIndex"].emplace_back(atoms[x].ZIndex);
                 scene["neutrons"].emplace_back(atoms[x].NCount);
                 scene["electrons"].emplace_back(atoms[x].electrons);
@@ -1636,7 +1635,6 @@ namespace sim
             data.positions.clear();
             data.velocities.clear();
             data.q.clear();
-            data.temperature.clear();
 
             box.x = scene.value("boxx", 50.0f);
             box.y = scene.value("boxy", 50.0f);
@@ -1668,7 +1666,6 @@ namespace sim
             data.positions.reserve(N);
             data.velocities.reserve(N);
             data.q.reserve(N);
-            data.temperature.reserve(N);
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -1694,7 +1691,6 @@ namespace sim
                 emplace_vel(glm::vec3(velx[i], vely[i], velz[i]));
 
                 data.q.emplace_back(charges[i]);
-                data.temperature.emplace_back(temperatures[i]);
             }
 
             data.forces.assign(N, glm::vec3(0.0f));

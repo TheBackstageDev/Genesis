@@ -84,7 +84,8 @@
         },
         "CLASSICAL":
         {
-        
+          "TUTORIAL_CLASSICAL_VanDerWaals": "Força Van Der Waals",
+          "TUTORIAL_CLASSICAL_CoulombForce": "Força Coulomb"
         },
         "QUANTUM":
         {
@@ -112,11 +113,15 @@
       {
         "MOLECULE":
         {
-        
+          "SCENARIO_MOLECULE_Water": "Molécula de Água (H2O)",
+          "SCENARIO_MOLECULE_Benzene": "Molécula de Benzeno (C6H6)",
+          "SCENARIO_MOLECULE_CarbonDioxide": "Molécula de Dioxido de Carbono (CO2)"
         },
         "DYNAMICS":
         {
-          "Brownian Motion": "Movimentação Browniana"
+          "SCENARIO_DYNAMICS_browinian_motion": "Movimentação Browniana",
+          "SCENARIO_DYNAMICS_CrystalNucleation": "Nucleação de Cristal",
+          "SCENARIO_DYNAMICS_DropletFormation": "Formação de Gotículas"
         },
         "REACTIONS":
         {
@@ -139,33 +144,55 @@
   "Compounds":
   {
     "compound_names":
-    [
-      "Água",
-      "Amônia",
-      "Dióxido de Carbono",
-      "Oxigênio",
-      "Ozônio",
-      "formaldeído",
-      "Metano",
-      "Monóxido de Carbono",
-      "Etanol",
-      "Nitrogênio",
-      "Ácido Acético",
-      "Ácido Isobutírico",
-      "Ácido Butírico",
-      "Alanina",
-      "Beta-D-Glicose",
-      "Ácido Cáprico",
-      "Ácido Oleico",
-      "Aspirina",
-      "Cafeína",
-      "Sulfato",
-      "Nitrato",
-      "Amônio",
-      "Cloreto de Sódio",
-      "Piceno",
-      "Octassulfeto"
-    ],
+    {
+      "Water": "Água",
+      "Carbon Dioxide": "Dióxido de Carbono",
+      "Ozone": "Ozônio",
+      "Methane": "Metano",
+      "Carbon Monoxide": "Monóxido de Carbono",
+      "Ethane": "Etano",
+      "Ethanol": "Etanol",
+      "Methanol": "Metanol",
+      "Benzene": "Benzeno",
+      "Cubane": "Cubano",
+      "Cuban-cetamol": "Cuban-cetamol",
+      "Nitrogen": "Nitrogênio",
+      "Oxygen": "Oxigênio",
+      "C20 Fullerene": "Fulereno C20",
+      "Cyclohexane": "Ciclo-hexano",
+      "Sulfuric Acid": "Ácido sulfúrico",
+      "Vitamin A": "Vitamina A",
+      "Ammonia": "Amônia",
+      "Formaldehyde": "Formaldeído",
+      "Pyridine": "Piridina",
+      "Acetic Acid": "Ácido Acético",
+      "Isobutyric Acid": "Ácido Isobutírico",
+      "Butanoic Acid": "Ácido Butanóico",
+      "Alanine": "Alanina",
+      "Beta-D-Glucose": "Beta-D-Glicose",
+      "Palmitic Acid": "Ácido Palmítico",
+      "Capric Acid": "Ácido Cáprico",
+      "Oleic Acid": "Ácido Oleico",
+      "Cholesterol": "Colesterol",
+      "Diamond": "Diamante",
+      "Paracetamol": "Paracetamol",
+      "Heme A": "Grupo Heme A",
+      "DPPC": "Dipalmitoilfosfatidilcolina",
+      "Sucrose": "Sacarose",
+      "Carbon Nanotube": "Nanotubo de carbono",
+      "Carborane acid": "Ácido Carborano",
+      "ATP": "Adenosina trifosfato",
+      "Nicotine": "Nicotina",
+      "Aspirin": "Aspirina",
+      "Caffeine": "Cafeína",
+      "Sulfate": "Sulfato",
+      "Nitrate": "Nitrato",
+      "Ammonium": "Amônio",
+      "Sodium Chloride": "Cloreto de Sódio",
+      "Picene": "Piceno",
+      "Octasulfur": "Octassulfeto",
+      "Buckminsterfullerene": "Buckminsterfullerene"
+    },
 
     "compound_types":
     [
@@ -192,12 +219,16 @@
       "Nitrogen": "O nitrogênio (N2) é uma molécula diatômica composta por dois átomos de nitrogênio unidos por uma forte ligação tripla, tornando-o quimicamente estável e inerte na maioria das condições. É um gás incolor e inodoro que constitui cerca de 78% da atmosfera terrestre.",
       "Oxygen": "O oxigênio (O2) é uma molécula diatômica essencial para a vida, composta por dois átomos de oxigênio. É um gás incolor e inodoro que representa cerca de 21% da atmosfera terrestre. O oxigênio é vital para a respiração celular na maioria dos organismos e sustenta a combustão. Embora necessário para a sobrevivência, concentrações muito altas podem ser tóxicas e níveis baixos podem causar hipóxia.",
       "C20 Fullerene": "O fulereno C20 é o menor fulereno, formado por 20 átomos de carbono em uma estrutura em forma de gaiola dodecaédrica. Sua alta tensão o torna menos estável que fulerenos maiores, como o C60.",
+      "Cyclohexane": "O ciclo-hexano (C6H12) é um hidrocarboneto cíclico saturado formado por seis átomos de carbono dispostos em anel, cada um ligado a dois átomos de hidrogênio. É um líquido incolor, inflamável e de odor suave, amplamente utilizado como solvente e na produção de nylon e outros produtos químicos industriais.",
+      "Sulfuric Acid": "O ácido sulfúrico (H2SO4) é um ácido mineral forte composto por hidrogênio, enxofre e oxigênio. É um líquido denso e oleoso, altamente corrosivo, amplamente utilizado na indústria para produção de fertilizantes, síntese química, refino de petróleo e como eletrólito em baterias.",
+      "Vitamin A": "A vitamina A (C20H30O) é uma vitamina lipossolúvel essencial para a visão, função imunológica e crescimento celular. Aparece em várias formas, incluindo retinol, retinal e ácido retinoico, sendo obtida de fontes animais e de carotenoides presentes em plantas.",
+      "Methanol": "O metanol (CH3OH) é o álcool mais simples, composto por um grupo metíl e um grupo hidroxila. É um líquido incolor, volátil e inflamável, com odor levemente adocicado. Mistura-se completamente com água e é amplamente utilizado como solvente, combustível, especialmente na produção de formaldeído e ácido acético. Apesar de sua importância industrial, o metanol é altamente tóxico para humanos, podendo causar cegueira, danos aos órgãos ou morte quando ingerido ou inalado em grandes quantidades.",
       "Ammonia": "A amônia (NH3) é um composto inorgânico de nitrogênio e hidrogênio, um gás incolor com odor forte e pungente. É essencial em fertilizantes, serve como bloco de construção para muitos produtos químicos e desempenha papel em processos biológicos como o metabolismo de proteínas.",
       "Formaldehyde": "O formaldeído (CH2O) é o aldeído mais simples, um gás incolor e pungente que polimeriza facilmente. É amplamente usado em resinas, desinfetantes, conservantes e como precursor em síntese química, embora seja tóxico e carcinogênico em altas exposições.",
       "Pyridine": "Piridina (C5H5N) é um composto aromático heterocíclico contendo um átomo de nitrogênio no anel. É um líquido incolor, com odor característico, usado como solvente e intermediário químico. A piridina é fundamental na síntese de medicamentos, agroquímicos e vitaminas, além de servir como base em diversas reações orgânicas devido à sua capacidade de aceitar prótons.",
       "Acetic Acid": "O ácido acético (CH3COOH) é um ácido carboxílico, principal componente do vinagre, conferindo-lhe sabor azedo e odor forte. É um importante produto químico industrial usado na produção de plásticos, solventes e alimentos, além de desempenhar papel no metabolismo.",
       "Isobutyric Acid": "O ácido isobutírico ((CH3)2CHCOOH), também conhecido como ácido 2-metilpropanoico, é um ácido graxo de cadeia curta ramificado com odor rancoso semelhante a manteiga. Ocorre naturalmente em alguns alimentos e é usado em aromatizantes, perfumes e como intermediário químico.",
-      "Butyric acid": "O ácido butírico (CH3CH2CH2COOH) é um ácido graxo de cadeia curta com odor rancoso de manteiga ou vômito, encontrado em produtos lácteos e produzido por bactérias intestinais. Contribui para sabores em alimentos e tem funções no metabolismo energético e na saúde.",
+      "Butanoic Acid": "O ácido butanoico (C4H8O2), também conhecido como ácido butírico, é um ácido carboxílico de cadeia curta com odor rançoso semelhante ao de manteiga ou vômito. Ocorre naturalmente em produtos lácteos e é produzido por bactérias intestinais. O ácido butanoico contribui para sabores em alguns alimentos e desempenha funções no metabolismo energético e na saúde intestinal. Também é utilizado na fabricação de ésteres para perfumes e aromatizantes.",
       "Alanine": "A alanina (C3H7NO2) é um alpha-aminoácido não essencial com cadeia lateral metil, usado na biossíntese de proteínas. Desempenha papéis importantes no metabolismo, incluindo o ciclo glicose-alanina, e serve como fonte de energia para músculos e cérebro.",
       "Beta-D-Glucose": "A beta-D-glicose (C6H12O6) é um monossacarídeo e o anômero beta da glicose, principal fonte de energia na biologia. Forma o bloco de construção da celulose nas plantas e é crucial no metabolismo de carboidratos e na produção de energia.",
       "Palmitic Acid": "O ácido palmítico (C16H32O2) é um ácido graxo saturado de cadeia longa, abundante no óleo de palma, gorduras animais e tecidos humanos. É um componente principal das membranas celulares e usado em sabões, cosméticos e produção de alimentos.",
@@ -341,6 +372,64 @@
 
   "Scenarios": 
   {
+    "SCENARIO_MOLECULES_Water": 
+    {
+      "description": "A molécula de água (H2O) - formato angular por causa dos pares solitários, com ângulo real de 104,5°. A base das ligações de hidrogênio e da vida como conhecemos.",
+      "narrations": 
+      [
+        "Esta é a molécula de água - H2O. Um átomo de oxigênio ligado a dois átomos de hidrogênio.",
+        "Repare que o formato não é linear. Os dois hidrogênios estão dobrados um em direção ao outro. Por quê? Porque o oxigênio tem dois pares de elétrons solitários que repelem os pares de ligação.",
+        "Segundo a teoria VSEPR, o oxigênio tem quatro domínios eletrônicos: dois pares ligantes e dois pares solitários. Esses quatro domínios se organizam em geometria tetraédrica para ficarem o mais afastados possível.",
+        "Mas o formato molecular só conta os átomos - então vemos uma molécula angular ou em V.",
+        "O ângulo tetraédrico ideal seria 109,5°, mas os pares solitários empurram mais forte que os pares de ligação, reduzindo o ângulo H-O-H para 104,5° na vida real.",
+        "Essa pequena diferença faz uma diferença enorme - é por isso que a água é polar, forma ligações de hidrogênio, dissolve tantas substâncias e torna a vida possível.",
+        "Água - simples, mas extraordinária."
+      ]
+    },
+    "SCENARIO_MOLECULES_Benzene": 
+    {
+      "description": "Benzeno (C6H6) - o clássico anel aromático. Cada carbono tem ângulo de ligação de 120° e os elétrons estão deslocalizados, dando ao composto estabilidade excepcional.",
+      "narrations": 
+      [
+        "Este é o benzeno - C6H6 - uma das moléculas mais famosas e importantes da química.",
+        "Observe os seis átomos de carbono dispostos em um hexágono perfeito. Cada carbono está ligado a dois outros carbonos e um hidrogênio.",
+        "O ângulo de ligação em cada carbono é exatamente 120° - essa é a assinatura da geometria trigonal planar.",
+        "Mas o benzeno é especial. Os seis elétrons pi não ficam presos entre pares de carbonos - eles estão deslocalizados ao redor de todo o anel.",
+        "Essa deslocalização é frequentemente representada por um círculo dentro do hexágono. Isso torna a molécula muito mais estável do que se tivesse três ligações duplas separadas.",
+        "Essa estabilidade é chamada de aromaticidade. É por isso que o benzeno não reage como um alceno comum e por que tantas moléculas importantes contêm anéis benzenicos.",
+        "Benzeno - simples, simétrico e incrivelmente estável."
+      ]
+    },   
+    "SCENARIO_MOLECULE_CarbonDioxide": 
+    {
+      "description": "Dióxido de carbono (CO2) - uma molécula linear com ângulos de ligação de 180°. Uma molécula simples, mas crucial para a vida e para o clima.",
+      "narrations": 
+      [
+        "Este é o dióxido de carbono - CO2. Um átomo de carbono ligado por duplas ligações a dois átomos de oxigênio.",
+        "Observe o formato perfeitamente reto e linear. Os dois oxigênios estão exatamente opostos um ao outro em relação ao carbono.",
+        "Segundo a teoria VSEPR, o carbono tem dois domínios eletrônicos - ambos são pares ligantes (ligações duplas contam como um domínio cada). Dois domínios se organizam o mais afastados possível: 180° de distância.",
+        "O resultado é uma geometria molecular linear com ângulo de ligação de exatamente 180°.",
+        "Essa linearidade é o motivo pelo qual o CO2 é apolar, mesmo tendo ligações polares - os dipolos se cancelam perfeitamente.",
+        "O CO2 tem um papel enorme no mundo: as plantas o usam na fotossíntese, ele retém calor na atmosfera como gás de efeito estufa, e é o que exalamos.",
+        "Estrutura simples, impacto gigantesco."
+      ]
+    },
+    "SCENARIO_DYNAMICS_DropletFormation": 
+    {
+      "description": "Veja átomos neutros se condensarem de um gás caótico para lindas gotículas líquidas — uma demonstração impressionante de como as forças de van der Waals criam líquidos a partir de partículas espalhadas.",
+      "narrations": 
+      [
+        "Este é o cenário de Formação de Gotículas. Você está vendo algo realmente especial: como um gás quente e desorganizado se transforma em gotículas líquidas organizadas.",
+        "Começamos com 150 átomos de argônio a alta temperatura — cerca de 1000 K. Eles estão voando rápido, colidindo aleatoriamente... puro comportamento de gás, sem nenhuma ordem.",
+        "Agora o resfriamento começa. À medida que a temperatura cai, os átomos desaceleram... e algo bonito começa a acontecer. Pequenas regiões mais densas aparecem!",
+        "Esses pequenos agrupamentos estão crescendo porque as forças de van der Waals estão puxando suavemente os átomos uns para os outros sempre que eles ficam próximos o suficiente. A atração é fraca, mas com partículas suficientes, ela fica poderosa.",
+        "Observe as gotículas pequenas começando a se encontrar... e quando duas se tocam, elas se fundem rapidamente em uma gotícula maior. Esse processo é chamado de coalescência — é exatamente como as gotas de chuva crescem nas nuvens.",
+        "Agora temos menos gotículas, mas bem maiores.",
+        "E aqui está o resultado final: algumas gotas grandes e arredondadas. Toda a nuvem de gás dispersa se transformou em vários esferoides líquidos — tudo graças àquelas fracas atrações entre átomos neutros.",
+        "É assim que os líquidos se formam no mundo real: gases condensam, gotículas se fundem e, eventualmente, surgem oceanos, lagos e chuva. As forças de van der Waals podem ser pequenas, mas moldam todo o mundo líquido ao nosso redor.",
+        "Incrível de assistir, não é? Uma das transformações mais elegantes da natureza — do caos para a ordem, apenas resfriando."
+      ]
+    },
     "SCENARIO_DYNAMICS_Brownian_Motion":
     {
       "description": "Neste cenário, você verá partículas em movimento aleatório, um exemplo clássico do movimento browniano.",

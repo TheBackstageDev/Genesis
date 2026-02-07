@@ -14,8 +14,6 @@ namespace sim
         COUNT
     };
 
-    class reaction_engine;
-
     struct reaction_rule
     {
 
@@ -31,8 +29,6 @@ namespace sim
 
         void update(fun::universe& u);
     private:
-        friend reaction_rule;
-
         fun::universe* m_universe = nullptr;
         std::vector<reaction_rule> m_rules;
 

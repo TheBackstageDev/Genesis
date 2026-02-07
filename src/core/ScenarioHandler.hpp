@@ -134,6 +134,7 @@ namespace core
         friend ScenarioStep;
 
         void initScenarios();
+        void initMoleculeScenarios();
         void initTutorials();
 
         void enterStep(size_t idx);

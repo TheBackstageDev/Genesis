@@ -195,7 +195,6 @@ namespace sim
         struct compound_preset_info
         {
             std::string name;
-            std::string SMILES;
             std::string formula;
             float molecular_weight = 0.0f;
 

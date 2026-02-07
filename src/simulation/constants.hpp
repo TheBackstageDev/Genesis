@@ -32,7 +32,7 @@ namespace constants
 #define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
 #define VERLET_SKIN 2.f
-#define CUTOFF 5.f
+#define CUTOFF 4.5f
 #define COULOMB_CUTOFF 15.f * MULT_FACTOR
 
 #define CELL_CUTOFF 15 + VERLET_SKIN
@@ -761,7 +761,7 @@ namespace constants
                 } else if (bond_count == 3) {
                     ideal_angle = 107.0f * RADIAN; // AX₃E
                 } else if (bond_count == 2) {
-                    ideal_angle = 104.5f * RADIAN; // AX₂E₂
+                    ideal_angle = 104.45f * RADIAN; // AX₂E₂
                 }
                 break;
 
@@ -774,7 +774,7 @@ namespace constants
                 break;
 
             default:
-                ideal_angle = 109.5f * RADIAN; // Fallback
+                ideal_angle = 120.5f * RADIAN; // Fallback
                 break;
         }
 

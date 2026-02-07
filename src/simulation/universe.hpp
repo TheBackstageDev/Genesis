@@ -118,7 +118,6 @@ namespace sim
                 data.velocities.clear();
                 data.forces.clear();
                 data.q.clear();
-                data.temperature.clear();
 
                 molecules.clear();
                 atoms.clear();
@@ -169,6 +168,7 @@ namespace sim
             // Gets
             
             core::camera_t& getRenderingCamera() { return rendering_eng.camera(); }
+            sim::rendering_engine& getRenderingEngine() { return rendering_eng; }
             bool isPaused() { return m_paused; }
 
             const std::vector<atom>& getAtoms() const { return atoms; }

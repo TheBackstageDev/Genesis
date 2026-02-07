@@ -102,10 +102,9 @@ namespace core
             return;
         }
 
-        initCompoundPresets();
         initCompoundXYZ();
-        initSavedData();
         initImages();
+        initSavedData();
     }
 
     void UIHandler::initSavedData()
@@ -342,99 +341,6 @@ namespace core
         display_universe->clear();
     }
 
-    constexpr int32_t num_smiles_compounds = 25;
-
-    void UIHandler::initCompoundPresets()
-    {
-        auto &compounds = localization_json["Compounds"];
-        auto &compound_names = compounds["compound_names"];
-
-        compound_presets.clear();
-
-        std::array<std::string, num_smiles_compounds> smilesToParse =
-            {
-                "O",
-                "N",
-                "O=C=O",
-                "O=O",
-                "[O-][O+]=O",
-                "C=O",
-                "C",
-                "[C-]#[O+]",
-                "CCO",
-                "N#N",
-                "CC(=O)O",
-                "CC(C)C(=O)O",
-                "O=C(O)CCC",
-                "NC(C)C(=O)O",
-                "C1C(C(C(C(O1)O)O)O)O",
-                "O=C(O)CCCCCCCCC",
-                "CCCCCCCC\\C=C/CCCCCCCC(O)=O",
-                "CC(=O)OC1=CC=CC=C1C(=O)O",
-                "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-                "[O-]S(=O)(=O)[O-]",
-                "[O-][N+](=O)[O-]",
-                "[NH4+]",
-                "[Na+].[Cl-]",
-                "C1=CC=CC2=C1C=CC3=C2C=CC4=C3C=CC5=C4C=CC=C5",
-                "S1SSSSSSS1"};
-
-        std::array<std::string, num_smiles_compounds> formulas = {
-            "H2O", "NH3", "CO2", "O2", "O3", "CH2O", "CH4", "CO", "C2H5OH", "N2",
-            "CH3COOH", "C4H8O2", "C3H7COOH", "C3H7NO2", "C6H12O6", "C10H20O2", "C18H34O2",
-            "C9H8O4", "C8H10N4O2", "SO4-2", "NO3-", "NH4+",
-            "NaCl", "C22H14", "S8"};
-
-        using type = compound_type;
-        std::array<type, num_smiles_compounds> types = {
-            type::INORGANIC,   // Water
-            type::INORGANIC,   // Ammonia
-            type::INORGANIC,   // CO2
-            type::INORGANIC,   // O2
-            type::INORGANIC,   // Ozone
-            type::ORGANIC,     // Formaldehyde
-            type::ORGANIC,     // Methane
-            type::INORGANIC,   // Carbon Monoxide
-            type::ORGANIC,     // Ethanol
-            type::INORGANIC,   // N2
-            type::ORGANIC,     // Acetic acid
-            type::ORGANIC,     // Isobutyric acid
-            type::ORGANIC,     // Butanoic acid
-            type::BIOMOLECULE, // Alanine
-            type::BIOMOLECULE, // Glucose
-            type::BIOMOLECULE, // Capric Acid
-            type::BIOMOLECULE, // Oleic Acid
-            type::ORGANIC,     // Aspirin
-            type::ORGANIC,     // Caffeine
-            type::ION,         // Sulfate
-            type::ION,         // Nitrate
-            type::ION,         // Ammonium
-            type::ION,         // Sodium Chloride
-            type::ORGANIC,     // Tetracene
-            type::INORGANIC    // Octasulfur
-        };
-
-        for (int32_t i = 0; i < num_smiles_compounds; ++i)
-        {
-            compound_preset_info nInfo{};
-            nInfo.name = compound_names[i].get<std::string>();
-            nInfo.id = i;
-            nInfo.type = types[i];
-            nInfo.formula = formulas[i];
-            nInfo.SMILES = smilesToParse[i];
-            nInfo.structure = sim::parseSMILES(nInfo.SMILES);
-
-            nInfo.molecular_weight = 0.0f;
-            for (const auto &atom : nInfo.structure.atoms)
-            {
-                float mass = atom.ZIndex * MASS_PROTON + atom.NIndex * MASS_NEUTRON;
-                nInfo.molecular_weight += mass;
-            }
-
-            compound_presets.emplace_back(std::move(nInfo));
-        }
-    }
-
     void UIHandler::initCompoundXYZ()
     {
         std::filesystem::path folder = "resource/molecules/compounds";
@@ -487,13 +393,14 @@ namespace core
             }
 
             sim::fun::compound_preset_info info{};
-            info.id = num_smiles_compounds + id_counter++;
+            info.id = id_counter;
             info.name = displayName;
             info.formula = formula;
-            info.SMILES = "";
             info.structure = std::move(structure);
             info.molecular_weight = molWeight;
             info.type = type;
+
+            id_counter++;
 
             std::cout << "[Compounds] Loaded XYZ: " << displayName << " (" << formula << ", "
                       << info.structure.atoms.size() << " atoms)\n";
@@ -501,7 +408,7 @@ namespace core
             compound_presets.emplace_back(std::move(info));
         }
 
-        std::cout << "[Compounds] Loaded " << compound_presets.size() - num_smiles_compounds << " XYZ compounds\n";
+        std::cout << "[Compounds] Loaded " << compound_presets.size() << " XYZ compounds\n";
     }
 
     void UIHandler::write_localization_json(localization lang)
@@ -1185,9 +1092,6 @@ namespace core
                     ImGui::EndTabBar();
                     ImGui::End();
 
-                    compound_presets.clear();
-                    initCompoundPresets();
-
                     return;
                 }
             }
@@ -1306,7 +1210,7 @@ namespace core
         bool sim_paused = simulation_universe->isPaused();
         const std::string mode = sim_paused ? "resume_icon" : "pause_icon";
 
-        ImVec2 timecontrol_size(panel_height * 5.f, panel_height);
+        ImVec2 timecontrol_size(panel_height * 6.f, panel_height);
 
         ImGui::Dummy(ImVec2(20, 0));
 
@@ -1325,8 +1229,8 @@ namespace core
 
         ImGui::SameLine();
 
-        ImGui::SetNextItemWidth(100.f);
-        ImGui::Text(" %.2f ps   %.1f fs/s ", simulation_universe->getAccumulatedTime(), simulation_universe->getTimescale());
+        ImGui::SetNextItemWidth(150.f);
+        ImGui::Text("   %.2f ps   %.1f fs/s   ", simulation_universe->getAccumulatedTime(), simulation_universe->getTimescale());
 
         ImGui::SameLine();
 
@@ -1623,12 +1527,14 @@ namespace core
 
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
 
+        std::string name = app_options.lang == localization::EN_US ? compound.name : compounds["compound_names"][compound.name].get<std::string>();
+
         {
-            ImVec2 name_size = ImGui::CalcTextSize(compound.name.c_str());
+            ImVec2 name_size = ImGui::CalcTextSize(name.c_str());
             ImVec2 formula_size = ImGui::CalcTextSize(compound.formula.c_str());
 
             ImGui::SetCursorPosX((row_width - name_size.x) * 0.6f);
-            ImGui::Text(compound.name.c_str());
+            ImGui::Text(name.c_str());
 
             ImGui::SetCursorPosX((row_width - formula_size.x) * 0.6f);
             ImGui::Text(compound.formula.c_str());
@@ -1651,7 +1557,7 @@ namespace core
         }
 
         ImGui::Dummy(ImVec2(0.0f, 12.0f));
-        ImGui::PushID(ImGui::GetID(compound.name.c_str()));
+        ImGui::PushID(ImGui::GetID(name.c_str()));
 
         ImGui::SetCursorPosX(row_width * 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
@@ -1711,8 +1617,10 @@ namespace core
             compoundFullView = false;
         }
 
+        std::string name = app_options.lang == localization::EN_US ? compound.name : compounds["compound_names"][compound.name].get<std::string>();
+
         ImGui::SetWindowFontScale(1.2f);
-        ImGui::Text(compound.name.c_str());
+        ImGui::Text(name.c_str());
         ImGui::SetWindowFontScale(1.f);
 
         ImGui::NewLine();

@@ -73,39 +73,25 @@ namespace core
 
         glm::vec2 project(const glm::vec3& worldPos, float viewportWidth, float viewportHeight) const
         {
-            const glm::vec3 eyePos = eye();
-            const glm::vec3 toPoint = worldPos - eyePos;
+            glm::mat4 view = getViewMatrix();
+            glm::mat4 proj = getProjectionMatrix(viewportWidth, viewportHeight);
 
-            const glm::vec3 forward = glm::normalize(target - eyePos);
-            if (forward == glm::vec3(0.0f))
-                return {-9999.f, -9999.f};
+            glm::vec4 clip = proj * view * glm::vec4(worldPos, 1.0f);
 
-            const float depth = glm::dot(toPoint, forward);
-            if (depth <= nearPlane || depth >= farPlane)
-                return {-9999.f, -9999.f};
+            if (clip.w <= 0.0f)
+                return glm::vec2(-9999.f, -9999.f);
 
-            const glm::vec3 worldUp(0.0f, 0.0f, 1.0f);
-            glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
-            glm::vec3 up = glm::cross(right, forward);
+            glm::vec3 ndc = glm::vec3(clip) / clip.w;
 
-            const float projX = glm::dot(toPoint, right);
-            const float projY = glm::dot(toPoint, up);
+            float screenX = (ndc.x * 0.5f + 0.5f) * viewportWidth;
+            float screenY = (1.0f - ndc.y * 0.5f - 0.5f) * viewportHeight;
 
-            const float f = 1.0f / std::tan(glm::radians(fov) * 0.5f);
-            const float aspect = viewportWidth / viewportHeight;
-
-            const float ndcX = projX * f / depth;
-            const float ndcY = projY * f / depth;
-
-            const float screenX = (ndcX + 1.0f) * 0.5f * viewportWidth;
-            const float screenY = (1.0f - ndcY) * 0.5f * viewportHeight; 
-
-            return {screenX, screenY};
+            return glm::vec2(screenX, screenY);
         }
 
-        glm::mat4 getProjectionMatrix(const sf::RenderTarget& target) const 
+        glm::mat4 getProjectionMatrix(float viewportWidth, float viewportHeight) const 
         {
-            float aspect = static_cast<float>(target.getView().getSize().x) / static_cast<float>(target.getView().getSize().y);
+            float aspect = static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight);
 
             return glm::perspective(
                 glm::radians(fov),
