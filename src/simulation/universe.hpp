@@ -44,6 +44,7 @@ namespace sim
         {
             bool has_gravity = false;
             bool wall_collision = false;
+            bool roof_floor_collision = false;
             bool isothermal = true;
             bool HMassRepartitioning = false;
 
@@ -206,21 +207,33 @@ namespace sim
 
             sf::Vector3f minImageVec(sf::Vector3f dr)
             {
-                if (wall_collision) return dr;
+                if (wall_collision && roof_floor_collision) return dr;
 
-                dr.x -= box.x * std::round(dr.x / box.x);
-                dr.y -= box.y * std::round(dr.y / box.y);
-                dr.z -= box.z * std::round(dr.z / box.z);
+                if (!roof_floor_collision)
+                    dr.z -= box.z * std::round(dr.z / box.z);
+
+                if (!wall_collision)
+                {
+                    dr.x -= box.x * std::round(dr.x / box.x);
+                    dr.y -= box.y * std::round(dr.y / box.y);
+                }
+
                 return dr;
             }
 
             glm::vec3 minImageVec(glm::vec3 dr)
             {
-                if (wall_collision) return dr;
+                if (wall_collision && roof_floor_collision) return dr;
 
-                dr.x -= box.x * std::round(dr.x / box.x);
-                dr.y -= box.y * std::round(dr.y / box.y);
-                dr.z -= box.z * std::round(dr.z / box.z);
+                if (!roof_floor_collision)
+                    dr.z -= box.z * std::round(dr.z / box.z);
+
+                if (!wall_collision)
+                {
+                    dr.x -= box.x * std::round(dr.x / box.x);
+                    dr.y -= box.y * std::round(dr.y / box.y);
+                }
+
                 return dr;
             }
 
@@ -388,6 +401,7 @@ namespace sim
             bool gravity = false;
             bool isothermal = true;
             bool wall_collision = false;
+            bool roof_floor_collision = false;
             bool HMassRepartitioning = true;
             logging_flags log_flags;
 

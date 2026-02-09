@@ -1,6 +1,7 @@
 #pragma once
 
 #include "simulation/universe.hpp"
+#include "simulation/simulation_packer.hpp"
 #include <functional>
 
 #include <filesystem>
@@ -46,7 +47,7 @@ namespace core
         float maxStepDuration_s = 0.0f;
 
         std::function<bool(sim::fun::universe& universe)> advanceWhen = nullptr;
-        std::function<void(sim::fun::universe& universe, std::vector<sim::fun::compound_preset_info>& compounds)> onEnter = nullptr;
+        std::function<void(sim::fun::universe& universe, std::unordered_map<std::string, sim::fun::compound_preset_info>& compounds)> onEnter = nullptr;
         std::function<void(sim::fun::universe& universe)> onExit = nullptr;
     };
 
@@ -65,7 +66,7 @@ namespace core
     class ScenarioHandler
     {
     public:
-        ScenarioHandler(std::vector<sim::fun::compound_preset_info>& compounds);
+        ScenarioHandler(std::unordered_map<std::string, sim::fun::compound_preset_info>& compounds, sim::simulation_packer& simpacker);
         ~ScenarioHandler();
 
         void chooseScenario(const std::string& scenario)
@@ -195,8 +196,9 @@ namespace core
 
         sim::fun::video* m_video = nullptr;        
         sim::fun::universe* m_universe = nullptr;
+        sim::simulation_packer& m_simpacker;
 
-        std::vector<sim::fun::compound_preset_info>& m_compounds;
+        std::unordered_map<std::string, sim::fun::compound_preset_info>& m_compounds;
         
         // "Flags"
         float m_wantedTemperature = 300.f;

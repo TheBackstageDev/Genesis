@@ -14,6 +14,7 @@
 #include "core/ScenarioHandler.hpp"
 #include "simulation/reaction_engine.hpp"
 #include "simulation/universe.hpp"
+#include "simulation/simulation_packer.hpp"
 
 namespace core
 {
@@ -192,7 +193,7 @@ namespace core
         sf::Texture placeholder_texture;
         uint32_t placeholder_texture_id = 0;
 
-        std::vector<sf::Texture> thumb_textures;
+        std::unordered_map<std::string, sf::Texture> thumb_textures;
         std::unordered_map<std::string, sf::Texture> textures;
 
         const float image_size = 200.f;
@@ -257,7 +258,7 @@ namespace core
         bool screenshotToggle = false;
 
         sim::fun::compound_preset_info m_currentSelectedCompound{};
-        uint32_t selectedCompound = UINT32_MAX;
+        std::string selectedCompound = "";
         uint8_t m_selectedElement = UINT32_MAX;
         bool compoundFullView = false;
         bool newCompoundClicked = false;
@@ -276,7 +277,7 @@ namespace core
 
         void initCompoundPresetsImages();
         void initCompoundXYZ();
-        std::vector<sim::fun::compound_preset_info> compound_presets{};
+        std::unordered_map<std::string, sim::fun::compound_preset_info> compound_presets{};
 
         bool compoundSelector = false;
         bool showHUD = true;
@@ -291,6 +292,7 @@ namespace core
 
         sim::rendering_engine m_rendering_eng;
         sim::reaction_engine m_reaction_eng;
+        sim::simulation_packer m_simpacker{};
 
         // Callbacks
         

@@ -46,7 +46,8 @@
       "header_physics": "Física e Termodinâmica",
       "gravity_enabled": "Gravidade ativa",
       "gravity_magnitude": "Constante da Gravidade",
-      "wall_collision": "Colisão com Parede",
+      "wall_collision": "Colisão com Paredes",
+      "roof_floor_collision": "Colisão com o Teto e o chão",
       "isothermal": "Isotérmico",
       "reactive": "Modo Reativo (Não Lançado)",
 
@@ -121,7 +122,8 @@
         {
           "SCENARIO_DYNAMICS_browinian_motion": "Movimentação Browniana",
           "SCENARIO_DYNAMICS_CrystalNucleation": "Nucleação de Cristal",
-          "SCENARIO_DYNAMICS_DropletFormation": "Formação de Gotículas"
+          "SCENARIO_DYNAMICS_DropletFormation": "Formação de Gotículas",
+          "SCENARIO_DYNAMICS_AtmosphereLayers": "A Atmosféra e suas Camadas"
         },
         "REACTIONS":
         {
@@ -162,7 +164,15 @@
       "Cyclohexane": "Ciclo-hexano",
       "Sulfuric Acid": "Ácido sulfúrico",
       "Vitamin A": "Vitamina A",
+      "Calcium Hydroxide": "Hidróxido de Cálcio",
+      "Sodium Hydroxide": "Hidróxido de Sódio",
+      "Hydrogen Peroxide": "Peróxido de Hidrogênio",
+      "Hydronium": "Hidrônio",
+      "Ethylene": "Etíleno",
+      "Acetylene": "Acetileno",
+      "Decane": "Decano",
       "Ammonia": "Amônia",
+      "Acetone": "Acetona",
       "Formaldehyde": "Formaldeído",
       "Pyridine": "Piridina",
       "Acetic Acid": "Ácido Acético",
@@ -177,11 +187,11 @@
       "Diamond": "Diamante",
       "Paracetamol": "Paracetamol",
       "Heme A": "Grupo Heme A",
-      "DPPC": "Dipalmitoilfosfatidilcolina",
+      "DPPC": "DPPC",
       "Sucrose": "Sacarose",
       "Carbon Nanotube": "Nanotubo de carbono",
-      "Carborane acid": "Ácido Carborano",
-      "ATP": "Adenosina trifosfato",
+      "Carborane Acid": "Ácido Carborano",
+      "ATP": "ATP",
       "Nicotine": "Nicotina",
       "Aspirin": "Aspirina",
       "Caffeine": "Cafeína",
@@ -189,6 +199,7 @@
       "Nitrate": "Nitrato",
       "Ammonium": "Amônio",
       "Sodium Chloride": "Cloreto de Sódio",
+      "Propane": "Propano",
       "Picene": "Piceno",
       "Octasulfur": "Octassulfeto",
       "Buckminsterfullerene": "Buckminsterfullerene"
@@ -207,20 +218,30 @@
     "compound_descriptions":
     {
       "Water": "A água (H2O) é vital para os organismos e os sistemas da Terra, sendo o 'solvente universal', dissolvendo substâncias para funções biológicas, regulando o clima com sua capacidade térmica, circulando entre sólido, líquido e gás, e moldando paisagens enquanto sustenta ecossistemas.",
+      "Acetone": "A acetona (C3H6O) é a cetona mais simples, composta por três átomos de carbono, seis de hidrogênio e um de oxigênio. É um líquido incolor, volátil e inflamável, com odor característico adocicado. Mistura-se facilmente com água e muitos solventes orgânicos. A acetona é amplamente utilizada como solvente industrial e de laboratório, na produção de plásticos, fibras sintéticas e produtos farmacêuticos, além de ser componente comum em removedores de esmalte.",
       "Carbon Dioxide": "O dióxido de carbono (CO2) é um composto formado por um átomo de carbono ligado a dois átomos de oxigênio, presente naturalmente na atmosfera e essencial para processos vitais. Ele desempenha um papel fundamental na fotossíntese e é um gás de efeito estufa.",
+      "Ethylene": "O etileno (C2H4), também chamado de eteno, é o alceno mais simples, composto por dois átomos de carbono ligados por uma dupla ligação e quatro átomos de hidrogênio. É um gás incolor e inflamável, com odor levemente adocicado. O etileno é um dos principais produtos da indústria petroquímica, usado como matéria-prima na produção de plásticos como o polietileno, além de atuar como hormônio vegetal que regula o amadurecimento de frutas.",
+      "Acetylene": "O acetileno (C2H2), também chamado de etino, é o alcino mais simples, formado por dois átomos de carbono ligados por uma tripla ligação e dois átomos de hidrogênio. É um gás incolor e altamente inflamável, com odor característico. O acetileno é amplamente utilizado como combustível em maçaricos de soldagem e corte devido à sua chama quente e estável, além de servir como matéria-prima na síntese de compostos orgânicos.",
       "Ozone": "Ozônio (O3) é uma molécula triatômica composta por três átomos de oxigênio. Ocorre naturalmente na atmosfera terrestre, onde forma a camada de ozônio que protege os organismos vivos ao absorver a radiação ultravioleta nociva proveniente do Sol.",
       "Methane": "O metano (CH4), composto por um átomo de carbono ligado a quatro átomos de hidrogênio, é o principal componente do gás natural e uma importante fonte de energia. É um potente gás de efeito estufa.",
       "Carbon Monoxide": "O monóxido de carbono (CO) é um gás incolor, inodoro e insípido, composto por um átomo de carbono ligado a um átomo de oxigênio. É produzido pela combustão incompleta de combustíveis que contêm carbono, como madeira, carvão, gasolina e gás natural. O monóxido de carbono liga-se fortemente à hemoglobina no sangue, reduzindo o transporte de oxigênio e tornando-se altamente tóxico para humanos e animais.",
       "Ethane": "O etano (C2H6) é um hidrocarboneto saturado da série dos alcanos, composto por dois átomos de carbono ligados por ligação simples e cercados por seis átomos de hidrogênio. É um gás incolor e inodoro em condições padrão e ocorre naturalmente no petróleo e no gás natural.",
+      "Decane": "O decano (C10H22) é um hidrocarboneto da família dos alcanos, composto por dez átomos de carbono e vinte e dois de hidrogênio em uma cadeia linear. É um líquido incolor e inflamável, insolúvel em água, mas miscível com solventes orgânicos. O decano é utilizado como componente de combustíveis, especialmente na gasolina, e como solvente em processos industriais. Também serve como referência em estudos de química orgânica e físico-química devido às suas propriedades previsíveis dentro da série dos alcanos.",
       "Ethanol": "O etanol (C2H5OH) é um composto orgânico constituído por dois átomos de carbono, seis de hidrogênio e um de oxigênio, classificado como um álcool simples. É um líquido volátil, inflamável, com odor característico, amplamente usado como solvente, combustível e na produção de bebidas alcoólicas.",
+      "Sodium Bicarbonate": "O bicarbonato de sódio (NaHCO3), também conhecido como sal de cozinha leve ou simplesmente bicarbonato, é um composto iônico formado por íons sódio (Na+) e bicarbonato (HCO3-). Apresenta-se como um pó branco cristalino, solúvel em água e de sabor levemente alcalino. É amplamente utilizado como agente fermentador em panificação, neutralizador de ácidos, produto de limpeza doméstico e em aplicações médicas para aliviar a acidez estomacal.",
       "Benzene": "O benzeno (C6H6) é um hidrocarboneto aromático formado por seis átomos de carbono dispostos em anel com ligações duplas alternadas, estabilizado por ressonância. É um líquido incolor, volátil, com odor doce, amplamente usado como precursor na produção de plásticos, resinas, fibras sintéticas e inúmeros compostos químicos.",
       "Cubane": "Cubano (C8H8) é um hidrocarboneto altamente tensionado, composto por oito átomos de carbono dispostos nos vértices de um cubo, cada um ligado a um átomo de hidrogênio. Apesar da intensa tensão angular, é surpreendentemente estável em condições normais. O cubano é um sólido cristalino incolor e desperta grande interesse em pesquisas, com potenciais aplicações em materiais de alta energia, farmacêuticos e síntese química avançada.",
       "Cuban-cetamol": "O Cuban-cetamol é um análogo hipotético do paracetamol baseado em cubano, criado pela substituição do anel aromático de benzeno por uma estrutura cúbica de cubano. Ele combina o núcleo hidrocarboneto altamente tensionado com grupos hidroxila e acetamida, imitando as funções químicas do paracetamol.",
+      "Propane": "O propano (C3H8) é um hidrocarboneto da família dos alcanos, composto por três átomos de carbono e oito de hidrogênio. É um gás incolor e inodoro em sua forma pura, mas geralmente recebe aditivos para ter cheiro característico e facilitar a detecção de vazamentos. O propano é amplamente utilizado como combustível em aquecimento, cozinhas, motores e em sistemas de gás liquefeito de petróleo (GLP). Também serve como matéria-prima na indústria química. Por ser inflamável, requer armazenamento e manuseio cuidadosos.",
+      "Calcium Hydroxide": "O hidróxido de cálcio (Ca(OH)2), também conhecido como cal hidratada ou cal apagada, é um composto inorgânico formado por íons cálcio (Ca2+) e hidróxido (OH-). Apresenta-se como um sólido branco, pouco solúvel em água, mas capaz de formar uma solução alcalina chamada água de cal. É amplamente utilizado na construção civil (na preparação de argamassas e revestimentos), no tratamento de águas e esgotos, na indústria alimentícia como regulador de acidez e na agricultura para corrigir solos ácidos.",
+      "Hydrogen Peroxide": "Hydrogen peroxide (H2O2) is a chemical compound composed of two hydrogen atoms and two oxygen atoms. It is a colorless liquid, slightly more viscous than water, with strong oxidizing properties. It is widely used as a disinfectant, bleaching agent, and in industrial processes. In dilute solutions, it is used for cleaning and medical care.",
+      "Hydronium": "O íon hidrônio (H3O+) é um cátion formado quando uma molécula de água (H2O) recebe um próton (H+). É fundamental na química ácido-base, representando a forma hidratada do próton em soluções aquosas. O hidrônio é responsável pela acidez das soluções, participando de reações químicas e influenciando o pH. Embora não exista como molécula isolada em condições normais, é estabilizado pela solvatação em água e desempenha papel central em processos biológicos e químicos.",
       "Nitrogen": "O nitrogênio (N2) é uma molécula diatômica composta por dois átomos de nitrogênio unidos por uma forte ligação tripla, tornando-o quimicamente estável e inerte na maioria das condições. É um gás incolor e inodoro que constitui cerca de 78% da atmosfera terrestre.",
       "Oxygen": "O oxigênio (O2) é uma molécula diatômica essencial para a vida, composta por dois átomos de oxigênio. É um gás incolor e inodoro que representa cerca de 21% da atmosfera terrestre. O oxigênio é vital para a respiração celular na maioria dos organismos e sustenta a combustão. Embora necessário para a sobrevivência, concentrações muito altas podem ser tóxicas e níveis baixos podem causar hipóxia.",
       "C20 Fullerene": "O fulereno C20 é o menor fulereno, formado por 20 átomos de carbono em uma estrutura em forma de gaiola dodecaédrica. Sua alta tensão o torna menos estável que fulerenos maiores, como o C60.",
       "Cyclohexane": "O ciclo-hexano (C6H12) é um hidrocarboneto cíclico saturado formado por seis átomos de carbono dispostos em anel, cada um ligado a dois átomos de hidrogênio. É um líquido incolor, inflamável e de odor suave, amplamente utilizado como solvente e na produção de nylon e outros produtos químicos industriais.",
       "Sulfuric Acid": "O ácido sulfúrico (H2SO4) é um ácido mineral forte composto por hidrogênio, enxofre e oxigênio. É um líquido denso e oleoso, altamente corrosivo, amplamente utilizado na indústria para produção de fertilizantes, síntese química, refino de petróleo e como eletrólito em baterias.",
+      "Sodium Hydroxide": "O hidróxido de sódio (NaOH), também conhecido como soda cáustica ou lixívia, é um composto iônico formado por íons sódio (Na+) e hidróxido (OH-). É um sólido branco, altamente higroscópico e solúvel em água, liberando grande quantidade de calor ao se dissolver. O hidróxido de sódio é uma base forte, amplamente utilizado em processos industriais como fabricação de papel, sabão, detergentes, produtos químicos e no tratamento de águas residuais.",
       "Vitamin A": "A vitamina A (C20H30O) é uma vitamina lipossolúvel essencial para a visão, função imunológica e crescimento celular. Aparece em várias formas, incluindo retinol, retinal e ácido retinoico, sendo obtida de fontes animais e de carotenoides presentes em plantas.",
       "Methanol": "O metanol (CH3OH) é o álcool mais simples, composto por um grupo metíl e um grupo hidroxila. É um líquido incolor, volátil e inflamável, com odor levemente adocicado. Mistura-se completamente com água e é amplamente utilizado como solvente, combustível, especialmente na produção de formaldeído e ácido acético. Apesar de sua importância industrial, o metanol é altamente tóxico para humanos, podendo causar cegueira, danos aos órgãos ou morte quando ingerido ou inalado em grandes quantidades.",
       "Ammonia": "A amônia (NH3) é um composto inorgânico de nitrogênio e hidrogênio, um gás incolor com odor forte e pungente. É essencial em fertilizantes, serve como bloco de construção para muitos produtos químicos e desempenha papel em processos biológicos como o metabolismo de proteínas.",
@@ -241,7 +262,7 @@
       "DPPC": "A dipalmitoilfosfatidilcolina (C40H80NO8P) é um fosfolipídio importante presente no surfactante pulmonar e nas membranas celulares. Ela é composta por uma espinha dorsal de glicerol ligada a duas cadeias de ácido palmítico e a um grupo fosfocolina. Essa estrutura anfipática permite a formação de bicamadas estáveis, reduzindo a tensão superficial nos pulmões e possibilitando uma troca eficiente de gases.",
       "Sucrose": "A sacarose (C12H22O11) é um dissacarídeo formado pela união das unidades de glicose e frutose através de uma ligação glicosídica. Conhecida popularmente como açúcar de mesa, é um sólido cristalino incolor de sabor doce. A sacarose é amplamente utilizada como adoçante em alimentos e bebidas e desempenha papel importante como fonte de energia na nutrição humana e no metabolismo das plantas.",
       "Carbon Nanotube": "Os nanotubos de carbono são nanostruturas cilíndricas formadas por folhas de grafeno enroladas. Eles apresentam resistência mecânica extraordinária e propriedades elétricas notáveis.",
-      "Carborane acid": "Ácido carborano (H(CHB11Cl11)), também conhecido como superácido semelhante ao fluoroantimônico, é um dos ácidos de Brønsted mais fortes já conhecidos. Ele consiste em um próton ligado a um ânion carborano, que é notavelmente estável e fracamente coordenante. Diferente dos ácidos convencionais, não corrói vidro e pode protonar bases extremamente fracas.",
+      "Carborane Acid": "Ácido carborano (H(CHB11Cl11)), também conhecido como superácido semelhante ao fluoroantimônico, é um dos ácidos de Brønsted mais fortes já conhecidos. Ele consiste em um próton ligado a um ânion carborano, que é notavelmente estável e fracamente coordenante. Diferente dos ácidos convencionais, não corrói vidro e pode protonar bases extremamente fracas.",
       "ATP": "A adenosina trifosfato (ATP, C10H16N5O13P3) é um nucleotídeo formado por adenina, ribose e três grupos fosfato. É a principal molécula de energia das células vivas, armazenando e transferindo energia para processos biológicos como contração muscular, transmissão de impulsos nervosos e síntese de biomoléculas. A ATP é continuamente regenerada a partir de ADP e fosfato durante a respiração celular e a fotossíntese, sendo essencial para a vida.",
       "Nicotine": "A nicotina (C10H14N2) é um alcaloide natural encontrado nas plantas de tabaco. Atua como estimulante ao se ligar aos receptores nicotínicos de acetilcolina no cérebro.",
       "Aspirin": "A aspirina (C9H8O4), ou ácido acetilsalicílico, é um derivado sintético do ácido salicílico usado como analgésico, anti-inflamatório, antipirético e antiagregante plaquetário. Inibe enzimas ciclo-oxigenases para reduzir dor, febre e coagulação sanguínea.",
@@ -268,12 +289,12 @@
         {
           "title": "Estatisticas Centrais",
           "temperature": "Temperatura",
-          "pressure": "Pressão",
+          "pressure": "Pressão (Kpa)",
           "time": "Tempo",
           "particles": "Partículas",
           "molecules": "Moléculas",
           "slider_temperature": "T Alvo (K):",
-          "slider_pressure": "P Alvo (Bar):"
+          "slider_pressure": "P Alvo (Kpa):"
         },
         "energy_stats":
         {
@@ -437,6 +458,22 @@
       [
         "Bem-vindo(a) ao Cenário de Movimento Browniano! Neste cenário, veremos o movimento browniano e o que ele significa. Há um átomo de Oganessônio (Z=118) com gas hélio (Z=2) ao redor.",
         "Mas o que exatamente é o Movimento Browniano?\nÉ o movimento aleatório e agitado de partículas causado por inúmeras colisões com moléculas ao redor. Esses impactos invisíveis fazem as partículas se moverem de forma imprevisível, uma dança microscópica impulsionada pela energia térmica.\n(Ative o modo preenchedor de espaço para ter uma visão melhor!)"
+      ]
+    },
+    "SCENARIO_DYNAMICS_AtmosphereLayers": 
+    {
+      "description": "Observe como a gravidade separa os gases em uma coluna alta — moléculas mais pesadas afundam para o fundo, as mais leves sobem. Um modelo simples de por que a atmosfera da Terra tem camadas.",
+      "narrations": 
+      [
+        "Este é o cenário de Camadas Atmosféricas. Você está vendo a gravidade fazer seu trabalho silencioso em uma mistura de gases. (Demora um bom tempo)",
+        "Começamos com uma mistura aleatória de moléculas do ar — principalmente nitrogênio (N2), oxigênio (O2), argônio (Ar) e uma pitada de dióxido de carbono e metano.",
+        "No início tudo parece uniforme — moléculas voando por igual em todos os lugares.",
+        "Mas a gravidade está puxando para baixo. Com o tempo, as moléculas mais pesadas (como argônio e CO2) começam a afundar para o fundo.",
+        "As moléculas mais leves (principalmente N2 e O2) ficam mais altas ou são empurradas para cima pelas colisões.",
+        "Depois de um tempo, você começa a ver camadas bem definidas — gás mais denso embaixo, gás mais rarefeito em cima.",
+        "É exatamente o que acontece na atmosfera da Terra: gases mais pesados se concentram mais baixo, os mais leves ficam mais alto — criando a estrutura em camadas em que vivemos.",
+        "Mesmo sendo forças pequenas, com o tempo a gravidade separa tudo por massa. Lindo, não é?",
+        "Uma caixa simples, um pouco de gravidade, e a atmosfera começa a parecer… uma atmosfera de verdade."
       ]
     },
     "TUTORIAL_ENGINE_Controls": 

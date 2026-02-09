@@ -720,10 +720,20 @@ namespace constants
         return (getValenceElectrons(ZIndex) - BO) / 2;
     }
 
-    inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t> &neighborZs, const std::vector<sim::fun::BondType> &types)
+    inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t> &neighborZs, const std::vector<sim::fun::BondType> &types, bool carborane)
     {
         const size_t bond_count = types.size();
         if (bond_count < 2) return 0.0f;
+
+        if ((centralZIndex == 5 || centralZIndex == 6) && carborane) 
+        {
+            if (bond_count == 5) 
+                return 63.4f * RADIAN; // Icosahedral vertex angle
+            else if (bond_count == 4) 
+                return 72.0f * RADIAN; // Cage
+            else 
+                return 109.5f * RADIAN;
+        }
 
         const uint32_t domains_from_bonds = bond_count;
 
@@ -741,12 +751,8 @@ namespace constants
 
         float ideal_angle = 0.0f;
 
-                if (centralZIndex == 15)
+        switch (total_domains) 
         {
-            ideal_angle = 0.0f;
-        }
-
-        switch (total_domains) {
             case 2:
                 ideal_angle = 180.0f * RADIAN; // Linear: AX₂
                 break;

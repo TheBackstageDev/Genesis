@@ -18,7 +18,7 @@ namespace sim
         universe::universe(const universe_create_info &create_info, rendering_engine &rendering_engine)
             : box(create_info.box), gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
-              HMassRepartitioning(create_info.HMassRepartitioning),
+              HMassRepartitioning(create_info.HMassRepartitioning), roof_floor_collision(create_info.roof_floor_collision),
               log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
         }
@@ -31,8 +31,12 @@ namespace sim
 
         void universe::draw(sf::RenderTarget &target, rendering_info info)
         {
-            rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions, 
-                                        .q = data.q, .atoms = atoms, .bonds = bonds, .molecules = molecules, .box = box};
+            rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions,
+                                               .q = data.q,
+                                               .atoms = atoms,
+                                               .bonds = bonds,
+                                               .molecules = molecules,
+                                               .box = box};
 
             if (info.flag_highlights)
             {
@@ -194,73 +198,73 @@ namespace sim
             nMolecule.atomBegin = baseAtomIndex;
             nMolecule.atomCount = structure.atoms.size();
 
-                int32_t baseBondIndex = bonds.size();
-                for (int32_t b = 0; b < structure.bonds.size(); ++b)
-                {
-                    const def_bond &db = structure.bonds[b];
-                    int32_t central = baseAtomIndex + db.centralAtomIdx;
-                    int32_t bonded = baseAtomIndex + db.bondingAtomIdx;
+            int32_t baseBondIndex = bonds.size();
+            for (int32_t b = 0; b < structure.bonds.size(); ++b)
+            {
+                const def_bond &db = structure.bonds[b];
+                int32_t central = baseAtomIndex + db.centralAtomIdx;
+                int32_t bonded = baseAtomIndex + db.bondingAtomIdx;
 
-                    createBond(bonded, central, db.type);
-                }
+                createBond(bonded, central, db.type);
+            }
 
-                nMolecule.bondBegin = baseBondIndex;
-                nMolecule.bondCount = structure.bonds.size();
+            nMolecule.bondBegin = baseBondIndex;
+            nMolecule.bondCount = structure.bonds.size();
 
-                int32_t baseSubset = subsets.size();
-                for (int32_t s = 0; s < structure.subsets.size(); ++s)
-                    createSubset(structure.subsets[s], baseAtomIndex, baseSubset);
+            int32_t baseSubset = subsets.size();
+            for (int32_t s = 0; s < structure.subsets.size(); ++s)
+                createSubset(structure.subsets[s], baseAtomIndex, baseSubset);
 
-                nMolecule.subsetBegin = baseSubset;
-                nMolecule.subsetCount = structure.subsets.size();
+            nMolecule.subsetBegin = baseSubset;
+            nMolecule.subsetCount = structure.subsets.size();
 
-                if (nMolecule.subsetCount > 0 && structure.atoms[0].charge == 0)
-                    balanceMolecularCharges(subsets[baseSubset]);
+            if (nMolecule.subsetCount > 0 && structure.atoms[0].charge == 0)
+                balanceMolecularCharges(subsets[baseSubset]);
 
-                rebuildBondTopology();
+            rebuildBondTopology();
 
-                int32_t baseAngle = angles.size();
-                for (int32_t a = 0; a < structure.angles.size(); ++a)
-                {
-                    angle angle = structure.angles[a];
-                    angle.A += baseAtomIndex;
-                    angle.B += baseAtomIndex;
-                    angle.C += baseAtomIndex;
+            int32_t baseAngle = angles.size();
+            for (int32_t a = 0; a < structure.angles.size(); ++a)
+            {
+                angle angle = structure.angles[a];
+                angle.A += baseAtomIndex;
+                angle.B += baseAtomIndex;
+                angle.C += baseAtomIndex;
 
-                    angles.emplace_back(std::move(angle));
-                }
+                angles.emplace_back(std::move(angle));
+            }
 
-                rings.insert(rings.end(), structure.rings_aromatic.begin(), structure.rings_aromatic.end());
+            rings.insert(rings.end(), structure.rings_aromatic.begin(), structure.rings_aromatic.end());
 
-                nMolecule.angleBegin = baseAngle;
-                nMolecule.angleCount = structure.angles.size();
+            nMolecule.angleBegin = baseAngle;
+            nMolecule.angleCount = structure.angles.size();
 
-                int32_t baseDihedral = dihedral_angles.size();
-                for (int32_t a = 0; a < structure.dihedral_angles.size(); ++a)
-                {
-                    dihedral_angle angle = structure.dihedral_angles[a];
-                    angle.A += baseAtomIndex;
-                    angle.B += baseAtomIndex;
-                    angle.C += baseAtomIndex;
-                    angle.D += baseAtomIndex;
+            int32_t baseDihedral = dihedral_angles.size();
+            for (int32_t a = 0; a < structure.dihedral_angles.size(); ++a)
+            {
+                dihedral_angle angle = structure.dihedral_angles[a];
+                angle.A += baseAtomIndex;
+                angle.B += baseAtomIndex;
+                angle.C += baseAtomIndex;
+                angle.D += baseAtomIndex;
 
-                    dihedral_angles.emplace_back(std::move(angle));
-                }
+                dihedral_angles.emplace_back(std::move(angle));
+            }
 
-                int32_t baseImproper = improper_angles.size();
-                for (int32_t a = 0; a < structure.improper_angles.size(); ++a)
-                {
-                    dihedral_angle angle = structure.improper_angles[a];
-                    angle.A += baseAtomIndex;
-                    angle.B += baseAtomIndex;
-                    angle.C += baseAtomIndex;
-                    angle.D += baseAtomIndex;
+            int32_t baseImproper = improper_angles.size();
+            for (int32_t a = 0; a < structure.improper_angles.size(); ++a)
+            {
+                dihedral_angle angle = structure.improper_angles[a];
+                angle.A += baseAtomIndex;
+                angle.B += baseAtomIndex;
+                angle.C += baseAtomIndex;
+                angle.D += baseAtomIndex;
 
-                    improper_angles.emplace_back(std::move(angle));
-                }
+                improper_angles.emplace_back(std::move(angle));
+            }
 
-                nMolecule.dihedralBegin = baseDihedral;
-                nMolecule.dihedralCount = structure.dihedral_angles.size();
+            nMolecule.dihedralBegin = baseDihedral;
+            nMolecule.dihedralCount = structure.dihedral_angles.size();
 
             molecules.emplace_back(std::move(nMolecule));
         }
@@ -384,6 +388,25 @@ namespace sim
             float &vy = data.velocities[i].y;
             float &vz = data.velocities[i].z;
 
+            if (roof_floor_collision)
+            {
+                if (z < 0.0f)
+                {
+                    z = 0.0f;
+                    vz = -vz;
+                }
+                else if (z > box.z)
+                {
+                    z = box.z;
+                    vz = -vz;
+                }
+                vz *= 0.99f;
+            }
+            else
+            {
+                z = std::fmod(std::fmod(z, box.z) + box.z, box.z);
+            }
+
             if (wall_collision)
             {
                 if (x < 0.0f)
@@ -408,26 +431,13 @@ namespace sim
                     vy = -vy;
                 }
 
-                if (z < 0.0f)
-                {
-                    z = 0.0f;
-                    vz = -vz;
-                }
-                else if (z > box.z)
-                {
-                    z = box.z;
-                    vz = -vz;
-                }
-
                 vx *= 0.99f;
                 vy *= 0.99f;
-                vz *= 0.99f;
             }
             else
             {
                 x = std::fmod(std::fmod(x, box.x) + box.x, box.x);
                 y = std::fmod(std::fmod(y, box.y) + box.y, box.y);
-                z = std::fmod(std::fmod(z, box.z) + box.z, box.z);
             }
         }
 
@@ -862,7 +872,7 @@ namespace sim
                         diff += 2.0f * M_PI;
 
                     glm::vec3 b1 = pb_g - glm::vec3(pa.x, pa.y, pa.z);
-                    glm::vec3 b2 = glm::vec3(pc.x, pc.y, pc.z) -pb_g;
+                    glm::vec3 b2 = glm::vec3(pc.x, pc.y, pc.z) - pb_g;
                     glm::vec3 b3 = glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z);
 
                     glm::vec3 n1 = glm::cross(b1, b2);
@@ -905,11 +915,11 @@ namespace sim
                 futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
             }
 
-            auto improper_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f>& lf)
+            auto improper_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
             {
                 for (int32_t d = start; d < end; ++d)
                 {
-                    const dihedral_angle& imp = improper_angles[d];
+                    const dihedral_angle &imp = improper_angles[d];
 
                     const sf::Vector3f &pa = pos(imp.A);
                     const sf::Vector3f &pb = pos(imp.B);
@@ -922,12 +932,13 @@ namespace sim
                         glm::vec3(pa.x, pa.y, pa.z),
                         pb_g,
                         glm::vec3(pc.x, pc.y, pc.z),
-                        glm::vec3(pd.x, pd.y, pd.z)
-                    );
+                        glm::vec3(pd.x, pd.y, pd.z));
 
                     float diff = phi - imp.rad;
-                    while (diff > M_PI) diff -= 2.0f * M_PI;
-                    while (diff < -M_PI) diff += 2.0f * M_PI;
+                    while (diff > M_PI)
+                        diff -= 2.0f * M_PI;
+                    while (diff < -M_PI)
+                        diff += 2.0f * M_PI;
 
                     float dE_dphi = imp.K * diff;
 
@@ -964,10 +975,10 @@ namespace sim
                 }
             };
 
-            for (int t = 0; t < n_threads; ++t) 
+            for (int t = 0; t < n_threads; ++t)
             {
                 int start = improper_angles.size() * t / n_threads;
-                int end   = improper_angles.size() * (t + 1) / n_threads;
+                int end = improper_angles.size() * (t + 1) / n_threads;
                 futures.emplace_back(std::async(std::launch::async, make_task(improper_func), start, end));
             }
 
@@ -983,7 +994,7 @@ namespace sim
         {
             const int32_t n_threads = std::thread::hardware_concurrency();
             const int32_t threads_per_top = cells.size() < 9 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
-            constexpr int32_t subdivide_top = 4; // how many of the top cells to subdivide
+            constexpr int32_t subdivide_top = 4;                                                                           // how many of the top cells to subdivide
 
             struct task
             {
@@ -1032,6 +1043,7 @@ namespace sim
                         int32_t end = std::min(start + slice_size, static_cast<int32_t>(n));
                         if (start >= end)
                             break;
+
                         uint64_t sub_work = static_cast<uint64_t>(end - start) * n * 9ull;
                         tasks.emplace_back(sub_work, c, start, end);
                     }
@@ -1102,9 +1114,9 @@ namespace sim
 
             for (auto &fut : futures)
             {
-                auto local_f = fut.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready 
-                    ? fut.get() 
-                    : std::vector<sf::Vector3f>(atoms.size(), {0, 0, 0});
+                auto local_f = fut.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready
+                                   ? fut.get()
+                                   : std::vector<sf::Vector3f>(atoms.size(), {0, 0, 0});
                 for (size_t i = 0; i < atoms.size(); ++i)
                 {
                     add_force(static_cast<int32_t>(i), local_f[i]);
@@ -1221,13 +1233,15 @@ namespace sim
             }
         }
 
-        //Bussi–Donadio–Parrinello (CSVR) velocity rescaling
+        // Bussi–Donadio–Parrinello (CSVR) velocity rescaling
         void universe::setTemperature(float kelvin)
         {
-            if (timeStep % THERMOSTAT_INTERVAL != 0) return;
+            if (timeStep % THERMOSTAT_INTERVAL != 0)
+                return;
 
             float d = 3.0f * atoms.size() - 3.0f;
-            if (d <= 0) d = 1;
+            if (d <= 0)
+                d = 1;
 
             float KE = calculateKineticEnergy();
             float current_temp = (2.0f * KE) / (d * KB);
@@ -1242,8 +1256,8 @@ namespace sim
             float alpha = sqrtf(c * (1.0f + chi + 0.5f * chi * chi));
 
             // alpha = sqrtf((c + sigma * r)^2 / 2 + c * (1 - c) * chi²(d-1) / d)
-            
-            for (auto& v : data.velocities)
+
+            for (auto &v : data.velocities)
                 v *= alpha;
         }
 
@@ -1315,7 +1329,7 @@ namespace sim
 
             glm::vec3 correction = totalMomentum / totalMass;
 
-            for (auto& v : data.velocities)
+            for (auto &v : data.velocities)
             {
                 v -= correction;
             }
@@ -1381,7 +1395,7 @@ namespace sim
             frame nFrame{};
             nFrame.positions = data.positions;
             nFrame.global_temperature = temp;
-            
+
             m_frames.emplace_back(std::move(nFrame));
         }
 
@@ -1394,14 +1408,14 @@ namespace sim
             return time_str;
         }
 
-        void universe::runVideo(const video& vid)
+        void universe::runVideo(const video &vid)
         {
-        
         }
 
         video universe::saveAsVideo(const std::filesystem::path path, const std::string name)
         {
-            if (m_frames.size() == 0) return {};
+            if (m_frames.size() == 0)
+                return {};
 
             int32_t m_framesToSaveFactor = 5;
 
@@ -1413,7 +1427,8 @@ namespace sim
             size_t savedFrameCount = 0;
             for (size_t i = 0; i < m_frames.size(); ++i)
             {
-                if (i % m_framesToSaveFactor == 0) ++savedFrameCount;
+                if (i % m_framesToSaveFactor == 0)
+                    ++savedFrameCount;
             }
             nMetadata.num_frames = savedFrameCount;
             nMetadata.title = name.empty() ? formatTime() : name;
@@ -1430,16 +1445,17 @@ namespace sim
 
             for (int32_t i = 0; i < m_frames.size(); ++i)
             {
-                if (i % m_framesToSaveFactor != 0) continue;
+                if (i % m_framesToSaveFactor != 0)
+                    continue;
 
-                const auto& frame = m_frames[i];
+                const auto &frame = m_frames[i];
                 if (frame.positions.size() != nMetadata.num_atoms)
                 {
                     std::cerr << "[Video Save] Frame has wrong atom count! Skipping.\n";
                     continue;
                 }
 
-                for (const auto& pos : frame.positions)
+                for (const auto &pos : frame.positions)
                 {
                     json_video["positions"].push_back(pos.x);
                     json_video["positions"].push_back(pos.y);
@@ -1465,8 +1481,8 @@ namespace sim
                 std::cout << "[Recorder] Failed to save trajectory: " << e.what() << std::endl;
                 return video{};
             }
- 
-            std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " <<json_video["metadata"]["atoms"] << " atoms to " << path << '\n';
+
+            std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " << json_video["metadata"]["atoms"] << " atoms to " << path << '\n';
 
             video nVideo{};
             nVideo.frames = m_frames;
@@ -1579,6 +1595,7 @@ namespace sim
             scene["gravity"] = gravity;
             scene["isothermal"] = isothermal;
             scene["wall_collision"] = wall_collision;
+            scene["roof_floor_collision"] = roof_floor_collision;
             scene["mag_gravity"] = mag_gravity;
             scene["boxx"] = box.x;
             scene["boxy"] = box.y;
@@ -1643,6 +1660,7 @@ namespace sim
             gravity = scene.value("gravity", false);
             isothermal = scene.value("isothermal", true);
             wall_collision = scene.value("wall_collision", false);
+            roof_floor_collision = scene.value("roof_floor_collision", false);
             mag_gravity = scene.value("mag_gravity", 9.81f);
 
             const auto &posx = scene["posx"];
@@ -1805,7 +1823,7 @@ namespace sim
             {
                 file >> j;
             }
-            catch (const nlohmann::json::parse_error& e)
+            catch (const nlohmann::json::parse_error &e)
             {
                 std::cerr << "[Video Load] JSON parse error in " << path << ": " << e.what() << "\n";
                 return;
@@ -1819,15 +1837,14 @@ namespace sim
                 return;
             }
 
-            auto& meta = j["metadata"];
+            auto &meta = j["metadata"];
             size_t expectedAtoms = meta.value("atoms", 0ull);
             size_t expectedFrames = meta.value("frames", 0ull);
-            glm::vec3 loadedBox = 
-            {
-                meta["box"][0].get<float>(),
-                meta["box"][1].get<float>(),
-                meta["box"][2].get<float>()
-            };
+            glm::vec3 loadedBox =
+                {
+                    meta["box"][0].get<float>(),
+                    meta["box"][1].get<float>(),
+                    meta["box"][2].get<float>()};
 
             if (expectedAtoms == 0 || expectedFrames == 0)
             {
@@ -1846,13 +1863,13 @@ namespace sim
                 return;
             }
 
-            auto& posArray = j["positions"];
-/*             if (posArray.size() != expectedFrames * expectedAtoms * 3)
-            {
-                std::cerr << "[Video Load] Position array size mismatch! Expected "
-                        << expectedFrames * expectedAtoms * 3 << ", got " << posArray.size() << "\n";
-                return;
-            } */
+            auto &posArray = j["positions"];
+            /*             if (posArray.size() != expectedFrames * expectedAtoms * 3)
+                        {
+                            std::cerr << "[Video Load] Position array size mismatch! Expected "
+                                    << expectedFrames * expectedAtoms * 3 << ", got " << posArray.size() << "\n";
+                            return;
+                        } */
 
             std::vector<float> temperatures;
             if (j.contains("temperatures") && j["temperatures"].is_array())
@@ -1861,7 +1878,7 @@ namespace sim
                 if (temperatures.size() != expectedFrames)
                 {
                     std::cerr << "[Video Load] Temperatures size mismatch! Expected "
-                            << expectedFrames << ", got " << temperatures.size() << "\n";
+                              << expectedFrames << ", got " << temperatures.size() << "\n";
                     temperatures.clear();
                 }
             }
@@ -1891,7 +1908,7 @@ namespace sim
             }
 
             std::cout << "[Video Load] Successfully loaded " << m_frames.size()
-                    << " frames with " << expectedAtoms << " atoms from " << path << "\n";
+                      << " frames with " << expectedAtoms << " atoms from " << path << "\n";
         }
     } // namespace fun
 } // namespace sim

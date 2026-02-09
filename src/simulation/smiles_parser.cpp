@@ -359,7 +359,7 @@ namespace sim
     };
 
     void organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
-                            std::vector<dihedral_angle>& dihedral_angles, std::vector<dihedral_angle>& improper_angles, std::vector<angle>& angles)
+                            std::vector<dihedral_angle>& dihedral_angles, std::vector<dihedral_angle>& improper_angles, std::vector<angle>& angles, bool carborane)
     {
         std::unordered_map<std::pair<uint32_t, uint32_t>, def_bond, pair_hash> bond_map;
         for (const auto& b : nBonds) 
@@ -400,7 +400,7 @@ namespace sim
                     ang.A = neigh[i];
                     ang.B = B;
                     ang.C = neigh[j];
-                    ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type);
+                    ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type, carborane);
                     ang.K   = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
                     angles.emplace_back(std::move(ang));
                 }

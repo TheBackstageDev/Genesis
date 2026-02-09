@@ -48,6 +48,7 @@
       "gravity_enabled": "Gravity enabled",
       "gravity_magnitude": "Gravity magnitude",
       "wall_collision": "Wall collision",
+      "roof_floor_collision": "Roof and Floor collision",
       "isothermal": "Isothermal",
       "reactive": "Reactive Mode (Not Released)",
 
@@ -122,7 +123,8 @@
         {
           "SCENARIO_DYNAMICS_browinian_motion": "Brownian Motion",
           "SCENARIO_DYNAMICS_CrystalNucleation": "Crystal Nucleation",
-          "SCENARIO_DYNAMICS_DropletFormation": "Droplet Formation"
+          "SCENARIO_DYNAMICS_DropletFormation": "Droplet Formation",
+          "SCENARIO_DYNAMICS_AtmosphereLayers": "The Atmosphere and it's Layers"
         },
         "REACTIONS":
         {
@@ -162,16 +164,24 @@
     "compound_descriptions":
     {
       "Water": "Water (H2O) is vital for organisms and Earth's systems, being the 'universal solvent', dissolving substances for biological functions, regulating climate with its heat capacity, cycling through solid, liquid, and gas, and shaping landscapes while sustaining ecosystems.",
+      "Acetone": "Acetone (C3H6O) is the simplest ketone, composed of three carbon atoms, six hydrogen atoms, and one oxygen atom. It is a colorless, volatile, and flammable liquid with a characteristic sweet odor. Acetone mixes readily with water and many organic solvents. It is widely used as an industrial and laboratory solvent, in the production of plastics, synthetic fibers, and pharmaceuticals, and is a common ingredient in nail polish removers.",
       "Carbon Dioxide": "Carbon dioxide (CO2) is a compound made of one carbon atom bonded to two oxygen atoms, naturally present in the atmosphere and essential to life processes. It plays a key role in photosynthesis. is a greenhouse gas.",
       "Ozone": "Ozone (O3) is a triatomic molecule composed of three oxygen atoms. It occurs naturally in the Earth's atmosphere, where it forms the ozone layer that protects living organisms by absorbing harmful ultraviolet radiation from the Sun.",
+      "Ethylene": "Ethylene (C2H4), also known as ethene, is the simplest alkene, consisting of two carbon atoms joined by a double bond and four hydrogen atoms. It is a colorless, flammable gas with a faint sweet odor. Ethylene is a major product of the petrochemical industry, used as a feedstock for plastics such as polyethylene, and also functions as a plant hormone that regulates fruit ripening.",
+      "Acetylene": "Acetylene (C2H2), also known as ethyne, is the simplest alkyne, composed of two carbon atoms joined by a triple bond and two hydrogen atoms. It is a colorless, highly flammable gas with a distinctive odor. Acetylene is widely used as a fuel in welding and cutting torches due to its hot, stable flame, and also serves as a feedstock in the synthesis of organic compounds.",
       "Methane": "Methane (CH4), composed of one carbon atom bonded to four hydrogen atoms, is the primary component of natural gas and a key energy source. It is a potent greenhouse gas.",
       "Carbon Monoxide": "Carbon monoxide (CO) is a colorless, odorless, and tasteless gas composed of one carbon atom bonded to one oxygen atom. It is produced by the incomplete combustion of carbon-containing fuels such as wood, coal, gasoline, and natural gas. Carbon monoxide binds strongly to hemoglobin in the blood, reducing oxygen transport and making it highly toxic to humans and animals.",
       "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
       "Methanol": "Methanol (CH3OH) is the simplest alcohol, consisting of one methyl group and a hydroxyl group. It is a colorless, volatile, and flammable liquid with a faintly sweet odor. Methanol mixes completely with water and is widely used as a solvent, fuel, especially in the production of formaldehyde and acetic acid. Despite its industrial importance, methanol is highly toxic to humans, and exposure or ingestion can cause blindness, organ damage, or death.",
+      "Sodium Bicarbonate": "Sodium bicarbonate (NaHCO3), also known as baking soda, is an ionic compound composed of sodium (Na+) and bicarbonate (HCO3-) ions. It appears as a white crystalline powder, soluble in water, with a slightly alkaline taste. It is widely used as a leavening agent in baking, an acid neutralizer, a household cleaning product, and in medical applications to relieve stomach acidity.",
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
       "Cubane": "Cubane (C8H8) is a highly strained hydrocarbon consisting of eight carbon atoms arranged at the corners of a cube, each bonded to a hydrogen atom. Despite its extreme angle strain, it is remarkably stable under normal conditions. Cubane is a colorless crystalline solid and serves as a fascinating molecule in research, with potential applications in high-energy materials, pharmaceuticals, and advanced chemical synthesis.",
       "Cuban-cetamol": "Cuban-cetamol is a hypothetical cubane-based analogue of paracetamol, designed by replacing the aromatic benzene ring with a cubane cage. It combines the strained cubic hydrocarbon core with hydroxyl and acetamide substituents, mimicking the functional groups of paracetamol.",
+      "Calcium Hydroxide": "Calcium hydroxide (Ca(OH)2), also known as slaked lime or hydrated lime, is an inorganic compound composed of calcium (Ca2+) and hydroxide (OH-) ions. It appears as a white solid, sparingly soluble in water, but capable of forming an alkaline solution known as limewater. It is widely used in construction (for mortars and plasters), in water and wastewater treatment, in the food industry as an acidity regulator, and in agriculture to neutralize acidic soils.",
+      "Hydrogen Peroxide": "O peróxido de hidrogênio (H2O2) é um composto químico formado por dois átomos de hidrogênio e dois de oxigênio. É um líquido incolor, ligeiramente mais viscoso que a água, com propriedades oxidantes fortes. É amplamente utilizado como desinfetante, agente de branqueamento e em processos industriais. Em soluções diluídas, é usado para limpeza e cuidados médicos.",
+      "Hydronium": "The hydronium ion (H3O+) is a cation formed when a water molecule (H2O) accepts a proton (H+). It is fundamental in acid–base chemistry, representing the hydrated form of the proton in aqueous solutions. Hydronium is responsible for the acidity of solutions, participating in chemical reactions and influencing pH. Although it does not exist as an isolated molecule under normal conditions, it is stabilized by solvation in water and plays a central role in biological and chemical processes.",
+      "Propane": "Propane (C3H8) is a hydrocarbon belonging to the alkane family, composed of three carbon atoms and eight hydrogen atoms. It is a colorless and odorless gas in its pure form, but odorants are usually added to help detect leaks. Propane is widely used as a fuel for heating, cooking, engines, and in liquefied petroleum gas (LPG) systems. It also serves as a feedstock in the chemical industry. Due to its flammability, it requires careful storage and handling.",
       "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
       "Oxygen": "Oxygen (O2) is a diatomic molecule essential for life, composed of two oxygen atoms. It is a colorless, odorless gas that makes up about 21% of Earth's atmosphere. Oxygen is vital for cellular respiration in most organisms and supports combustion. While necessary for survival, high concentrations can be toxic, and low levels can cause hypoxia.",
       "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C60",
@@ -181,7 +191,9 @@
       "Pyridine": "Pyridine (C5H5N) is a heterocyclic aromatic compound containing a nitrogen atom in its ring. It is a colorless liquid with a distinctive odor, widely used as a solvent and chemical intermediate. Pyridine plays a key role in the synthesis of pharmaceuticals, agrochemicals, and vitamins, and serves as a base in many organic reactions due to its ability to accept protons.",
       "Isobutyric Acid": "Isobutyric acid ((CH3)2CHCOOH), also known as 2-methylpropanoic acid, is a branched short-chain fatty acid with a rancid butter-like odor. It occurs naturally in some foods and is used in flavors, perfumes, and as a chemical intermediate.",
       "Butanoic Acid": "Butanoic acid (C4H8O2), also known as butyric acid, is a short-chain carboxylic acid with a rancid odor reminiscent of butter or vomit. It occurs naturally in dairy products and is produced by intestinal bacteria. Butanoic acid contributes to flavors in certain foods and plays roles in energy metabolism and gut health. It is also used in the manufacture of esters for perfumes and flavorings.",
+      "Sodium Hydroxide": "Sodium hydroxide (NaOH), also known as caustic soda or lye, is an ionic compound composed of sodium (Na+) and hydroxide (OH-) ions. It is a white, highly hygroscopic solid that dissolves readily in water, releasing significant heat upon dissolution. Sodium hydroxide is a strong base widely used in industry for paper manufacturing, soap and detergent production, chemical synthesis, and wastewater treatment.",
       "Cyclohexane": "Cyclohexane (C6H12) is a saturated cyclic hydrocarbon consisting of six carbon atoms arranged in a ring, each bonded to two hydrogen atoms. It is a colorless, flammable liquid with a mild odor, commonly used as a solvent and in the production of nylon and other industrial chemicals.",
+      "Decane": "Decane (C10H22) is a hydrocarbon belonging to the alkane family, composed of ten carbon atoms and twenty-two hydrogen atoms in a linear chain. It is a colorless, flammable liquid, insoluble in water but miscible with organic solvents. Decane is used as a component of fuels, particularly gasoline, and as a solvent in industrial processes. It also serves as a reference compound in organic chemistry and physical chemistry studies due to its predictable properties within the alkane series.",
       "Alanine": "Alanine (C3H7NO2) is a non-essential alpha-amino acid with a methyl side chain, used in protein biosynthesis. It plays key roles in metabolism, including the glucose-alanine cycle, and serves as an energy source for muscles and the brain.",
       "Beta-D-Glucose": "Beta-D-glucose (C6H12O6) is a monosaccharide and the beta anomer of glucose, a primary energy source in biology. It forms the building block of cellulose in plants and is crucial in carbohydrate metabolism and energy production.",
       "Palmitic Acid": "Palmitic acid (C16H32O2) is a saturated long-chain fatty acid, abundant in palm oil, animal fats, and human tissues. It is a major component of cell membranes and used in soaps, cosmetics, and food production.",
@@ -198,7 +210,7 @@
       "DPPC": "Dipalmitoylphosphatidylcholine (C40H80NO8P) is a major phospholipid found in lung surfactant and cell membranes. It consists of a glycerol backbone linked to two palmitic acid chains and a phosphocholine head group. This amphipathic structure allows it to form stable bilayers, reducing surface tension in the lungs and enabling efficient gas exchange. Beyond its biological role, dipalmitoylphosphatidylcholine is widely used in biophysical and biochemical studies as a model membrane component.",
       "Nicotine": "Nicotine (C10H14N2) is a naturally occurring alkaloid found in tobacco plants. It acts as a stimulant by binding to nicotinic acetylcholine receptors in the brain.",
       "Aspirin": "Aspirin (C9H8O4), or acetylsalicylic acid, is a synthetic derivative of salicylic acid used as an analgesic, anti-inflammatory, antipyretic, and antiplatelet agent. It inhibits cyclooxygenase enzymes to reduce pain, fever, and blood clotting.",
-      "Carborane acid": "Carborane acid (H(CHB11Cl11)), also known as fluoroantimonic-like superacid, is one of the strongest known Brønsted acids. It consists of a proton bound to a carborane anion, which is remarkably stable and weakly coordinating. Unlike conventional acids, it does not corrode glass and can protonate extremely weak bases.",
+      "Carborane Acid": "Carborane acid (H(CHB11Cl11)), also known as fluoroantimonic-like superacid, is one of the strongest known Brønsted acids. It consists of a proton bound to a carborane anion, which is remarkably stable and weakly coordinating. Unlike conventional acids, it does not corrode glass and can protonate extremely weak bases.",
       "Caffeine": "Caffeine (C8H10N4O2) is a methylxanthine alkaloid, a bitter white crystalline compound acting as a central nervous system stimulant. Found in coffee, tea, and cocoa, it blocks adenosine receptors to promote alertness.",
       "Sucrose": "Sucrose (C12H22O11) is a disaccharide composed of glucose and fructose units linked by a glycosidic bond. Commonly known as table sugar, it is a colorless, crystalline solid with a sweet taste. Sucrose is widely used as a sweetener in food and beverages and serves as an important energy source in human nutrition and plant metabolism.",
       "Sulfate": "Sulfate (SO4(-2)) is a polyatomic anion with a central sulfur atom bonded to four oxygen atoms in tetrahedral geometry. It forms many salts, essential in biology, industry (e.g., detergents, fertilizers), and as a nutrient in ecosystems.",
@@ -223,12 +235,12 @@
         {
           "title": "Core Stats",
           "temperature": "Temperature (K):",
-          "pressure": "Pressure (Bar):",
+          "pressure": "Pressure (Kpa):",
           "time": "Time",
           "particles": "Particles",
           "molecules": "Molecules",
           "slider_temperature": "Target T (K):",
-          "slider_pressure": "Target P (Bar):"
+          "slider_pressure": "Target P (Kpa):"
         },
         "energy_stats":
         {
@@ -406,6 +418,22 @@
         "Incredible to watch, isn't it? One of nature's most elegant transformations - from chaos to order, just by cooling."
       ]
     },  
+    "SCENARIO_DYNAMICS_AtmosphereLayers": 
+    {
+      "description": "Watch how gravity sorts gases in a tall column - heavier molecules sink to the bottom, lighter ones rise higher. A simple model of why Earth's atmosphere has layers.",
+      "narrations": 
+      [
+        "This is the Atmosphere Layers scenario. You're seeing gravity do its quiet work on a mix of gases. (Takes considerable time)",
+        "We start with a random mix of air molecules - mostly nitrogen (N2), oxygen (O2), argon (Ar), and a tiny bit of carbon dioxide and methane.",
+        "At first everything looks uniform - molecules flying around equally everywhere.",
+        "But gravity is pulling downward. Over time, heavier molecules (like argon and CO2) start sinking toward the bottom.",
+        "Lighter molecules (mostly N2 and O2) stay higher up or get pushed upward by collisions.",
+        "After a while, you can see clear layers forming - denser gas at the bottom, thinner gas at the top.",
+        "This is exactly what happens in Earth's atmosphere: heavier gases concentrate lower, lighter ones higher - creating the layered structure we live in.",
+        "Even though the forces are tiny, over time gravity sorts everything by mass. Beautiful, isn't it?",
+        "A simple box, a bit of gravity, and the atmosphere begins to look like… an atmosphere."
+      ]
+    },
     "TUTORIAL_ENGINE_Controls": 
     {
       "description": "Master the basic controls: move the camera, pause time, add compounds, and more.",
