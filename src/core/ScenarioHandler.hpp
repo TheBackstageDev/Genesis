@@ -56,6 +56,7 @@ namespace core
         std::vector<ScenarioStep> steps;
 
         std::filesystem::path file = "";
+        std::filesystem::path video = "";
         sim::fun::rendering_info m_render_info{};
 
         bool allow_previous = false;
@@ -99,6 +100,9 @@ namespace core
             m_currentScenarioKey.clear();
             m_currentStepIdx = 0;
             m_stepStartTime = 0.f;
+            m_wantedTemperature = 300.f;
+            m_wantedVideoPlay = false;
+            m_wantedFramesPerSecond = 60.f;
             m_exitFlag = false;
             m_narrationFinished = false;
         }
@@ -131,6 +135,8 @@ namespace core
         // Gets
 
         float getWantedTemperature() const { return m_wantedTemperature; }
+        float getWantedVideoSpeed() const { return m_wantedFramesPerSecond; }
+        bool getWantedVideoPlay() const { return m_wantedVideoPlay; }
     private:
         friend ScenarioStep;
 
@@ -202,5 +208,7 @@ namespace core
         
         // "Flags"
         float m_wantedTemperature = 300.f;
+        float m_wantedFramesPerSecond = 60.f;
+        float m_wantedVideoPlay = false;
     };
 } // namespace core

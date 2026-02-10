@@ -504,25 +504,9 @@ namespace core
 
             if (ImGui::Button(localization_json["Menu"]["button_quit"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
             {
-                ImGui::OpenPopup("ConfirmQuit");
+                std::exit(EXIT_SUCCESS);
             }
             ImGui::End();
-        }
-
-        if (ImGui::BeginPopupModal("ConfirmQuit", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::Text("Are you sure you want to exit GENESIS?");
-            ImGui::Dummy(ImVec2(0, 16));
-            ImGui::Separator();
-
-            if (ImGui::Button("Yes - Exit", ImVec2(180, 50)))
-                std::exit(EXIT_SUCCESS);
-
-            ImGui::SameLine();
-            if (ImGui::Button("No - Cancel", ImVec2(180, 50)))
-                ImGui::CloseCurrentPopup();
-
-            ImGui::EndPopup();
         }
 
         {
@@ -898,45 +882,66 @@ namespace core
     void UIHandler::drawSceneFrame(scenario_info &info, const std::string &id)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12, 12));
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.12f, 0.20f, 0.95f));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.4f, 0.5f, 0.8f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.12f, 0.18f, 0.97f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.45f, 0.80f, 0.55f));
 
         std::string childId = "scene_frame_" + id;
-        ImGui::BeginChild(childId.c_str(), ImVec2(0, 180), true, ImGuiChildFlags_Border);
+        ImGui::BeginChild(childId.c_str(), ImVec2(-1, 250), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
         ImGui::Columns(2, nullptr, false);
-        ImGui::SetColumnWidth(0, 180);
+        ImGui::SetColumnWidth(0, 230.0f); 
 
-        const sf::Texture *thumb = &placeholder_texture;
+        const sf::Texture* thumb = &placeholder_texture;
         std::string thumbKey = id + ".png";
         if (textures.count(thumbKey))
             thumb = &textures.at(thumbKey);
 
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.2f, 1.0f, 1.0f, 0.5f));
-        ImGui::Image(*thumb, ImVec2(160, 160));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+        ImGui::Image(*thumb, ImVec2(220, 220));
+        ImGui::PopStyleVar();
         ImGui::PopStyleColor();
 
         ImGui::NextColumn();
-
+        
         ImGui::PushFont(bold);
-        ImGui::TextColored(ImVec4(0.9f, 0.95f, 1.0f, 1.0f), "%s", info.title.c_str());
+        ImGui::TextColored(ImVec4(0.85f, 0.95f, 1.0f, 1.0f), "%s", info.title.c_str());
         ImGui::PopFont();
 
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+
         std::string desc = info.description.empty()
-                               ? "Explore in the simulator."
-                               : info.description;
+                            ? "Explore this simulation in real time. Discover the forces, behaviors and patterns that emerge."
+                            : info.description;
 
+        ImGui::BeginChild("desc_scroll", ImVec2(0, -60), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
         ImGui::TextWrapped("%s", desc.c_str());
+        ImGui::EndChild();
 
-        std::string buttonText = "Start";
-        if (ImGui::Button(buttonText.c_str(), ImVec2(-1, 40)))
+        ImGui::PopTextWrapPos();
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.55f, 0.95f, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.65f, 1.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.45f, 0.85f, 1.0f));
+
+        float buttonWidth = ImGui::CalcTextSize("Start Simulation").x + 40.0f;
+        ImGui::SetCursorPosX(ImGui::GetColumnWidth() - buttonWidth - 10.0f);
+
+        if (ImGui::Button("Start Simulation", ImVec2(buttonWidth, 38)))
         {
             tutorialSelectionOpen = false;
             sceneSelectionOpen = false;
-
             startScenario(id);
         }
+
+        ImGui::PopStyleColor(3);
 
         ImGui::Columns(1);
         ImGui::EndChild();
@@ -957,7 +962,7 @@ namespace core
 
         ImGui::SetNextWindowSize(ImVec2(1000, 650), ImGuiCond_Appearing);
         ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        if (!ImGui::Begin(scene_json["title"].get<std::string>().c_str(), &tutorialSelectionOpen,
+        if (!ImGui::Begin(scene_json["title"].get<std::string>().c_str(), &sceneSelectionOpen,
                           ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse))
         {
             ImGui::End();
@@ -1009,6 +1014,9 @@ namespace core
 
         if (!chosen_scenario.file.empty())
             simulation_universe->loadScene(chosen_scenario.file);
+        
+        if (!chosen_scenario.video.empty())
+            simulation_universe->loadFrames(chosen_scenario.video);
 
         m_scenarioHandler.setCurrentUniverse(simulation_universe.get());
         m_scenarioHandler.chooseScenario(scenario);
@@ -2030,6 +2038,8 @@ namespace core
         {
             m_scenarioHandler.draw(localization_json, m_deltaTime);
             target_temperature = m_scenarioHandler.getWantedTemperature();
+            m_playingVideo = m_scenarioHandler.getWantedVideoPlay();
+            m_replaySpeed = m_scenarioHandler.getWantedVideoSpeed();
             
             if (m_scenarioHandler.exit())
             {

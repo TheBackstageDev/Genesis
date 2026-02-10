@@ -87,7 +87,8 @@
         "CLASSICAL":
         {
           "TUTORIAL_CLASSICAL_VanDerWaals": "Van Der Waals Force",
-          "TUTORIAL_CLASSICAL_CoulombForce": "Coulomb Force"
+          "TUTORIAL_CLASSICAL_CoulombForce": "Coulomb Force",
+          "TUTORIAL_CLASSICAL_Phases": "Phase Transitions"
         },
         "QUANTUM":
         {
@@ -171,16 +172,29 @@
       "Acetylene": "Acetylene (C2H2), also known as ethyne, is the simplest alkyne, composed of two carbon atoms joined by a triple bond and two hydrogen atoms. It is a colorless, highly flammable gas with a distinctive odor. Acetylene is widely used as a fuel in welding and cutting torches due to its hot, stable flame, and also serves as a feedstock in the synthesis of organic compounds.",
       "Methane": "Methane (CH4), composed of one carbon atom bonded to four hydrogen atoms, is the primary component of natural gas and a key energy source. It is a potent greenhouse gas.",
       "Carbon Monoxide": "Carbon monoxide (CO) is a colorless, odorless, and tasteless gas composed of one carbon atom bonded to one oxygen atom. It is produced by the incomplete combustion of carbon-containing fuels such as wood, coal, gasoline, and natural gas. Carbon monoxide binds strongly to hemoglobin in the blood, reducing oxygen transport and making it highly toxic to humans and animals.",
+      "Silicon Dioxide": "Silicon dioxide (SiO2), also known as silica, is an inorganic compound composed of silicon and oxygen atoms in a 1:2 ratio. It occurs mainly as a crystalline solid, being the primary component of quartz and many rocks and sands. It is insoluble in water and chemically stable. Silicon dioxide is widely used in the manufacture of glass, ceramics, cement, semiconductors, and as a food additive (anticaking agent).",
+      "TNT": "Trinitrotoluene (C7H5N3O6), commonly known as TNT, is an organic compound belonging to the nitroaromatic class. It is formed by substituting three nitro (-NO2) groups onto the aromatic ring of toluene. TNT appears as a yellow solid, relatively stable to handle but highly explosive when detonated. It is widely used in military and industrial applications as a standard explosive due to its ease of manufacture, chemical stability, and ability to be stored safely.",
+      "Nitroglycerin": "Nitroglycerin (C3H5N3O9) is an organic compound belonging to the nitrate ester class, formed by the esterification of glycerol with nitric acid. It is an oily liquid, colorless to pale yellow, highly explosive, and sensitive to shock and heat. It is primarily used in the manufacture of explosives such as dynamite, but also has medical applications in small doses as a vasodilator for treating heart conditions. Due to its instability, it requires extremely careful storage and handling.",
+      "Glycerol": "Glycerol (C3H8O3), also known as glycerin, is a trihydric alcohol composed of three carbon atoms, eight hydrogen atoms, and three hydroxyl (-OH) groups. It is a viscous, colorless, odorless liquid with a sweet taste. It is hygroscopic and miscible with water. Glycerol is widely used in the pharmaceutical and cosmetic industries as a humectant, in the manufacture of explosives such as nitroglycerin, in food as an additive, and in the production of resins and plastics.",
       "Ethane": "Ethane (C2H6) is a saturated hydrocarbon belonging to the alkane series, composed of two carbon atoms single-bonded to each other and surrounded by six hydrogen atoms. It is a colorless, odorless gas under standard conditions and occurs naturally in petroleum and natural gas.",
       "Ethanol": "Ethanol (C2H5OH) is an organic compound consisting of two carbon atoms, six hydrogen atoms, and one oxygen atom, classified as a simple alcohol. It is a volatile, flammable liquid with a characteristic odor, widely used as a solvent, fuel, and in the production of alcoholic beverages.",
       "Methanol": "Methanol (CH3OH) is the simplest alcohol, consisting of one methyl group and a hydroxyl group. It is a colorless, volatile, and flammable liquid with a faintly sweet odor. Methanol mixes completely with water and is widely used as a solvent, fuel, especially in the production of formaldehyde and acetic acid. Despite its industrial importance, methanol is highly toxic to humans, and exposure or ingestion can cause blindness, organ damage, or death.",
+      "Phosphoric Acid": "Phosphoric acid (H3PO4) is an inorganic compound belonging to the class of phosphorus oxoacids. It appears as a crystalline solid or a colorless aqueous solution with an acidic taste. It is widely used in the fertilizer industry (as a phosphorus source), in beverages and foods as an acidulant, in detergent production, and in metal surface treatments. It is a moderate, triprotic acid, capable of donating three protons in aqueous solution.",
+      "Thymine": "Thymine (C5H6N2O2) is a pyrimidine nitrogenous base found in DNA. It pairs with adenine through two hydrogen bonds. Thymine is essential for the stability of the double helix and for accurate replication of genetic material.",
+      "Cytosine": "Cytosine (C4H5N3O) is a pyrimidine nitrogenous base found in both DNA and RNA. It pairs with guanine through three hydrogen bonds. Cytosine is crucial for genetic coding and epigenetic regulation via methylation.",
+      "Adenine": "Adenine (C5H5N5) is a purine nitrogenous base found in both DNA and RNA. It pairs with thymine in DNA and with uracil in RNA through two hydrogen bonds. Adenine also plays a role in energy molecules such as ATP.",
+      "Guanine": "Guanine (C5H5N5O) is a purine nitrogenous base found in both DNA and RNA. It pairs with cytosine through three hydrogen bonds. Guanine is essential for double helix stability and the fidelity of genetic information.",
+      "Uracil": "Uracil (C4H4N2O2) is a pyrimidine nitrogenous base found only in RNA. It replaces thymine in base pairing, forming pairs with adenine through two hydrogen bonds.",
       "Sodium Bicarbonate": "Sodium bicarbonate (NaHCO3), also known as baking soda, is an ionic compound composed of sodium (Na+) and bicarbonate (HCO3-) ions. It appears as a white crystalline powder, soluble in water, with a slightly alkaline taste. It is widely used as a leavening agent in baking, an acid neutralizer, a household cleaning product, and in medical applications to relieve stomach acidity.",
+      "Deoxyribose": "Deoxyribose (C5H10O4) is a monosaccharide of the pentose class, similar to ribose but lacking one oxygen atom at the 2' carbon. It is the fundamental sugar of DNA, forming the deoxyribose-phosphate backbone of nucleotides. It appears as a crystalline solid, soluble in water, and is essential for the stability and function of DNA.",
+      "Beta-D-Ribose": "Beta-D-Ribose (C5H10O5) is a monosaccharide of the pentose class, with five carbon atoms and an aldehyde group. It is an essential sugar found in RNA, forming part of the ribose-phosphate backbone of nucleotides. It appears as a crystalline solid, highly soluble in water, and plays a key role in cellular metabolism and nucleic acid synthesis.",
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
       "Cubane": "Cubane (C8H8) is a highly strained hydrocarbon consisting of eight carbon atoms arranged at the corners of a cube, each bonded to a hydrogen atom. Despite its extreme angle strain, it is remarkably stable under normal conditions. Cubane is a colorless crystalline solid and serves as a fascinating molecule in research, with potential applications in high-energy materials, pharmaceuticals, and advanced chemical synthesis.",
       "Cuban-cetamol": "Cuban-cetamol is a hypothetical cubane-based analogue of paracetamol, designed by replacing the aromatic benzene ring with a cubane cage. It combines the strained cubic hydrocarbon core with hydroxyl and acetamide substituents, mimicking the functional groups of paracetamol.",
+       "Pyrophosphoric Acid": "Pyrophosphoric acid (H4P2O7) is an inorganic compound belonging to the class of phosphorus oxoacids. It is formed by the condensation of two molecules of phosphoric acid with the elimination of one molecule of water. It appears as a crystalline solid or viscous solution and is a tetraprotic acid capable of donating four protons in aqueous solution. It is used in chemical synthesis, detergent formulations, and as an intermediate in phosphate production.",
       "Calcium Hydroxide": "Calcium hydroxide (Ca(OH)2), also known as slaked lime or hydrated lime, is an inorganic compound composed of calcium (Ca2+) and hydroxide (OH-) ions. It appears as a white solid, sparingly soluble in water, but capable of forming an alkaline solution known as limewater. It is widely used in construction (for mortars and plasters), in water and wastewater treatment, in the food industry as an acidity regulator, and in agriculture to neutralize acidic soils.",
       "Hydrogen Peroxide": "O peróxido de hidrogênio (H2O2) é um composto químico formado por dois átomos de hidrogênio e dois de oxigênio. É um líquido incolor, ligeiramente mais viscoso que a água, com propriedades oxidantes fortes. É amplamente utilizado como desinfetante, agente de branqueamento e em processos industriais. Em soluções diluídas, é usado para limpeza e cuidados médicos.",
-      "Hydronium": "The hydronium ion (H3O+) is a cation formed when a water molecule (H2O) accepts a proton (H+). It is fundamental in acid–base chemistry, representing the hydrated form of the proton in aqueous solutions. Hydronium is responsible for the acidity of solutions, participating in chemical reactions and influencing pH. Although it does not exist as an isolated molecule under normal conditions, it is stabilized by solvation in water and plays a central role in biological and chemical processes.",
+      "Hydronium": "The hydronium ion (H3O+) is a cation formed when a water molecule (H2O) accepts a proton (H+). It is fundamental in acid-base chemistry, representing the hydrated form of the proton in aqueous solutions. Hydronium is responsible for the acidity of solutions, participating in chemical reactions and influencing pH. Although it does not exist as an isolated molecule under normal conditions, it is stabilized by solvation in water and plays a central role in biological and chemical processes.",
       "Propane": "Propane (C3H8) is a hydrocarbon belonging to the alkane family, composed of three carbon atoms and eight hydrogen atoms. It is a colorless and odorless gas in its pure form, but odorants are usually added to help detect leaks. Propane is widely used as a fuel for heating, cooking, engines, and in liquefied petroleum gas (LPG) systems. It also serves as a feedstock in the chemical industry. Due to its flammability, it requires careful storage and handling.",
       "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
       "Oxygen": "Oxygen (O2) is a diatomic molecule essential for life, composed of two oxygen atoms. It is a colorless, odorless gas that makes up about 21% of Earth's atmosphere. Oxygen is vital for cellular respiration in most organisms and supports combustion. While necessary for survival, high concentrations can be toxic, and low levels can cause hypoxia.",
@@ -351,6 +365,7 @@
         "But the molecular shape only counts the atoms - so we see a bent or V-shaped molecule.",
         "The ideal tetrahedral angle is 109.5°, but the lone pairs push harder than bonding pairs, squeezing the H-O-H angle down to 104.5° in real life.",
         "That small difference matters a lot - it's why water is polar, forms hydrogen bonds, dissolves so many substances, and makes life possible.",
+        "And talking about hydrogen bonds, Water really loves to make them, this is what allows celular membranes to form, because water packs together hydrophobic tails and hydrophillic heads together.",
         "Water - simple, yet extraordinary."
       ]
     },
@@ -420,18 +435,18 @@
     },  
     "SCENARIO_DYNAMICS_AtmosphereLayers": 
     {
-      "description": "Watch how gravity sorts gases in a tall column - heavier molecules sink to the bottom, lighter ones rise higher. A simple model of why Earth's atmosphere has layers.",
+      "description": "See the composition of the atmosphere, and learn why it has layers.",
       "narrations": 
       [
-        "This is the Atmosphere Layers scenario. You're seeing gravity do its quiet work on a mix of gases. (Takes considerable time)",
+        "This is the Atmosphere Layers scenario.",
         "We start with a random mix of air molecules - mostly nitrogen (N2), oxygen (O2), argon (Ar), and a tiny bit of carbon dioxide and methane.",
         "At first everything looks uniform - molecules flying around equally everywhere.",
-        "But gravity is pulling downward. Over time, heavier molecules (like argon and CO2) start sinking toward the bottom.",
+        "But gravity (In Real Life, not in this Scenario) is pulling downward. Over time, heavier molecules (like argon and CO2) start sinking toward the bottom.",
         "Lighter molecules (mostly N2 and O2) stay higher up or get pushed upward by collisions.",
         "After a while, you can see clear layers forming - denser gas at the bottom, thinner gas at the top.",
         "This is exactly what happens in Earth's atmosphere: heavier gases concentrate lower, lighter ones higher - creating the layered structure we live in.",
         "Even though the forces are tiny, over time gravity sorts everything by mass. Beautiful, isn't it?",
-        "A simple box, a bit of gravity, and the atmosphere begins to look like… an atmosphere."
+        "A simple box, a bit of gravity, and the atmosphere begins to look like... an atmosphere."
       ]
     },
     "TUTORIAL_ENGINE_Controls": 
@@ -441,8 +456,7 @@
       [
         "Welcome to the Controls tutorial!\nLet's quickly go over everything you need to explore and interact with the simulation.",
         "Use **WASD** to move the camera forward, backward, left, and right.\nHold the **right mouse button** and drag to look around and rotate the view.\nTry it now - move around a bit!",
-        "Great! Now let's add something.\nPress **Q** or click the **+ button** in the bottom bar to open the compound selector.",
-        "This is the compound selector. You can choose from many molecules - more are added with every update.\nClick the **magnifying glass** next to any compound to see a bigger preview and details.",
+        "Great! Now let's add something.\nclick the **+ button** in the bottom bar to open the compound selector.\nThis is the compound selector. You can choose from many molecules - more are added with every update.\nClick the **magnifying glass** next to any compound to see a bigger preview and details.",
         "You can add compounds while the simulation is running... but sometimes it's easier when everything is still.\nPress **SPACE** to pause and resume the simulation.",
         "When paused, the molecules freeze - perfect for inspecting structures, adding new compounds, or studying a specific moment.\nLook around freely, then press **SPACE** again to continue.",
         "You can also control time speed: the arrows in the bottom bar to speed up or slow down.\nTry speeding it up a little! (Warning: Speeding up too much may cause instability in the simulation!)",
@@ -484,6 +498,22 @@
         "That's why salt dissolves in water: the water molecules pull the ions apart and keep them separated. The crystal breaks down - the salt 'disappears' into solution, even though the ions are still there.",
         "Coulomb forces are everywhere: they hold ionic compounds together, control how proteins fold, make your nerves send signals, and power batteries. It's one of the four fundamental forces that shape the world around us.",
         "You just witnessed how charge creates order and structure in matter. Amazing work - you now understand the Coulomb force!"
+      ]
+    },
+    "TUTORIAL_CLASSICAL_Phases": 
+    {
+      "description": "See how temperature changes turn matter from gas to liquid to solid - a fundamental demonstration of phase transitions and the forces that hold materials together.",
+      "narrations": 
+      [
+        "Welcome to the Phase Transitions tutorial! This is where we watch matter change its state - from gas to liquid to solid - just by changing temperature.",
+        "We start with particles at very high temperature. They move fast and spread out everywhere... this is the gas phase: no structure, lots of random motion.",
+        "Now we slowly lower the temperature. The particles slow down... and something interesting begins. Small, dense groups start to form - the very first tiny liquid droplets!",
+        "As we keep cooling, those droplets grow larger and merge with each other. Soon the whole system becomes a smooth, continuous liquid. This is condensation - the attractive forces between particles finally overcome their thermal energy.",
+        "Cool even further. The liquid starts to organize... ordered patches appear and grow. These are the first crystal nuclei forming!",
+        "Watch the crystal spread. The particles arrange themselves into a regular, repeating pattern - a solid lattice. In the solid phase, particles vibrate in place but stay locked in an ordered structure.",
+        "This is the basic story of phase transitions: temperature controls whether matter is gas, liquid, or solid. Heat gives particles energy to break free; cooling lets attractive forces take over and build structure.",
+        "Every material does this in its own way - but the principle is the same: balance between thermal motion and intermolecular attraction.",
+        "Amazing to see, right? You just watched matter go from complete chaos to perfect order - all by turning down the temperature. Well done!"
       ]
     }
   }

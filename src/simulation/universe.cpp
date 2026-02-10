@@ -1247,6 +1247,8 @@ namespace sim
             float current_temp = (2.0f * KE) / (d * KB);
             temp = current_temp;
 
+            if (!isothermal) return;
+            
             float target_KE = 0.5f * d * KB * kelvin;
             float c = target_KE / (KE + std::numeric_limits<float>::epsilon());
 
@@ -1811,7 +1813,7 @@ namespace sim
                 return;
             }
 
-            std::ifstream file(path);
+            std::ifstream file(path, std::ios::binary);
             if (!file.is_open())
             {
                 std::cerr << "[Video Load] Cannot open file: " << path << "\n";
@@ -1883,29 +1885,22 @@ namespace sim
                 }
             }
 
-            m_frames.reserve(expectedFrames);
+            std::vector<float> posArrayVec = posArray.get<std::vector<float>>();
+            m_frames.resize(expectedFrames);
 
             size_t idx = 0;
-            for (size_t f = 0; f < expectedFrames; ++f)
-            {
-                frame newFrame;
-                newFrame.positions.reserve(expectedAtoms);
+            for (size_t f = 0; f < expectedFrames; ++f) {
+                auto& newFrame = m_frames[f];
+                newFrame.positions.resize(expectedAtoms);
 
-                for (size_t a = 0; a < expectedAtoms; ++a)
-                {
-                    float x = posArray[idx++];
-                    float y = posArray[idx++];
-                    float z = posArray[idx++];
-                    newFrame.positions.emplace_back(x, y, z);
+                for (size_t a = 0; a < expectedAtoms; ++a) {
+                    newFrame.positions[a] = {posArrayVec[idx], posArrayVec[idx+1], posArrayVec[idx+2]};
+                    idx += 3;
                 }
 
-                if (!temperatures.empty())
-                    newFrame.global_temperature = temperatures[f];
-                else
-                    newFrame.global_temperature = 300.0f;
-
-                m_frames.emplace_back(std::move(newFrame));
+                newFrame.global_temperature = !temperatures.empty() ? temperatures[f] : 300.0f;
             }
+
 
             std::cout << "[Video Load] Successfully loaded " << m_frames.size()
                       << " frames with " << expectedAtoms << " atoms from " << path << "\n";

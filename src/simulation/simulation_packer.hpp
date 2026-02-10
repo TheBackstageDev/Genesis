@@ -12,8 +12,8 @@ namespace sim
     public:
         simulation_packer();
 
-        void pack(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 center, const glm::vec3 box);
-        void pack(fun::universe& u, const std::vector<fun::molecule_structure>& molecules, const std::vector<float>& chances, const glm::vec3 center, const glm::vec3 box);
+        void pack(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount = 0);
+        void pack(fun::universe& u, const std::vector<fun::molecule_structure>& molecules, const std::vector<float>& chances, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount = 0);
     private:
         void optimize(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 molecule_position);
 

@@ -1,1 +1,1 @@
-{"boxx":23.694244384765625,"boxy":23.694244384765625,"boxz":40.97999954223633,"gravity":true,"isothermal":true,"mag_gravity":9.800000190734863,"wall_collision":false,"roof_floor_collision":true}
+{"boxx":23.694244384765625,"boxy":23.694244384765625,"boxz":40.97999954223633,"gravity":false,"isothermal":true,"mag_gravity":9.800000190734863,"wall_collision":false,"roof_floor_collision":true}

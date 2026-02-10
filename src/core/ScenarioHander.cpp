@@ -55,7 +55,7 @@ namespace core
                     .minDisplayTime_s = 15.0f, 
                     .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
                     {
-                        u.setTimescale(300.f);
+                        u.setTimescale(400.f);
                         m_wantedTemperature = 90.f;
                     }
                 },
@@ -127,7 +127,8 @@ namespace core
                 .minDisplayTime_s = 15.0f,
                 .onEnter = [&](sim::fun::universe& u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
                 {
-                    u.setTimescale(2.f);
+                    u.pause();
+                    u.setTimescale(1.f);
 
                     auto argon = sim::parseSMILES("Ar", false);
 
@@ -145,8 +146,8 @@ namespace core
                         0.78f,
                         0.21f,
                         0.0093f,
-                        0.0004f,
-                        0.00001f
+                        0.004f,
+                        0.0001f
                     };
 
                     m_simpacker.pack(u, molecules, chances, u.boxSizes() * 0.5f, u.boxSizes());
@@ -155,6 +156,10 @@ namespace core
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
+                .onEnter = [&](sim::fun::universe& u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                {
+                    u.setTimescale(2.f);
+                }
             },
             {
                 .autoAdvanceAfterNarration = true,
@@ -208,7 +213,7 @@ namespace core
                 {
                     const sf::Vector3f center{u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f};
 
-                    u.setTimescale(1.f);
+                    u.setTimescale(1.5f);
                     u.createMolecule(compounds["Water"].structure, center);
                 },
             },
@@ -229,16 +234,6 @@ namespace core
 
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
-
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
-                {
-                    u.clear();
-
-                    const sf::Vector3f center{u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f};
-
-                    u.setTimescale(1.f);
-                    u.createMolecule(compounds["Methane"].structure, center);
-                },
             },
             {
                 .actions = 
@@ -246,7 +241,7 @@ namespace core
                     {
                         .customAction = [&](sim::fun::universe& u)
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
+                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
                     }
                 },
@@ -267,18 +262,18 @@ namespace core
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
 
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
-                {
-                    u.clear();
-                    u.pause();
-                    
-                    const sf::Vector3f center{u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f};
-                    u.createMolecule(compounds["Water"].structure, center);
-                },
             },
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 15.0f,
+                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                {   
+                    m_simpacker.pack(u, compounds["Water"].structure, u.boxSizes() * 0.5f, u.boxSizes() * 0.3f, 5);
+                },
             },
             {
                 .autoAdvanceAfterNarration = false,
@@ -454,12 +449,12 @@ namespace core
             {
                 {
                     .autoAdvanceAfterNarration = true,
-                    .minDisplayTime_s = 3.0f,
+                    .minDisplayTime_s = 10.0f,
                 },
                 {
                     .autoAdvanceAfterNarration = false,
                     .minDisplayTime_s = 3.0f,
-                    .advanceWhen = [](sim::fun::universe &u)
+                    .advanceWhen = [&](sim::fun::universe &u)
                     {
                         auto &cam = u.getRenderingCamera();
 
@@ -492,19 +487,43 @@ namespace core
                         return false;
                     },
                 },
-                {.autoAdvanceAfterNarration = false, .minDisplayTime_s = 3.0f, .advanceWhen = [](sim::fun::universe &u)
-                                                                               { return !u.isPaused(); },
-                 .onEnter = [](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
-                 {
-                    u.pause();
-                    u.createMolecule(compounds["Benzene"].structure, sf::Vector3f(u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f)); }},
-                {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 5.0f, .onEnter = [](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
-                                                                              {
-                                                                                  u.unpause();
-                                                                              }},
                 {
                     .autoAdvanceAfterNarration = false,
-                }};
+                    .minDisplayTime_s = 1.0f,
+                    .advanceWhen = [&](sim::fun::universe& u)
+                    {
+                        return u.numAtoms() > 0;
+                    }
+                },
+                {
+                    .autoAdvanceAfterNarration = false,
+                    .minDisplayTime_s = 1.0f,
+                    .advanceWhen = [&](sim::fun::universe& u)
+                    {
+                        return u.isPaused();
+                    }
+                },
+                {
+                    .autoAdvanceAfterNarration = false,
+                    .minDisplayTime_s = 1.0f,
+                    .advanceWhen = [&](sim::fun::universe& u)
+                    {
+                        return !u.isPaused();
+                    }
+                },
+                {
+                    .autoAdvanceAfterNarration = false,
+                    .minDisplayTime_s = 1.0f,
+                    .advanceWhen = [&](sim::fun::universe& u)
+                    {
+                        return u.getTimescale() > 1.5f || u.getTimescale() < 0.5f;
+                    }
+                },
+                {
+                    .autoAdvanceAfterNarration = false,
+                    .minDisplayTime_s = 1.0f,
+                }
+            };
 
         Scenario TUTORIAL_CLASSICAL_VanDerWaals{};
         TUTORIAL_CLASSICAL_VanDerWaals.file = scenario_path / "TUTORIAL_CLASSICAL_VDW.json";
@@ -544,53 +563,9 @@ namespace core
                  .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
                  {
                     u.setTimescale(500.f);
+                    auto argon = sim::parseSMILES("Ar", false);
 
-                    int32_t numAdded = 0;
-                    const int32_t targetCount = 50;
-
-                                  if (numAdded >= targetCount)
-                                      return;
-
-                                  const glm::vec3 center = (u.getPosition(0) + u.getPosition(1)) * 0.5f;
-
-                                  std::random_device rd;
-                                  std::mt19937 gen(rd());
-                                  std::uniform_real_distribution<float> distPos(-12.0f, 12.0f);
-                                  std::uniform_real_distribution<float> distVel(-0.1f, 0.1f);
-
-                                  auto positions = u.positions();
-
-                                  for (int32_t attempt = 0; numAdded < targetCount && attempt < 300; ++attempt)
-                                  {
-                                      glm::vec3 candidate = center + glm::vec3(distPos(gen), distPos(gen), distPos(gen));
-
-                                      bool tooClose = false;
-                                      float minDist = 9999.0f;
-                                      for (const auto &p : positions)
-                                      {
-                                          float d = glm::length(p - candidate);
-                                          if (d < 2.8f)
-                                          {
-                                              tooClose = true;
-                                              break;
-                                          }
-                                          minDist = std::min(minDist, d);
-                                      }
-
-                                      if (!tooClose)
-                                      {
-                                          u.createAtom(
-                                              candidate,
-                                              glm::vec3(distVel(gen), distVel(gen), distVel(gen)),
-                                              18,
-                                              18,
-                                              18,
-                                              0);
-
-                                          ++numAdded;
-                                          positions = u.positions();
-                                      }
-                                  }
+                    m_simpacker.pack(u, argon, u.boxSizes() * 0.5f, u.boxSizes(), 50);
                  }},
                 {
                     .autoAdvanceAfterNarration = true,
@@ -726,48 +701,8 @@ namespace core
                         m_wantedTemperature = 350.f;
 
                         u.setTimescale(3.f);
-
-                        int32_t numAddedWater = 0;
-                        const int32_t targetCount = 50;
-
-                        if (numAddedWater >= targetCount)
-                            return;
-
-                        const glm::vec3 center = u.boxSizes() * 0.5f;
-
-                        std::random_device rd;
-                        std::mt19937 gen(rd());
-                        std::uniform_real_distribution<float> distPos(-5.0f, 5.0f);
-                        std::uniform_real_distribution<float> distVel(-0.1f, 0.1f);
-
-                        auto positions = u.positions();
-
-                        for (int32_t attempt = 0; numAddedWater < targetCount && attempt < 300; ++attempt)
-                        {
-                            glm::vec3 candidate = center + glm::vec3(distPos(gen), distPos(gen), distPos(gen));
-
-                            bool tooClose = false;
-                            float minDist = 9999.0f;
-                            for (const auto &p : positions)
-                            {
-                                float d = glm::length(p - candidate);
-                                if (d < 2.8f)
-                                {
-                                    tooClose = true;
-                                    break;
-                                }
-                                minDist = std::min(minDist, d);
-                            }
-
-                            if (!tooClose)
-                            {
-                                u.createMolecule(compounds["Water"].structure, sf::Vector3f(candidate.x, candidate.y, candidate.z));
-
-                                ++numAddedWater;
-                                positions = u.positions();
-                            }
-                        }
-                    },
+                        m_simpacker.pack(u, compounds["Water"].structure, u.boxSizes() * 0.5f, u.boxSizes() * 0.3f, 50);
+                    }
                 },
                 {
                     .autoAdvanceAfterNarration = true,
@@ -783,9 +718,59 @@ namespace core
                 }
             };
 
+        Scenario TUTORIAL_CLASSICAL_Phases{};
+        TUTORIAL_CLASSICAL_Phases.file = scenario_path / "TUTORIAL_CLASSICAL_Phases.json";
+        TUTORIAL_CLASSICAL_Phases.video = scenario_path / "video_TUTORIAL_CLASSICAL_Phases.json";
+        TUTORIAL_CLASSICAL_Phases.steps =
+        {
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                {
+                    u.pause();
+                    m_wantedVideoPlay = true;
+                    m_wantedFramesPerSecond = 30.f;
+                }
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 10.0f,
+            },
+            {
+                .autoAdvanceAfterNarration = false,
+                .minDisplayTime_s = 10.0f,
+            },
+        };
+
         m_Scenarios.emplace("TUTORIAL_ENGINE_Controls", std::move(TUTORIAL_ENGINE_Controls));
         m_Scenarios.emplace("TUTORIAL_CLASSICAL_VanDerWaals", std::move(TUTORIAL_CLASSICAL_VanDerWaals));
         m_Scenarios.emplace("TUTORIAL_CLASSICAL_CoulombForce", std::move(TUTORIAL_CLASSICAL_CoulombForce));
+        m_Scenarios.emplace("TUTORIAL_CLASSICAL_Phases", std::move(TUTORIAL_CLASSICAL_Phases));
     }
 
     void ScenarioHandler::startScenario()

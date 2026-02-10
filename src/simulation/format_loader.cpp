@@ -16,22 +16,22 @@ namespace sim::io
 
         if (BONDED(6, 6))
         {
-            if (distance < 1.24f) return fun::BondType::TRIPLE;     // C≡C     ~1.20–1.23 Å
-            if (distance < 1.39f) return fun::BondType::DOUBLE;     // C=C     ~1.33–1.38 Å (alkene/aromatic)
-            return fun::BondType::SINGLE;                           // C–C     ~1.47–1.54 Å
+            if (distance < 1.24f) return fun::BondType::TRIPLE;     // C≡C     
+            if (distance < 1.39f) return fun::BondType::DOUBLE;     // C=C     
+            return fun::BondType::SINGLE;                           // C–C    
         }
 
         if (BONDED(6, 8))
         {
-            if (distance < 1.21f) return fun::BondType::DOUBLE;     // C=O     ~1.20–1.23 Å (carbonyl)
-            if (distance < 1.13f) return fun::BondType::TRIPLE;     // C#O
+            if (distance < 1.23f) return fun::BondType::DOUBLE;     // C=O     ~1.20–1.23 Å (carbonyl)
+            if (distance < 1.15f) return fun::BondType::TRIPLE;     // C#O
             return fun::BondType::SINGLE;                           // C–O     ~1.36–1.43 Å
         }
 
         if (BONDED(6, 7))
         {
             if (distance < 1.18f) return fun::BondType::TRIPLE;
-            if (distance < 1.36f) return fun::BondType::DOUBLE;
+            if (distance < 1.35f) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE; 
         }
 
@@ -43,7 +43,13 @@ namespace sim::io
 
         if (BONDED(7, 8))
         {
-            if (distance < 1.30f) return fun::BondType::DOUBLE;
+            if (distance < 1.23f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
+        }
+
+        if (BONDED(14, 8))
+        {
+            if (distance < 1.51f) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE;
         }
 

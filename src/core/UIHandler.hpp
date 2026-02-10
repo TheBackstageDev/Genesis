@@ -99,8 +99,8 @@ namespace core
     {
         BALL_AND_STICK,
         LICORICE,
-        HYPER_BALLS,
         SPACE_FILLING,
+        HYPER_BALLS,
         COUNT
     };
 

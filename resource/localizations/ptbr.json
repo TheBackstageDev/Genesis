@@ -86,7 +86,8 @@
         "CLASSICAL":
         {
           "TUTORIAL_CLASSICAL_VanDerWaals": "Força Van Der Waals",
-          "TUTORIAL_CLASSICAL_CoulombForce": "Força Coulomb"
+          "TUTORIAL_CLASSICAL_CoulombForce": "Força Coulomb",
+          "TUTORIAL_CLASSICAL_Phases": "Transições de Fase"
         },
         "QUANTUM":
         {
@@ -170,10 +171,22 @@
       "Hydronium": "Hidrônio",
       "Ethylene": "Etíleno",
       "Acetylene": "Acetileno",
+      "Silicon Dioxide": "Dióxido de Silício",
+      "Nitroglycerin": "Nitroglicerina",
+      "TNT": "TNT",
+      "Beta-D-Ribose": "Beta-D-Ribose",
+      "Deoxyribose": "Deoxyribose",
+      "Phosphoric Acid": "Ácido fosfórico",
       "Decane": "Decano",
       "Ammonia": "Amônia",
+      "Uracil": "Uracila",
+      "Adenine": "Adenina",
+      "Cytosine": "Citosina",
+      "Guanine": "Guanina",
+      "Thymine": "Timina",
       "Acetone": "Acetona",
       "Formaldehyde": "Formaldeído",
+      "Glycerol": "Glicerol",
       "Pyridine": "Piridina",
       "Acetic Acid": "Ácido Acético",
       "Isobutyric Acid": "Ácido Isobutírico",
@@ -190,6 +203,7 @@
       "DPPC": "DPPC",
       "Sucrose": "Sacarose",
       "Carbon Nanotube": "Nanotubo de carbono",
+      "Pyrophosphoric Acid": "Ácido pirofosfórico",
       "Carborane Acid": "Ácido Carborano",
       "ATP": "ATP",
       "Nicotine": "Nicotina",
@@ -224,11 +238,24 @@
       "Acetylene": "O acetileno (C2H2), também chamado de etino, é o alcino mais simples, formado por dois átomos de carbono ligados por uma tripla ligação e dois átomos de hidrogênio. É um gás incolor e altamente inflamável, com odor característico. O acetileno é amplamente utilizado como combustível em maçaricos de soldagem e corte devido à sua chama quente e estável, além de servir como matéria-prima na síntese de compostos orgânicos.",
       "Ozone": "Ozônio (O3) é uma molécula triatômica composta por três átomos de oxigênio. Ocorre naturalmente na atmosfera terrestre, onde forma a camada de ozônio que protege os organismos vivos ao absorver a radiação ultravioleta nociva proveniente do Sol.",
       "Methane": "O metano (CH4), composto por um átomo de carbono ligado a quatro átomos de hidrogênio, é o principal componente do gás natural e uma importante fonte de energia. É um potente gás de efeito estufa.",
+      "TNT": "O trinitrotolueno (C7H5N3O6), conhecido pela sigla TNT, é um composto orgânico pertencente à classe dos nitroaromáticos. É formado pela substituição de três grupos nitro (-NO2) no anel aromático do tolueno. Apresenta-se como um sólido amarelo, relativamente estável ao manuseio, mas altamente explosivo quando detonado. O TNT é amplamente utilizado em aplicações militares e industriais como explosivo padrão devido à sua facilidade de fabricação, estabilidade química e capacidade de armazenamento seguro.",
       "Carbon Monoxide": "O monóxido de carbono (CO) é um gás incolor, inodoro e insípido, composto por um átomo de carbono ligado a um átomo de oxigênio. É produzido pela combustão incompleta de combustíveis que contêm carbono, como madeira, carvão, gasolina e gás natural. O monóxido de carbono liga-se fortemente à hemoglobina no sangue, reduzindo o transporte de oxigênio e tornando-se altamente tóxico para humanos e animais.",
+      "Nitroglycerin": "A nitroglicerina (C3H5N3O9) é um composto orgânico pertencente à classe dos ésteres de nitrato, formado pela esterificação do glicerol com ácido nítrico. Apresenta-se como um líquido oleoso, incolor a amarelado, altamente explosivo e sensível a choque e calor. É utilizada principalmente na fabricação de explosivos, como a dinamite, e também possui aplicações médicas em baixas doses como vasodilatador no tratamento de doenças cardíacas. Devido à sua instabilidade, requer armazenamento e manuseio extremamente cuidadosos.",
+      "Glycerol": "O glicerol (C3H8O3), também conhecido como glicerina, é um álcool trihidroxílico composto por três átomos de carbono, oito de hidrogênio e três grupos hidroxila (-OH). Apresenta-se como um líquido viscoso, incolor, inodoro e de sabor adocicado. É higroscópico e miscível em água. O glicerol é amplamente utilizado na indústria farmacêutica e cosmética como umectante, na fabricação de explosivos como a nitroglicerina, em alimentos como aditivo e na produção de resinas e plásticos.",
+      "Silicon Dioxide": "O dióxido de silício (SiO2), também conhecido como sílica, é um composto inorgânico formado por átomos de silício e oxigênio em proporção 1:2. Apresenta-se principalmente como um sólido cristalino, sendo o principal componente do quartzo e de muitas rochas e areias. É insolúvel em água e quimicamente estável. O dióxido de silício é amplamente utilizado na fabricação de vidro, cerâmica, cimento, semicondutores e como aditivo alimentar (antiaglomerante).",
+      "Deoxyribose": "A desoxirribose (C5H10O4) é um monossacarídeo da classe das pentoses, semelhante à ribose, mas com a ausência de um átomo de oxigênio no carbono 2'. É o açúcar fundamental do DNA, formando a estrutura da desoxirribose-fosfato que compõe os nucleótidos. Apresenta-se como um sólido cristalino, solúvel em água, e é essencial para a estabilidade e função do DNA.",
+      "Beta-D-Ribose": "A Beta-D-ribose (C5H10O5) é um monossacarídeo da classe das pentoses, com cinco átomos de carbono e um grupo aldeído. É um açúcar essencial presente no RNA, formando parte da estrutura da ribose-fosfato que compõe os nucleótidos. Apresenta-se como um sólido cristalino, altamente solúvel em água, desempenhando papel fundamental no metabolismo celular e na síntese de ácidos nucleicos.",
       "Ethane": "O etano (C2H6) é um hidrocarboneto saturado da série dos alcanos, composto por dois átomos de carbono ligados por ligação simples e cercados por seis átomos de hidrogênio. É um gás incolor e inodoro em condições padrão e ocorre naturalmente no petróleo e no gás natural.",
+      "Pyrophosphoric Acid": "O ácido pirofosfórico (H4P2O7) é um composto inorgânico pertencente à classe dos oxiácidos do fósforo. É formado pela condensação de duas moléculas de ácido fosfórico com eliminação de uma molécula de água. Apresenta-se como um sólido cristalino ou solução viscosa, sendo um ácido tetraprótico capaz de doar quatro prótons em solução aquosa. É utilizado em síntese química, em formulações de detergentes e como intermediário na produção de fosfatos.",
       "Decane": "O decano (C10H22) é um hidrocarboneto da família dos alcanos, composto por dez átomos de carbono e vinte e dois de hidrogênio em uma cadeia linear. É um líquido incolor e inflamável, insolúvel em água, mas miscível com solventes orgânicos. O decano é utilizado como componente de combustíveis, especialmente na gasolina, e como solvente em processos industriais. Também serve como referência em estudos de química orgânica e físico-química devido às suas propriedades previsíveis dentro da série dos alcanos.",
       "Ethanol": "O etanol (C2H5OH) é um composto orgânico constituído por dois átomos de carbono, seis de hidrogênio e um de oxigênio, classificado como um álcool simples. É um líquido volátil, inflamável, com odor característico, amplamente usado como solvente, combustível e na produção de bebidas alcoólicas.",
       "Sodium Bicarbonate": "O bicarbonato de sódio (NaHCO3), também conhecido como sal de cozinha leve ou simplesmente bicarbonato, é um composto iônico formado por íons sódio (Na+) e bicarbonato (HCO3-). Apresenta-se como um pó branco cristalino, solúvel em água e de sabor levemente alcalino. É amplamente utilizado como agente fermentador em panificação, neutralizador de ácidos, produto de limpeza doméstico e em aplicações médicas para aliviar a acidez estomacal.",
+      "Phosphoric Acid": "O ácido fosfórico (H3PO4) é um composto inorgânico pertencente à classe dos oxiácidos do fósforo. Apresenta-se como um sólido cristalino ou solução aquosa incolor, de sabor ácido. É amplamente utilizado na indústria de fertilizantes (como fonte de fósforo), em bebidas e alimentos como acidulante, na produção de detergentes e em tratamentos de superfície metálica. É um ácido moderado, triprótico, capaz de doar três prótons em solução aquosa.",
+      "Thymine": "A timina (C5H6N2O2) é uma base nitrogenada pirimidínica encontrada no DNA. Forma pares de bases com a adenina por meio de duas ligações de hidrogênio. É essencial para a estabilidade da dupla hélice e para a correta replicação do material genético.",
+      "Cytosine": "A citosina (C4H5N3O) é uma base nitrogenada pirimidínica presente tanto no DNA quanto no RNA. Forma pares de bases com a guanina por meio de três ligações de hidrogênio. É fundamental para a codificação genética e para a regulação epigenética através da metilação.",
+      "Adenine": "A adenina (C5H5N5) é uma base nitrogenada purínica presente no DNA e no RNA. Forma pares de bases com a timina no DNA e com o uracilo no RNA, por meio de duas ligações de hidrogênio. Também participa em moléculas energéticas como o ATP.",
+      "Guanine": "A guanina (C5H5N5O) é uma base nitrogenada purínica presente no DNA e no RNA. Forma pares de bases com a citosina através de três ligações de hidrogênio. É essencial para a estabilidade da dupla hélice e para a fidelidade da informação genética.",
+      "Uracil": "O uracilo (C4H4N2O2) é uma base nitrogenada pirimidínica encontrada apenas no RNA. Substitui a timina na complementaridade de bases, formando pares com a adenina por meio de duas ligações de hidrogênio.",
       "Benzene": "O benzeno (C6H6) é um hidrocarboneto aromático formado por seis átomos de carbono dispostos em anel com ligações duplas alternadas, estabilizado por ressonância. É um líquido incolor, volátil, com odor doce, amplamente usado como precursor na produção de plásticos, resinas, fibras sintéticas e inúmeros compostos químicos.",
       "Cubane": "Cubano (C8H8) é um hidrocarboneto altamente tensionado, composto por oito átomos de carbono dispostos nos vértices de um cubo, cada um ligado a um átomo de hidrogênio. Apesar da intensa tensão angular, é surpreendentemente estável em condições normais. O cubano é um sólido cristalino incolor e desperta grande interesse em pesquisas, com potenciais aplicações em materiais de alta energia, farmacêuticos e síntese química avançada.",
       "Cuban-cetamol": "O Cuban-cetamol é um análogo hipotético do paracetamol baseado em cubano, criado pela substituição do anel aromático de benzeno por uma estrutura cúbica de cubano. Ele combina o núcleo hidrocarboneto altamente tensionado com grupos hidroxila e acetamida, imitando as funções químicas do paracetamol.",
@@ -437,18 +464,18 @@
     },
     "SCENARIO_DYNAMICS_DropletFormation": 
     {
-      "description": "Veja átomos neutros se condensarem de um gás caótico para lindas gotículas líquidas — uma demonstração impressionante de como as forças de van der Waals criam líquidos a partir de partículas espalhadas.",
+      "description": "Veja átomos neutros se condensarem de um gás caótico para lindas gotículas líquidas - uma demonstração impressionante de como as forças de van der Waals criam líquidos a partir de partículas espalhadas.",
       "narrations": 
       [
         "Este é o cenário de Formação de Gotículas. Você está vendo algo realmente especial: como um gás quente e desorganizado se transforma em gotículas líquidas organizadas.",
-        "Começamos com 150 átomos de argônio a alta temperatura — cerca de 1000 K. Eles estão voando rápido, colidindo aleatoriamente... puro comportamento de gás, sem nenhuma ordem.",
+        "Começamos com 150 átomos de argônio a alta temperatura - cerca de 1000 K. Eles estão voando rápido, colidindo aleatoriamente... puro comportamento de gás, sem nenhuma ordem.",
         "Agora o resfriamento começa. À medida que a temperatura cai, os átomos desaceleram... e algo bonito começa a acontecer. Pequenas regiões mais densas aparecem!",
         "Esses pequenos agrupamentos estão crescendo porque as forças de van der Waals estão puxando suavemente os átomos uns para os outros sempre que eles ficam próximos o suficiente. A atração é fraca, mas com partículas suficientes, ela fica poderosa.",
-        "Observe as gotículas pequenas começando a se encontrar... e quando duas se tocam, elas se fundem rapidamente em uma gotícula maior. Esse processo é chamado de coalescência — é exatamente como as gotas de chuva crescem nas nuvens.",
+        "Observe as gotículas pequenas começando a se encontrar... e quando duas se tocam, elas se fundem rapidamente em uma gotícula maior. Esse processo é chamado de coalescência - é exatamente como as gotas de chuva crescem nas nuvens.",
         "Agora temos menos gotículas, mas bem maiores.",
-        "E aqui está o resultado final: algumas gotas grandes e arredondadas. Toda a nuvem de gás dispersa se transformou em vários esferoides líquidos — tudo graças àquelas fracas atrações entre átomos neutros.",
+        "E aqui está o resultado final: algumas gotas grandes e arredondadas. Toda a nuvem de gás dispersa se transformou em vários esferoides líquidos - tudo graças àquelas fracas atrações entre átomos neutros.",
         "É assim que os líquidos se formam no mundo real: gases condensam, gotículas se fundem e, eventualmente, surgem oceanos, lagos e chuva. As forças de van der Waals podem ser pequenas, mas moldam todo o mundo líquido ao nosso redor.",
-        "Incrível de assistir, não é? Uma das transformações mais elegantes da natureza — do caos para a ordem, apenas resfriando."
+        "Incrível de assistir, não é? Uma das transformações mais elegantes da natureza - do caos para a ordem, apenas resfriando."
       ]
     },
     "SCENARIO_DYNAMICS_Brownian_Motion":
@@ -462,18 +489,18 @@
     },
     "SCENARIO_DYNAMICS_AtmosphereLayers": 
     {
-      "description": "Observe como a gravidade separa os gases em uma coluna alta — moléculas mais pesadas afundam para o fundo, as mais leves sobem. Um modelo simples de por que a atmosfera da Terra tem camadas.",
+      "description": "Veja a composição da atmosféra terrestre, e aprenda sobre porque existem camadas.",
       "narrations": 
       [
-        "Este é o cenário de Camadas Atmosféricas. Você está vendo a gravidade fazer seu trabalho silencioso em uma mistura de gases. (Demora um bom tempo)",
-        "Começamos com uma mistura aleatória de moléculas do ar — principalmente nitrogênio (N2), oxigênio (O2), argônio (Ar) e uma pitada de dióxido de carbono e metano.",
-        "No início tudo parece uniforme — moléculas voando por igual em todos os lugares.",
-        "Mas a gravidade está puxando para baixo. Com o tempo, as moléculas mais pesadas (como argônio e CO2) começam a afundar para o fundo.",
+        "Este é o cenário de Camadas Atmosféricas.",
+        "Começamos com uma mistura aleatória de moléculas do ar - principalmente nitrogênio (N2), oxigênio (O2), argônio (Ar) e uma pitada de dióxido de carbono e metano.",
+        "No início tudo parece uniforme - moléculas voando por igual em todos os lugares.",
+        "Mas a gravidade (Na Vida Real, não neste cenário) está puxando para baixo. Com o tempo, as moléculas mais pesadas (como argônio e CO2) começam a afundar para o fundo.",
         "As moléculas mais leves (principalmente N2 e O2) ficam mais altas ou são empurradas para cima pelas colisões.",
-        "Depois de um tempo, você começa a ver camadas bem definidas — gás mais denso embaixo, gás mais rarefeito em cima.",
-        "É exatamente o que acontece na atmosfera da Terra: gases mais pesados se concentram mais baixo, os mais leves ficam mais alto — criando a estrutura em camadas em que vivemos.",
+        "Depois de um tempo, você começa a ver camadas bem definidas - gás mais denso embaixo, gás mais rarefeito em cima.",
+        "É exatamente o que acontece na atmosfera da Terra: gases mais pesados se concentram mais baixo, os mais leves ficam mais alto - criando a estrutura em camadas em que vivemos.",
         "Mesmo sendo forças pequenas, com o tempo a gravidade separa tudo por massa. Lindo, não é?",
-        "Uma caixa simples, um pouco de gravidade, e a atmosfera começa a parecer… uma atmosfera de verdade."
+        "Uma caixa simples, um pouco de gravidade, e a atmosfera começa a parecer... uma atmosfera de verdade."
       ]
     },
     "TUTORIAL_ENGINE_Controls": 
@@ -483,8 +510,7 @@
       [
         "Bem-vindo ao tutorial de Controles!\nVamos aprender rapidinho tudo o que você precisa para explorar e interagir com a simulação.",
         "Use **WASD** para mover a câmera para frente, trás, esquerda e direita.\nSegure o **botão direito do mouse** e arraste para olhar ao redor e girar a visão.\nExperimente agora - mexa um pouco!",
-        "Ótimo! Agora vamos adicionar algo.\nPressione **Q** ou clique no **botão +** na barra inferior para abrir o seletor de compostos.",
-        "Esse é o seletor de compostos. Você pode escolher entre várias moléculas - mais serão adicionadas em cada atualização.\nClique na **lupa** ao lado de qualquer composto para ver uma prévia maior e detalhes.",
+        "Ótimo! Agora vamos adicionar algo.\nPressione **Q** ou clique no **botão +** na barra inferior para abrir o selecionador de compostos.\nEsse é o selecionador de compostos. Você pode escolher entre várias moléculas - mais serão adicionadas em cada atualização.\nClique na **lupa** ao lado de qualquer composto para ver uma prévia maior e detalhes.",
         "Você pode adicionar compostos enquanto a simulação está rodando... mas às vezes é mais fácil quando tudo está parado.\nPressione **ESPAÇO** para pausar e retomar a simulação.",
         "Quando pausado, as moléculas congelam - perfeito para inspecionar estruturas, adicionar compostos ou estudar um momento específico.\nOlhe ao redor livremente, depois aperte **ESPAÇO** novamente para continuar.",
         "Você também pode controlar a velocidade do tempo: use as setas na barra inferior para acelerar ou desacelerar.\nExperimente acelerar um pouco! (Aviso: Acelerar demais pode causar instabilidade na simulação!)",
@@ -516,16 +542,32 @@
       "narrations": 
       [
         "Bem-vindo ao tutorial de Forças de Coulomb! Essa é uma das forças mais fortes do dia a dia no universo - e tudo tem a ver com cargas elétricas. Vamos ver ela em ação.",
-        "Aqui temos dois íons: um íon de sódio carregado positivamente (Na+ azul) e um íon de cloreto carregado negativamente (Cl- verde). Eles estão bem afastados… mas observe com atenção. O que você acha que vai acontecer?",
+        "Aqui temos dois íons: um íon de sódio carregado positivamente (Na+ azul) e um íon de cloreto carregado negativamente (Cl- verde). Eles estão bem afastados... mas observe com atenção. O que você acha que vai acontecer?",
         "Nossa - eles correm um em direção ao outro muito rápido! Cargas opostas se atraem com uma força muito poderosa. Quanto mais perto ficam, mais forte fica a atração - é exatamente a lei de Coulomb em ação: a força aumenta com 1/distância ao quadrado.",
         "Agora vamos tentar dois íons com a mesma carga: dois íons de sódio (Na+ e Na+).",
-        "Observe… eles se empurram violentamente para longe! Cargas iguais se repelem - e quanto mais perto estão, mais forte é o empurrão.",
+        "Observe... eles se empurram violentamente para longe! Cargas iguais se repelem - e quanto mais perto estão, mais forte é o empurrão.",
         "Esse empurra-empurra é o motivo pelo qual os sais existem. Metais como o sódio doam elétrons e ficam positivos; ametais como o cloro aceitam elétrons e ficam negativos. Cargas opostas então os mantêm bem presos um ao outro.",
         "Veja o que acontece quando muitos deles se juntam: um cristal de cloreto de sódio (sal de cozinha). Observe o lindo padrão repetitivo - íons positivos e negativos se alternando em uma grade perfeita. Essa é a configuração de menor energia e mais estável.",
         "Mas e quando colocamos água? As moléculas de água têm suas próprias cargas pequenas - o oxigênio é ligeiramente negativo, os hidrogênios ligeiramente positivos. Elas rodeiam e blindam os íons, enfraquecendo a atração entre Na+ e Cl-.",
         "É exatamente por isso que o sal se dissolve na água: as moléculas de água puxam os íons para longe uns dos outros e os mantêm separados. O cristal se desfaz - o sal 'desaparece' na solução, mesmo que os íons ainda estejam lá.",
         "As forças de Coulomb estão em todos os lugares: mantêm os compostos iônicos unidos, controlam como as proteínas se dobram, fazem seus nervos enviarem sinais e alimentam baterias. É uma das quatro forças fundamentais que moldam o mundo ao nosso redor.",
         "Você acabou de ver como a carga cria ordem e estrutura na matéria. Excelente trabalho - agora você entende a força de Coulomb!"
+      ]
+    },
+    "TUTORIAL_CLASSICAL_Phases": 
+    {
+      "description": "Veja como a temperatura muda a matéria de gás para líquido e depois para sólido - uma demonstração fundamental das transições de fase e das forças que mantêm os materiais unidos.",
+      "narrations": 
+      [
+        "Bem-vindo ao tutorial de Transições de Fase! Aqui vamos assistir a matéria mudar de estado - de gás para líquido e depois para sólido - apenas variando a temperatura.",
+        "Começamos com partículas a temperatura bem alta. Elas se movem rápido e se espalham por todo lado... essa é a fase gasosa: sem estrutura, só movimento aleatório.",
+        "Agora vamos abaixar a temperatura devagar. As partículas desaceleram... e algo interessante começa. Pequenos grupos mais densos aparecem - as primeiras gotículas líquidas!",
+        "Continuando o resfriamento, essas gotículas crescem e se juntam. Logo o sistema inteiro vira um líquido contínuo e uniforme. Isso é a condensação - as forças de atração entre partículas finalmente vencem a energia térmica.",
+        "Resfriamos ainda mais. O líquido começa a se organizar... surgem regiões ordenadas que vão crescendo. Esses são os primeiros núcleos de cristal se formando!",
+        "Veja o cristal se espalhar. As partículas se arrumam em um padrão regular e repetitivo - uma rede sólida. Na fase sólida, as partículas vibram no lugar, mas ficam presas em uma estrutura ordenada.",
+        "Essa é a história básica das transições de fase: a temperatura decide se a matéria é gás, líquido ou sólido. O calor dá energia para as partículas se soltarem; o resfriamento deixa as forças de atração vencerem e criarem ordem.",
+        "Todo material faz isso do seu jeito - mas o princípio é o mesmo: equilíbrio entre movimento térmico e atração intermolecular.",
+        "Incrível de ver, né? Você acabou de assistir a matéria ir do caos total para a ordem perfeita - só abaixando a temperatura. Parabéns!"
       ]
     }
   }

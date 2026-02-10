@@ -10,17 +10,19 @@ namespace sim
     {
     }
 
-    void simulation_packer::pack(fun::universe &u, const fun::molecule_structure &molecule, const glm::vec3 center, const glm::vec3 box)
+    void simulation_packer::pack(fun::universe &u, const fun::molecule_structure &molecule, 
+                const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount)
     {
-        pack(u, {molecule}, {1.0f}, center, box);
+        pack(u, {molecule}, {1.0f}, center, box, targetAmmount);
     }
 
-    void simulation_packer::pack(fun::universe &u, const std::vector<fun::molecule_structure> &molecules, const std::vector<float> &chances, const glm::vec3 center, const glm::vec3 box)
+    void simulation_packer::pack(fun::universe &u, const std::vector<fun::molecule_structure> &molecules, 
+                const std::vector<float> &chances, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount)
     {
         assert(molecules.size() == chances.size() && "Molecules size and Chances must match!");
         assert(!molecules.empty() && !chances.empty() && "Empty molecules or Chances!");
 
-        uint32_t target_ammount = getSpawnAmmount(box, molecules, chances);
+        uint32_t target_ammount = targetAmmount == 0 ? getSpawnAmmount(box, molecules, chances) : targetAmmount;
 
         std::vector<float> normalized = normalizeChances(chances);
         std::vector<float> cumulative(normalized.size());
@@ -48,7 +50,7 @@ namespace sim
 
         glm::vec3 halfBox = box * 0.5f;
 
-        glm::vec3 effectiveHalf = halfBox - maxExtent * 1.2f;
+        glm::vec3 effectiveHalf = halfBox - maxExtent * 1.3f;
 
         if (effectiveHalf.x <= 0.0f || effectiveHalf.y <= 0.0f || effectiveHalf.z <= 0.0f)
         {
@@ -79,7 +81,7 @@ namespace sim
             bool tooClose = false;
             for (const auto& prev : positions) 
             {
-                if (glm::length(spawnCenter - prev) < 2.8f) 
+                if (glm::length(spawnCenter - prev) < 2.6f) 
                 {
                     tooClose = true;
                     break;
