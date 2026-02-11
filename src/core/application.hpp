@@ -3,9 +3,9 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui-SFML.h>
 
-#include "core/window.hpp"
-#include "core/UIHandler.hpp"
-#include "core/audio.hpp"
+#include "window.hpp"
+#include "UIHandler.hpp"
+#include "audio.hpp"
 
 #include "json.hpp"
 

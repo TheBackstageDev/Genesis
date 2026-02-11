@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <cstdlib>
 
 #include <implot.h>
 
@@ -63,7 +64,8 @@ namespace core
         }
     }
 
-    std::filesystem::path sandboxSave = std::filesystem::path("scenes/saved");
+    const char* appdata = std::getenv("APPDATA");
+    const std::filesystem::path sandboxSave = std::filesystem::path(appdata) / "Genesis Molecular Dynamics Engine" / "saved";
 
     std::filesystem::path getLocalizationFile(localization lang)
     {
@@ -109,11 +111,10 @@ namespace core
 
     void UIHandler::initSavedData()
     {
-        std::filesystem::path saved_sandbox_dir = "scenes/saved";
         std::filesystem::path scenarios_dir = "scenes/scenarios";
         std::filesystem::path saved_menu_displays_dir = "scenes/menu display";
 
-        loadScenariosFromFolder(saved_sandbox_dir);
+        loadScenariosFromFolder(sandboxSave);
         loadScenariosFromFolder(scenarios_dir);
         loadScenariosFromFolder(saved_menu_displays_dir, true);
     }
@@ -243,15 +244,14 @@ namespace core
         textures.emplace("plus_icon", std::move(plus_texture));
         textures.emplace("stats_icon", std::move(stats_texture));
 
-        const std::filesystem::path saved_sandbox_dir = "scenes/saved";
         const std::filesystem::path scenarios_dir = "scenes/scenarios";
-        if (!std::filesystem::exists(saved_sandbox_dir))
+        if (!std::filesystem::exists(sandboxSave))
         {
-            std::filesystem::create_directories(saved_sandbox_dir);
+            std::filesystem::create_directories(sandboxSave);
             return;
         }
 
-        for (const auto &entry : std::filesystem::directory_iterator(saved_sandbox_dir))
+        for (const auto &entry : std::filesystem::directory_iterator(sandboxSave))
         {
             if (entry.is_regular_file() && entry.path().extension() == ".png")
             {
@@ -1545,7 +1545,7 @@ namespace core
 
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
 
-        std::string name = app_options.lang == localization::EN_US ? compound.name : compounds["compound_names"][compound.name].get<std::string>();
+        std::string name = app_options.lang == localization::EN_US ? compound.name : compounds["compound_names"].value(compound.name, compound.name);
 
         {
             ImVec2 name_size = ImGui::CalcTextSize(name.c_str());

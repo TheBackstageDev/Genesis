@@ -1114,22 +1114,13 @@ namespace sim
 
             for (auto &fut : futures)
             {
-                auto local_f = fut.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready
-                                   ? fut.get()
-                                   : std::vector<sf::Vector3f>(atoms.size(), {0, 0, 0});
+                auto local_f = fut.get();
+                
                 for (size_t i = 0; i < atoms.size(); ++i)
                 {
                     add_force(static_cast<int32_t>(i), local_f[i]);
                 }
             }
-        }
-
-        float universe::calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp)
-        {
-            auto &parami = constants::getParams(atoms[i].ZIndex);
-            auto &paramj = constants::getParams(atoms[j].ZIndex);
-
-            return -(sqrt(parami.De_sigma * paramj.De_sigma) * bo_sigma + sqrt(parami.De_pi * paramj.De_pi) * bo_pi + sqrt(parami.De_pp * paramj.De_pp) * bo_pp);
         }
 
         void universe::update(float targetTemperature, float targetPressure)
