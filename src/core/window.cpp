@@ -41,7 +41,7 @@ namespace core
         uiView.setCenter({width / 2.0f, height / 2.0f});
         uiView.setViewport(sf::FloatRect({0.f, 0.f}, {1.f, 1.f}));
 
-        if (!arial.openFromFile("src/resource/fonts/Orbitron-Regular.ttf"))
+        if (!arial.openFromFile("resource/fonts/Orbitron-Regular.ttf"))
         {
             std::cerr << "[WINDOW]: Failed to load font. letter mode may not display correctly.\n";
         }
@@ -64,24 +64,23 @@ namespace core
                 window.close();
                 return false;
             }
-if (event.is<sf::Event::Resized>())
-{
-    const auto& resizedEvent = event.getIf<sf::Event::Resized>()->size;
-    width = resizedEvent.x;
-    height = resizedEvent.y;
+            if (event.is<sf::Event::Resized>())
+            {
+                const auto& resizedEvent = event.getIf<sf::Event::Resized>()->size;
+                width = resizedEvent.x;
+                height = resizedEvent.y;
 
-    glViewport(0, 0, width, height);
+                glViewport(0, 0, width, height);
 
-    // Make the view cover the full window
-    view.setViewport(sf::Rect(sf::Vector2f(0.f, 0.f), sf::Vector2f(1.f, 1.f)));
+                // Make the view cover the full window
+                view.setViewport(sf::Rect(sf::Vector2f(0.f, 0.f), sf::Vector2f(1.f, 1.f)));
 
-    // Adjust view size to match window size directly
-    view.setSize(sf::Vector2f(width, height));
-    view.setCenter(sf::Vector2f(width / 2.f, height / 2.f));
+                // Adjust view size to match window size directly
+                view.setSize(sf::Vector2f(width, height));
+                view.setCenter(sf::Vector2f(width / 2.f, height / 2.f));
 
-    window.setView(view);
-}
-
+                window.setView(view);
+            }
         }
 
         return true;

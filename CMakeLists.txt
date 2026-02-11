@@ -7,6 +7,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include(FetchContent)
 add_subdirectory(include)
 
+set(SFML_STATIC_LIBRARIES TRUE)
+set(IMGUI_STATIC_LIBRARY TRUE)
+
 FetchContent_Declare(
     SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git

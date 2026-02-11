@@ -61,7 +61,6 @@ namespace core
 
         bool allow_previous = false;
         bool allow_compoundSelector = false;
-        bool close_not_exit = false;
     };
         
     class ScenarioHandler
@@ -192,6 +191,7 @@ namespace core
 
         bool m_narrationFinished = false;
         bool m_exitFlag = false;
+        bool m_narrationToggle = true;
         size_t m_currentStepIdx = 0;
         
         float m_timeSinceScenarioStart = 0.0;

@@ -179,7 +179,7 @@ namespace sim
 
     void rendering_engine::initShaders()
     {
-        const std::filesystem::path shader_root = "src/shaders";
+        const std::filesystem::path shader_root = "resource/shaders";
 
         initShaders(shader_root / "box.vert", shader_root / "box.frag", box_program);
         initShaders(shader_root / "color.vert", shader_root / "color.frag", atom_program);

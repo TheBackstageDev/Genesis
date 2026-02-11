@@ -9,7 +9,7 @@
 namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
-        : window(width, height, name, 50.f, 0), ui(app_options, window)
+        : window(width, height, name, 50.f, 0), ui(app_options, window, audio)
     {
         if (!ImGui::SFML::Init(window.getWindow(), false))
             throw std::runtime_error("Error! failed to init Imgui");
@@ -77,6 +77,8 @@ namespace core
         {
             throw std::runtime_error("[APPLICATION]: IMGUI SFML Couldn't update it's fonts");
         }
+
+        initSounds();
     }
 
     application::~application()
@@ -84,6 +86,23 @@ namespace core
         save();
         ImPlot::DestroyContext();
         ImGui::SFML::Shutdown(window.getWindow());
+    }
+
+    void application::initSounds()
+    {
+        const std::filesystem::path soundsPath = "resource/sounds";
+        const std::filesystem::path songsPath = soundsPath / "songs";
+        audio.preloadSound("MainMenu_Music", (songsPath / "menu_background.mp3").string());
+        audio.setLooping("MainMenu_Music", true);
+        
+        audio.preloadSound("Song", (songsPath / "nocturne20.mp3").string());
+        audio.preloadSound("Song", (songsPath / "clairedelune.mp3").string());
+        audio.preloadSound("Song", (songsPath / "gymnopedie.mp3").string());
+        audio.preloadSound("Song", (songsPath / "consolationno3.mp3").string());
+
+        audio.preloadSound("Hover_Effect", (soundsPath / "hover.mp3").string());
+        audio.preloadSound("Place_Effect", (soundsPath / "place.mp3").string());
+        audio.preloadSound("Click_Effect", (soundsPath / "click.mp3").string());
     }
 
     void application::run()
@@ -100,19 +119,50 @@ namespace core
             window.refresh();
             window.clear();
 
+            if (!app_options.background_music)
+            {
+                audio.stopSound("MainMenu_Music");
+                audio.stopSong();
+            }
+
             auto start = std::chrono::high_resolution_clock::now();
 
             if (current_state == application_state::APP_STATE_MENU)
-                ui.drawMenu();
+            {
+                ui.drawMenu();        
+            }
             if (current_state == application_state::APP_STATE_SIMULATION)
+            {
+                if (audio.songFinished() && app_options.background_music)
+                    audio.playRandomSong();
+                
                 ui.drawUniverse();
+                audio.stopSound("MainMenu_Music");
+            }
 
             auto end = std::chrono::high_resolution_clock::now();
 
             std::chrono::duration<double, std::milli> duration = end - start;
 
             //std::cout << "UI execution time: " << duration.count() << " milliseconds" << std::endl;
+
+            if (app_options.sound_effects)
+            {
+                bool isAnyItemHoveredThisFrame = ImGui::IsAnyItemHovered();
+                bool isMouseUsedThisFrame = ImGui::IsAnyMouseDown();
+
+                if (isAnyItemHoveredThisFrame && !wasAnyItemHoveredLastFrame)
+                    audio.playPreloaded("Hover_Effect");
+                    
+                audio.setGlobalVolume(app_options.master_volume);
                 
+                if (ImGui::IsAnyMouseDown() && !wasMouseActiveLastFrame)
+                    audio.playPreloaded("Click_Effect", 0.1f);
+                
+                wasMouseActiveLastFrame = isMouseUsedThisFrame;
+                wasAnyItemHoveredLastFrame = isAnyItemHoveredThisFrame;
+            }
+
             ImGui::SFML::Render(window.getWindow());
             window.display();
         }

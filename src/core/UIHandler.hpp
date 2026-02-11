@@ -11,6 +11,7 @@
 
 #include "json.hpp"
 
+#include "core/audio.hpp"
 #include "core/ScenarioHandler.hpp"
 #include "simulation/reaction_engine.hpp"
 #include "simulation/universe.hpp"
@@ -129,7 +130,7 @@ namespace core
     class UIHandler
     {
     public:
-        UIHandler(options& app_options, window_t& window);
+        UIHandler(options& app_options, window_t& window, AudioEngine& engine);
 
         void set_language(localization new_lang) { lang = new_lang; write_localization_json(lang); }
         void setDeltaTime(float dt) { m_deltaTime = dt; }
@@ -293,6 +294,7 @@ namespace core
         sim::rendering_engine m_rendering_eng;
         sim::reaction_engine m_reaction_eng;
         sim::simulation_packer m_simpacker{};
+        AudioEngine& m_audio_eng;
 
         // Callbacks
         

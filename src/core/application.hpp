@@ -5,6 +5,7 @@
 
 #include "core/window.hpp"
 #include "core/UIHandler.hpp"
+#include "core/audio.hpp"
 
 #include "json.hpp"
 
@@ -20,13 +21,17 @@ namespace core
 
         void run();
     private:
+        bool wasAnyItemHoveredLastFrame = false;
+        bool wasMouseActiveLastFrame = false;
 
         void save();
+        void initSounds();
     
         application_state current_state{application_state::APP_STATE_MENU};
         options app_options{};
     
-        core::window_t window;
+        window_t window;
+        AudioEngine audio{};
         UIHandler ui;
     };
 } // namespace core

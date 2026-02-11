@@ -20,7 +20,6 @@ namespace core
     {
         const std::filesystem::path scenario_path = "scenes/scenarios";
         Scenario SCENARIO_DYNAMICS_BrownianMotion{};
-        SCENARIO_DYNAMICS_BrownianMotion.close_not_exit = true;
         SCENARIO_DYNAMICS_BrownianMotion.file = scenario_path / "SCENARIO_DYNAMICS_browinian_motion.json";
         SCENARIO_DYNAMICS_BrownianMotion.steps =
             {
@@ -39,7 +38,6 @@ namespace core
                 }};
 
         Scenario SCENARIO_DYNAMICS_CrystalNucleation{};
-        SCENARIO_DYNAMICS_CrystalNucleation.close_not_exit = true;
         SCENARIO_DYNAMICS_CrystalNucleation.file = scenario_path / "SCENARIO_DYNAMICS_CrystalNucleation.json";
         SCENARIO_DYNAMICS_CrystalNucleation.steps =
             {
@@ -69,7 +67,6 @@ namespace core
                 }};
 
         Scenario SCENARIO_DYNAMICS_DropletFormation{};
-        SCENARIO_DYNAMICS_DropletFormation.close_not_exit = true;
         SCENARIO_DYNAMICS_DropletFormation.file = scenario_path / "SCENARIO_DYNAMICS_DropletFormation.json";
         SCENARIO_DYNAMICS_DropletFormation.steps = 
         {
@@ -119,7 +116,6 @@ namespace core
 
         Scenario SCENARIO_DYNAMICS_AtmosphereLayers{};
         SCENARIO_DYNAMICS_AtmosphereLayers.file = scenario_path / "SCENARIO_DYNAMICS_AtmosphereLayers.json";
-        SCENARIO_DYNAMICS_AtmosphereLayers.close_not_exit = true;
         SCENARIO_DYNAMICS_AtmosphereLayers.steps = 
         {
             {
@@ -973,7 +969,7 @@ namespace core
 
         auto &current_json = localization["Simulation"]["narration_menu"];
 
-        if (ImGui::Begin("ScenarioNarration", nullptr, flags))
+        if (ImGui::Begin("ScenarioNarration", &m_exitFlag, flags))
         {
             ImGui::BeginChild("NarrationContent", ImVec2(0, -80), true);
 
@@ -1034,10 +1030,9 @@ namespace core
 
             std::string button_next = "";
 
-            bool close = m_Scenarios[m_currentScenarioKey].close_not_exit;
             if (m_currentStepIdx >= getCurrentScenarioStepCount() - 1)
             {
-                std::string exit_str = close ? current_json["button_close"] : current_json["button_exit"];
+                std::string exit_str = current_json["button_close"];
                 button_next = exit_str.c_str();
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 0.8f)); // red
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 0.9f));
@@ -1058,8 +1053,6 @@ namespace core
                 else
                 {
                     clear();
-                    if (!close)
-                        m_exitFlag = true;
                 }
             }
 

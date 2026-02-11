@@ -79,8 +79,8 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t &window)
-        : app_options(app_options), m_window(window), m_rendering_eng(window),
+    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine& engine)
+        : app_options(app_options), m_window(window), m_rendering_eng(window), m_audio_eng(engine),
           m_scenarioHandler(compound_presets, m_simpacker)
     {
         write_localization_json(lang);
@@ -540,9 +540,18 @@ namespace core
             display_universe->clear();
             m_playingVideo = false;
             m_replaySpeed = 100.0f;
+
+            m_audio_eng.stopSound("MainMenu_Music");
+            m_audio_eng.playRandomSong();
         }
         else
+        {
             drawMenuBackgroundDisplay();
+            m_audio_eng.stopSong();
+
+            if (app_options.background_music)
+                m_audio_eng.playPreloaded("MainMenu_Music");
+        }
     }
 
     constexpr float padding = 20.0f;
@@ -1062,7 +1071,6 @@ namespace core
                 {
                     ball_and_stick.c_str(),
                     licorice.c_str(),
-                    hyper_balls.c_str(),
                     space_filling.c_str()};
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
@@ -1075,7 +1083,7 @@ namespace core
         }
         if (ImGui::BeginTabItem(options["tab_audio"].get<std::string>().c_str()))
         {
-            ImGui::SliderFloat(options["tab_audio_master"].get<std::string>().c_str(), &app_options.master_volume, 0.0f, 1.0f, "%.1f");
+            ImGui::SliderFloat(options["tab_audio_master"].get<std::string>().c_str(), &app_options.master_volume, 0.0f, 1.0f, "%.2f");
             ImGui::Checkbox(options["tab_audio_effects"].get<std::string>().c_str(), &app_options.sound_effects);
             ImGui::Checkbox(options["tab_audio_background"].get<std::string>().c_str(), &app_options.background_music);
 
@@ -1173,8 +1181,8 @@ namespace core
             {
                 float ke = simulation_universe->calculateKineticEnergy() / 1000.f;
                 ImGui::Text("%s: %.2e kJ", energy_json["kinetic_energy"].get<std::string>().c_str(), ke);
-                ImGui::Text("%s: N/A", energy_json["potential_energy"].get<std::string>().c_str());
-                ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
+                //ImGui::Text("%s: N/A", energy_json["potential_energy"].get<std::string>().c_str());
+                //ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
             }
 
             if (ImGui::CollapsingHeader(graph_json["title"].get<std::string>().c_str())) {
@@ -1476,6 +1484,9 @@ namespace core
         if (ImGui::IsKeyPressed(ImGuiKey_G) && !ghostColliding)
         {
             simulation_universe->createMolecule(m_currentSelectedCompound.structure, sf::Vector3f(cam.target.x, cam.target.y, cam.target.z));
+
+            if (app_options.sound_effects)
+                m_audio_eng.playPreloaded("Place_Effect", 0.1f);
 
             if (!ImGui::IsKeyDown(ImGuiKey_LeftShift))
             {

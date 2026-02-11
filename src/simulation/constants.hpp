@@ -624,45 +624,6 @@ namespace constants
         }
     }
 
-    struct ReaxParams 
-    {
-        float p_boc1, p_boc2, p_boc3, p_boc4, p_boc5;  // For corrections
-        float p_bo1, p_bo2, p_bo3, p_bo4, p_bo5, p_bo6;  // Exponents for sigma/pi/pp
-        float p_be1 = 0.f, p_be2 = 10.f;
-        float r0_sigma, r0_pi, r0_pp;  // Equilibrium distances
-        float De_sigma, De_pi, De_pp;  // Dissociation energies
-
-        float gamma;      // shielding (Å⁻¹)
-        float r_vdw;      // van der Waals radius (Å)
-        float D_vdw;     // van der Waals depth (kcal/mol)
-    };
-
-    struct PairReaxParams 
-    {
-        float De_sigma, De_pi, De_pp;
-    };
-
-    static std::map<uint8_t, ReaxParams> reaxParams;
-
-    static ReaxParams& getParams(uint8_t Z)
-    {
-        if (!reaxParams.count(Z))
-            return reaxParams[6];
-
-        return reaxParams[Z];
-    }
-
-    static PairReaxParams getPairReaxParams(uint8_t Zi, uint8_t Zj) 
-    {
-        const auto& pi = constants::getParams(Zi);
-        const auto& pj = constants::getParams(Zj);
-        PairReaxParams p;
-        p.De_sigma = std::sqrt(pi.De_sigma * pj.De_sigma);
-        p.De_pi    = std::sqrt(pi.De_pi    * pj.De_pi);
-        p.De_pp    = std::sqrt(pi.De_pp    * pj.De_pp);
-        return p;
-    }
-
     inline uint8_t getUsualBonds(uint8_t ZIndex)
     {
         if (ZIndex == 1)  return 1; // H
@@ -720,6 +681,22 @@ namespace constants
         return (getValenceElectrons(ZIndex) - BO) / 2;
     }
 
+    inline uint32_t lonePairs(uint8_t ZIndex, const std::vector<sim::fun::BondType>& types)
+    {
+        const uint32_t valence = getValenceElectrons(ZIndex);
+
+        uint32_t electrons_in_bonds = 0;
+        for (const auto& t : types)
+            electrons_in_bonds += static_cast<uint32_t>(t);
+
+        int32_t lone_pair_electrons = static_cast<int32_t>(valence) - static_cast<int32_t>(electrons_in_bonds);
+
+        if (lone_pair_electrons <= 0)
+            return 0;
+
+        return static_cast<uint32_t>(lone_pair_electrons / 2);
+    }
+
     inline float getAngles(uint8_t centralZIndex, const std::vector<uint8_t> &neighborZs, const std::vector<sim::fun::BondType> &types, bool carborane)
     {
         const size_t bond_count = types.size();
@@ -740,13 +717,8 @@ namespace constants
         uint32_t electrons_in_bonds = 0;
         for (const auto& t : types) 
             electrons_in_bonds += static_cast<uint32_t>(t);
-
-        const uint32_t valence = getValenceElectrons(centralZIndex);
-        const int32_t lone_pair_electrons = valence - electrons_in_bonds;
-        if (lone_pair_electrons < 0) 
-            return 0.0f;
         
-        const uint32_t lone_pairs = lone_pair_electrons / 2;
+        const uint32_t lone_pairs = lonePairs(centralZIndex, types);
         const uint32_t total_domains = domains_from_bonds + lone_pairs;
 
         float ideal_angle = 0.0f;
