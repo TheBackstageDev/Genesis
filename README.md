@@ -43,7 +43,7 @@ Planned for future versions:
 - Better performance & larger simulations
 - Web version
 
-## Feedback & contributionsp
+## Feedback & contributions
 
 I’d love to hear what you think!  
 - Bugs? Weird behavior? -> open an issue  
