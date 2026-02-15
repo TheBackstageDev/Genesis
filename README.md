@@ -15,7 +15,7 @@ https://github.com/TheBackstageDev/Genesis
 ## How to run
 
 **Windows**
-1. Download the latest release from itch.io: https://thebackstagedevreal.itch.io/genesis-engine
+1. Download the latest release from itch.io: https://thebackstagedevreal.itch.io/genesis-engine or from the release tab in github
 2. Run the installer  
 3. Launch the program from Start Menu or Desktop
 
@@ -43,7 +43,7 @@ Planned for future versions:
 - Better performance & larger simulations
 - Web version
 
-## Feedback & contributionsp
+## Feedback & contributions
 
 I’d love to hear what you think!  
 - Bugs? Weird behavior? -> open an issue  
