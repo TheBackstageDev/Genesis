@@ -32,6 +32,7 @@ namespace sim
         void universe::draw(sf::RenderTarget &target, rendering_info info)
         {
             rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions,
+                                               .velocities = data.velocities,
                                                .q = data.q,
                                                .atoms = atoms,
                                                .bonds = bonds,
@@ -233,8 +234,6 @@ namespace sim
 
                 angles.emplace_back(std::move(angle));
             }
-
-            rings.insert(rings.end(), structure.rings_aromatic.begin(), structure.rings_aromatic.end());
 
             nMolecule.angleBegin = baseAngle;
             nMolecule.angleCount = structure.angles.size();
@@ -462,7 +461,7 @@ namespace sim
             return potential;
         }
 
-        sf::Vector3f universe::ljForce(uint32_t i, uint32_t j)
+        glm::vec3 universe::ljForce(uint32_t i, uint32_t j)
         {
             const atom &a1 = atoms[i];
             const atom &a2 = atoms[j];
@@ -489,10 +488,10 @@ namespace sim
 
                 float force_mag = 24.0f * epsilon * inv_r2 * (2.0f * sigma12 * inv_r12 - sigma6 * inv_r6);
 
-                return force_mag * dr_vec;
+                return force_mag * glm::vec3(dr_vec.x, dr_vec.y, dr_vec.z);
             }
 
-            return sf::Vector3f{0.f, 0.f, 0.f};
+            return glm::vec3{0.f, 0.f, 0.f};
         }
 
         // Wolf method
@@ -514,9 +513,9 @@ namespace sim
             return force;
         }
 
-        sf::Vector3f universe::coulombForce(uint32_t i, uint32_t j, sf::Vector3f &dr_vec)
+        glm::vec3 universe::coulombForce(uint32_t i, uint32_t j, glm::vec3 &dr_vec)
         {
-            float dr = dr_vec.length();
+            float dr = glm::length(dr_vec);
 
             if (dr < EPSILON || dr > COULOMB_CUTOFF)
                 return {0.f, 0.f, 0.f};
@@ -552,196 +551,88 @@ namespace sim
             return phi;
         }
 
-        std::vector<sf::Vector3f> universe::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz)
+        std::vector<glm::vec3> universe::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
         {
             float local_virial = 0.f;
 
-            int32_t cellID = getCellID(ix, iy, iz);
-            const auto &cell = cells[cellID];
-            thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
+            int32_t cellID = universe_grid.cellToIndex(ix, iy, iz);
+
+            thread_local std::vector<glm::vec3> local_forces(atoms.size(), {0, 0, 0});
 
             if (local_forces.size() != atoms.size())
                 local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
-            else
-                std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
 
-            for (int32_t ii = 0; ii < cell.size(); ++ii)
+            std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0, 0, 0});
+
+            universe_grid.foreach(cellID, [&](const uint32_t& i)
             {
-                const int32_t i = cell[ii];
-
-                for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
+                universe_grid.foreach(cellID, [&](const uint32_t& j)
                 {
-                    const int32_t j = cell[jj];
+                    if (j <= i)
+                        return;
+
                     sf::Vector3f dr = minImageVec(pos(j) - pos(i));
+                    glm::vec3 dr_g(dr.x, dr.y, dr.z);
 
-                    float r = dr.length();
-                    if (r > CELL_CUTOFF)
-                        continue;
+                    if (areBonded(i, j))
+                        return;
 
-                    if (areNearNeighbours(i, j, 2))
-                        continue;
+                    glm::vec3 cForce = coulombForce(i, j, dr_g);
+                    glm::vec3 lForce = ljForce(i, j);
 
-                    sf::Vector3f cForce = coulombForce(i, j, dr);
-                    sf::Vector3f lForce = ljForce(i, j);
-
-                    sf::Vector3f total_force = cForce + lForce;
+                    glm::vec3 total_force = cForce + lForce;
                     local_forces[i] += total_force;
                     local_forces[j] -= total_force;
 
                     local_virial += dr.x * total_force.x +
                                     dr.y * total_force.y +
                                     dr.z * total_force.z;
-                }
-            }
+                }, atom_start + 1);
 
-            for (int32_t dx = -1; dx <= 1; ++dx)
-                for (int32_t dy = -1; dy <= 1; ++dy)
-                    for (int32_t dz = -1; dz <= 1; ++dz)
+                for (int32_t dx = -1; dx <= 1; ++dx)
+                    for (int32_t dy = -1; dy <= 1; ++dy)
                     {
-                        if (dx == 0 && dy == 0 && dz == 0)
-                            continue;
-
-                        int32_t n_ix = ix + dx;
-                        int32_t n_iy = iy + dy;
-                        int32_t n_iz = iz + dz;
-                        int32_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
-
-                        if (neighbor_id == cellID)
-                            continue;
-
-                        const auto &neighbor_cell = cells[neighbor_id];
-
-                        for (int32_t ii = 0; ii < cell.size(); ++ii)
+                        for (int32_t dz = -1; dz <= 1; ++dz)
                         {
-                            int32_t i = cell[ii];
+                            if (dx == 0 && dy == 0 && dz == 0) continue;
 
-                            for (int32_t jj = 0; jj < neighbor_cell.size(); ++jj)
+                            int32_t n_ix = ix + dx;
+                            int32_t n_iy = iy + dy;
+                            int32_t n_iz = iz + dz;
+
+                            n_ix = (n_ix % universe_grid.gridDimensions.x + universe_grid.gridDimensions.x) % universe_grid.gridDimensions.x;
+                            n_iy = (n_iy % universe_grid.gridDimensions.y + universe_grid.gridDimensions.y) % universe_grid.gridDimensions.y;
+                            n_iz = (n_iz % universe_grid.gridDimensions.z + universe_grid.gridDimensions.z) % universe_grid.gridDimensions.z;
+
+                            int32_t neighbor_id = universe_grid.cellToIndex(n_ix, n_iy, n_iz);
+
+                            if (!wall_collision && !roof_floor_collision && neighbor_id < -1) continue;
+
+                            universe_grid.foreach(neighbor_id, [&](const uint32_t& j)
                             {
-                                int32_t j = neighbor_cell[jj];
-
                                 if (j <= i)
-                                    continue;
+                                    return;
 
                                 sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                float r = dr.length();
+                                glm::vec3 dr_g(dr.x, dr.y, dr.z);
 
-                                if (r > CELL_CUTOFF)
-                                    continue;
+                                if (areBonded(i, j))
+                                    return;
 
-                                if (areNearNeighbours(i, j, 2))
-                                    continue;
+                                glm::vec3 cForce = coulombForce(i, j, dr_g);
+                                glm::vec3 lForce = ljForce(i, j);
 
-                                sf::Vector3f cForce = coulombForce(i, j, dr);
-                                sf::Vector3f lForce = ljForce(i, j);
-
-                                sf::Vector3f total_force = cForce + lForce;
+                                glm::vec3 total_force = cForce + lForce;
                                 local_forces[i] += total_force;
                                 local_forces[j] -= total_force;
 
                                 local_virial += dr.x * total_force.x +
                                                 dr.y * total_force.y +
                                                 dr.z * total_force.z;
-                            }
+                            }, atom_start, atom_end);
                         }
                     }
-
-            total_virial.fetch_add(local_virial, std::memory_order_relaxed);
-            return local_forces;
-        }
-
-        std::vector<sf::Vector3f> universe::processPartialCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
-        {
-            float local_virial = 0.f;
-
-            int32_t cellID = getCellID(ix, iy, iz);
-            const auto &cell = cells[cellID];
-            thread_local std::vector<sf::Vector3f> local_forces(atoms.size(), {0, 0, 0});
-
-            if (local_forces.size() != atoms.size())
-                local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
-
-            std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
-
-            for (int32_t ii = atom_start; ii < atom_end; ++ii)
-            {
-                int32_t i = cell[ii];
-
-                for (int32_t jj = ii + 1; jj < cell.size(); ++jj)
-                {
-                    int32_t j = cell[jj];
-
-                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-
-                    float r = dr.length();
-                    if (r > CELL_CUTOFF)
-                        continue;
-
-                    if (areBonded(i, j))
-                        continue;
-
-                    sf::Vector3f cForce = coulombForce(i, j, dr);
-                    sf::Vector3f lForce = ljForce(i, j);
-
-                    sf::Vector3f total_force = cForce + lForce;
-                    local_forces[i] += total_force;
-                    local_forces[j] -= total_force;
-
-                    local_virial += dr.x * total_force.x +
-                                    dr.y * total_force.y +
-                                    dr.z * total_force.z;
-                }
-
-                for (int32_t dx = -1; dx <= 1; ++dx)
-                    for (int32_t dy = -1; dy <= 1; ++dy)
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                        {
-                            if (dx == 0 && dy == 0 && dz == 0)
-                                continue;
-
-                            int32_t n_ix = ix + dx;
-                            int32_t n_iy = iy + dy;
-                            int32_t n_iz = iz + dz;
-                            int32_t neighbor_id = getCellID(n_ix, n_iy, n_iz);
-
-                            if (neighbor_id == cellID)
-                                continue;
-
-                            const auto &neighbor_cell = cells[neighbor_id];
-
-                            for (int32_t ii = atom_start; ii < atom_end; ++ii)
-                            {
-                                int32_t i = cell[ii];
-
-                                for (int32_t jj = 0; jj < neighbor_cell.size(); ++jj)
-                                {
-                                    int32_t j = neighbor_cell[jj];
-
-                                    if (j <= i)
-                                        continue;
-
-                                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                    float r = dr.length();
-
-                                    if (r > CELL_CUTOFF)
-                                        continue;
-
-                                    if (areBonded(i, j))
-                                        continue;
-
-                                    sf::Vector3f cForce = coulombForce(i, j, dr);
-                                    sf::Vector3f lForce = ljForce(i, j);
-
-                                    sf::Vector3f total_force = cForce + lForce;
-                                    local_forces[i] += total_force;
-                                    local_forces[j] -= total_force;
-
-                                    local_virial += dr.x * total_force.x +
-                                                    dr.y * total_force.y +
-                                                    dr.z * total_force.z;
-                                }
-                            }
-                        }
-            }
+            }, atom_start, atom_end);
 
             total_virial.fetch_add(local_virial, std::memory_order_relaxed);
             return local_forces;
@@ -992,8 +883,10 @@ namespace sim
 
         void universe::calcUnbondedForcesParallel()
         {
+            const size_t cells = universe_grid.cellOffsets.size();
             const int32_t n_threads = std::thread::hardware_concurrency();
-            const int32_t threads_per_top = cells.size() < 9 ? n_threads : std::floor(static_cast<double>(n_threads / 2)); // how many threads will run on cells with lots of work
+            //const int32_t n_threads = 1;
+            const int32_t threads_per_top = cells < 9 ? n_threads : std::max(1u, static_cast<uint32_t>(std::floor(static_cast<double>(n_threads / 2)))); // how many threads will run on cells with lots of work
             constexpr int32_t subdivide_top = 4;                                                                           // how many of the top cells to subdivide
 
             struct task
@@ -1017,9 +910,11 @@ namespace sim
 
             std::set<cell_work> sorted_cells;
 
-            for (int32_t c = 0; c < cells.size(); ++c)
+            for (int32_t c = 0; c < cells; ++c)
             {
-                uint32_t n = cells[c].size();
+                uint32_t offset = universe_grid.cellOffsets[c];
+                uint32_t n = universe_grid.particleIndices[offset];
+
                 if (n == 0)
                     continue;
 
@@ -1032,7 +927,8 @@ namespace sim
             for (const auto &cw : sorted_cells)
             {
                 int32_t c = cw.cell_idx;
-                uint32_t n = cells[c].size();
+                uint32_t offset = universe_grid.cellOffsets[c];
+                uint32_t n = universe_grid.particleIndices[offset];
 
                 if (rank < subdivide_top)
                 {
@@ -1056,25 +952,26 @@ namespace sim
                 ++rank;
             }
 
-            auto worker = [this](const std::vector<task> &my_tasks) -> std::vector<sf::Vector3f>
+            auto worker = [this](const std::vector<task> &my_tasks) -> std::vector<glm::vec3>
             {
-                std::vector<sf::Vector3f> thread_forces(atoms.size(), {0, 0, 0});
+                std::vector<glm::vec3> thread_forces(atoms.size(), {0, 0, 0});
 
                 for (auto &t : my_tasks)
                 {
-                    int32_t iz = t.cell_idx % cz;
-                    int32_t iy = (t.cell_idx / cz) % cy;
-                    int32_t ix = t.cell_idx / (cz * cy);
+                    glm::ivec3 cell = universe_grid.indexToCell(t.cell_idx);
 
-                    std::vector<sf::Vector3f> cell_forces;
+                    uint32_t offset = universe_grid.cellOffsets[t.cell_idx];
+                    uint32_t n = universe_grid.particleIndices[offset];
+
+                    std::vector<glm::vec3> cell_forces;
 
                     if (t.atom_end < 0)
                     {
-                        cell_forces = processCellUnbonded(ix, iy, iz);
+                        cell_forces = processCellUnbonded(cell.x, cell.y, cell.z, 0, universe_grid.particleIndices[n]);
                     }
                     else
                     {
-                        cell_forces = processPartialCellUnbonded(ix, iy, iz, t.atom_start, t.atom_end);
+                        cell_forces = processCellUnbonded(cell.x, cell.y, cell.z, t.atom_start, t.atom_end);
                     }
 
                     for (size_t i = 0; i < atoms.size(); ++i)
@@ -1098,7 +995,7 @@ namespace sim
                 thread_load[t] += task.work;
             }
 
-            std::vector<std::future<std::vector<sf::Vector3f>>> futures;
+            std::vector<std::future<std::vector<glm::vec3>>> futures;
             futures.reserve(n_used_threads);
 
             for (int32_t t = 0; t < n_used_threads; ++t)
@@ -1117,9 +1014,7 @@ namespace sim
                 auto local_f = fut.get();
                 
                 for (size_t i = 0; i < atoms.size(); ++i)
-                {
-                    add_force(static_cast<int32_t>(i), local_f[i]);
-                }
+                    data.forces[i] += local_f[i];
             }
         }
 
@@ -1143,6 +1038,21 @@ namespace sim
 
             for (int32_t i = 0; i < N; ++i)
             {
+                for (int32_t w = 0; w < wall_charges.size() && f_wallCharges; ++w)
+                {
+                    const float& wall_q = wall_charges[w];
+                    if (wall_q == 0.f) continue;
+         
+                    glm::vec3 force = data.q[i] * wall_q * wall_directions[w];
+                    data.forces[i] += force;
+                }
+
+                if (f_magneticField)
+                {
+                    glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], magnetic_strength);
+                    data.forces[i] += force;
+                }
+                            
                 sf::Vector3f accel = force(i) / atoms[i].mass;
                 add_vel(i, accel * (0.5f * dt));
 
@@ -1164,6 +1074,21 @@ namespace sim
 
             for (int32_t i = 0; i < N; ++i)
             {
+                for (int32_t w = 0; w < wall_charges.size() && f_wallCharges; ++w)
+                {
+                    const float& wall_q = wall_charges[w];
+                    if (wall_q == 0.f) continue;
+         
+                    glm::vec3 force = data.q[i] * wall_q * wall_directions[w];
+                    data.forces[i] += force;
+                }
+
+                if (f_magneticField)
+                {
+                    glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], magnetic_strength);
+                    data.forces[i] += force;
+                }
+
                 sf::Vector3f accel = force(i) / atoms[i].mass;
                 add_vel(i, accel * (0.5f * dt));
 
@@ -1171,7 +1096,8 @@ namespace sim
                     add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * dt));
             }
 
-            buildCells();
+            if (timeStep % GRID_REBUILD == 0)
+                universe_grid.rebuild(data.positions, box, CELL_CUTOFF);
 
             ++timeStep;
             m_accumulatedTime += dt;
@@ -1262,45 +1188,6 @@ namespace sim
                 kinetic_energy += 0.5f * atoms[i].mass * vel(i).lengthSquared();
 
             return kinetic_energy;
-        }
-
-        void universe::buildCells()
-        {
-            const float cutoff = CELL_CUTOFF;
-            if ((cutoff - box.x) > EPSILON || timeStep == 0)
-            {
-                cx = static_cast<int32_t>(std::ceil(cutoff / box.x));
-                cy = static_cast<int32_t>(std::ceil(cutoff / box.y));
-                cz = static_cast<int32_t>(std::ceil(cutoff / box.z));
-            }
-
-            int32_t ncells = cx * cy * cz;
-            if (cells.size() != ncells)
-                cells.assign(ncells, {});
-            else
-                for (auto &c : cells)
-                    c.clear();
-
-            const float inv = 1.0f / box.x;
-
-            for (int32_t i = 0; i < atoms.size(); ++i)
-            {
-                sf::Vector3f p = pos(i);
-                p.x -= cutoff * std::floor(p.x / cutoff);
-                p.y -= cutoff * std::floor(p.y / cutoff);
-                p.z -= cutoff * std::floor(p.z / cutoff);
-
-                int32_t ix = static_cast<int32_t>(p.x * inv);
-                int32_t iy = static_cast<int32_t>(p.y * inv);
-                int32_t iz = static_cast<int32_t>(p.z * inv);
-
-                ix = std::clamp(ix, 0, (int32_t)cx - 1);
-                iy = std::clamp(iy, 0, (int32_t)cy - 1);
-                iz = std::clamp(iz, 0, (int32_t)cz - 1);
-
-                int32_t id = static_cast<int32_t>(ix) + cx * (static_cast<int32_t>(iy) + cy * static_cast<int32_t>(iz));
-                cells[id].emplace_back(i);
-            }
         }
 
         float universe::calculateAtomTemperature(int32_t i)

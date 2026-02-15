@@ -31,11 +31,18 @@
 
       "render_modes":
       {
-        "ball_and_stick": "Bola e Palito",
+        "ball_and_stick": "Bola e Palito", 
         "hyper_balls": "Hiper Bolas",
         "letter_and_stick": "Letra e Palito",
         "licorice": "Licorice",
         "space_filling": "Preenchedor de Espaço"
+      },
+
+      "color_modes":
+      {
+        "color": "Cor",
+        "velocity": "Velocidade",
+        "charge": "Carga"
       }
     },
 
@@ -180,6 +187,7 @@
       "Phosphoric Acid": "Ácido fosfórico",
       "Decane": "Decano",
       "Ammonia": "Amônia",
+      "Sodium Dodecyl Sulfate": "Dodecil sulfato de sódio",
       "Uracil": "Uracila",
       "Adenine": "Adenina",
       "Cytosine": "Citosina",
@@ -199,6 +207,8 @@
       "Oleic Acid": "Ácido Oleico",
       "Cholesterol": "Colesterol",
       "Diamond": "Diamante",
+      "Citric Acid": "Ácido Cítrico",
+      "Sodium Hypochlorite": "Hipoclórito de Sódio",
       "Paracetamol": "Paracetamol",
       "Heme A": "Grupo Heme A",
       "DPPC": "DPPC",
@@ -244,6 +254,7 @@
       "Nitroglycerin": "A nitroglicerina (C3H5N3O9) é um composto orgânico pertencente à classe dos ésteres de nitrato, formado pela esterificação do glicerol com ácido nítrico. Apresenta-se como um líquido oleoso, incolor a amarelado, altamente explosivo e sensível a choque e calor. É utilizada principalmente na fabricação de explosivos, como a dinamite, e também possui aplicações médicas em baixas doses como vasodilatador no tratamento de doenças cardíacas. Devido à sua instabilidade, requer armazenamento e manuseio extremamente cuidadosos.",
       "Glycerol": "O glicerol (C3H8O3), também conhecido como glicerina, é um álcool trihidroxílico composto por três átomos de carbono, oito de hidrogênio e três grupos hidroxila (-OH). Apresenta-se como um líquido viscoso, incolor, inodoro e de sabor adocicado. É higroscópico e miscível em água. O glicerol é amplamente utilizado na indústria farmacêutica e cosmética como umectante, na fabricação de explosivos como a nitroglicerina, em alimentos como aditivo e na produção de resinas e plásticos.",
       "Silicon Dioxide": "O dióxido de silício (SiO2), também conhecido como sílica, é um composto inorgânico formado por átomos de silício e oxigênio em proporção 1:2. Apresenta-se principalmente como um sólido cristalino, sendo o principal componente do quartzo e de muitas rochas e areias. É insolúvel em água e quimicamente estável. O dióxido de silício é amplamente utilizado na fabricação de vidro, cerâmica, cimento, semicondutores e como aditivo alimentar (antiaglomerante).",
+      "Sodium Dodecyl Sulfate": "O dodecil sulfato de sódio (C12H25NaO4S), também conhecido pela sigla SDS ou lauril sulfato de sódio, é um surfactante aniônico amplamente utilizado. Apresenta-se como um pó ou pasta branca, solúvel em água, capaz de reduzir a tensão superficial e formar espuma. É empregado em detergentes, shampoos, produtos de limpeza e em laboratórios de biologia molecular, especialmente em eletroforese de proteínas.",
       "Deoxyribose": "A desoxirribose (C5H10O4) é um monossacarídeo da classe das pentoses, semelhante à ribose, mas com a ausência de um átomo de oxigênio no carbono 2'. É o açúcar fundamental do DNA, formando a estrutura da desoxirribose-fosfato que compõe os nucleótidos. Apresenta-se como um sólido cristalino, solúvel em água, e é essencial para a estabilidade e função do DNA.",
       "Beta-D-Ribose": "A Beta-D-ribose (C5H10O5) é um monossacarídeo da classe das pentoses, com cinco átomos de carbono e um grupo aldeído. É um açúcar essencial presente no RNA, formando parte da estrutura da ribose-fosfato que compõe os nucleótidos. Apresenta-se como um sólido cristalino, altamente solúvel em água, desempenhando papel fundamental no metabolismo celular e na síntese de ácidos nucleicos.",
       "Ethane": "O etano (C2H6) é um hidrocarboneto saturado da série dos alcanos, composto por dois átomos de carbono ligados por ligação simples e cercados por seis átomos de hidrogênio. É um gás incolor e inodoro em condições padrão e ocorre naturalmente no petróleo e no gás natural.",
@@ -252,7 +263,9 @@
       "Ethanol": "O etanol (C2H5OH) é um composto orgânico constituído por dois átomos de carbono, seis de hidrogênio e um de oxigênio, classificado como um álcool simples. É um líquido volátil, inflamável, com odor característico, amplamente usado como solvente, combustível e na produção de bebidas alcoólicas.",
       "Sodium Bicarbonate": "O bicarbonato de sódio (NaHCO3), também conhecido como sal de cozinha leve ou simplesmente bicarbonato, é um composto iônico formado por íons sódio (Na+) e bicarbonato (HCO3-). Apresenta-se como um pó branco cristalino, solúvel em água e de sabor levemente alcalino. É amplamente utilizado como agente fermentador em panificação, neutralizador de ácidos, produto de limpeza doméstico e em aplicações médicas para aliviar a acidez estomacal.",
       "Phosphoric Acid": "O ácido fosfórico (H3PO4) é um composto inorgânico pertencente à classe dos oxiácidos do fósforo. Apresenta-se como um sólido cristalino ou solução aquosa incolor, de sabor ácido. É amplamente utilizado na indústria de fertilizantes (como fonte de fósforo), em bebidas e alimentos como acidulante, na produção de detergentes e em tratamentos de superfície metálica. É um ácido moderado, triprótico, capaz de doar três prótons em solução aquosa.",
+      "Sodium Hypobromite": "O hipobromito de sódio (NaOBr) é um composto inorgânico pertencente à família dos hipohalitos, sendo o sal de sódio do ácido hipobromoso. Apresenta-se geralmente como cristais amarelos a alaranjados, altamente solúveis em água. É um agente oxidante forte, análogo ao hipoclorito de sódio, mas menos estável, tendendo a se decompor rapidamente. É utilizado em processos químicos especializados, síntese orgânica e como intermediário em reações de oxidação.",
       "Thymine": "A timina (C5H6N2O2) é uma base nitrogenada pirimidínica encontrada no DNA. Forma pares de bases com a adenina por meio de duas ligações de hidrogênio. É essencial para a estabilidade da dupla hélice e para a correta replicação do material genético.",
+      "Citric Acid": "O ácido cítrico (C6H8O7) é um ácido orgânico fraco, pertencente à classe dos ácidos carboxílicos. É encontrado naturalmente em frutas cítricas como limão, laranja e tangerina, sendo responsável pelo sabor ácido característico. Apresenta-se como um sólido cristalino branco, altamente solúvel em água. É amplamente utilizado como conservante e acidulante em alimentos e bebidas. No metabolismo celular, desempenha papel central no ciclo do ácido cítrico (ciclo de Krebs).",
       "Cytosine": "A citosina (C4H5N3O) é uma base nitrogenada pirimidínica presente tanto no DNA quanto no RNA. Forma pares de bases com a guanina por meio de três ligações de hidrogênio. É fundamental para a codificação genética e para a regulação epigenética através da metilação.",
       "Adenine": "A adenina (C5H5N5) é uma base nitrogenada purínica presente no DNA e no RNA. Forma pares de bases com a timina no DNA e com o uracilo no RNA, por meio de duas ligações de hidrogênio. Também participa em moléculas energéticas como o ATP.",
       "Guanine": "A guanina (C5H5N5O) é uma base nitrogenada purínica presente no DNA e no RNA. Forma pares de bases com a citosina através de três ligações de hidrogênio. É essencial para a estabilidade da dupla hélice e para a fidelidade da informação genética.",
@@ -262,6 +275,7 @@
       "Cuban-cetamol": "O Cuban-cetamol é um análogo hipotético do paracetamol baseado em cubano, criado pela substituição do anel aromático de benzeno por uma estrutura cúbica de cubano. Ele combina o núcleo hidrocarboneto altamente tensionado com grupos hidroxila e acetamida, imitando as funções químicas do paracetamol.",
       "Propane": "O propano (C3H8) é um hidrocarboneto da família dos alcanos, composto por três átomos de carbono e oito de hidrogênio. É um gás incolor e inodoro em sua forma pura, mas geralmente recebe aditivos para ter cheiro característico e facilitar a detecção de vazamentos. O propano é amplamente utilizado como combustível em aquecimento, cozinhas, motores e em sistemas de gás liquefeito de petróleo (GLP). Também serve como matéria-prima na indústria química. Por ser inflamável, requer armazenamento e manuseio cuidadosos.",
       "Calcium Hydroxide": "O hidróxido de cálcio (Ca(OH)2), também conhecido como cal hidratada ou cal apagada, é um composto inorgânico formado por íons cálcio (Ca2+) e hidróxido (OH-). Apresenta-se como um sólido branco, pouco solúvel em água, mas capaz de formar uma solução alcalina chamada água de cal. É amplamente utilizado na construção civil (na preparação de argamassas e revestimentos), no tratamento de águas e esgotos, na indústria alimentícia como regulador de acidez e na agricultura para corrigir solos ácidos.",
+      "Dopamine": "A dopamina (C8H11NO2) é um neurotransmissor e hormônio da classe das catecolaminas. É sintetizada a partir da tirosina, passando pelo intermediário L-DOPA. Atua como mensageiro químico no sistema nervoso central, regulando movimento, motivação, humor, atenção e o sistema de recompensa. É metabolizada principalmente pelas enzimas monoamina oxidase (MAO) e catecol-O-metiltransferase (COMT). Alterações nos níveis de dopamina estão associadas a doenças como Parkinson, esquizofrenia e dependência química.",
       "Hydrogen Peroxide": "Hydrogen peroxide (H2O2) is a chemical compound composed of two hydrogen atoms and two oxygen atoms. It is a colorless liquid, slightly more viscous than water, with strong oxidizing properties. It is widely used as a disinfectant, bleaching agent, and in industrial processes. In dilute solutions, it is used for cleaning and medical care.",
       "Hydronium": "O íon hidrônio (H3O+) é um cátion formado quando uma molécula de água (H2O) recebe um próton (H+). É fundamental na química ácido-base, representando a forma hidratada do próton em soluções aquosas. O hidrônio é responsável pela acidez das soluções, participando de reações químicas e influenciando o pH. Embora não exista como molécula isolada em condições normais, é estabilizado pela solvatação em água e desempenha papel central em processos biológicos e químicos.",
       "Nitrogen": "O nitrogênio (N2) é uma molécula diatômica composta por dois átomos de nitrogênio unidos por uma forte ligação tripla, tornando-o quimicamente estável e inerte na maioria das condições. É um gás incolor e inodoro que constitui cerca de 78% da atmosfera terrestre.",
@@ -323,6 +337,13 @@
           "molecules": "Moléculas",
           "slider_temperature": "T Alvo (K):",
           "slider_pressure": "P Alvo (Kpa):"
+        },
+        "charge_stats":
+        {
+          "title": "Estatisticas de Cargas",
+          "wall_charge_enabled": "Cargas das Paredes Ativadas",
+          "magnetic_strength": "Força do campo magnético",
+          "magnetic_enabled": "Campo magnético ativado"
         },
         "energy_stats":
         {
@@ -477,6 +498,17 @@
         "E aqui está o resultado final: algumas gotas grandes e arredondadas. Toda a nuvem de gás dispersa se transformou em vários esferoides líquidos - tudo graças àquelas fracas atrações entre átomos neutros.",
         "É assim que os líquidos se formam no mundo real: gases condensam, gotículas se fundem e, eventualmente, surgem oceanos, lagos e chuva. As forças de van der Waals podem ser pequenas, mas moldam todo o mundo líquido ao nosso redor.",
         "Incrível de assistir, não é? Uma das transformações mais elegantes da natureza - do caos para a ordem, apenas resfriando."
+      ]
+    },
+    "SCENARIO_DYNAMICS_CrystalNucleation": 
+    {
+      "description": "Observe átomos de criptônio na fase líquida resfriando rapidamente e se organizando espontaneamente em uma pequena rede cristalina. Ordem emergindo do caos.",
+      "narrations": 
+      [
+        "Aqui temos uma pequena amostra de criptônio líquido em baixa temperatura, os átomos estão se movendo de forma desordenada.",
+        "Agora estamos resfriando cada vez mais... repare como o movimento desacelera e pequenos trechos ordenados começam a aparecer.",
+        "Veja, um minúsculo núcleo cristalino se formou! Uma vez que aparece, ele cresce rapidamente à medida que átomos próximos se juntam à estrutura ordenada.",
+        "O cristal continua a crescer até que a maior parte do líquido se transforme em um pequeno pedaço de rede sólida de criptônio.\nEsse processo é chamado **nucleação e crescimento cristalino**, é assim que todos os cristais, de flocos de neve a diamantes, começam."
       ]
     },
     "SCENARIO_DYNAMICS_Brownian_Motion":

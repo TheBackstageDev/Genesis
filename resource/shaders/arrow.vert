@@ -41,7 +41,7 @@ void main()
         (gl_VertexID & 2) - 1.0
     );
 
-    const float expansion = 5.0;
+    const float expansion = 25.0;
     vec3 quadCorner = quadCenter + vec3(uv * v_radius * expansion, 0.0);
     v_corner = quadCorner;
 

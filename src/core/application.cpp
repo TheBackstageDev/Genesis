@@ -24,6 +24,7 @@ namespace core
 
         ImPlot::CreateContext();
 
+        load();
         ui.set_language(app_options.lang);
         ui.setApplicationStateCallback([&](application_state newState)
         {
@@ -108,7 +109,7 @@ namespace core
     void application::run()
     {
         sf::Clock deltaClock;
-        while (window.isOpen())
+        while (window.isOpen() && current_state != application_state::APP_STATE_EXIT)
         {
             window.pollEvents(); 
             
@@ -171,18 +172,57 @@ namespace core
     void application::save()
     {
         nlohmann::json app_save{};
-
-        std::filesystem::path path{"src/resource"};
+        app_save["language"] = static_cast<uint32_t>(app_options.lang);
+        app_save["vsync"] = app_options.vsync;
+        app_save["fullscreen"] = app_options.fullscreen;
+        app_save["master_volume"] = app_options.master_volume;
+        app_save["sound_effects"] = app_options.sound_effects;
+        app_save["background_music"] = app_options.background_music;
+        app_save["target_fps"] = app_options.target_fps;
 
         try
         {
-            std::fstream file{path};
+            std::ofstream file{savePath / "options.json"};
+
+            if (!file.is_open())
+            {
+                std::cerr << "[Application Save]: Failed to create file: " << savePath << "\n";
+                return;
+            }
 
             file << app_save.dump();
+            file.flush();
+            file.close();
         }
         catch(const std::exception& e)
         {
             std::cerr << "[APPLICATION]: " << e.what() << '\n';
         }
+    }
+
+    void application::load()
+    {
+        if (!std::filesystem::exists(savePath / "options.json"))
+            return;
+
+        nlohmann::json app_save{};
+        std::ifstream file(savePath / "options.json", std::ios::binary);
+
+        try
+        {
+            file >> app_save;
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << "[APPLICATION]: " << e.what() << '\n';
+        }
+
+        app_options.lang = static_cast<localization>(app_save["language"]);
+        app_options.vsync = app_save["vsync"];
+        app_options.fullscreen = app_save["fullscreen"];
+        app_options.master_volume = app_save["master_volume"];
+        app_options.sound_effects = app_save["sound_effects"];
+        app_options.background_music = app_save["background_music"];
+        app_options.target_fps = app_save["target_fps"];
     }
 } // namespace core

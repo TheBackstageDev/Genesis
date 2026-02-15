@@ -22,7 +22,8 @@ namespace core
     enum class application_state
     {
         APP_STATE_MENU,
-        APP_STATE_SIMULATION
+        APP_STATE_SIMULATION,
+        APP_STATE_EXIT
     };
 
     enum class localization
@@ -107,8 +108,8 @@ namespace core
 
     struct simulation_options
     {
-        int32_t target_fps{60};
         simulation_render_mode render_mode{simulation_render_mode::BALL_AND_STICK};
+        sim::fun::color_rendering_mode color_mode{sim::fun::color_rendering_mode::COLOR};
     };
 
     struct options
@@ -236,6 +237,7 @@ namespace core
         bool optionsOpen = false;
         bool statsOpen = false;
         bool videoPlayerOpen = true;
+        bool colorModesOpen = false;
 
         bool savedSimulation = false;
 
@@ -250,8 +252,10 @@ namespace core
         
         void runUniverse();
         void drawUniverseUI();
-        void drawStatsWindow();
+
         void drawHUD();
+        void drawColorOptions();
+        void drawStatsWindow();
         void drawTimeControl();
 
         sim::fun::rendering_info getSimulationRenderingInfo(simulation_render_mode mode);

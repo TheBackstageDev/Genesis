@@ -161,6 +161,14 @@ namespace sim
             int32_t chirality;
             int8_t padding[12];
         };
+
+        enum color_rendering_mode
+        {
+            COLOR,
+            VELOCITY,
+            CHARGE,
+            COUNT
+        };
         
         struct rendering_info
         {
@@ -171,6 +179,8 @@ namespace sim
             bool universeBox = true;
             bool renderWater = true;
 
+            color_rendering_mode color_mode{color_rendering_mode::COLOR};
+
             float opacity = 1.0f;
             ImVec4 color_addition{0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -178,7 +188,7 @@ namespace sim
             bool flag_arrows = true;
             std::vector<uint32_t> highlight_indices;
             std::vector<std::pair<uint32_t, uint32_t>> highlight_bonds; // first and second are the indices of the atoms
-            std::vector<std::pair<uint32_t, uint32_t>> arrows; // first is where the arrow beings, and second is where arrow goes to
+            std::vector<std::pair<glm::vec3, glm::vec3>> arrows;
         };
 
         enum class compound_type : uint32_t
@@ -206,6 +216,7 @@ namespace sim
         struct rendering_simulation_info
         {
             std::vector<glm::vec3>& positions;
+            std::vector<glm::vec3>& velocities;
 
             std::vector<float>& q;
             std::vector<atom>& atoms;

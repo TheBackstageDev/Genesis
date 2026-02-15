@@ -221,7 +221,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -235,7 +235,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -248,7 +248,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -300,7 +300,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -313,7 +313,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -326,7 +326,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -339,7 +339,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
                         }
@@ -377,7 +377,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
                         }
@@ -390,7 +390,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
                         }
@@ -403,7 +403,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
                         }
@@ -416,7 +416,7 @@ namespace core
                 .actions = 
                 {
                     {
-                        .customAction = [&](sim::fun::universe& u)
+                        .action = [&](sim::fun::universe& u)
                         {
                             u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
                         }
@@ -525,29 +525,49 @@ namespace core
         TUTORIAL_CLASSICAL_VanDerWaals.file = scenario_path / "TUTORIAL_CLASSICAL_VDW.json";
         TUTORIAL_CLASSICAL_VanDerWaals.steps =
             {
-                {.autoAdvanceAfterNarration = true,
+                {
+                 .autoAdvanceAfterNarration = true,
                  .minDisplayTime_s = 5.0f,
                  .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
                  {
-                     u.pause();
-                     u.setTimescale(500.f);
-                     m_wantedTemperature = 2.0f;
-                 }},
-                {.actions = {
-                     /* {
-                         .special = ScenarioAction::specialScenarioAction::DRAW_ARROW,
-                         .fromAtom = 0, .toAtom = 1
-                     } */
-                 },
-                 .autoAdvanceAfterNarration = true,
-                 .minDisplayTime_s = 5.0f,
-                 .onExit = [&](sim::fun::universe &u)
-                 {
-                     u.unpause();
-                 }},
+                    u.pause();
+                    u.setTimescale(500.f);
+                    m_wantedTemperature = 2.0f;
+                 }
+                },
                 {
+                .autoAdvanceAfterNarration = true,
+                .minDisplayTime_s = 5.0f,
+                .onExit = [&](sim::fun::universe &u)
+                {
+                    u.unpause();
+                }},
+                {
+                    .actions =
+                    {
+                        {
+                            .action = [&](sim::fun::universe& u)
+                            {
+                                u.clearArrows();
+
+                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                {
+                                    glm::vec3 pos = u.getPosition(i);
+                                    glm::vec3 force = u.getForce(i);
+
+                                    float scale = 1.5f;  
+
+                                    u.createArrow(pos, pos + scale * force);
+                                }
+                            }
+                        }
+                    },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 15.0f,
+                    .onExit = [&](sim::fun::universe& u)
+                    {
+                        u.clearArrows();
+                    }
                 },
                 {
                     .autoAdvanceAfterNarration = true,
@@ -611,14 +631,36 @@ namespace core
                     .minDisplayTime_s = 10.0f,
                 },
                 {
+                    .actions =
+                    {
+                        {
+                            .action = [&](sim::fun::universe& u)
+                            {
+                                u.clearArrows();
+
+                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                {
+                                    glm::vec3 pos = u.getPosition(i);
+                                    glm::vec3 force = u.getForce(i);
+
+                                    float scale = 0.005f;  
+
+                                    u.createArrow(pos, pos + scale * force);
+                                }
+                            }
+                        }
+                    },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 15.0f,
                     .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
-                    { u.unpause(); },
+                    { 
+                        u.unpause(); 
+                    },
                     .onExit = [&](sim::fun::universe &u)
                     {
-                    u.pause();
-                    u.clear(); },
+                        u.pause();
+                        u.clear(); 
+                    },
                 },
                 {
                     .autoAdvanceAfterNarration = true,
@@ -632,11 +674,31 @@ namespace core
                     },
                 },
                 {
+                    .actions =
+                    {
+                        {
+                            .action = [&](sim::fun::universe& u)
+                            {
+                                u.clearArrows();
+
+                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                {
+                                    glm::vec3 pos = u.getPosition(i);
+                                    glm::vec3 force = u.getForce(i);
+
+                                    float scale = 0.005f;  
+
+                                    u.createArrow(pos, pos + scale * force);
+                                }
+                            }
+                        }
+                    },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
                     .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
                     {
                         u.unpause();
+                        u.clearArrows();
                     },
                 },
                 {
@@ -648,16 +710,38 @@ namespace core
                     },
                 },
                 {
+                    .actions =
+                    {
+                        {
+                            .action = [&](sim::fun::universe& u)
+                            {
+                                u.clearArrows();
+
+                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                {
+                                    glm::vec3 pos = u.getPosition(i);
+                                    glm::vec3 force = u.getForce(i);
+
+                                    float scale = 0.02f;  
+
+                                    u.createArrow(pos, pos + scale * force);
+                                }
+                            }
+                        }
+                    },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
                     .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
                     {
+                        u.setTimescale(1.f);
+                        m_wantedTemperature = 100.f;
+
                         const glm::vec3 center = u.boxSizes() * 0.5f;
 
                         const float spacing = 3.f;
-                        const int nx = 1;
-                        const int ny = 1;
-                        const int nz = 1;
+                        const int nx = 2;
+                        const int ny = 2;
+                        const int nz = 2;
 
                         for (int ix = 0; ix <= nx; ++ix)
                         {
@@ -696,6 +780,7 @@ namespace core
                     {
                         m_wantedTemperature = 350.f;
 
+                        u.clearArrows();
                         u.setTimescale(3.f);
                         m_simpacker.pack(u, compounds["Water"].structure, u.boxSizes() * 0.5f, u.boxSizes() * 0.3f, 50);
                     }
@@ -828,11 +913,6 @@ namespace core
     void ScenarioHandler::resetStepActions()
     {
         auto &step = getCurrentStep();
-
-        for (ScenarioAction &action : step.actions)
-        {
-            action.specialActionProcessed = false;
-        }
     }
 
     void ScenarioHandler::updateVisuals()
@@ -868,48 +948,8 @@ namespace core
     {
         for (ScenarioAction &action : actions)
         {
-            if (action.customAction)
-                action.customAction(*m_universe);
-
-            if (!action.specialActionProcessed)
-            {
-                executeSpecialAction(action);
-                action.specialActionProcessed = true;
-            }
-        }
-    }
-
-    void ScenarioHandler::executeSpecialAction(ScenarioAction &action)
-    {
-        using type = ScenarioAction::specialScenarioAction;
-
-        switch (action.special)
-        {
-        case type::PAUSE_SIMULATION:
-            m_universe->pause();
-            break;
-        case type::RESUME_SIMULATION:
-            m_universe->unpause();
-            break;
-        case type::HIGHLIGHT:
-        {
-            for (uint32_t &index : action.atomIndices)
-                m_universe->highlightAtom(index);
-
-            if (action.toAtom && action.fromAtom)
-                m_universe->highlightBond(action.fromAtom, action.toAtom);
-
-            break;
-        }
-        case type::DRAW_ARROW:
-        {
-            if (action.toAtom != UINT32_MAX && action.fromAtom != UINT32_MAX)
-                m_universe->createArrow(action.fromAtom, action.toAtom);
-
-            break;
-        }
-        default:
-            break;
+            if (action.action)
+                action.action(*m_universe);
         }
     }
 

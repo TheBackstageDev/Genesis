@@ -33,7 +33,7 @@ namespace core
 
         void draw(sf::Drawable& drawable) { window.draw(drawable); }
 
-        void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); glClearColor(0.02f, 0.02f, 0.08f, 1.0f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);}
+        void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); glClearColor(0.00f, 0.00f, 0.00f, 1.0f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);}
         void display() { window.display(); }
         void handleCameraInput();
 

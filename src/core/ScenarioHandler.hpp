@@ -11,29 +11,11 @@ namespace core
 {
     struct ScenarioAction
     {
-        enum class specialScenarioAction
-        {
-            NONE,
-            PAUSE_SIMULATION,
-            RESUME_SIMULATION,
-            DRAW_ARROW,
-            HIGHLIGHT
-        };
-
-        specialScenarioAction special = specialScenarioAction::NONE;
-
-        // Note: Text will be displayed on the position of an atom, if text is present and the indices are set, to either be between them or 
-        // To be on one of them;
-
-        bool specialActionProcessed = false;
         std::string text = "";
-        uint32_t fromAtom = UINT32_MAX, toAtom = UINT32_MAX; // for atom position arrows
-        uint32_t fromMolecule = UINT32_MAX, toMolecule = UINT32_MAX; // for Molecule position arrows
-        std::vector<uint32_t> atomIndices; // For Highlight Atoms
 
         float duration_s = 0.0f; // 0.0f means it'll last until something happens or it is clicked away
         int32_t simulateSteps = 0;                // if > 0, run sim N steps during this action
-        std::function<void(sim::fun::universe& universe)> customAction;
+        std::function<void(sim::fun::universe& universe)> action;
     };
 
     struct ScenarioStep
@@ -99,7 +81,6 @@ namespace core
             m_currentScenarioKey.clear();
             m_currentStepIdx = 0;
             m_stepStartTime = 0.f;
-            m_wantedTemperature = 300.f;
             m_wantedVideoPlay = false;
             m_wantedFramesPerSecond = 60.f;
             m_exitFlag = false;
@@ -145,7 +126,6 @@ namespace core
 
         void enterStep(size_t idx);
         void executeActions(std::vector<ScenarioAction>& actions);
-        void executeSpecialAction(ScenarioAction& action);
 
         void drawNarration(const std::string& narration, nlohmann::json& localization);
         void updateNarration(float dt, const std::string& narration);

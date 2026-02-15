@@ -2,6 +2,9 @@
 
 #include "fundamental_structures.hpp"
 #include "rendering_engine.hpp"
+
+#include "core/spatialgrid.hpp"
+
 #include <SFML/Graphics.hpp>
 
 #include <thread>
@@ -124,7 +127,6 @@ namespace sim
                 atoms.clear();
                 bonds.clear();
                 subsets.clear();
-                rings.clear();
 
                 angles.clear();
                 dihedral_angles.clear();
@@ -135,12 +137,17 @@ namespace sim
                 m_Arrows.clear();
             }
 
+            void clearArrows()
+            {
+                m_Arrows.clear();
+            }
+
             void pause() { m_paused = true; }
             void unpause() { m_paused = false; }
 
             void highlightAtom(uint32_t index) { m_highlightedAtoms.emplace_back(index); }
             void highlightBond(uint32_t index1, uint32_t index2) { m_highlightedBonds.emplace_back(index1, index2); }
-            void createArrow(uint32_t from, uint32_t to) { m_Arrows.emplace_back(from, to); }
+            void createArrow(glm::vec3 from, glm::vec3 to) { m_Arrows.emplace_back(from, to); }
 
             // Sets
 
@@ -166,12 +173,18 @@ namespace sim
                 data.velocities[i] += v;
             }
 
+            void setMagneticFieldEnabled(bool state) { f_magneticField = state; }
+            void setWallChargesEnabled(bool state) { f_wallCharges = state; }
+            void setMagneticFieldStrength(glm::vec3 strength) { magnetic_strength = strength; }
+            
             // Gets
             
             core::camera_t& getRenderingCamera() { return rendering_eng.camera(); }
             sim::rendering_engine& getRenderingEngine() { return rendering_eng; }
             bool isPaused() { return m_paused; }
-
+            bool& wallChargeEnabled() { return f_wallCharges; }
+            bool& magneticFieldEnabled() { return f_magneticField; }
+            
             const std::vector<atom>& getAtoms() const { return atoms; }
             std::vector<subset>& getSubsets() { return subsets; }
             int32_t numBonds() const { return bonds.size(); }
@@ -180,7 +193,11 @@ namespace sim
             float getTimescale() const { return m_Timescale; }
             float getEffectiveDT() const { return m_Timescale * FEMTOSECOND; }
             float getAccumulatedTime() const { return m_accumulatedTime; }
-            const subset& getSubset(int32_t index) { return subsets[index]; }
+
+            std::array<float, 6>& getWallCharges() { return wall_charges; }
+            glm::vec3& getMagneticFieldStrength() { return magnetic_strength; }
+
+            glm::vec3 getForce(uint32_t i) { return data.forces[i]; }
 
             float temperature() const { return temp; }
             float pressure() { return calculatePressure(); }
@@ -252,11 +269,10 @@ namespace sim
 
             float ljPot(uint32_t i, uint32_t j);
             float wolfForce(float r, float qi_qj); 
-            sf::Vector3f ljForce(uint32_t i, uint32_t j);
-            sf::Vector3f coulombForce(uint32_t i, uint32_t j, sf::Vector3f& dr_vec);
+            glm::vec3 ljForce(uint32_t i, uint32_t j);
+            glm::vec3 coulombForce(uint32_t i, uint32_t j, glm::vec3& dr_vec);
 
-            std::vector<sf::Vector3f> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz);
-            std::vector<sf::Vector3f> processPartialCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end);
+            std::vector<glm::vec3> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start = 0, int32_t atom_end = 0);
             void calcUnbondedForcesParallel();
             void calcBondedForcesParallel();
 
@@ -267,7 +283,6 @@ namespace sim
 
             // Energies
             float calculateAtomTemperature(int32_t i);
-            float calculateBondEnergy(int32_t i, int32_t j, float bo_sigma, float bo_pi, float bo_pp);
 
             float gauss_random()
             {
@@ -311,62 +326,28 @@ namespace sim
             
             std::vector<bond> bonds;
 
-            std::vector<std::vector<uint32_t>> rings; // for drawing on non-reactive mode;
-
-            // CellList
-            std::vector<std::vector<uint32_t>> cells;
-
             glm::vec3 box{20.f, 20.f, 20.f};
-            uint32_t cx = 0, cy = 0, cz = 0; // cell dimensions
 
-            void buildCells();
-            int32_t getCellID(int32_t ix, int32_t iy, int32_t iz)
-            {
-                ix = (ix % (int32_t)cx + (int32_t)cx) % (int32_t)cx;
-                iy = (iy % (int32_t)cy + (int32_t)cy) % (int32_t)cy;
-                iz = (iz % (int32_t)cz + (int32_t)cz) % (int32_t)cz;
-                return static_cast<int32_t>(ix + cx * (iy + cy * iz));
-            }
+            core::SpatialGrid universe_grid{};
+
+            void buildVerletList();
 
             std::atomic<float> total_virial{0.0f};
+            std::array<float, 6> wall_charges{0.f, 0.f, 0.f, 0.f, 0.f, 0.f}; // right, left, top, bottom, front, back
+            const std::array<glm::vec3, 6> wall_directions = 
+                {glm::vec3(1.f, 0.f, 0.f), glm::vec3(-1.f, 0.f, 0.f), 
+                 glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
+                 glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f)};
+
+            glm::vec3 magnetic_strength{0.f, 0.f, 2.0f};
+
+            bool f_wallCharges = false;
+            bool f_magneticField = false;
 
             float temp = 0;
             float pres = 0;
             float m_accumulatedTime = 0.f;
             size_t timeStep = 0;
-
-            inline bool areNearNeighbours(uint32_t i, uint32_t j, uint32_t n) const
-            {
-                if (i >= bondedBits.size() || j >= bondedBits.size()) return false;
-                if (n == 0) return i == j;
-                if (n == 1) return areBonded(i, j);
-
-                std::queue<std::pair<uint32_t,uint32_t>> q;
-                std::vector<bool> visited(bondedBits.size(), false);
-
-                q.push({i, 0});
-                visited[i] = true;
-
-                while (!q.empty()) {
-                    auto [current, depth] = q.front();
-                    q.pop();
-
-                    if (depth == n) {
-                        if (current == j) return true;
-                        continue;
-                    }
-
-                    for (uint32_t k = 0; k < bondedBits.size(); ++k) 
-                    {
-                        if (!visited[k] && areBonded(current, k)) {
-                            visited[k] = true;
-                            q.push({k, depth + 1});
-                        }
-                    }
-                }
-
-                return false;
-            }
 
             void rebuildBondTopology()
             {
@@ -412,7 +393,7 @@ namespace sim
 
             std::vector<uint32_t> m_highlightedAtoms{};
             std::vector<std::pair<uint32_t, uint32_t>> m_highlightedBonds{};
-            std::vector<std::pair<uint32_t, uint32_t>> m_Arrows{};
+            std::vector<std::pair<glm::vec3, glm::vec3>> m_Arrows{};
 
             // Logging
 

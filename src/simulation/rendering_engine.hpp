@@ -17,7 +17,7 @@
 #include <SFML/Graphics.hpp>
 
 namespace sim
-{
+{   
     class rendering_engine
     {
     public:
@@ -83,6 +83,8 @@ namespace sim
         void drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void drawBondHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void drawAtomHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+
+        glm::vec4 getAtomColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info, const uint32_t i);
 
         // Callbacks
 

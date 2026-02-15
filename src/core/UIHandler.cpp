@@ -503,9 +503,8 @@ namespace core
                 optionsOpen = !optionsOpen;
 
             if (ImGui::Button(localization_json["Menu"]["button_quit"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
-            {
-                std::exit(EXIT_SUCCESS);
-            }
+                setState(application_state::APP_STATE_EXIT);
+
             ImGui::End();
         }
 
@@ -640,7 +639,7 @@ namespace core
             simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
             savesSelectionOpen = false;
             pauseMenuOpen = false;
-            simulation_universe->unpause();
+            simulation_universe->pause();
             setState(application_state::APP_STATE_SIMULATION);
 
             resetVideoData();
@@ -822,11 +821,11 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("resource/molecules/dopaminereceptor.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {10, 10, 10}); */
+            simulation_universe->createMolecule(structure, {100, 100, 100}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -1067,17 +1066,37 @@ namespace core
             hyper_balls = options["render_modes"]["hyper_balls"].get<std::string>();
             licorice = options["render_modes"]["licorice"].get<std::string>();
 
-            const char *modes[] =
-                {
-                    ball_and_stick.c_str(),
-                    licorice.c_str(),
-                    space_filling.c_str()};
+            const char* modes[3] =
+            {
+                ball_and_stick.c_str(),
+                licorice.c_str(),
+                space_filling.c_str()
+            };
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
             if (ImGui::Combo("##render_mode", &current_mode, modes, IM_ARRAYSIZE(modes)))
                 app_options.sim_options.render_mode = static_cast<simulation_render_mode>(current_mode);
 
-            ImGui::SliderInt(options["tab_target_fps"].get<std::string>().c_str(), &app_options.sim_options.target_fps, 24, 144);
+            static std::string color = "";
+            static std::string velocity = "";
+            static std::string charge = "";
+
+            color = options["color_modes"]["color"].get<std::string>();
+            velocity = options["color_modes"]["velocity"].get<std::string>();
+            charge = options["color_modes"]["charge"].get<std::string>();
+
+            const char* colormodes[3] =
+            {
+                color.c_str(),
+                velocity.c_str(),
+                charge.c_str()
+            };
+
+            static int32_t current_color_mode = static_cast<int32_t>(app_options.sim_options.color_mode);
+            if (ImGui::Combo("##color_render_mode", &current_color_mode, colormodes, IM_ARRAYSIZE(colormodes)))
+                app_options.sim_options.color_mode = static_cast<color_rendering_mode>(current_color_mode);
+
+            ImGui::SliderInt(options["tab_target_fps"].get<std::string>().c_str(), &app_options.target_fps, 24, 144);
 
             ImGui::EndTabItem();
         }
@@ -1156,6 +1175,7 @@ namespace core
             auto &core_json = sim_ui["core_stats"];
             auto &energy_json = sim_ui["energy_stats"];
             auto &graph_json = sim_ui["graphs_stats"];
+            auto &chages_json = sim_ui["charge_stats"];
 
             std::string time_string = core_json["time"].get<std::string>().c_str();
             std::string temperature_string = core_json["temperature"].get<std::string>().c_str();
@@ -1174,6 +1194,42 @@ namespace core
                 ImGui::Text("%s:        %.2f ps", time_string.c_str(), simulation_universe->getAccumulatedTime());
                 ImGui::Text("%s:   %zu", core_json["particles"].get<std::string>().c_str(), simulation_universe->numAtoms());
                 ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
+            }
+
+            constexpr std::array<const char*, 6> wall_to_direction =
+            {
+                "+X", "-X", "+Y", "-Y", "+Z", "-Z"
+            };
+
+            // Charge Stats
+            if (ImGui::CollapsingHeader(chages_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) 
+            {
+                auto& wallCharges = simulation_universe->getWallCharges();
+                for (int32_t w = 0; w < wallCharges.size(); ++w) 
+                {
+                    ImGui::SetNextItemWidth(50.f);
+                    ImGui::PushID(w);
+                    ImGui::DragFloat(wall_to_direction[w], &wallCharges[w], 0.1f, -5.0f, 5.0f, "%.1f");
+                    ImGui::PopID();
+
+                    if (w % 2 == 0) ImGui::SameLine();
+                }
+                ImGui::Checkbox(chages_json["wall_charge_enabled"].get<std::string>().c_str(), &simulation_universe->wallChargeEnabled());
+
+                glm::vec3& magnetic_strength = simulation_universe->getMagneticFieldStrength();
+
+                ImGui::Text(chages_json["magnetic_strength"].get<std::string>().c_str());
+                
+                ImGui::SetNextItemWidth(50.f);
+                ImGui::DragFloat("X", &magnetic_strength.x, 0.1f, -5.0f, 5.0f, "%.1f");
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(50.f);
+                ImGui::DragFloat("Y", &magnetic_strength.y, 0.1f, -5.0f, 5.0f, "%.1f");
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(50.f);
+                ImGui::DragFloat("Z", &magnetic_strength.z, 0.1f, -5.0f, 5.0f, "%.1f");
+
+                ImGui::Checkbox(chages_json["magnetic_enabled"].get<std::string>().c_str(), &simulation_universe->magneticFieldEnabled());
             }
 
             // Energy stats
@@ -1284,6 +1340,17 @@ namespace core
         ImGui::EndChild();
     }
 
+    void UIHandler::drawColorOptions()
+    {
+        if (!ImGui::Begin("ColorSelection", &colorModesOpen, ImGuiWindowFlags_NoTitleBar))
+        {
+            ImGui::End();
+            return;
+        }
+
+        ImGui::End();
+    }
+
     void UIHandler::drawHUD()
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"];
@@ -1375,6 +1442,9 @@ namespace core
 
         if (compoundSelector)
             drawCompoundSelector();
+
+        if (colorModesOpen)
+            drawColorOptions();
 
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
@@ -1943,6 +2013,7 @@ namespace core
     rendering_info UIHandler::getSimulationRenderingInfo(simulation_render_mode mode)
     {
         rendering_info info{};
+        info.color_mode = app_options.sim_options.color_mode;
         info.opacity = 1.0f;
 
         if (mode == simulation_render_mode::BALL_AND_STICK)
@@ -1982,7 +2053,7 @@ namespace core
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration = end - start;
 
-        //std::cout << "Simulation execution time: " << duration.count() << " milliseconds" << std::endl;
+        std::cout << "Simulation execution time: " << duration.count() << " milliseconds" << std::endl;
 
         if (m_recordingFrames && simulation_universe->timestep())
         {
@@ -2266,7 +2337,8 @@ namespace core
                 m_scenarioHandler.clear();
 
                 if (exitDesktop)
-                    std::exit(EXIT_SUCCESS);
+                    setState(application_state::APP_STATE_EXIT);
+
                 ImGui::CloseCurrentPopup();
             }
             ImGui::PopStyleColor(2);

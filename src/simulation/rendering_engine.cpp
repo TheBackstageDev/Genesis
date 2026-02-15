@@ -246,10 +246,13 @@ namespace sim
                                  ? constants::VDW_RADII[atom.ZIndex]
                                  : constants::covalent_radius[atom.ZIndex] * 0.5f;
 
-                sf::Color col = constants::getElementColor(atom.ZIndex) + info.color_addition;
-                glm::vec4 color_norm(col.r / 255.f, col.g / 255.f, col.b / 255.f, info.opacity);
+                glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0);
+                glm::vec4 col = getAtomColor(info, sim_info, i);
 
-                instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, color_norm);
+                col += col_addition;
+                col.w = info.opacity;
+
+                instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col);
             }
         }
 
@@ -297,11 +300,15 @@ namespace sim
 
             if (sim_info.positions.size() - 1 < bond.bondedAtom || sim_info.positions.size() - 1 < bond.centralAtom) break;
 
-            sf::Color colA = constants::getElementColor(sim_info.atoms[bond.bondedAtom].ZIndex) + info.color_addition;
-            sf::Color colB = constants::getElementColor(sim_info.atoms[bond.centralAtom].ZIndex) + info.color_addition;
+            glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0);
+            glm::vec4 colA = getAtomColor(info, sim_info, bond.bondedAtom);
+            glm::vec4 colB = getAtomColor(info, sim_info, bond.centralAtom);
 
-            glm::vec4 colorA_norm(colA.r / 255.f, colA.g / 255.f, colA.b / 255.f, info.opacity);
-            glm::vec4 colorB_norm(colB.r / 255.f, colB.g / 255.f, colB.b / 255.f, info.opacity);
+            colA += col_addition;
+            colB += col_addition;
+
+            colA.w = info.opacity;
+            colB.w = info.opacity;
 
             int32_t order = static_cast<int32_t>(bond.type);
 
@@ -329,7 +336,7 @@ namespace sim
                 instances.emplace_back(
                     glm::vec4(posA, 1.0f),
                     glm::vec4(posB, 1.0f),
-                    colorA_norm, colorB_norm, bondR, radiusA, radiusB);
+                    colA, colB, bondR, radiusA, radiusB);
             }
             else
             {
@@ -346,7 +353,7 @@ namespace sim
                     instances.emplace_back(
                         glm::vec4(offsetposA, 1.0f),
                         glm::vec4(offsetposB, 1.0f),
-                        colorA_norm, colorB_norm, bondR, radiusA, radiusB);
+                        colA, colB, bondR, radiusA, radiusB);
                 }
             }
         }
@@ -397,13 +404,13 @@ namespace sim
 
         for (int32_t i = 0; i < info.arrows.size(); ++i)
         {
-            auto& atom_indices = info.arrows[i];
+            auto& positions = info.arrows[i];
 
             ArrowInstance nInstance{};
             nInstance.color = glm::vec4(0.8, 0.8, 0.8, 1.0);
-            nInstance.posA = glm::vec4(sim_info.positions[atom_indices.first], 1.0);
-            nInstance.posB = glm::vec4(sim_info.positions[atom_indices.second], 1.0);
-            nInstance.radius = 1.0f;
+            nInstance.posA = glm::vec4(positions.first, 1.0);
+            nInstance.posB = glm::vec4(positions.second, 1.0);
+            nInstance.radius = .1f;
 
             instances.emplace_back(std::move(nInstance));
         }
@@ -440,6 +447,7 @@ namespace sim
     {
         if (!info.flag_highlights)
             return;
+            
         drawAtomHighlight(target, info, sim_info);
         drawBondHighlight(target, info, sim_info);
     }
@@ -685,6 +693,46 @@ namespace sim
     {
         auto size = window.getWindow().getView().getSize();
         return cam.project(p, size.x, size.y);
+    }
+
+    glm::vec3 hsv2rgb(glm::vec3 c) 
+    {
+        glm::vec3 rgb = glm::clamp(glm::abs(glm::mod(c.x * 6.0f + glm::vec3(0,4,2), 6.0f) - 3.0f) - 1.0f,
+                                0.0f, 1.0f);
+        return c.z * glm::mix(glm::vec3(0.8f), rgb, c.y);
+    }
+
+    glm::vec4 rendering_engine::getAtomColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info, const uint32_t i)
+    {
+        const auto &atom = sim_info.atoms[i];
+        
+        sf::Color default_color = constants::getElementColor(atom.ZIndex);
+        glm::vec4 default_norm(default_color.r / 255.f, default_color.g / 255.f, default_color.b / 255.f, info.opacity);
+
+        switch(info.color_mode)
+        {
+            case fun::color_rendering_mode::COLOR:
+                return default_norm;
+            case fun::color_rendering_mode::CHARGE:
+            {
+                float t = (sim_info.q[i] + 1.0) * 0.5;
+                glm::vec3 color = glm::mix(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), t);
+
+                return glm::vec4(color, 1.0f);
+            }
+            case fun::color_rendering_mode::VELOCITY:
+            {
+                constexpr float d_velocity = 40.f;
+                float v = glm::length(sim_info.velocities[i]);
+                float t = std::clamp(v / d_velocity, 0.0f, 1.0f);
+
+                float hue = glm::mix(0.0f, 0.75f, t); 
+                glm::vec3 rgb = hsv2rgb(glm::vec3(hue, 1.0f, 1.0f)); 
+                return glm::vec4(rgb, 1.0f);
+            }
+            default:
+                return default_norm;
+        }
     }
 
     void rendering_engine::handleCamera()

@@ -37,6 +37,13 @@
         "letter_and_stick": "Letter And Stick",
         "licorice": "Licorice",
         "space_filling": "Space Filling"
+      },
+
+      "color_modes":
+      {
+        "color": "Color",
+        "velocity": "Velocity",
+        "charge": "Charge"
       }
     },
 
@@ -191,15 +198,17 @@
       "Benzene": "Benzene (C6H6) is an aromatic hydrocarbon consisting of six carbon atoms arranged in a ring with alternating double bonds, stabilized by resonance. It is a colorless, volatile liquid with a sweet odor, widely used as a precursor in the production of plastics, resins, synthetic fibers, and numerous chemical compounds.",
       "Cubane": "Cubane (C8H8) is a highly strained hydrocarbon consisting of eight carbon atoms arranged at the corners of a cube, each bonded to a hydrogen atom. Despite its extreme angle strain, it is remarkably stable under normal conditions. Cubane is a colorless crystalline solid and serves as a fascinating molecule in research, with potential applications in high-energy materials, pharmaceuticals, and advanced chemical synthesis.",
       "Cuban-cetamol": "Cuban-cetamol is a hypothetical cubane-based analogue of paracetamol, designed by replacing the aromatic benzene ring with a cubane cage. It combines the strained cubic hydrocarbon core with hydroxyl and acetamide substituents, mimicking the functional groups of paracetamol.",
-       "Pyrophosphoric Acid": "Pyrophosphoric acid (H4P2O7) is an inorganic compound belonging to the class of phosphorus oxoacids. It is formed by the condensation of two molecules of phosphoric acid with the elimination of one molecule of water. It appears as a crystalline solid or viscous solution and is a tetraprotic acid capable of donating four protons in aqueous solution. It is used in chemical synthesis, detergent formulations, and as an intermediate in phosphate production.",
+      "Pyrophosphoric Acid": "Pyrophosphoric acid (H4P2O7) is an inorganic compound belonging to the class of phosphorus oxoacids. It is formed by the condensation of two molecules of phosphoric acid with the elimination of one molecule of water. It appears as a crystalline solid or viscous solution and is a tetraprotic acid capable of donating four protons in aqueous solution. It is used in chemical synthesis, detergent formulations, and as an intermediate in phosphate production.",
       "Calcium Hydroxide": "Calcium hydroxide (Ca(OH)2), also known as slaked lime or hydrated lime, is an inorganic compound composed of calcium (Ca2+) and hydroxide (OH-) ions. It appears as a white solid, sparingly soluble in water, but capable of forming an alkaline solution known as limewater. It is widely used in construction (for mortars and plasters), in water and wastewater treatment, in the food industry as an acidity regulator, and in agriculture to neutralize acidic soils.",
-      "Hydrogen Peroxide": "O peróxido de hidrogênio (H2O2) é um composto químico formado por dois átomos de hidrogênio e dois de oxigênio. É um líquido incolor, ligeiramente mais viscoso que a água, com propriedades oxidantes fortes. É amplamente utilizado como desinfetante, agente de branqueamento e em processos industriais. Em soluções diluídas, é usado para limpeza e cuidados médicos.",
+      "Hydrogen Peroxide": "Hydrogen peroxide (H2O2) is a chemical compound made up of two hydrogen atoms and two oxygen atoms. It is a colorless liquid, slightly more viscous than water, with strong oxidizing properties. It is widely used as a disinfectant, bleaching agent, and in industrial processes. In diluted solutions, it is used for cleaning and medical care.",
       "Hydronium": "The hydronium ion (H3O+) is a cation formed when a water molecule (H2O) accepts a proton (H+). It is fundamental in acid-base chemistry, representing the hydrated form of the proton in aqueous solutions. Hydronium is responsible for the acidity of solutions, participating in chemical reactions and influencing pH. Although it does not exist as an isolated molecule under normal conditions, it is stabilized by solvation in water and plays a central role in biological and chemical processes.",
       "Propane": "Propane (C3H8) is a hydrocarbon belonging to the alkane family, composed of three carbon atoms and eight hydrogen atoms. It is a colorless and odorless gas in its pure form, but odorants are usually added to help detect leaks. Propane is widely used as a fuel for heating, cooking, engines, and in liquefied petroleum gas (LPG) systems. It also serves as a feedstock in the chemical industry. Due to its flammability, it requires careful storage and handling.",
       "Nitrogen": "Nitrogen (N2) is a diatomic molecule composed of two nitrogen atoms held together by a strong triple bond, making it chemically stable and inert under most conditions. It is a colorless, odorless gas that constitutes about 78% of Earth's atmosphere.",
       "Oxygen": "Oxygen (O2) is a diatomic molecule essential for life, composed of two oxygen atoms. It is a colorless, odorless gas that makes up about 21% of Earth's atmosphere. Oxygen is vital for cellular respiration in most organisms and supports combustion. While necessary for survival, high concentrations can be toxic, and low levels can cause hypoxia.",
       "C20 Fullerene": "C20 fullerene is the smallest fullerene, made of 20 carbon atoms in a cage-like dodecahedral structure. Its high strain makes it less stable than larger fullerenes like C60",
       "Ammonia": "Ammonia (NH3) is an inorganic compound of nitrogen and hydrogen, a colorless gas with a pungent odor. It is essential in fertilizers, serves as a building block for many chemicals, and plays a role in biological processes like protein metabolism.",
+      "Citric Acid": "Citric acid (C6H8O7) is a weak organic acid belonging to the carboxylic acid class. It occurs naturally in citrus fruits such as lemons, oranges, and tangerines, giving them their characteristic sour taste. It appears as a white crystalline solid, highly soluble in water. Citric acid is widely used as a preservative and acidulant in food and beverages, cosmetics. In cellular metabolism, it plays a central role in the citric acid cycle (Krebs cycle).",
+      "Sodium Hypobromite": "Sodium hypobromite (NaOBr) is an inorganic compound belonging to the hypohalite family, the sodium salt of hypobromous acid. It typically appears as yellow to orange crystals that are highly soluble in water. It functions as a strong oxidizing agent, analogous to sodium hypochlorite but less stable, tending to decompose readily. Sodium hypobromite is used in specialized chemical processes, organic synthesis, and as an intermediate in oxidation reactions.",
       "Formaldehyde": "Formaldehyde (CH2O) is the simplest aldehyde, a colorless, pungent gas that readily polymerizes. It is widely used in resins, disinfectants, preservatives, and as a precursor in chemical synthesis, though it is toxic and carcinogenic in high exposure.",
       "Acetic Acid": "Acetic acid (CH3COOH) is a carboxylic acid, the main component of vinegar, giving it a sour taste and pungent smell. It is a key industrial chemical used in producing plastics, solvents, and foods, and plays a role in metabolism.",
       "Pyridine": "Pyridine (C5H5N) is a heterocyclic aromatic compound containing a nitrogen atom in its ring. It is a colorless liquid with a distinctive odor, widely used as a solvent and chemical intermediate. Pyridine plays a key role in the synthesis of pharmaceuticals, agrochemicals, and vitamins, and serves as a base in many organic reactions due to its ability to accept protons.",
@@ -209,6 +218,8 @@
       "Cyclohexane": "Cyclohexane (C6H12) is a saturated cyclic hydrocarbon consisting of six carbon atoms arranged in a ring, each bonded to two hydrogen atoms. It is a colorless, flammable liquid with a mild odor, commonly used as a solvent and in the production of nylon and other industrial chemicals.",
       "Decane": "Decane (C10H22) is a hydrocarbon belonging to the alkane family, composed of ten carbon atoms and twenty-two hydrogen atoms in a linear chain. It is a colorless, flammable liquid, insoluble in water but miscible with organic solvents. Decane is used as a component of fuels, particularly gasoline, and as a solvent in industrial processes. It also serves as a reference compound in organic chemistry and physical chemistry studies due to its predictable properties within the alkane series.",
       "Alanine": "Alanine (C3H7NO2) is a non-essential alpha-amino acid with a methyl side chain, used in protein biosynthesis. It plays key roles in metabolism, including the glucose-alanine cycle, and serves as an energy source for muscles and the brain.",
+      "Dopamine": "Dopamine (C8H11NO2) is a neurotransmitter and hormone belonging to the catecholamine class. It is synthesized from tyrosine via the intermediate L-DOPA. Dopamine acts as a chemical messenger in the central nervous system, regulating movement, motivation, mood, attention, and the reward system. It is metabolized mainly by the enzymes monoamine oxidase (MAO) and catechol-O-methyltransferase (COMT). Altered dopamine levels are associated with conditions such as Parkinson's disease, schizophrenia, and substance addiction.", 
+      "Sodium Dodecyl Sulfate": "Sodium dodecyl sulfate (C12H25NaO4S), also known as SDS or sodium lauryl sulfate, is a widely used anionic surfactant. It appears as a white powder or paste, soluble in water, capable of reducing surface tension and producing foam. It is employed in detergents, shampoos, cleaning products, and in molecular biology laboratories, particularly in protein electrophoresis.",
       "Beta-D-Glucose": "Beta-D-glucose (C6H12O6) is a monosaccharide and the beta anomer of glucose, a primary energy source in biology. It forms the building block of cellulose in plants and is crucial in carbohydrate metabolism and energy production.",
       "Palmitic Acid": "Palmitic acid (C16H32O2) is a saturated long-chain fatty acid, abundant in palm oil, animal fats, and human tissues. It is a major component of cell membranes and used in soaps, cosmetics, and food production.",
       "Capric Acid": "Capric acid (C10H20O2), also known as decanoic acid, is a saturated fatty acid with a 10-carbon chain. It occurs naturally in coconut oil, palm kernel oil, and in the milk of cows and goats. Capric acid is a white crystalline solid with a melting point around 31 °C and a boiling point near 270 °C. It has a characteristic odor reminiscent of goats, from which its name derives (Latin 'caper/capra').",
@@ -255,6 +266,13 @@
           "molecules": "Molecules",
           "slider_temperature": "Target T (K):",
           "slider_pressure": "Target P (Kpa):"
+        },
+        "charge_stats":
+        {
+          "title": "Charge Stats",
+          "wall_charge_enabled": "Wall Charges Enabled",
+          "magnetic_strength": "Magnetic Field Strength",
+          "magnetic_enabled": "Magnetic Field Enabled"
         },
         "energy_stats":
         {

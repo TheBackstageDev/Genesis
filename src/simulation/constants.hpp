@@ -33,14 +33,15 @@ namespace constants
 
 #define VERLET_SKIN 2.f
 #define CUTOFF 2.5f
-#define COULOMB_CUTOFF 15.f * MULT_FACTOR
+#define COULOMB_CUTOFF 10.f * MULT_FACTOR
 
-#define CELL_CUTOFF 15 + VERLET_SKIN
+#define CELL_CUTOFF 12 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB 0.008314462618f // A^2 D ps^-2 K^-1
 
+#define GRID_REBUILD 5
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
 #define THERMOSTAT_INTERVAL 10
 #define BAROSTAT_INTERVAL 10
@@ -757,65 +758,6 @@ namespace constants
         }
 
         return ideal_angle;
-    }
-
-    inline float getBondOrderExponent(uint8_t Zi, uint8_t Zj, sim::fun::BondType type = sim::fun::BondType::SINGLE)
-    {
-        if (Zi > Zj) std::swap(Zi, Zj);
-
-        float exponent = 4.f;
-
-        if (type == sim::fun::BondType::SINGLE)
-        {
-            if (Zi == 1 && Zj == 1)   exponent = 4.0f;   // H-H
-            if (Zi == 1 && Zj == 6)   exponent = 3.8f;   // C-H
-            if (Zi == 1 && Zj == 7)   exponent = 4.1f;   // N-H
-            if (Zi == 1 && Zj == 8)   exponent = 4.5f;   // O-H
-            if (Zi == 1 && Zj == 9)   exponent = 5.0f;   // F-H
-            if (Zi == 1 && Zj == 17)  exponent = 4.2f;   // Cl-H
-            if (Zi == 1 && Zj == 35)  exponent = 4.0f;   // Br-H
-    
-            if (Zi == 6 && Zj == 6)   exponent = 3.8f;   // C-C
-            if (Zi == 6 && Zj == 7)   exponent = 4.0f;   // C-N
-            if (Zi == 6 && Zj == 8)   exponent = 4.2f;   // C-O
-            if (Zi == 6 && Zj == 9)   exponent = 4.8f;   // C-F
-            if (Zi == 6 && Zj == 17)  exponent = 4.0f;   // C-Cl
-    
-            if (Zi == 7 && Zj == 7)   exponent = 4.2f;   // N-N
-            if (Zi == 7 && Zj == 8)   exponent = 4.4f;   // N-O
-            if (Zi == 7 && Zj == 9)   exponent = 5.0f;   // N-F
-    
-            if (Zi == 8 && Zj == 8)   exponent = 4.5f;   // O-O
-            if (Zi == 8 && Zj == 17)  exponent = 4.3f;   // O-Cl
-    
-            if (Zi == 9 && Zj == 9)   exponent = 5.2f;   // F-F
-            if (Zi == 17 && Zj == 17) exponent = 4.0f;   // Cl-Cl
-            if (Zi == 35 && Zj == 35) exponent = 3.8f;   // Br-Br
-    
-            // === METALS / OTHER ===
-            if (Zi == 13 && Zj == 13) exponent = 3.5f;   // Al-Al
-            if (Zi == 14 && Zj == 14) exponent = 3.6f;   // Si-Si
-            if (Zi == 15 && Zj == 15) exponent = 3.5f;   // P-P
-            if (Zi == 16 && Zj == 16) exponent = 3.6f;   // S-S
-        }
-
-        if (type == sim::fun::BondType::DOUBLE)
-        {
-            if (Zi == 6 && Zj == 6)   exponent = 4.8f;   // C=C
-            if (Zi == 6 && Zj == 8)   exponent = 5.2f;   // C=O
-            if (Zi == 7 && Zj == 8)   exponent = 5.0f;   // N=O
-            if (Zi == 8 && Zj == 8)   exponent = 5.5f;   // O=O
-            exponent = 5.0f;
-        }
-
-        if (type ==  sim::fun:: BondType::TRIPLE)
-        {
-            if (Zi == 6 && Zj == 6)   exponent = 5.5f;   // C≡C
-            if (Zi == 7 && Zj == 7)   exponent = 5.8f;   // N≡N
-            exponent = 5.5f;
-        }
-
-        return exponent;
     }
 
     inline std::pair<float, float> getAtomConstants(uint32_t ZIndex)
