@@ -1,11 +1,11 @@
-# GENESIS Molecular Dynamics Simulator (v0.1)
+# GENESIS Molecular Dynamics Simulator (v0.11)
 
 An interactive real-time molecular dynamics simulator built from scratch.  
 Explore atomic forces, phase transitions, molecular shapes and more.
 
 https://github.com/TheBackstageDev/Genesis
 
-## What you can do right now (v0.1)
+## What you can do right now (v0.11)
 
 - Setup your own scenarios using the Compounds selector.
 - Watch **phase transitions** — gas → liquid droplets → solid crystals
@@ -32,7 +32,7 @@ Building from source is possible but not documented yet.
 
 Full controls tutorial available in-game.
 
-## Current status (v0.1)
+## Current status
 
 This is a **very early version** with lots of missing features, rough edges and bugs are expected.  
 But the core simulation, visuals, and tutorials already work and are fun to play with.
