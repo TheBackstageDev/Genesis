@@ -21,12 +21,29 @@ namespace sim
               HMassRepartitioning(create_info.HMassRepartitioning), roof_floor_collision(create_info.roof_floor_collision),
               log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
+            createComputeShaders();
         }
 
         universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine)
             : rendering_eng(rendering_engine)
         {
             loadScene(path);
+            createComputeShaders();
+        }
+
+        // Compute Shaders
+
+        void universe::createComputeShader(const std::filesystem::path shader)
+        {
+            
+        }
+
+        void universe::createComputeShaders()
+        {
+            const std::filesystem::path shaders_path = "resource/shaders";
+            createComputeShader(shaders_path / "bonded.comp");
+            createComputeShader(shaders_path / "unbonded.comp");
+            createComputeShader(shaders_path / "simulation.comp");
         }
 
         void universe::draw(sf::RenderTarget &target, rendering_info info)
@@ -63,8 +80,8 @@ namespace sim
 
             std::pair<float, float> constants = constants::getAtomConstants(ZIndex);
 
-            newAtom.sigma = constants.first;
-            newAtom.epsilon = constants.second;
+            data.lj_params.emplace_back(constants.first);
+            data.lj_params.emplace_back(constants.second);
             newAtom.radius = constants::VDW_RADII[ZIndex] * 1.5f;
             newAtom.electrons = numElectron;
             newAtom.NCount = numNeutrons == 0 ? constants::NEUTRON_COUNTS[ZIndex] : numNeutrons;
@@ -463,13 +480,13 @@ namespace sim
 
         glm::vec3 universe::ljForce(uint32_t i, uint32_t j)
         {
-            const atom &a1 = atoms[i];
-            const atom &a2 = atoms[j];
+            const uint32_t base_i = i << 1;
+            const uint32_t base_j = j << 1;
 
-            const float sigma_i = a1.sigma;
-            const float sigma_j = a2.sigma;
-            const float epsilon_i = a1.epsilon;
-            const float epsilon_j = a2.epsilon;
+            const float sigma_i = data.lj_params[base_i];
+            const float sigma_j = data.lj_params[base_j];
+            const float epsilon_i = data.lj_params[base_i + 1];
+            const float epsilon_j = data.lj_params[base_j + 1];
 
             sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
             float dr = dr_vec.length();
@@ -1574,8 +1591,6 @@ namespace sim
 
                 atom newAtom{};
                 newAtom.ZIndex = Z;
-                newAtom.sigma = sigma;
-                newAtom.epsilon = epsilon;
                 newAtom.radius = radius;
                 newAtom.electrons = electrons[i];
                 newAtom.NCount = nNeutrons;

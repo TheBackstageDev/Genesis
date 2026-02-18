@@ -13,31 +13,14 @@
 
 namespace sim
 {
-    std::string loadShaderSource(const std::filesystem::path &path)
-    {
-        std::ifstream file(path, std::ios::ate | std::ios::binary);
-        if (!file.is_open())
-        {
-            throw std::runtime_error("Cannot open shader: " + path.string());
-        }
-
-        auto size = file.tellg();
-        std::string content(size, '\0');
-        file.seekg(0);
-        file.read(content.data(), size);
-
-        if (file.fail())
-        {
-            throw std::runtime_error("Failed to read shader: " + path.string());
-        }
-
-        return content;
-    }
-
     rendering_engine::rendering_engine(core::window_t &window)
         : window(window)
     {
-        initShaders();
+        loadProgram("box",        "box.vert",        "box.frag");
+        loadProgram("atom",       "color.vert",      "color.frag");
+        loadProgram("bond",       "bond.vert",       "bond.frag");
+        loadProgram("hyperballs", "hyper_balls.vert","hyper_balls.frag");
+        loadProgram("arrow",      "arrow.vert",      "arrow.frag");
 
         glGenVertexArrays(1, &box_vao);
         glGenBuffers(1, &box_vbo);
@@ -120,6 +103,15 @@ namespace sim
         glVertexAttribDivisor(3, 1);
     }
 
+    void rendering_engine::loadProgram(const std::string key, const std::string& vert, const std::string& frag)
+    {
+        programs.emplace(key,
+            core::glProgram{
+                core::glShader{GL_VERTEX_SHADER,   "resource/shaders/" + vert},
+                core::glShader{GL_FRAGMENT_SHADER, "resource/shaders/" + frag}
+            });
+    }
+
     void rendering_engine::drawBox(const glm::vec3 &box, sf::RenderTarget &target)
     {
         const std::array<glm::vec3, 8> corners = {{
@@ -154,17 +146,12 @@ namespace sim
                     GL_DYNAMIC_DRAW);
 
         glBindVertexArray(box_vao);
-        glUseProgram(box_program);
 
-        GLint loc_projection = glGetUniformLocation(box_program, "u_proj");
-        GLint loc_view = glGetUniformLocation(box_program, "u_view");
+        auto& box_program = programs["box"];
+        box_program.use();
 
-        if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
-
-        if (loc_view != -1)
-            glUniformMatrix4fv(loc_view, 1, GL_FALSE,
-                            glm::value_ptr(cam.getViewMatrix()));
+        box_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
+        box_program.setUniform("u_view", cam.getViewMatrix());
 
         glEnable(GL_DEPTH_TEST);
         glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVertices.size()));
@@ -177,83 +164,35 @@ namespace sim
         }
     }
 
-    void rendering_engine::initShaders()
-    {
-        const std::filesystem::path shader_root = "resource/shaders";
-
-        initShaders(shader_root / "box.vert", shader_root / "box.frag", box_program);
-        initShaders(shader_root / "color.vert", shader_root / "color.frag", atom_program);
-        initShaders(shader_root / "bond.vert", shader_root / "bond.frag", bond_program);
-        initShaders(shader_root / "hyper_balls.vert", shader_root / "hyper_balls.frag", hyperballs_program);
-        initShaders(shader_root / "arrow.vert", shader_root / "arrow.frag", arrow_program);
-    }
-
-    void rendering_engine::initShaders(const std::filesystem::path vert, const std::filesystem::path frag, GLuint& program)
-    {
-        std::string vertex = loadShaderSource(vert);
-        std::string fragment = loadShaderSource(frag);
-
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        const char *vertex_src = vertex.c_str();
-        glShaderSource(vertex_shader, 1, &vertex_src, nullptr);
-        glCompileShader(vertex_shader);
-
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        const char *fragment_src = fragment.c_str();
-        glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
-        glCompileShader(fragment_shader);
-
-        program = glCreateProgram();
-        glAttachShader(program, vertex_shader);
-        glAttachShader(program, fragment_shader);
-        glLinkProgram(program);
-
-        GLint success = 0;
-        glGetProgramiv(program, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            char info[1024] = {};
-            glGetProgramInfoLog(program, 1024, nullptr, info);
-            std::cerr << info << "\n";
-            throw std::runtime_error(std::string("[Shader link failed]: ") + info);
-        }
-
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-    }
-
     void rendering_engine::bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (info.hyperBalls) return;
+        if (info.hyperBalls || info.wireframe && !(info.lennardBall || info.licorice)) return;
 
         std::vector<AtomInstance> instances;
         instances.reserve(sim_info.atoms.size());
 
-        if (info.lennardBall || info.licorice)
+        for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
         {
-            for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
-            {
-                if (sim_info.positions.size() - 1 < i)
-                    break;
+            if (sim_info.positions.size() - 1 < i)
+                break;
 
-                const auto &atom = sim_info.atoms[i];
-                float radius = 0.f;
+            const auto &atom = sim_info.atoms[i];
+            float radius = 0.f;
 
-                if (info.licorice)
-                    radius = licorice_radius * 1.18f;
-                else
-                    radius = info.spaceFilling
-                                 ? constants::VDW_RADII[atom.ZIndex]
-                                 : constants::covalent_radius[atom.ZIndex] * 0.5f;
+            if (info.licorice)
+                radius = licorice_radius * 1.18f;
+            else
+                radius = info.spaceFilling
+                             ? constants::VDW_RADII[atom.ZIndex]
+                              : constants::covalent_radius[atom.ZIndex] * 0.5f;
 
-                glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0);
-                glm::vec4 col = getAtomColor(info, sim_info, i);
+            glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0);
+            glm::vec4 col = getAtomColor(info, sim_info, i);
 
-                col += col_addition;
-                col.w = info.opacity;
+            col += col_addition;
+            col.w = info.opacity;
 
-                instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col);
-            }
+            instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col);
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
@@ -263,16 +202,12 @@ namespace sim
                      GL_DYNAMIC_DRAW);
 
         glBindVertexArray(color_vao);
-        glUseProgram(atom_program);
 
-        GLint loc_projection = glGetUniformLocation(atom_program, "u_proj");
-        GLint loc_view = glGetUniformLocation(atom_program, "u_view");
+        auto& atom_program = programs["atom"];
+        atom_program.use();
 
-        if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
-
-        if (loc_view != -1)
-            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+        atom_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
+        atom_program.setUniform("u_view", cam.getViewMatrix());
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -343,7 +278,7 @@ namespace sim
                 for (int k = 0; k < order; ++k)
                 {
                     float angle = (static_cast<float>(k) / order) * glm::two_pi<float>();
-                    float offsetAmount = offsetStep * (order == 2 ? 1.0f : 1.0f);
+                    float offsetAmount = offsetStep * (order == 2 ? 1.1f : 1.0f);
 
                     glm::vec3 offset = offsetAmount * (std::cos(angle) * perp1 + std::sin(angle) * perp2);
 
@@ -366,24 +301,14 @@ namespace sim
 
         glBindVertexArray(bond_vao);
 
-        info.hyperBalls ? glUseProgram(hyperballs_program) : glUseProgram(bond_program);
+        auto& bond_program = programs["bond"];
+        info.hyperBalls ? programs["hyper_balls"].use() : bond_program.use();
 
-        GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
-        GLint loc_view = glGetUniformLocation(bond_program, "u_view");
-        GLint loc_licorice = glGetUniformLocation(bond_program, "licorice");
-
-        if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
-
-        if (loc_view != -1)
-            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+        bond_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
+        bond_program.setUniform("u_view", cam.getViewMatrix());
 
         if (!info.hyperBalls) 
-        {
-            GLint loc_licorice = glGetUniformLocation(bond_program, "licorice");
-            if (loc_licorice != -1)
-                glUniform1i(loc_licorice, static_cast<uint8_t>(info.licorice));
-        }
+            bond_program.setUniform("licorice", static_cast<uint8_t>(info.licorice));
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -422,16 +347,12 @@ namespace sim
                      GL_DYNAMIC_DRAW);
 
         glBindVertexArray(arrow_vao);
-        glUseProgram(arrow_program);
 
-        GLint loc_projection = glGetUniformLocation(arrow_program, "u_proj");
-        GLint loc_view = glGetUniformLocation(arrow_program, "u_view");
+        auto& arrow_program = programs["arrow"];
+        arrow_program.use();
 
-        if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
-
-        if (loc_view != -1)
-            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+        arrow_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
+        arrow_program.setUniform("u_view", cam.getViewMatrix());
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -520,16 +441,12 @@ namespace sim
                      GL_DYNAMIC_DRAW);
 
         glBindVertexArray(bond_vao);
-        glUseProgram(bond_program);
 
-        GLint loc_projection = glGetUniformLocation(bond_program, "u_proj");
-        GLint loc_view = glGetUniformLocation(bond_program, "u_view");
+        auto& bond_program = programs["bond"];
+        bond_program.use();
 
-        if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
-
-        if (loc_view != -1)
-            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+        bond_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
+        bond_program.setUniform("u_view", cam.getViewMatrix());
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -570,16 +487,12 @@ namespace sim
                      GL_DYNAMIC_DRAW);
 
         glBindVertexArray(color_vao);
-        glUseProgram(atom_program);
 
-        GLint loc_projection = glGetUniformLocation(atom_program, "u_proj");
-        GLint loc_view = glGetUniformLocation(atom_program, "u_view");
+        auto& atom_program = programs["atom"];
+        atom_program.use();
 
-        if (loc_projection != -1)
-            glUniformMatrix4fv(loc_projection, 1, GL_FALSE, glm::value_ptr(cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y)));
-
-        if (loc_view != -1)
-            glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm::value_ptr(cam.getViewMatrix()));
+        atom_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
+        atom_program.setUniform("u_view", cam.getViewMatrix());
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));

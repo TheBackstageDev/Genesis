@@ -149,17 +149,14 @@ namespace sim
         {
             float mass;            
             float radius;
-            
-            float epsilon; // LJ 
-            float sigma; // LJ
-            
+
             uint8_t electrons;
             uint8_t ZIndex;
             uint8_t NCount; // neutrons
             uint8_t bondCount;
             
             int32_t chirality;
-            int8_t padding[12];
+            int8_t padding[10];
         };
 
         enum color_rendering_mode
@@ -174,6 +171,7 @@ namespace sim
         {
             bool lennardBall = true; 
             bool licorice = false; 
+            bool wireframe = false;
             bool hyperBalls = false;
             bool spaceFilling = false; 
             bool universeBox = true;

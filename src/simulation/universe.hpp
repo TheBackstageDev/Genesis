@@ -28,7 +28,7 @@ namespace sim
             alignas(64) std::vector<glm::vec3> positions;
             alignas(64) std::vector<glm::vec3> velocities;
             alignas(64) std::vector<glm::vec3> forces;
-            alignas(64) std::vector<float> q;
+            alignas(64) std::vector<float> q, lj_params;
         };
 
         constexpr int32_t offsets[14][3] = 
@@ -266,6 +266,13 @@ namespace sim
             float calculateKineticEnergy();
         private:          
             void boundCheck(uint32_t i);
+
+            // Compute Shaders
+
+            GLuint simulation_comp, unbounded_comp, bonded_comp;
+            GLuint simulation_program, unbounded_program, bonded_program;
+            void createComputeShader(const std::filesystem::path shader);
+            void createComputeShaders();
 
             float ljPot(uint32_t i, uint32_t j);
             float wolfForce(float r, float qi_qj); 

@@ -33,6 +33,7 @@
       {
         "ball_and_stick": "Bola e Palito", 
         "hyper_balls": "Hiper Bolas",
+        "wireframe": "Estrutura de Arame",
         "letter_and_stick": "Letra e Palito",
         "licorice": "Licorice",
         "space_filling": "Preenchedor de Espaço"
@@ -442,7 +443,7 @@
 
   "Scenarios": 
   {
-    "SCENARIO_MOLECULES_Water": 
+    "SCENARIO_MOLECULE_Water": 
     {
       "description": "A molécula de água (H2O) - formato angular por causa dos pares solitários, com ângulo real de 104,5°. A base das ligações de hidrogênio e da vida como conhecemos.",
       "narrations": 
@@ -456,7 +457,7 @@
         "Água - simples, mas extraordinária."
       ]
     },
-    "SCENARIO_MOLECULES_Benzene": 
+    "SCENARIO_MOLECULE_Benzene": 
     {
       "description": "Benzeno (C6H6) - o clássico anel aromático. Cada carbono tem ângulo de ligação de 120° e os elétrons estão deslocalizados, dando ao composto estabilidade excepcional.",
       "narrations": 

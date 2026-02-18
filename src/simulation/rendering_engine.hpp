@@ -4,6 +4,7 @@
 
 #include "core/camera.hpp"
 #include "core/window.hpp"
+#include "core/shader.hpp"
 #include "simulation/fundamental_structures.hpp"
 
 #define GLM_FORCE_RADIANS
@@ -35,7 +36,7 @@ namespace sim
         core::window_t &window;
 
         GLuint box_vao, box_vbo, color_vao, color_vbo, bond_vao, bond_vbo, arrow_vao, arrow_vbo;
-        GLuint box_program, atom_program, bond_program, hyperballs_program, arrow_program;
+        std::unordered_map<std::string, core::glProgram> programs;
 
         struct AtomInstance 
         {
@@ -71,8 +72,7 @@ namespace sim
 
         // Init
 
-        void initShaders();
-        void initShaders(const std::filesystem::path vert, const std::filesystem::path frag, GLuint& program);
+        void loadProgram(const std::string key, const std::string& vert, const std::string& frag);
 
         void bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);

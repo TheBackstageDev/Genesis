@@ -1056,17 +1056,17 @@ namespace core
 
             static std::string ball_and_stick = "";
             static std::string licorice = "";
-            static std::string letter_and_stick = "";
+            static std::string wireframe = "";
             static std::string hyper_balls = "";
             static std::string space_filling = "";
 
             ball_and_stick = options["render_modes"]["ball_and_stick"].get<std::string>();
-            letter_and_stick = options["render_modes"]["letter_and_stick"].get<std::string>();
+            wireframe = options["render_modes"]["wireframe"].get<std::string>();
             space_filling = options["render_modes"]["space_filling"].get<std::string>();
             hyper_balls = options["render_modes"]["hyper_balls"].get<std::string>();
             licorice = options["render_modes"]["licorice"].get<std::string>();
 
-            const char* modes[3] =
+            const char* modes[4] =
             {
                 ball_and_stick.c_str(),
                 licorice.c_str(),
@@ -2016,25 +2016,12 @@ namespace core
         info.color_mode = app_options.sim_options.color_mode;
         info.opacity = 1.0f;
 
-        if (mode == simulation_render_mode::BALL_AND_STICK)
-        {
-            info.lennardBall = true;
-            info.licorice = false;
-        }
-        else if (mode == simulation_render_mode::LICORICE)
-        {
-            info.lennardBall = info.licorice = true;
-        }
-        else if (mode == simulation_render_mode::HYPER_BALLS)
-        {
-            info.lennardBall = info.licorice = info.spaceFilling = false;
-            info.hyperBalls = true;
-        }
-        else if (mode == simulation_render_mode::SPACE_FILLING)
-        {
-            info.lennardBall = info.spaceFilling = true;
-            info.licorice = false;
-        }
+        using m = simulation_render_mode;
+
+        info.lennardBall = mode == m::BALL_AND_STICK && mode != m::HYPER_BALLS;
+        info.licorice = mode == m::LICORICE;
+        info.spaceFilling = mode == m::SPACE_FILLING;
+        info.hyperBalls = mode == m::HYPER_BALLS;
 
         return info;
     }

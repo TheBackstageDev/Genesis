@@ -35,7 +35,7 @@ namespace constants
 #define CUTOFF 2.5f
 #define COULOMB_CUTOFF 10.f * MULT_FACTOR
 
-#define CELL_CUTOFF 12 + VERLET_SKIN
+#define CELL_CUTOFF 14 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
@@ -473,6 +473,7 @@ namespace constants
             case 25: return sf::Color( 25,  25, 112);    // Mn - Manganese    (Midnight Blue)
             case 26: return sf::Color(194,  78,  84);    // Fe - Iron         (Rust Red)
             case  36: return sf::Color(50, 200, 50); // Kr
+            case 53: return sf::Color(150, 5, 200); // I
             case  54: return sf::Color(  0, 120, 120); // Xe 
             case 79: return sf::Color(222, 222, 1); // Au
             case  86: return sf::Color( 80,  80,  80); // Rn (dark gray)

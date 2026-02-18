@@ -17,15 +17,8 @@ namespace sim::io
         if (BONDED(6, 6))
         {
             if (distance < 1.24f) return fun::BondType::TRIPLE;     // C≡C     
-            if (distance < 1.38f) return fun::BondType::DOUBLE;     // C=C     
+            if (distance < 1.39f) return fun::BondType::DOUBLE;     // C=C     
             return fun::BondType::SINGLE;                           // C–C    
-        }
-
-        if (BONDED(6, 8))
-        {
-            if (distance < 1.24f) return fun::BondType::DOUBLE;     // C=O
-            if (distance < 1.17f) return fun::BondType::TRIPLE;     // C#O
-            return fun::BondType::SINGLE;                           // C–O
         }
 
         if (BONDED(6, 7))
@@ -34,10 +27,32 @@ namespace sim::io
             if (distance < 1.35f) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE; 
         }
+        
+        if (BONDED(6, 8))
+        {
+            if (distance < 1.24f) return fun::BondType::DOUBLE;     // C=O
+            if (distance < 1.17f) return fun::BondType::TRIPLE;     // C#O
+            return fun::BondType::SINGLE;                           // C–O
+        }
+
+        if (BONDED(6, 9))
+        {
+            return fun::BondType::SINGLE;
+        }
+        
+        if (BONDED(6, 53))
+        {
+            return fun::BondType::SINGLE;
+        }
 
         if (BONDED(6, 17))
         {
             if (distance < 1.69f) return fun::BondType::DOUBLE;
+            return fun::BondType::SINGLE;
+        }
+
+        if (BONDED(8, 35))
+        {
             return fun::BondType::SINGLE;
         }
 
