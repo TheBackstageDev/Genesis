@@ -5,8 +5,8 @@
 
 namespace core
 {
-    ScenarioHandler::ScenarioHandler(std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds, sim::simulation_packer& simpacker)
-        : m_compounds(compounds), m_simpacker(simpacker)
+    ScenarioHandler::ScenarioHandler(std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds, sim::simulation_packer& simpacker, std::unique_ptr<sim::sim_dynamics>& dynamics)
+        : m_compounds(compounds), m_simpacker(simpacker), m_dynamics(dynamics)
     {
         initScenarios();
     }
@@ -26,9 +26,9 @@ namespace core
                 {
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 5.0f,
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     {
-                        u.setTimescale(10.f);
+                        m_universe->setTimescale(10.f);
                         m_wantedTemperature = 3000.f;
                     },
                 },
@@ -43,17 +43,17 @@ namespace core
             {
                 {.autoAdvanceAfterNarration = true,
                  .minDisplayTime_s = 6.0f,
-                 .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                 .onEnter = [&]()
                  {
-                     u.setTimescale(200.f);
+                     m_universe->setTimescale(200.f);
                      m_wantedTemperature = 200.f;
                  }},
                 {
                     .autoAdvanceAfterNarration = true, 
                     .minDisplayTime_s = 15.0f, 
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     {
-                        u.setTimescale(400.f);
+                        m_universe->setTimescale(400.f);
                         m_wantedTemperature = 90.f;
                     }
                 },
@@ -73,9 +73,9 @@ namespace core
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 12.0f,
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    u.setTimescale(200.f);
+                    m_universe->setTimescale(200.f);
                     m_wantedTemperature = 1000.f;
                 },
             },
@@ -86,9 +86,9 @@ namespace core
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 25.0f,
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    u.setTimescale(750.f);
+                    m_universe->setTimescale(750.f);
                     m_wantedTemperature = 40.f;
                 },
             },
@@ -121,20 +121,20 @@ namespace core
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
-                .onEnter = [&](sim::fun::universe& u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    u.pause();
-                    u.setTimescale(1.f);
+                    m_universe->pause();
+                    m_universe->setTimescale(1.f);
 
                     auto argon = sim::parseSMILES("Ar", false);
 
                     std::vector<sim::fun::molecule_structure> molecules =
                     {
-                        compounds["Nitrogen"].structure,
-                        compounds["Oxygen"].structure,
+                        m_compounds["Nitrogen"].structure,
+                        m_compounds["Oxygen"].structure,
                         argon,
-                        compounds["Carbon Dioxide"].structure,
-                        compounds["Methane"].structure
+                        m_compounds["Carbon Dioxide"].structure,
+                        m_compounds["Methane"].structure
                     };
 
                     std::vector<float> chances =
@@ -146,15 +146,15 @@ namespace core
                         0.0001f
                     };
 
-                    m_simpacker.pack(u, molecules, chances, u.boxSizes() * 0.5f, u.boxSizes());
+                    m_simpacker.pack(*m_universe, molecules, chances, m_universe->boxSizes() * 0.5f, m_universe->boxSizes());
                 }
             },
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
-                .onEnter = [&](sim::fun::universe& u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    u.setTimescale(2.f);
+                    m_universe->setTimescale(2.f);
                 }
             },
             {
@@ -205,12 +205,12 @@ namespace core
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
 
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    const sf::Vector3f center{u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f};
+                    const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
 
-                    u.setTimescale(1.5f);
-                    u.createMolecule(compounds["Water"].structure, center);
+                    m_universe->setTimescale(1.5f);
+                    m_universe->createMolecule(m_compounds["Water"].structure, center);
                 },
             },
             {
@@ -221,9 +221,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -235,9 +235,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -248,9 +248,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -266,9 +266,9 @@ namespace core
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {   
-                    m_simpacker.pack(u, compounds["Water"].structure, u.boxSizes() * 0.5f, u.boxSizes() * 0.3f, 5);
+                    m_simpacker.pack(*m_universe, m_compounds["Water"].structure, m_universe->boxSizes() * 0.5f, m_universe->boxSizes() * 0.3f, 5);
                 },
             },
             {
@@ -284,12 +284,12 @@ namespace core
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
 
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    const sf::Vector3f center{u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f};
+                    const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
 
-                    u.setTimescale(1.f);
-                    u.createMolecule(compounds.at("Benzene").structure, center);
+                    m_universe->setTimescale(1.f);
+                    m_universe->createMolecule(m_compounds.at("Benzene").structure, center);
                 },
             },
             {
@@ -300,9 +300,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -313,9 +313,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -326,9 +326,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -339,9 +339,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(0), u.getPosition(1), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(0), m_universe->getPosition(1), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -361,12 +361,12 @@ namespace core
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 15.0f,
 
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    const sf::Vector3f center{u.boxSizes().x * 0.5f, u.boxSizes().y * 0.5f, u.boxSizes().z * 0.5f};
+                    const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
 
-                    u.setTimescale(1.f);
-                    u.createMolecule(compounds.at("Carbon Dioxide").structure, center);
+                    m_universe->setTimescale(1.f);
+                    m_universe->createMolecule(m_compounds.at("Carbon Dioxide").structure, center);
                 },
             },
             {
@@ -377,9 +377,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(1), m_universe->getPosition(0), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -390,9 +390,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(1), m_universe->getPosition(0), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -403,9 +403,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(1), m_universe->getPosition(0), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -416,9 +416,9 @@ namespace core
                 .actions = 
                 {
                     {
-                        .action = [&](sim::fun::universe& u)
+                        .action = [&]()
                         {
-                            u.getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), u.getPosition(1), u.getPosition(0), u.getPosition(2));
+                            m_universe->getRenderingEngine().drawAngle(ImGui::GetBackgroundDrawList(), m_universe->getPosition(1), m_universe->getPosition(0), m_universe->getPosition(2));
                         }
                     }
                 },
@@ -450,9 +450,9 @@ namespace core
                 {
                     .autoAdvanceAfterNarration = false,
                     .minDisplayTime_s = 3.0f,
-                    .advanceWhen = [&](sim::fun::universe &u)
+                    .advanceWhen = [&]()
                     {
-                        auto &cam = u.getRenderingCamera();
+                        auto &cam = m_universe->getRenderingCamera();
 
                         static glm::vec3 initialPosition = cam.eye();
                         static glm::vec3 initialTarget = cam.target;
@@ -486,33 +486,33 @@ namespace core
                 {
                     .autoAdvanceAfterNarration = false,
                     .minDisplayTime_s = 1.0f,
-                    .advanceWhen = [&](sim::fun::universe& u)
+                    .advanceWhen = [&]()
                     {
-                        return u.numAtoms() > 0;
+                        return m_universe->numAtoms() > 0;
                     }
                 },
                 {
                     .autoAdvanceAfterNarration = false,
                     .minDisplayTime_s = 1.0f,
-                    .advanceWhen = [&](sim::fun::universe& u)
+                    .advanceWhen = [&]()
                     {
-                        return u.isPaused();
+                        return m_dynamics->isPaused();
                     }
                 },
                 {
                     .autoAdvanceAfterNarration = false,
                     .minDisplayTime_s = 1.0f,
-                    .advanceWhen = [&](sim::fun::universe& u)
+                    .advanceWhen = [&]()
                     {
-                        return !u.isPaused();
+                        return !m_dynamics->isPaused();
                     }
                 },
                 {
                     .autoAdvanceAfterNarration = false,
                     .minDisplayTime_s = 1.0f,
-                    .advanceWhen = [&](sim::fun::universe& u)
+                    .advanceWhen = [&]()
                     {
-                        return u.getTimescale() > 1.5f || u.getTimescale() < 0.5f;
+                        return m_universe->getTimescale() > 1.5f || m_universe->getTimescale() < 0.5f;
                     }
                 },
                 {
@@ -528,45 +528,45 @@ namespace core
                 {
                  .autoAdvanceAfterNarration = true,
                  .minDisplayTime_s = 5.0f,
-                 .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                 .onEnter = [&]()
                  {
-                    u.pause();
-                    u.setTimescale(500.f);
+                    m_universe->pause();
+                    m_universe->setTimescale(500.f);
                     m_wantedTemperature = 2.0f;
                  }
                 },
                 {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 5.0f,
-                .onExit = [&](sim::fun::universe &u)
+                .onExit = [&]()
                 {
-                    u.unpause();
+                    m_universe->unpause();
                 }},
                 {
                     .actions =
                     {
                         {
-                            .action = [&](sim::fun::universe& u)
+                            .action = [&]()
                             {
-                                u.clearArrows();
+                                m_universe->clearArrows();
 
-                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
                                 {
-                                    glm::vec3 pos = u.getPosition(i);
-                                    glm::vec3 force = u.getForce(i);
+                                    glm::vec3 pos = m_universe->getPosition(i);
+                                    glm::vec3 force = m_universe->getForce(i);
 
                                     float scale = 1.5f;  
 
-                                    u.createArrow(pos, pos + scale * force);
+                                    m_universe->createArrow(pos, pos + scale * force);
                                 }
                             }
                         }
                     },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 15.0f,
-                    .onExit = [&](sim::fun::universe& u)
+                    .onExit = [&]()
                     {
-                        u.clearArrows();
+                        m_universe->clearArrows();
                     }
                 },
                 {
@@ -576,12 +576,12 @@ namespace core
                 {
                  .autoAdvanceAfterNarration = true,
                  .minDisplayTime_s = 10.0f,
-                 .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                 .onEnter = [&]()
                  {
-                    u.setTimescale(500.f);
+                    m_universe->setTimescale(500.f);
                     auto argon = sim::parseSMILES("Ar", false);
 
-                    m_simpacker.pack(u, argon, u.boxSizes() * 0.5f, u.boxSizes(), 50);
+                    m_simpacker.pack(*m_universe, argon, m_universe->boxSizes() * 0.5f, m_universe->boxSizes(), 50);
                  }},
                 {
                     .autoAdvanceAfterNarration = true,
@@ -599,14 +599,14 @@ namespace core
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 10.0f,
                 },
-                {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 10.0f, .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 10.0f, .onEnter = [&]()
                                                                                {
-                                                                                   u.setTimescale(30.f);
+                                                                                   m_universe->setTimescale(30.f);
                                                                                    m_wantedTemperature = 120.f;
                                                                                }},
-                {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 10.0f, .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 10.0f, .onEnter = [&]()
                                                                                {
-                                                                                   u.setTimescale(500.f);
+                                                                                   m_universe->setTimescale(500.f);
                                                                                    m_wantedTemperature = 2.0f;
                                                                                }},
                 {
@@ -620,10 +620,10 @@ namespace core
             {
                 {.autoAdvanceAfterNarration = true,
                  .minDisplayTime_s = 15.0f,
-                 .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                 .onEnter = [&]()
                  {
-                     u.pause();
-                     u.setTimescale(10.f);
+                     m_universe->pause();
+                     m_universe->setTimescale(10.f);
                      m_wantedTemperature = 250.f;
                  }},
                 {
@@ -634,109 +634,109 @@ namespace core
                     .actions =
                     {
                         {
-                            .action = [&](sim::fun::universe& u)
+                            .action = [&]()
                             {
-                                u.clearArrows();
+                                m_universe->clearArrows();
 
-                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
                                 {
-                                    glm::vec3 pos = u.getPosition(i);
-                                    glm::vec3 force = u.getForce(i);
+                                    glm::vec3 pos = m_universe->getPosition(i);
+                                    glm::vec3 force = m_universe->getForce(i);
 
                                     float scale = 0.005f;  
 
-                                    u.createArrow(pos, pos + scale * force);
+                                    m_universe->createArrow(pos, pos + scale * force);
                                 }
                             }
                         }
                     },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 15.0f,
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     { 
-                        u.unpause(); 
+                        m_universe->unpause(); 
                     },
-                    .onExit = [&](sim::fun::universe &u)
+                    .onExit = [&]()
                     {
-                        u.pause();
-                        u.clear(); 
+                        m_universe->pause();
+                        m_universe->clear(); 
                     },
                 },
                 {
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 5.0f,
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     {
-                        const glm::vec3 center = u.boxSizes() * 0.5f;
+                        const glm::vec3 center = m_universe->boxSizes() * 0.5f;
 
-                        u.createAtom(center - glm::vec3(1.f, 0.f, 0.f), glm::vec3(1.f, 0.f, 0.f), 11, 11, 10, 0);
-                        u.createAtom(center + glm::vec3(1.f, 0.f, 0.f), glm::vec3(-1.f, 0.f, 0.f), 11, 11, 10, 0);
+                        m_universe->createAtom(center - glm::vec3(1.f, 0.f, 0.f), glm::vec3(1.f, 0.f, 0.f), 11, 11, 10, 0);
+                        m_universe->createAtom(center + glm::vec3(1.f, 0.f, 0.f), glm::vec3(-1.f, 0.f, 0.f), 11, 11, 10, 0);
                     },
                 },
                 {
                     .actions =
                     {
                         {
-                            .action = [&](sim::fun::universe& u)
+                            .action = [&]()
                             {
-                                u.clearArrows();
+                                m_universe->clearArrows();
 
-                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
                                 {
-                                    glm::vec3 pos = u.getPosition(i);
-                                    glm::vec3 force = u.getForce(i);
+                                    glm::vec3 pos = m_universe->getPosition(i);
+                                    glm::vec3 force = m_universe->getForce(i);
 
                                     float scale = 0.005f;  
 
-                                    u.createArrow(pos, pos + scale * force);
+                                    m_universe->createArrow(pos, pos + scale * force);
                                 }
                             }
                         }
                     },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     {
-                        u.unpause();
-                        u.clearArrows();
+                        m_universe->unpause();
+                        m_universe->clearArrows();
                     },
                 },
                 {
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
-                    .onExit = [&](sim::fun::universe &u)
+                    .onExit = [&]()
                     {
-                        u.clear();
+                        m_universe->clear();
                     },
                 },
                 {
                     .actions =
                     {
                         {
-                            .action = [&](sim::fun::universe& u)
+                            .action = [&]()
                             {
-                                u.clearArrows();
+                                m_universe->clearArrows();
 
-                                for (size_t i = 0; i < u.numAtoms(); ++i) 
+                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
                                 {
-                                    glm::vec3 pos = u.getPosition(i);
-                                    glm::vec3 force = u.getForce(i);
+                                    glm::vec3 pos = m_universe->getPosition(i);
+                                    glm::vec3 force = m_universe->getForce(i);
 
                                     float scale = 0.02f;  
 
-                                    u.createArrow(pos, pos + scale * force);
+                                    m_universe->createArrow(pos, pos + scale * force);
                                 }
                             }
                         }
                     },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     {
-                        u.setTimescale(1.f);
+                        m_universe->setTimescale(1.f);
                         m_wantedTemperature = 100.f;
 
-                        const glm::vec3 center = u.boxSizes() * 0.5f;
+                        const glm::vec3 center = m_universe->boxSizes() * 0.5f;
 
                         const float spacing = 3.f;
                         const int nx = 2;
@@ -760,11 +760,11 @@ namespace core
 
                                     if (is_sodium)
                                     {
-                                        u.createAtom(pos, glm::vec3(0), 11, 11, 10, 0);
+                                        m_universe->createAtom(pos, glm::vec3(0), 11, 11, 10, 0);
                                     }
                                     else
                                     {
-                                        u.createAtom(pos, glm::vec3(0), 17, 18, 18, 0);
+                                        m_universe->createAtom(pos, glm::vec3(0), 17, 18, 18, 0);
                                     }
                                 }
                             }
@@ -776,13 +776,13 @@ namespace core
                 {
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
-                    .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                    .onEnter = [&]()
                     {
                         m_wantedTemperature = 350.f;
 
-                        u.clearArrows();
-                        u.setTimescale(3.f);
-                        m_simpacker.pack(u, compounds["Water"].structure, u.boxSizes() * 0.5f, u.boxSizes() * 0.3f, 50);
+                        m_universe->clearArrows();
+                        m_universe->setTimescale(3.f);
+                        m_simpacker.pack(*m_universe, m_compounds["Water"].structure, m_universe->boxSizes() * 0.5f, m_universe->boxSizes() * 0.3f, 50);
                     }
                 },
                 {
@@ -807,9 +807,9 @@ namespace core
             {
                 .autoAdvanceAfterNarration = true,
                 .minDisplayTime_s = 10.0f,
-                .onEnter = [&](sim::fun::universe &u, std::unordered_map<std::string, sim::fun::compound_preset_info> &compounds)
+                .onEnter = [&]()
                 {
-                    u.pause();
+                    m_universe->pause();
                     m_wantedVideoPlay = true;
                     m_wantedFramesPerSecond = 30.f;
                 }
@@ -871,7 +871,7 @@ namespace core
 
         auto &current = getCurrentStep();
         if (current.onExit)
-            current.onExit(*m_universe);
+            current.onExit();
 
         resetStepActions();
 
@@ -888,7 +888,7 @@ namespace core
 
         auto &current = getCurrentStep();
         if (current.onExit)
-            current.onExit(*m_universe);
+            current.onExit();
 
         resetStepActions();
 
@@ -907,7 +907,7 @@ namespace core
 
         auto &step = getCurrentStep();
         if (step.onEnter)
-            step.onEnter(*m_universe, m_compounds);
+            step.onEnter();
     }
 
     void ScenarioHandler::resetStepActions()
@@ -934,7 +934,7 @@ namespace core
 
         if (current_step.advanceWhen && current_step.minDisplayTime_s <= timeInStep)
         {
-            if (current_step.advanceWhen(*m_universe) && m_currentStepIdx < getCurrentScenarioStepCount() - 1)
+            if (current_step.advanceWhen() && m_currentStepIdx < getCurrentScenarioStepCount() - 1)
             {
                 nextStep();
                 return;
@@ -948,8 +948,7 @@ namespace core
     {
         for (ScenarioAction &action : actions)
         {
-            if (action.action)
-                action.action(*m_universe);
+            if (action.action) action.action();
         }
     }
 

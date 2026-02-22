@@ -45,24 +45,7 @@ namespace sim
     {
         if (!m_universe) return UINT32_MAX;
 
-        glm::vec3 referencePos = m_universe->getPosition(reference.mainAtomIdx);
-
-        uint32_t closestAtom = target.mainAtomIdx;
-        float smallest_distance = glm::length(m_universe->minImageVec(m_universe->getPosition(target.mainAtomIdx) - referencePos));
-
-        for (int32_t i = 0; i < target.hydrogenCount; ++i)
-        {
-            uint32_t currentIndex = target.hydrogenBegin + i;
-            float hydrogen_distance = glm::length(m_universe->minImageVec(m_universe->getPosition(currentIndex) - referencePos));
-
-            if (hydrogen_distance < smallest_distance)
-            {
-                closestAtom = currentIndex;
-                smallest_distance = hydrogen_distance;
-            }
-        }
-
-        return closestAtom;
+        return 0;
     }
 
     bool reaction_engine::isRadical(const fun::subset& sub, fun::universe& u)

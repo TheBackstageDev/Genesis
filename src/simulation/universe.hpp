@@ -2,6 +2,8 @@
 
 #include "fundamental_structures.hpp"
 #include "rendering_engine.hpp"
+#include "core/shader.hpp"
+#include "core/buffer.hpp"
 
 #include "core/spatialgrid.hpp"
 
@@ -19,6 +21,8 @@
 #define _NODISCARD
 #endif
 
+//#define CALCULATIONS_GPU
+
 namespace sim
 {
     namespace fun
@@ -29,13 +33,6 @@ namespace sim
             alignas(64) std::vector<glm::vec3> velocities;
             alignas(64) std::vector<glm::vec3> forces;
             alignas(64) std::vector<float> q, lj_params;
-        };
-
-        constexpr int32_t offsets[14][3] = 
-        {
-            {0,0,0}, {1,0,0}, {1,1,0}, {0,1,0}, {-1,1,0},
-            {0,0,1}, {1,0,1}, {1,1,1}, {0,1,1}, {-1,0,1},
-            {1,-1,1}, {0,-1,1}, {-1,-1,1}, {-1,0,0}
         };
 
         struct logging_flags
@@ -108,6 +105,8 @@ namespace sim
             void loadFrames(const std::vector<frame>& nFrames) { m_frames = std::move(nFrames); }
             void loadFrames(const std::filesystem::path path);
             void saveFrame();
+
+            simData& getData() { return data; }
             
             _NODISCARD video saveAsVideo(const std::filesystem::path path, const std::string name = "");
             _NODISCARD const std::vector<frame>& getFrames() const { return m_frames; }
@@ -135,6 +134,8 @@ namespace sim
                 m_highlightedAtoms.clear();
                 m_highlightedBonds.clear();
                 m_Arrows.clear();
+
+                updateSSBOs();
             }
 
             void clearArrows()
@@ -181,9 +182,11 @@ namespace sim
             
             core::camera_t& getRenderingCamera() { return rendering_eng.camera(); }
             sim::rendering_engine& getRenderingEngine() { return rendering_eng; }
-            bool isPaused() { return m_paused; }
             bool& wallChargeEnabled() { return f_wallCharges; }
             bool& magneticFieldEnabled() { return f_magneticField; }
+
+            bool wallcollision() { return wall_collision; }
+            bool rooffloorcollision() { return roof_floor_collision; }
             
             const std::vector<atom>& getAtoms() const { return atoms; }
             std::vector<subset>& getSubsets() { return subsets; }
@@ -220,40 +223,6 @@ namespace sim
                 return data.positions[i];
             }
 
-            // Helper Funcs
-
-            sf::Vector3f minImageVec(sf::Vector3f dr)
-            {
-                if (wall_collision && roof_floor_collision) return dr;
-
-                if (!roof_floor_collision)
-                    dr.z -= box.z * std::round(dr.z / box.z);
-
-                if (!wall_collision)
-                {
-                    dr.x -= box.x * std::round(dr.x / box.x);
-                    dr.y -= box.y * std::round(dr.y / box.y);
-                }
-
-                return dr;
-            }
-
-            glm::vec3 minImageVec(glm::vec3 dr)
-            {
-                if (wall_collision && roof_floor_collision) return dr;
-
-                if (!roof_floor_collision)
-                    dr.z -= box.z * std::round(dr.z / box.z);
-
-                if (!wall_collision)
-                {
-                    dr.x -= box.x * std::round(dr.x / box.x);
-                    dr.y -= box.y * std::round(dr.y / box.y);
-                }
-
-                return dr;
-            }
-
             inline bool areBonded(uint32_t i, uint32_t j) const
             {
                 if (i >= bondedBits.size() || j >= bondedBits[i].size() * 32) return false;
@@ -264,15 +233,61 @@ namespace sim
 
             // Energies
             float calculateKineticEnergy();
-        private:          
+
+            sf::Vector3f minImageVec(sf::Vector3f dr)
+            {
+                bool wall_col = wallcollision();
+                bool rf_col = rooffloorcollision();
+
+                if (wall_col && rf_col) return dr;
+
+                if (!rf_col)
+                    dr.z -= box.z * std::round(dr.z / box.z);
+
+                if (!wall_col)
+                {
+                    dr.x -= box.x * std::round(dr.x / box.x);
+                    dr.y -= box.y * std::round(dr.y / box.y);
+                }
+
+                return dr;
+            }
+
+            glm::vec3 minImageVec(glm::vec3 dr)
+            {
+                bool wall_col = wallcollision();
+                bool rf_col = rooffloorcollision();
+
+                if (wall_col && rf_col) return dr;
+
+                glm::vec3 box_sizes = boxSizes();
+
+                if (!rf_col)
+                    dr.z -= box_sizes.z * std::round(dr.z / box_sizes.z);
+
+                if (!wall_col)
+                {
+                    dr.x -= box_sizes.x * std::round(dr.x / box_sizes.x);
+                    dr.y -= box_sizes.y * std::round(dr.y / box_sizes.y);
+                }
+
+                return dr;
+            }
+        private:
             void boundCheck(uint32_t i);
 
             // Compute Shaders
 
-            GLuint simulation_comp, unbounded_comp, bonded_comp;
-            GLuint simulation_program, unbounded_program, bonded_program;
-            void createComputeShader(const std::filesystem::path shader);
+            core::glProgram unbonded_program, bonded_program, simulation_program;
             void createComputeShaders();
+            void updateSSBOs();
+
+            core::glBuffer  ssbo_positions;
+            core::glBuffer  ssbo_velocities;
+            core::glBuffer  ssbo_acc;
+            core::glBuffer  ssbo_force;
+            core::glBuffer  ssbo_lj_params;
+            core::glBuffer  ssbo_charges;
 
             float ljPot(uint32_t i, uint32_t j);
             float wolfForce(float r, float qi_qj); 
@@ -282,6 +297,7 @@ namespace sim
             std::vector<glm::vec3> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start = 0, int32_t atom_end = 0);
             void calcUnbondedForcesParallel();
             void calcBondedForcesParallel();
+            void computeUnbondedForces();
 
             float calculatePressure();
             void setPressure(float bar = 100);

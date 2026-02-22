@@ -16,6 +16,7 @@
 #include "simulation/reaction_engine.hpp"
 #include "simulation/universe.hpp"
 #include "simulation/simulation_packer.hpp"
+#include "simulation/dynamics.hpp"
 
 namespace core
 {
@@ -292,6 +293,7 @@ namespace core
 
         bool m_reactive = false;
 
+        std::unique_ptr<sim::sim_dynamics> dynamics;
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
 

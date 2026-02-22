@@ -2,6 +2,7 @@
 
 #include "simulation/universe.hpp"
 #include "simulation/simulation_packer.hpp"
+#include "simulation/dynamics.hpp"
 #include <functional>
 
 #include <filesystem>
@@ -15,7 +16,7 @@ namespace core
 
         float duration_s = 0.0f; // 0.0f means it'll last until something happens or it is clicked away
         int32_t simulateSteps = 0;                // if > 0, run sim N steps during this action
-        std::function<void(sim::fun::universe& universe)> action;
+        std::function<void()> action;
     };
 
     struct ScenarioStep
@@ -28,9 +29,9 @@ namespace core
         bool simulateDuringStep = false;
         float maxStepDuration_s = 0.0f;
 
-        std::function<bool(sim::fun::universe& universe)> advanceWhen = nullptr;
-        std::function<void(sim::fun::universe& universe, std::unordered_map<std::string, sim::fun::compound_preset_info>& compounds)> onEnter = nullptr;
-        std::function<void(sim::fun::universe& universe)> onExit = nullptr;
+        std::function<bool()> advanceWhen = nullptr;
+        std::function<void()> onEnter = nullptr;
+        std::function<void()> onExit = nullptr;
     };
 
     struct Scenario
@@ -48,7 +49,7 @@ namespace core
     class ScenarioHandler
     {
     public:
-        ScenarioHandler(std::unordered_map<std::string, sim::fun::compound_preset_info>& compounds, sim::simulation_packer& simpacker);
+        ScenarioHandler(std::unordered_map<std::string, sim::fun::compound_preset_info>& compounds, sim::simulation_packer& simpacker, std::unique_ptr<sim::sim_dynamics>& dynamics);
         ~ScenarioHandler();
 
         void chooseScenario(const std::string& scenario)
@@ -183,6 +184,7 @@ namespace core
         sim::fun::video* m_video = nullptr;        
         sim::fun::universe* m_universe = nullptr;
         sim::simulation_packer& m_simpacker;
+        std::unique_ptr<sim::sim_dynamics>& m_dynamics;
 
         std::unordered_map<std::string, sim::fun::compound_preset_info>& m_compounds;
         

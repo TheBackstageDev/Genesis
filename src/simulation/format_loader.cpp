@@ -24,7 +24,7 @@ namespace sim::io
         if (BONDED(6, 7))
         {
             if (distance < 1.18f) return fun::BondType::TRIPLE;
-            if (distance < 1.35f) return fun::BondType::DOUBLE;
+            if (distance < 1.34f) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE; 
         }
         

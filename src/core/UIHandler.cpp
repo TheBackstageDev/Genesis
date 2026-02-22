@@ -83,7 +83,7 @@ namespace core
 
     UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine& engine)
         : app_options(app_options), m_window(window), m_rendering_eng(window), m_audio_eng(engine),
-          m_scenarioHandler(compound_presets, m_simpacker)
+          m_scenarioHandler(compound_presets, m_simpacker, dynamics)
     {
         write_localization_json(lang);
         std::filesystem::path path = getLocalizationFile(localization::EN_US);
@@ -782,9 +782,9 @@ namespace core
         if (ImGui::CollapsingHeader(sandbox_creation["header_box"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Text(sandbox_creation["box_dimensions"].get<std::string>().c_str());
-            ImGui::SliderFloat("X##box", &sandbox_info.box.x, 1.0f, 200.0f, "%.2f");
-            ImGui::SliderFloat("Y##box", &sandbox_info.box.y, 1.0f, 200.0f, "%.2f");
-            ImGui::SliderFloat("Z##box", &sandbox_info.box.z, 1.0f, 200.0f, "%.2f");
+            ImGui::SliderFloat("X##box", &sandbox_info.box.x, 1.0f, 500.0f, "%.2f");
+            ImGui::SliderFloat("Y##box", &sandbox_info.box.y, 1.0f, 500.0f, "%.2f");
+            ImGui::SliderFloat("Z##box", &sandbox_info.box.z, 1.0f, 500.0f, "%.2f");
 
             if (ImGui::Button(sandbox_creation["box_cubic"].get<std::string>().c_str()))
             {
@@ -809,11 +809,13 @@ namespace core
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
+
             m_rendering_eng.camera().target = sandbox_info.box / 2.f;
             m_rendering_eng.camera().distance = glm::length(sandbox_info.box * 1.2f);
 
             sandboxSelectionOpen = false;
-            simulation_universe->unpause();
+            dynamics->pause();
 
             setState(application_state::APP_STATE_SIMULATION);
 
@@ -821,11 +823,11 @@ namespace core
             target_temperature = 300.f;
 
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("resource/molecules/dopaminereceptor.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("resource/molecules/satelitemosaicvirus.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {100, 100, 100}); */
+            simulation_universe->createMolecule(structure, {250, 250, 250}); */
         }
 
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
@@ -1019,6 +1021,7 @@ namespace core
         auto &chosen_scenario = m_scenarioHandler.getScenarios().at(scenario);
 
         simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng);
+        dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
 
         if (!chosen_scenario.file.empty())
             simulation_universe->loadScene(chosen_scenario.file);
@@ -1066,7 +1069,7 @@ namespace core
             hyper_balls = options["render_modes"]["hyper_balls"].get<std::string>();
             licorice = options["render_modes"]["licorice"].get<std::string>();
 
-            const char* modes[4] =
+            const char* modes[3] =
             {
                 ball_and_stick.c_str(),
                 licorice.c_str(),
@@ -1278,7 +1281,7 @@ namespace core
 
         ImGuiIO &io = ImGui::GetIO();
 
-        bool sim_paused = simulation_universe->isPaused();
+        bool sim_paused = dynamics->isPaused();
         const std::string mode = sim_paused ? "resume_icon" : "pause_icon";
 
         ImVec2 timecontrol_size(panel_height * 6.f, panel_height);
@@ -1289,7 +1292,7 @@ namespace core
 
         if (ImGui::ImageButton("##timebutton", textures[mode], ImVec2(32.f, 32.f)))
         {
-            sim_paused ? simulation_universe->unpause() : simulation_universe->pause();
+            sim_paused ? dynamics->unpause() : dynamics->pause();
         }
 
         std::string resume_tooltip = sim_ui.value("tooltip_resume", "Resume Simulation");
@@ -1527,7 +1530,7 @@ namespace core
             for (auto &other_pos : simulation_universe->positions())
             {
                 glm::vec3 r = pos - other_pos;
-                if (simulation_universe->minImageVec(sf::Vector3f(r.x, r.y, r.z)).length() <= minDistance)
+                if (glm::length(dynamics->minImageVec(r)) <= minDistance)
                 {
                     ghostColliding = true;
                 }
@@ -2028,7 +2031,7 @@ namespace core
 
     void UIHandler::runUniverse()
     {
-        if (simulation_universe->isPaused())
+        if (dynamics->isPaused())
             return;
 
         auto start = std::chrono::high_resolution_clock::now();
@@ -2130,7 +2133,7 @@ namespace core
 
         if (ImGui::IsKeyPressed(ImGuiKey_Space))
         {
-            simulation_universe->isPaused() ? simulation_universe->unpause() : simulation_universe->pause();
+            dynamics->isPaused() ? dynamics->unpause() : dynamics->pause();
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
@@ -2138,7 +2141,7 @@ namespace core
             optionsOpen = false;
             savesSelectionOpen = false;
             compoundSelector = false;
-            simulation_universe->pause();
+            dynamics->pause();
         }
     }
 

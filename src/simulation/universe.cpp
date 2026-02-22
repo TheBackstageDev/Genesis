@@ -10,40 +10,110 @@
 
 #include "constants.hpp"
 
+#include <glad/glad.h>
+
 namespace sim
 {
     namespace fun
     {
-
         universe::universe(const universe_create_info &create_info, rendering_engine &rendering_engine)
             : box(create_info.box), gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
               HMassRepartitioning(create_info.HMassRepartitioning), roof_floor_collision(create_info.roof_floor_collision),
               log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
-            createComputeShaders();
+            //createComputeShaders();
         }
 
         universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine)
             : rendering_eng(rendering_engine)
         {
+            //createComputeShaders();
             loadScene(path);
-            createComputeShaders();
         }
 
         // Compute Shaders
 
-        void universe::createComputeShader(const std::filesystem::path shader)
-        {
-            
-        }
-
         void universe::createComputeShaders()
         {
+            if (unbonded_program.id() != 0 && bonded_program.id() != 0 && simulation_program.id() != 0) return;
+
             const std::filesystem::path shaders_path = "resource/shaders";
-            createComputeShader(shaders_path / "bonded.comp");
-            createComputeShader(shaders_path / "unbonded.comp");
-            createComputeShader(shaders_path / "simulation.comp");
+            
+            unbonded_program = core::glProgram
+            {
+                core::glShader{GL_COMPUTE_SHADER,   shaders_path / "unbonded.comp"},
+            };
+
+            bonded_program = core::glProgram
+            {
+                core::glShader{GL_COMPUTE_SHADER,   shaders_path / "bonded.comp"},
+            };
+
+            simulation_program = core::glProgram
+            {
+                core::glShader{GL_COMPUTE_SHADER,   shaders_path / "simulation.comp"},
+            };
+        }
+
+        void universe::updateSSBOs()
+        {
+            size_t N = atoms.size();
+            if (N == 0) return;
+
+            std::vector<glm::vec4> pos_data(N);
+            for (size_t i = 0; i < N; ++i) 
+                pos_data[i] = glm::vec4(data.positions[i], atoms[i].mass);
+
+            if (!ssbo_positions.id() || 
+                ssbo_positions.getSize() != static_cast<GLsizeiptr>(N * sizeof(glm::vec4)))
+            {
+                ssbo_positions = core::glBuffer(
+                    GL_SHADER_STORAGE_BUFFER,
+                    pos_data.data(),
+                    pos_data.size() * sizeof(glm::vec4),
+                    GL_DYNAMIC_DRAW
+                );
+            }
+            else
+            {
+                ssbo_positions.update(pos_data.data(), pos_data.size() * sizeof(glm::vec4));
+            }
+
+            if (!ssbo_lj_params.id() || 
+                ssbo_lj_params.getSize() != static_cast<GLsizeiptr>(data.lj_params.size() * sizeof(float)))
+            {
+                ssbo_lj_params = core::glBuffer(
+                    GL_SHADER_STORAGE_BUFFER,
+                    data.lj_params.data(),
+                    data.lj_params.size() * sizeof(float),
+                    GL_STATIC_DRAW
+                );
+            }
+
+            if (!ssbo_charges.id() || 
+                ssbo_charges.getSize() != static_cast<GLsizeiptr>(data.q.size() * sizeof(float)))
+            {
+                ssbo_charges = core::glBuffer(
+                    GL_SHADER_STORAGE_BUFFER,
+                    data.q.data(),
+                    data.q.size() * sizeof(float),
+                    GL_DYNAMIC_DRAW
+                );
+            }
+
+            const GLsizeiptr force_size = N * sizeof(glm::vec4);
+
+            bool need_recreate_force = !ssbo_force.id() || ssbo_force.getSize() != force_size;
+
+            if (need_recreate_force)
+            {
+                ssbo_force = core::glBuffer(GL_SHADER_STORAGE_BUFFER, nullptr, force_size, GL_DYNAMIC_DRAW);
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_force.id());
+                glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+            }
         }
 
         void universe::draw(sf::RenderTarget &target, rendering_info info)
@@ -98,9 +168,8 @@ namespace sim
             }
 
             atoms.emplace_back(std::move(newAtom));
-            data.q.emplace_back(ZIndex - numElectron);
+            data.q.emplace_back(float(ZIndex - numElectron));
             data.forces.resize(atoms.size());
-
             frozen_atoms.emplace_back(false);
 
             return atoms.size() - 1;
@@ -491,21 +560,23 @@ namespace sim
             sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
             float dr = dr_vec.length();
 
-            const float sigma = sqrtf(sigma_i * sigma_j);
+            const float sigma = (sigma_i + sigma_j) * 0.5f;
             const float epsilon = sqrtf(epsilon_i * epsilon_j);
 
-            if (dr < sigma * CUTOFF && dr > EPSILON)
+            if (dr < 10.f && dr > EPSILON)
             {
-                float inv_r2 = 1.0f / (dr * dr);
-                float inv_r6 = inv_r2 * inv_r2 * inv_r2;
-                float inv_r12 = inv_r6 * inv_r6;
+                float inv_r     = 1.0f / dr;
+                float inv_r2    = inv_r * inv_r;
+                float inv_r6    = inv_r2 * inv_r2 * inv_r2;
+                float inv_r12   = inv_r6 * inv_r6;
 
-                float sigma6 = powf(sigma, 6);
-                float sigma12 = sigma6 * sigma6;
+                float sr6  = powf(sigma, 6.0f) * inv_r6;
+                float sr12 = sr6 * sr6;
 
-                float force_mag = 24.0f * epsilon * inv_r2 * (2.0f * sigma12 * inv_r12 - sigma6 * inv_r6);
+                float force_mag = 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r;
+                glm::vec3 direction = glm::vec3(dr_vec.x, dr_vec.y, dr_vec.z) * inv_r;
 
-                return force_mag * glm::vec3(dr_vec.x, dr_vec.y, dr_vec.z);
+                return force_mag * direction;
             }
 
             return glm::vec3{0.f, 0.f, 0.f};
@@ -908,7 +979,7 @@ namespace sim
 
             struct task
             {
-                uint32_t work;
+                uint64_t work;
                 int32_t cell_idx;
                 int32_t atom_start;
                 int32_t atom_end = -1;
@@ -1035,6 +1106,35 @@ namespace sim
             }
         }
 
+        void universe::computeUnbondedForces()
+        {
+            const uint32_t N = static_cast<uint32_t>(atoms.size());
+            const uint32_t local_size = 256;
+            const uint32_t num_groups = (N + local_size - 1) / local_size;
+
+            unbonded_program.use();
+            unbonded_program.setUniform("numParticles", N);
+            unbonded_program.setUniform("box", box);
+            unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF);
+            unbonded_program.setUniform("collide_floor_roof", roof_floor_collision);
+            unbonded_program.setUniform("collide_walls", wall_collision);
+            
+            ssbo_positions.bindBase(0);
+            ssbo_lj_params.bindBase(1);
+            ssbo_charges.bindBase(2);
+            ssbo_force.bindBase(3);
+
+            glDispatchCompute(num_groups, 1, 1);
+
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER);
+
+            ssbo_force.bind();
+            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, N * sizeof(glm::vec4), data.forces.data());
+            ssbo_force.unbind();
+        }
+
         void universe::update(float targetTemperature, float targetPressure)
         {
             int32_t N = atoms.size();
@@ -1045,8 +1145,16 @@ namespace sim
             data.forces.assign(N, glm::vec3(0.0f));
             total_virial = 0.0f;
 
+            #ifndef CALCULATIONS_GPU
             calcBondedForcesParallel();
             calcUnbondedForcesParallel();
+            #else
+            ssbo_force.bind();
+            glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+            ssbo_force.unbind();
+            
+            computeUnbondedForces();
+            #endif
 
             setPressure(targetPressure);
             setTemperature(targetTemperature);
@@ -1071,10 +1179,11 @@ namespace sim
                 }
                             
                 sf::Vector3f accel = force(i) / atoms[i].mass;
-                add_vel(i, accel * (0.5f * dt));
 
                 if (gravity)
-                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * dt));
+                    accel.z += -mag_gravity;
+
+                add_vel(i, accel * (0.5f * dt));
             }
 
             for (int32_t i = 0; i < N; ++i)
@@ -1086,8 +1195,12 @@ namespace sim
 
             data.forces.assign(N, glm::vec3(0.0f));
 
+            #ifndef CALCULATIONS_GPU
             calcBondedForcesParallel();
             calcUnbondedForcesParallel();
+            #else
+            computeUnbondedForces();
+            #endif
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -1105,12 +1218,14 @@ namespace sim
                     glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], magnetic_strength);
                     data.forces[i] += force;
                 }
+                
 
                 sf::Vector3f accel = force(i) / atoms[i].mass;
-                add_vel(i, accel * (0.5f * dt));
 
                 if (gravity)
-                    add_vel(i, sf::Vector3f(0.f, 0.f, -mag_gravity * 0.5f * dt));
+                    accel.z += -mag_gravity;
+
+                add_vel(i, accel * (0.5f * dt));
             }
 
             if (timeStep % GRID_REBUILD == 0)
@@ -1121,6 +1236,10 @@ namespace sim
 
             if (timeStep % 1000 == 0)
                 COMDrift(); // fixes simulation box COM drift from numerical errors
+
+            #ifdef CALCULATIONS_GPU
+            updateSSBOs();
+            #endif
         }
 
         float universe::calculatePressure()
@@ -1548,6 +1667,7 @@ namespace sim
             molecules.clear();
             data.positions.clear();
             data.velocities.clear();
+            data.lj_params.clear();
             data.q.clear();
 
             box.x = scene.value("boxx", 50.0f);
@@ -1579,6 +1699,7 @@ namespace sim
 
             atoms.reserve(N);
             data.positions.reserve(N);
+            data.lj_params.reserve(N);
             data.velocities.reserve(N);
             data.q.reserve(N);
 
@@ -1604,6 +1725,8 @@ namespace sim
                 emplace_vel(glm::vec3(velx[i], vely[i], velz[i]));
 
                 data.q.emplace_back(charges[i]);
+                data.lj_params.emplace_back(sigma);
+                data.lj_params.emplace_back(epsilon);
             }
 
             data.forces.assign(N, glm::vec3(0.0f));
@@ -1692,6 +1815,7 @@ namespace sim
             }
 
             rebuildBondTopology();
+            updateSSBOs();
 
             std::cout << "[Simulation] Successfully loaded scene: " << path.filename()
                       << " (" << atoms.size() << " atoms, "

@@ -4,18 +4,136 @@ layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 layout(std430, binding = 0) restrict readonly buffer Positions 
 {
-    vec4 pos[];
+    vec4 pos[]; // w is the mass
 };
 
-layout(std430, binding = 1) restrict buffer Accelerations 
+layout(std430, binding = 1) restrict readonly buffer LJParams 
 {
-    vec4 acc[];
+    float lj_params[];
 };
 
-void lj_force()
+layout(std430, binding = 2) restrict readonly buffer Charges 
 {
+    float q[];
+};
+
+layout(std430, binding = 3) restrict buffer Forces 
+{
+    vec4 force[];
+};
+
+#define COULOMB_K 1389.354576f
+
+uniform uint numParticles;
+uniform vec3  box;
+uniform float r_cut2;
+uniform bool collide_floor_roof = false;
+uniform bool collide_walls = false;
+
+vec3 minimum_image(vec3 diff) 
+{
+    float x = diff.x, y = diff.y, z = diff.z;
+
+    if (collide_walls && collide_floor_roof) return diff;
+
+    diff -= box * round(diff / box);
+
+    if (collide_floor_roof)
+    {
+        diff.z = z;
+    }
+
+    if (collide_walls)
+    {
+        diff.x = x;
+        diff.y = y;
+    }
+
+    return diff;
 }
 
 void main()
 {
+    uint i = gl_GlobalInvocationID.x;
+
+    if (i >= numParticles) return;
+
+    vec4 pos_i = pos[i];
+    float charge_i = q[i];
+    
+    const float sigma_i = lj_params[i * 2];
+    const float eps_i   = lj_params[i * 2 + 1];
+
+    vec3 force_i = vec3(0.0);
+
+    for (uint j = i + 1; j < numParticles; ++j)
+    {
+        vec4 pos_j = pos[j];
+
+        vec3 diff = minimum_image(pos_j.xyz - pos_i.xyz);
+        float r2 = dot(diff, diff);
+
+        if (r2 < 1e-6) continue;
+
+        const float sigma_j = lj_params[j * 2];
+        const float eps_j   = lj_params[j * 2 + 1];
+    
+        const float sigma = (sigma_i + sigma_j) * 0.5;
+        const float epsilon = sqrt(eps_i * eps_j);
+
+        // Lennard Jones
+
+        float inv_r2 = 1.0 / r2;
+        float inv_r6 = inv_r2 * inv_r2 * inv_r2;
+        float inv_r12 = inv_r6 * inv_r6;
+
+        vec3 f_LJ = vec3(0.0);
+
+        if (r2 < r_cut2) 
+        {
+            /*                
+                float inv_r     = 1.0f / dr;
+                float inv_r2    = inv_r * inv_r;
+                float inv_r6    = inv_r2 * inv_r2 * inv_r2;
+                float inv_r12   = inv_r6 * inv_r6;
+
+                float sr6  = powf(sigma, 6.0f) * inv_r6;
+                float sr12 = sr6 * sr6;
+
+                float force_mag = 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r;
+                glm::vec3 direction = glm::vec3(dr_vec.x, dr_vec.y, dr_vec.z) * inv_r;
+
+                */
+            float sigma_j = lj_params[j * 2];
+            float eps_j   = lj_params[j * 2 + 1];
+
+            float sigma   = 0.5f * (sigma_i + sigma_j);
+            float epsilon = sqrt(eps_i * eps_j);
+
+            float sr6  = pow(sigma * sigma * sigma, 2.0f) * inv_r6;
+            float sr12 = sr6 * sr6;
+
+            float f_mag = 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r2;
+
+            f_LJ = f_mag * diff;
+        }
+
+        vec3 f_C = vec3(0.0);
+
+        // Coulomb
+        if (r2 < r_cut2)
+        {
+            float inv_r  = sqrt(inv_r2);
+            
+            float charge_j = q[j];
+            float force_mag = COULOMB_K * (charge_i * charge_j) * inv_r2 * inv_r;
+            f_C += force_mag * diff;
+        }
+
+        vec3 total_force_ij = f_LJ + f_C;
+        force_i       +=  total_force_ij;
+        force[j].xyz     += -total_force_ij;
+    }
+
+    force[i].xyz += force_i;
 }
