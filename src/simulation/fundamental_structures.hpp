@@ -156,7 +156,6 @@ namespace sim
             uint8_t bondCount;
             
             int32_t chirality;
-            int8_t padding[10];
         };
 
         enum color_rendering_mode

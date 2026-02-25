@@ -12,6 +12,9 @@
 
 #include <glad/glad.h>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/norm.hpp>
+
 namespace sim
 {
     namespace fun
@@ -32,98 +35,14 @@ namespace sim
             loadScene(path);
         }
 
-        // Compute Shaders
-
-        void universe::createComputeShaders()
-        {
-            if (unbonded_program.id() != 0 && bonded_program.id() != 0 && simulation_program.id() != 0) return;
-
-            const std::filesystem::path shaders_path = "resource/shaders";
-            
-            unbonded_program = core::glProgram
-            {
-                core::glShader{GL_COMPUTE_SHADER,   shaders_path / "unbonded.comp"},
-            };
-
-            bonded_program = core::glProgram
-            {
-                core::glShader{GL_COMPUTE_SHADER,   shaders_path / "bonded.comp"},
-            };
-
-            simulation_program = core::glProgram
-            {
-                core::glShader{GL_COMPUTE_SHADER,   shaders_path / "simulation.comp"},
-            };
-        }
-
-        void universe::updateSSBOs()
-        {
-            size_t N = atoms.size();
-            if (N == 0) return;
-
-            std::vector<glm::vec4> pos_data(N);
-            for (size_t i = 0; i < N; ++i) 
-                pos_data[i] = glm::vec4(data.positions[i], atoms[i].mass);
-
-            if (!ssbo_positions.id() || 
-                ssbo_positions.getSize() != static_cast<GLsizeiptr>(N * sizeof(glm::vec4)))
-            {
-                ssbo_positions = core::glBuffer(
-                    GL_SHADER_STORAGE_BUFFER,
-                    pos_data.data(),
-                    pos_data.size() * sizeof(glm::vec4),
-                    GL_DYNAMIC_DRAW
-                );
-            }
-            else
-            {
-                ssbo_positions.update(pos_data.data(), pos_data.size() * sizeof(glm::vec4));
-            }
-
-            if (!ssbo_lj_params.id() || 
-                ssbo_lj_params.getSize() != static_cast<GLsizeiptr>(data.lj_params.size() * sizeof(float)))
-            {
-                ssbo_lj_params = core::glBuffer(
-                    GL_SHADER_STORAGE_BUFFER,
-                    data.lj_params.data(),
-                    data.lj_params.size() * sizeof(float),
-                    GL_STATIC_DRAW
-                );
-            }
-
-            if (!ssbo_charges.id() || 
-                ssbo_charges.getSize() != static_cast<GLsizeiptr>(data.q.size() * sizeof(float)))
-            {
-                ssbo_charges = core::glBuffer(
-                    GL_SHADER_STORAGE_BUFFER,
-                    data.q.data(),
-                    data.q.size() * sizeof(float),
-                    GL_DYNAMIC_DRAW
-                );
-            }
-
-            const GLsizeiptr force_size = N * sizeof(glm::vec4);
-
-            bool need_recreate_force = !ssbo_force.id() || ssbo_force.getSize() != force_size;
-
-            if (need_recreate_force)
-            {
-                ssbo_force = core::glBuffer(GL_SHADER_STORAGE_BUFFER, nullptr, force_size, GL_DYNAMIC_DRAW);
-
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_force.id());
-                glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            }
-        }
-
         void universe::draw(sf::RenderTarget &target, rendering_info info)
         {
             rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions,
                                                .velocities = data.velocities,
                                                .q = data.q,
-                                               .atoms = atoms,
-                                               .bonds = bonds,
-                                               .molecules = molecules,
+                                               .atoms = atomData.atoms,
+                                               .bonds = atomData.bonds,
+                                               .molecules = atomData.molecules,
                                                .box = box};
 
             if (info.flag_highlights)
@@ -167,37 +86,37 @@ namespace sim
                     newAtom.mass -= 3.f;
             }
 
-            atoms.emplace_back(std::move(newAtom));
             data.q.emplace_back(float(ZIndex - numElectron));
-            data.forces.resize(atoms.size());
-            frozen_atoms.emplace_back(false);
+            atomData.atoms.emplace_back(std::move(newAtom));
+            atomData.frozen_atoms.emplace_back(false);
+            data.forces.resize(atomData.atoms.size());
 
-            return atoms.size() - 1;
+            return atomData.atoms.size() - 1;
         }
 
         void universe::createBond(int32_t idx1, int32_t idx2, BondType type)
         {
-            if (idx1 >= atoms.size() || idx2 >= atoms.size() || idx1 == idx2)
+            if (idx1 >= atomData.atoms.size() || idx2 >= atomData.atoms.size() || idx1 == idx2)
                 return;
 
-            if (std::find_if(bonds.begin(), bonds.end(), [&](bond &a)
-                             { return a.bondedAtom == idx1 && a.centralAtom == idx2 || a.bondedAtom == idx2 && a.centralAtom == idx1; }) != bonds.end())
+            if (std::find_if(atomData.bonds.begin(), atomData.bonds.end(), [&](bond &a)
+                             { return a.bondedAtom == idx1 && a.centralAtom == idx2 || a.bondedAtom == idx2 && a.centralAtom == idx1; }) != atomData.bonds.end())
                 return;
 
             bond nBond{};
             nBond.bondedAtom = idx1;
             nBond.centralAtom = idx2;
             nBond.type = type;
-            nBond.equilibriumLength = constants::getBondLength(atoms[idx1].ZIndex, atoms[idx2].ZIndex, type);
-            nBond.k = constants::getBondHarmonicConstantFromEnergy(atoms[idx1].ZIndex, atoms[idx2].ZIndex, type);
+            nBond.equilibriumLength = constants::getBondLength(atomData.atoms[idx1].ZIndex, atomData.atoms[idx2].ZIndex, type);
+            nBond.k = constants::getBondHarmonicConstantFromEnergy(atomData.atoms[idx1].ZIndex, atomData.atoms[idx2].ZIndex, type);
 
             int8_t bondCount = static_cast<int8_t>(type);
 
-            atoms[idx1].bondCount += bondCount;
-            atoms[idx2].bondCount += bondCount;
+            atomData.atoms[idx1].bondCount += bondCount;
+            atomData.atoms[idx2].bondCount += bondCount;
 
-            float EN1 = constants::getElectronegativity(atoms[idx1].ZIndex);
-            float EN2 = constants::getElectronegativity(atoms[idx2].ZIndex);
+            float EN1 = constants::getElectronegativity(atomData.atoms[idx1].ZIndex);
+            float EN2 = constants::getElectronegativity(atomData.atoms[idx2].ZIndex);
             float deltaEN = std::abs(EN1 - EN2);
 
             if (deltaEN > 0.1f) // Significant electronegativity difference
@@ -216,7 +135,7 @@ namespace sim
                 }
             }
 
-            bonds.emplace_back(std::move(nBond));
+            atomData.bonds.emplace_back(std::move(nBond));
         }
 
         int32_t universe::createSubset(const def_subset &nSub, const int32_t baseAtom, const int32_t baseSubset)
@@ -232,7 +151,7 @@ namespace sim
             for (int32_t i = 0; i < nSub.connectedIdx.size(); ++i)
             {
                 const int32_t bondedAtom = nSub.connectedIdx[i] + baseAtom;
-                neighbourZs.emplace_back(atoms[bondedAtom].ZIndex);
+                neighbourZs.emplace_back(atomData.atoms[bondedAtom].ZIndex);
             }
 
             for (int32_t h = 0; h < nSub.hydrogensIdx.size(); ++h)
@@ -251,13 +170,13 @@ namespace sim
                 nSubset.connectedCount = nSub.connectedIdx.size();
             }
 
-            subsets.emplace_back(std::move(nSubset));
-            return subsets.size() - 1; // Index
+            atomData.subsets.emplace_back(std::move(nSubset));
+            return atomData.subsets.size() - 1; // Index
         }
 
         void universe::createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel)
         {
-            int32_t baseAtomIndex = atoms.size();
+            int32_t baseAtomIndex = atomData.atoms.size();
 
             molecule nMolecule{};
 
@@ -285,7 +204,7 @@ namespace sim
             nMolecule.atomBegin = baseAtomIndex;
             nMolecule.atomCount = structure.atoms.size();
 
-            int32_t baseBondIndex = bonds.size();
+            int32_t baseBondIndex = atomData.bonds.size();
             for (int32_t b = 0; b < structure.bonds.size(); ++b)
             {
                 const def_bond &db = structure.bonds[b];
@@ -298,7 +217,7 @@ namespace sim
             nMolecule.bondBegin = baseBondIndex;
             nMolecule.bondCount = structure.bonds.size();
 
-            int32_t baseSubset = subsets.size();
+            int32_t baseSubset = atomData.subsets.size();
             for (int32_t s = 0; s < structure.subsets.size(); ++s)
                 createSubset(structure.subsets[s], baseAtomIndex, baseSubset);
 
@@ -306,11 +225,11 @@ namespace sim
             nMolecule.subsetCount = structure.subsets.size();
 
             if (nMolecule.subsetCount > 0 && structure.atoms[0].charge == 0)
-                balanceMolecularCharges(subsets[baseSubset]);
+                balanceMolecularCharges(atomData.subsets[baseSubset]);
 
             rebuildBondTopology();
 
-            int32_t baseAngle = angles.size();
+            int32_t baseAngle = atomData.angles.size();
             for (int32_t a = 0; a < structure.angles.size(); ++a)
             {
                 angle angle = structure.angles[a];
@@ -318,13 +237,13 @@ namespace sim
                 angle.B += baseAtomIndex;
                 angle.C += baseAtomIndex;
 
-                angles.emplace_back(std::move(angle));
+                atomData.angles.emplace_back(std::move(angle));
             }
 
             nMolecule.angleBegin = baseAngle;
             nMolecule.angleCount = structure.angles.size();
 
-            int32_t baseDihedral = dihedral_angles.size();
+            int32_t baseDihedral = atomData.dihedral_angles.size();
             for (int32_t a = 0; a < structure.dihedral_angles.size(); ++a)
             {
                 dihedral_angle angle = structure.dihedral_angles[a];
@@ -333,10 +252,10 @@ namespace sim
                 angle.C += baseAtomIndex;
                 angle.D += baseAtomIndex;
 
-                dihedral_angles.emplace_back(std::move(angle));
+                atomData.dihedral_angles.emplace_back(std::move(angle));
             }
 
-            int32_t baseImproper = improper_angles.size();
+            int32_t baseImproper = atomData.improper_angles.size();
             for (int32_t a = 0; a < structure.improper_angles.size(); ++a)
             {
                 dihedral_angle angle = structure.improper_angles[a];
@@ -345,23 +264,23 @@ namespace sim
                 angle.C += baseAtomIndex;
                 angle.D += baseAtomIndex;
 
-                improper_angles.emplace_back(std::move(angle));
+                atomData.improper_angles.emplace_back(std::move(angle));
             }
 
             nMolecule.dihedralBegin = baseDihedral;
             nMolecule.dihedralCount = structure.dihedral_angles.size();
 
-            molecules.emplace_back(std::move(nMolecule));
+            atomData.molecules.emplace_back(std::move(nMolecule));
         }
 
         void universe::balanceMolecularCharges(subset &mol)
         {
-            auto it = std::find_if(subsets.begin(), subsets.end(), [&](const subset &s)
+            auto it = std::find_if(atomData.subsets.begin(), atomData.subsets.end(), [&](const subset &s)
                                    { return &s == &mol; });
-            if (it == subsets.end())
+            if (it == atomData.subsets.end())
                 return;
 
-            int32_t startIdx = std::distance(subsets.begin(), it);
+            int32_t startIdx = std::distance(atomData.subsets.begin(), it);
 
             std::vector<int32_t> atomsToBalance;
             std::unordered_set<int32_t> visited;
@@ -373,7 +292,7 @@ namespace sim
             {
                 int32_t currentIdx = q.front();
                 q.pop();
-                const auto &currentSubset = subsets[currentIdx];
+                const auto &currentSubset = atomData.subsets[currentIdx];
 
                 atomsToBalance.push_back(currentSubset.mainAtomIdx);
 
@@ -390,7 +309,7 @@ namespace sim
                     }
 
                 int32_t nextIdx = currentSubset.bondedSubsetIdx;
-                if (nextIdx < subsets.size() && nextIdx != SIZE_MAX && visited.insert(nextIdx).second)
+                if (nextIdx < atomData.subsets.size() && nextIdx != SIZE_MAX && visited.insert(nextIdx).second)
                 {
                     q.push(nextIdx);
                 }
@@ -403,8 +322,8 @@ namespace sim
             auto last = std::unique(atomsToBalance.begin(), atomsToBalance.end());
             atomsToBalance.erase(last, atomsToBalance.end());
 
-            std::vector<std::vector<int32_t>> neighborLists(atoms.size());
-            for (const auto &bond : bonds)
+            std::vector<std::vector<int32_t>> neighborLists(atomData.atoms.size());
+            for (const auto &bond : atomData.bonds)
             {
                 int32_t a = bond.bondedAtom;
                 int32_t b = bond.centralAtom;
@@ -426,11 +345,11 @@ namespace sim
             for (int32_t i = 0; i < atomsToBalance.size(); ++i)
             {
                 int32_t idx = atomsToBalance[i];
-                if (idx >= atoms.size())
+                if (idx >= atomData.atoms.size())
                     continue;
 
-                uint8_t usualValence = constants::getUsualBonds(atoms[idx].ZIndex);
-                int deficit = usualValence - static_cast<int>(atoms[idx].bondCount);
+                uint8_t usualValence = constants::getUsualBonds(atomData.atoms[idx].ZIndex);
+                int deficit = usualValence - static_cast<int>(atomData.atoms[idx].bondCount);
                 valenceDeficit[i] = static_cast<float>(deficit);
             }
 
@@ -526,810 +445,14 @@ namespace sim
             }
         }
 
-        float universe::ljPot(uint32_t i, uint32_t j)
-        {
-            float potential = 0.f;
-
-            float dr = minImageVec(pos(i) - pos(j)).length();
-
-            auto [sigma_i, epsilon_i] = constants::getAtomConstants(atoms[i].ZIndex);
-            auto [sigma_j, epsilon_j] = constants::getAtomConstants(atoms[j].ZIndex);
-            float sigma = (sigma_i + sigma_j) / 2.0f;
-
-            if (dr < sigma * CUTOFF && dr > EPSILON)
-            {
-                float epsilon = sqrtf(epsilon_i * epsilon_j);
-                float r6 = powf((sigma / dr), 6);
-                float r12 = r6 * r6;
-                potential += 4.0f * epsilon * (r12 - r6);
-            }
-
-            return potential;
-        }
-
-        glm::vec3 universe::ljForce(uint32_t i, uint32_t j)
-        {
-            const uint32_t base_i = i << 1;
-            const uint32_t base_j = j << 1;
-
-            const float sigma_i = data.lj_params[base_i];
-            const float sigma_j = data.lj_params[base_j];
-            const float epsilon_i = data.lj_params[base_i + 1];
-            const float epsilon_j = data.lj_params[base_j + 1];
-
-            sf::Vector3f dr_vec = minImageVec(pos(i) - pos(j));
-            float dr = dr_vec.length();
-
-            const float sigma = (sigma_i + sigma_j) * 0.5f;
-            const float epsilon = sqrtf(epsilon_i * epsilon_j);
-
-            if (dr < 10.f && dr > EPSILON)
-            {
-                float inv_r     = 1.0f / dr;
-                float inv_r2    = inv_r * inv_r;
-                float inv_r6    = inv_r2 * inv_r2 * inv_r2;
-                float inv_r12   = inv_r6 * inv_r6;
-
-                float sr6  = powf(sigma, 6.0f) * inv_r6;
-                float sr12 = sr6 * sr6;
-
-                float force_mag = 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r;
-                glm::vec3 direction = glm::vec3(dr_vec.x, dr_vec.y, dr_vec.z) * inv_r;
-
-                return force_mag * direction;
-            }
-
-            return glm::vec3{0.f, 0.f, 0.f};
-        }
-
-        // Wolf method
-        float universe::wolfForce(float r, float qi_qj)
-        {
-            constexpr float alpha = 0.25f; // damping
-            constexpr float rc = COULOMB_CUTOFF;
-            if (r >= rc)
-                return 0.f;
-
-            float ir = 1.f / r;
-            float ir_c = 1.f / rc;
-
-            float erfc_ar = std::erfc(alpha * r);
-            float exp_term = std::exp(-(alpha * alpha * r * r));
-
-            float force = COULOMB_K * qi_qj * ir * ir * (erfc_ar + 2.f * alpha / std::sqrt(M_PI) * r * exp_term);
-
-            return force;
-        }
-
-        glm::vec3 universe::coulombForce(uint32_t i, uint32_t j, glm::vec3 &dr_vec)
-        {
-            float dr = glm::length(dr_vec);
-
-            if (dr < EPSILON || dr > COULOMB_CUTOFF)
-                return {0.f, 0.f, 0.f};
-
-            float qq = data.q[i] * data.q[j];
-            if (qq == 0.f)
-                return {0.f, 0.f, 0.f};
-
-            float forceMag = COULOMB_K * qq / (dr * dr * dr);
-            return forceMag * -dr_vec;
-        }
-
-        float universe::calculateDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
-        {
-            glm::vec3 v1 = pb - pa;
-            glm::vec3 v2 = pc - pb;
-            glm::vec3 v3 = pd - pc;
-
-            glm::vec3 n1 = glm::cross(v1, v2);
-            glm::vec3 n2 = glm::cross(v2, v3);
-
-            n1 = glm::normalize(n1);
-            n2 = glm::normalize(n2);
-
-            float cosPhi = std::clamp(glm::dot(n1, n2), -1.f, 1.f);
-            float phi = std::acos(cosPhi);
-
-            // sign via right-hand rule
-            if (glm::dot(v2, glm::cross(n1, n2)) < 0.f)
-                phi = -phi;
-            if (phi < 0.f)
-                phi += 2.f * M_PI;
-            return phi;
-        }
-
-        std::vector<glm::vec3> universe::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
-        {
-            float local_virial = 0.f;
-
-            int32_t cellID = universe_grid.cellToIndex(ix, iy, iz);
-
-            thread_local std::vector<glm::vec3> local_forces(atoms.size(), {0, 0, 0});
-
-            if (local_forces.size() != atoms.size())
-                local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
-
-            std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0, 0, 0});
-
-            universe_grid.foreach(cellID, [&](const uint32_t& i)
-            {
-                universe_grid.foreach(cellID, [&](const uint32_t& j)
-                {
-                    if (j <= i)
-                        return;
-
-                    sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                    glm::vec3 dr_g(dr.x, dr.y, dr.z);
-
-                    if (areBonded(i, j))
-                        return;
-
-                    glm::vec3 cForce = coulombForce(i, j, dr_g);
-                    glm::vec3 lForce = ljForce(i, j);
-
-                    glm::vec3 total_force = cForce + lForce;
-                    local_forces[i] += total_force;
-                    local_forces[j] -= total_force;
-
-                    local_virial += dr.x * total_force.x +
-                                    dr.y * total_force.y +
-                                    dr.z * total_force.z;
-                }, atom_start + 1);
-
-                for (int32_t dx = -1; dx <= 1; ++dx)
-                    for (int32_t dy = -1; dy <= 1; ++dy)
-                    {
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                        {
-                            if (dx == 0 && dy == 0 && dz == 0) continue;
-
-                            int32_t n_ix = ix + dx;
-                            int32_t n_iy = iy + dy;
-                            int32_t n_iz = iz + dz;
-
-                            n_ix = (n_ix % universe_grid.gridDimensions.x + universe_grid.gridDimensions.x) % universe_grid.gridDimensions.x;
-                            n_iy = (n_iy % universe_grid.gridDimensions.y + universe_grid.gridDimensions.y) % universe_grid.gridDimensions.y;
-                            n_iz = (n_iz % universe_grid.gridDimensions.z + universe_grid.gridDimensions.z) % universe_grid.gridDimensions.z;
-
-                            int32_t neighbor_id = universe_grid.cellToIndex(n_ix, n_iy, n_iz);
-
-                            if (!wall_collision && !roof_floor_collision && neighbor_id < -1) continue;
-
-                            universe_grid.foreach(neighbor_id, [&](const uint32_t& j)
-                            {
-                                if (j <= i)
-                                    return;
-
-                                sf::Vector3f dr = minImageVec(pos(j) - pos(i));
-                                glm::vec3 dr_g(dr.x, dr.y, dr.z);
-
-                                if (areBonded(i, j))
-                                    return;
-
-                                glm::vec3 cForce = coulombForce(i, j, dr_g);
-                                glm::vec3 lForce = ljForce(i, j);
-
-                                glm::vec3 total_force = cForce + lForce;
-                                local_forces[i] += total_force;
-                                local_forces[j] -= total_force;
-
-                                local_virial += dr.x * total_force.x +
-                                                dr.y * total_force.y +
-                                                dr.z * total_force.z;
-                            }, atom_start, atom_end);
-                        }
-                    }
-            }, atom_start, atom_end);
-
-            total_virial.fetch_add(local_virial, std::memory_order_relaxed);
-            return local_forces;
-        }
-
-        void universe::calcBondedForcesParallel()
-        {
-            const uint32_t n_threads = std::max(1u, std::thread::hardware_concurrency());
-            std::vector<std::future<std::vector<sf::Vector3f>>> futures;
-
-            auto make_task = [this](auto &&func)
-            {
-                return [this, func](int32_t start, int32_t end) -> std::vector<sf::Vector3f>
-                {
-                    thread_local std::vector<sf::Vector3f> local_forces;
-                    if (local_forces.size() != atoms.size())
-                    {
-                        local_forces.assign(atoms.size(), {0.0f, 0.0f, 0.0f});
-                    }
-                    std::fill(local_forces.begin(), local_forces.end(), sf::Vector3f{0, 0, 0});
-
-                    func(start, end, local_forces);
-
-                    return local_forces;
-                };
-            };
-
-            auto bond_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
-            {
-                for (int32_t i = start; i < end; ++i)
-                {
-                    const bond &b = bonds[i];
-                    int32_t a = b.bondedAtom;
-                    int32_t c = b.centralAtom;
-
-                    sf::Vector3f dr = minImageVec(pos(c) - pos(a));
-                    float len = dr.length();
-                    if (len <= EPSILON)
-                        continue;
-
-                    float dl = len - b.equilibriumLength;
-                    sf::Vector3f force = (b.k * dl / len) * dr;
-
-                    lf[a] += force;
-                    lf[c] -= force;
-                }
-            };
-
-            for (int32_t t = 0; t < n_threads; ++t)
-            {
-                int32_t start = bonds.size() * t / n_threads;
-                int32_t end = bonds.size() * (t + 1) / n_threads;
-                futures.emplace_back(std::async(std::launch::async, make_task(bond_func), start, end));
-            }
-
-            auto angle_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
-            {
-                for (int32_t a = start; a < end; ++a)
-                {
-                    const angle &ang = angles[a];
-                    int32_t i = ang.A, j = ang.B, k = ang.C;
-
-                    sf::Vector3f r_ji = minImageVec(pos(i) - pos(j));
-                    sf::Vector3f r_jk = minImageVec(pos(k) - pos(j));
-                    float len_ji = r_ji.length();
-                    float len_jk = r_jk.length();
-                    if (len_ji < EPSILON || len_jk < EPSILON)
-                        continue;
-
-                    sf::Vector3f u_ji = r_ji / len_ji;
-                    sf::Vector3f u_jk = r_jk / len_jk;
-                    float cos_theta = std::clamp(u_ji.dot(u_jk), -1.0f, 1.0f);
-                    float sin_theta = std::sqrt(std::max(1.0f - cos_theta * cos_theta, 0.0f));
-                    if (sin_theta < 1e-6f)
-                        sin_theta = 1e-6f;
-
-                    float theta = std::acos(cos_theta);
-                    float delta_theta = theta - ang.rad;
-
-                    sf::Vector3f dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
-                    sf::Vector3f dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
-
-                    sf::Vector3f F_i = -ang.K * delta_theta * dtheta_dri;
-                    sf::Vector3f F_k = -ang.K * delta_theta * dtheta_drk;
-                    sf::Vector3f F_j = -F_i - F_k;
-
-                    lf[i] += F_i;
-                    lf[j] += F_j;
-                    lf[k] += F_k;
-                }
-            };
-
-            for (int32_t t = 0; t < n_threads; ++t)
-            {
-                int32_t start = angles.size() * t / n_threads;
-                int32_t end = angles.size() * (t + 1) / n_threads;
-                futures.emplace_back(std::async(std::launch::async, make_task(angle_func), start, end));
-            }
-
-            auto dihedral_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
-            {
-                for (int32_t d = start; d < end; ++d)
-                {
-                    const dihedral_angle &da = dihedral_angles[d];
-                    const sf::Vector3f &pa = pos(da.A);
-                    const sf::Vector3f &pb = pos(da.B);
-                    const sf::Vector3f &pc = pos(da.C);
-                    const sf::Vector3f &pd = pos(da.D);
-
-                    glm::vec3 pb_g = glm::vec3(pb.x, pb.y, pb.z);
-
-                    float phi = calculateDihedral(glm::vec3(pa.x, pa.y, pa.z), pb_g, glm::vec3(pc.x, pc.y, pc.z), glm::vec3(pd.x, pd.y, pd.z));
-
-                    float target = da.rad;
-                    if (target == 0.0f && da.periodicity == 1)
-                    {
-                        int32_t chi = atoms[da.B].chirality ? atoms[da.B].chirality : atoms[da.C].chirality;
-                        if (chi == 1)
-                            target = (phi < M_PI) ? 1.047f : 5.236f;
-                        if (chi == 2)
-                            target = (phi < M_PI) ? 5.236f : 1.047f;
-                    }
-
-                    float diff = phi - target;
-                    while (diff > M_PI)
-                        diff -= 2.0f * M_PI;
-                    while (diff < -M_PI)
-                        diff += 2.0f * M_PI;
-
-                    glm::vec3 b1 = pb_g - glm::vec3(pa.x, pa.y, pa.z);
-                    glm::vec3 b2 = glm::vec3(pc.x, pc.y, pc.z) - pb_g;
-                    glm::vec3 b3 = glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z);
-
-                    glm::vec3 n1 = glm::cross(b1, b2);
-                    glm::vec3 n2 = glm::cross(b2, b3);
-
-                    n1 = glm::normalize(n1);
-                    n2 = glm::normalize(n2);
-                    glm::vec3 u2 = glm::normalize(b2);
-
-                    float sin_term = std::sin(da.periodicity * phi - da.rad);
-                    float torque_mag = da.K * da.periodicity * sin_term;
-
-                    glm::vec3 axis = glm::normalize(glm::vec3(pc.x, pc.y, pc.z) - pb_g);
-
-                    glm::vec3 rA = glm::vec3(pa.x, pa.y, pa.z) - pb_g;
-                    glm::vec3 torqueA = glm::normalize(glm::cross(axis, rA)) * torque_mag;
-
-                    glm::vec3 rD = glm::normalize(glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z));
-                    glm::vec3 torqueD = glm::normalize(glm::cross(axis, rD)) * (-torque_mag);
-
-                    glm::vec3 f1 = (torque_mag / glm::length(b1) + 0.0001f) * (glm::cross(n1, u2));
-                    glm::vec3 f4 = (torque_mag / glm::length(b3) + 0.0001f) * (glm::cross(u2, n2));
-
-                    sf::Vector3f f1_s = sf::Vector3f(f1.x, f1.y, f1.z);
-                    sf::Vector3f torqueD_s = sf::Vector3f(torqueD.x, torqueD.y, torqueD.z);
-                    sf::Vector3f f4_s = sf::Vector3f(f4.x, f4.y, f4.z);
-
-                    lf[da.A] += -f1_s;
-                    lf[da.D] += -f4_s;
-                    lf[da.B] += f1_s;
-                    lf[da.C] += f4_s;
-                    lf[da.D] += -torqueD_s * 0.5f;
-                }
-            };
-
-            for (int32_t t = 0; t < n_threads; ++t)
-            {
-                int32_t start = dihedral_angles.size() * t / n_threads;
-                int32_t end = dihedral_angles.size() * (t + 1) / n_threads;
-                futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
-            }
-
-            auto improper_func = [this](int32_t start, int32_t end, std::vector<sf::Vector3f> &lf)
-            {
-                for (int32_t d = start; d < end; ++d)
-                {
-                    const dihedral_angle &imp = improper_angles[d];
-
-                    const sf::Vector3f &pa = pos(imp.A);
-                    const sf::Vector3f &pb = pos(imp.B);
-                    const sf::Vector3f &pc = pos(imp.C);
-                    const sf::Vector3f &pd = pos(imp.D);
-
-                    glm::vec3 pb_g(pb.x, pb.y, pb.z);
-
-                    float phi = calculateDihedral(
-                        glm::vec3(pa.x, pa.y, pa.z),
-                        pb_g,
-                        glm::vec3(pc.x, pc.y, pc.z),
-                        glm::vec3(pd.x, pd.y, pd.z));
-
-                    float diff = phi - imp.rad;
-                    while (diff > M_PI)
-                        diff -= 2.0f * M_PI;
-                    while (diff < -M_PI)
-                        diff += 2.0f * M_PI;
-
-                    float dE_dphi = imp.K * diff;
-
-                    glm::vec3 b1 = pb_g - glm::vec3(pa.x, pa.y, pa.z);
-                    glm::vec3 b2 = glm::vec3(pc.x, pc.y, pc.z) - pb_g;
-                    glm::vec3 b3 = glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z);
-
-                    glm::vec3 n1 = glm::normalize(glm::cross(b1, b2));
-                    glm::vec3 n2 = glm::normalize(glm::cross(b2, b3));
-                    glm::vec3 u2 = glm::normalize(b2);
-
-                    float sin_term = std::sin(imp.periodicity * phi - imp.rad);
-                    float torque_mag = imp.K * imp.periodicity * sin_term;
-
-                    glm::vec3 axis = glm::normalize(glm::vec3(pc.x, pc.y, pc.z) - pb_g);
-
-                    glm::vec3 rA = glm::vec3(pa.x, pa.y, pa.z) - pb_g;
-                    glm::vec3 torqueA = glm::normalize(glm::cross(axis, rA)) * torque_mag;
-
-                    glm::vec3 rD = glm::normalize(glm::vec3(pd.x, pd.y, pd.z) - glm::vec3(pc.x, pc.y, pc.z));
-                    glm::vec3 torqueD = glm::normalize(glm::cross(axis, rD)) * (-torque_mag);
-
-                    glm::vec3 f1 = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
-                    glm::vec3 f4 = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
-
-                    sf::Vector3f f1_s(f1.x, f1.y, f1.z);
-                    sf::Vector3f f4_s(f4.x, f4.y, f4.z);
-                    sf::Vector3f torqueD_s(torqueD.x, torqueD.y, torqueD.z);
-
-                    lf[imp.A] += -f1_s;
-                    lf[imp.D] += -f4_s;
-                    lf[imp.B] += f1_s + f4_s;
-                    lf[imp.C] += -torqueD_s * 0.5f;
-                }
-            };
-
-            for (int t = 0; t < n_threads; ++t)
-            {
-                int start = improper_angles.size() * t / n_threads;
-                int end = improper_angles.size() * (t + 1) / n_threads;
-                futures.emplace_back(std::async(std::launch::async, make_task(improper_func), start, end));
-            }
-
-            for (auto &fut : futures)
-            {
-                auto local_f = fut.get();
-                for (int32_t i = 0; i < atoms.size(); ++i)
-                    add_force(i, local_f[i]);
-            }
-        }
-
-        void universe::calcUnbondedForcesParallel()
-        {
-            const size_t cells = universe_grid.cellOffsets.size();
-            const int32_t n_threads = std::thread::hardware_concurrency();
-            //const int32_t n_threads = 1;
-            const int32_t threads_per_top = cells < 9 ? n_threads : std::max(1u, static_cast<uint32_t>(std::floor(static_cast<double>(n_threads / 2)))); // how many threads will run on cells with lots of work
-            constexpr int32_t subdivide_top = 4;                                                                           // how many of the top cells to subdivide
-
-            struct task
-            {
-                uint64_t work;
-                int32_t cell_idx;
-                int32_t atom_start;
-                int32_t atom_end = -1;
-            };
-
-            struct cell_work
-            {
-                uint32_t cell_idx;
-                uint32_t work;
-
-                constexpr bool operator<(const cell_work &other) const
-                {
-                    return work > other.work;
-                }
-            };
-
-            std::set<cell_work> sorted_cells;
-
-            for (int32_t c = 0; c < cells; ++c)
-            {
-                uint32_t offset = universe_grid.cellOffsets[c];
-                uint32_t n = universe_grid.particleIndices[offset];
-
-                if (n == 0)
-                    continue;
-
-                sorted_cells.emplace(c, n * n * 9);
-            }
-
-            std::vector<task> tasks;
-
-            int32_t rank = 0;
-            for (const auto &cw : sorted_cells)
-            {
-                int32_t c = cw.cell_idx;
-                uint32_t offset = universe_grid.cellOffsets[c];
-                uint32_t n = universe_grid.particleIndices[offset];
-
-                if (rank < subdivide_top)
-                {
-                    int32_t slice_size = static_cast<int32_t>((n + threads_per_top) / threads_per_top);
-                    for (int32_t p = 0; p < threads_per_top; ++p)
-                    {
-                        int32_t start = p * slice_size;
-                        int32_t end = std::min(start + slice_size, static_cast<int32_t>(n));
-                        if (start >= end)
-                            break;
-
-                        uint64_t sub_work = static_cast<uint64_t>(end - start) * n * 9ull;
-                        tasks.emplace_back(sub_work, c, start, end);
-                    }
-                }
-                else
-                {
-                    tasks.push_back({cw.work, c, 0, -1});
-                }
-
-                ++rank;
-            }
-
-            auto worker = [this](const std::vector<task> &my_tasks) -> std::vector<glm::vec3>
-            {
-                std::vector<glm::vec3> thread_forces(atoms.size(), {0, 0, 0});
-
-                for (auto &t : my_tasks)
-                {
-                    glm::ivec3 cell = universe_grid.indexToCell(t.cell_idx);
-
-                    uint32_t offset = universe_grid.cellOffsets[t.cell_idx];
-                    uint32_t n = universe_grid.particleIndices[offset];
-
-                    std::vector<glm::vec3> cell_forces;
-
-                    if (t.atom_end < 0)
-                    {
-                        cell_forces = processCellUnbonded(cell.x, cell.y, cell.z, 0, universe_grid.particleIndices[n]);
-                    }
-                    else
-                    {
-                        cell_forces = processCellUnbonded(cell.x, cell.y, cell.z, t.atom_start, t.atom_end);
-                    }
-
-                    for (size_t i = 0; i < atoms.size(); ++i)
-                    {
-                        thread_forces[i] += cell_forces[i];
-                    }
-                }
-                return thread_forces;
-            };
-
-            int32_t n_used_threads = std::min(n_threads, static_cast<int32_t>(tasks.size()));
-            std::vector<uint64_t> thread_load(n_used_threads, 0);
-            std::vector<std::vector<task>> thread_tasks(n_used_threads);
-
-            for (const auto &task : tasks)
-            {
-                auto min_it = std::min_element(thread_load.begin(), thread_load.end());
-                int32_t t = std::distance(thread_load.begin(), min_it);
-
-                thread_tasks[t].push_back(task);
-                thread_load[t] += task.work;
-            }
-
-            std::vector<std::future<std::vector<glm::vec3>>> futures;
-            futures.reserve(n_used_threads);
-
-            for (int32_t t = 0; t < n_used_threads; ++t)
-            {
-                if (!thread_tasks[t].empty())
-                {
-                    futures.push_back(
-                        std::async(std::launch::async,
-                                   worker,
-                                   std::cref(thread_tasks[t])));
-                }
-            }
-
-            for (auto &fut : futures)
-            {
-                auto local_f = fut.get();
-                
-                for (size_t i = 0; i < atoms.size(); ++i)
-                    data.forces[i] += local_f[i];
-            }
-        }
-
-        void universe::computeUnbondedForces()
-        {
-            const uint32_t N = static_cast<uint32_t>(atoms.size());
-            const uint32_t local_size = 256;
-            const uint32_t num_groups = (N + local_size - 1) / local_size;
-
-            unbonded_program.use();
-            unbonded_program.setUniform("numParticles", N);
-            unbonded_program.setUniform("box", box);
-            unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF);
-            unbonded_program.setUniform("collide_floor_roof", roof_floor_collision);
-            unbonded_program.setUniform("collide_walls", wall_collision);
-            
-            ssbo_positions.bindBase(0);
-            ssbo_lj_params.bindBase(1);
-            ssbo_charges.bindBase(2);
-            ssbo_force.bindBase(3);
-
-            glDispatchCompute(num_groups, 1, 1);
-
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-            core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER);
-
-            ssbo_force.bind();
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, N * sizeof(glm::vec4), data.forces.data());
-            ssbo_force.unbind();
-        }
-
-        void universe::update(float targetTemperature, float targetPressure)
-        {
-            int32_t N = atoms.size();
-
-            if (N == 0 || m_paused)
-                return;
-
-            data.forces.assign(N, glm::vec3(0.0f));
-            total_virial = 0.0f;
-
-            #ifndef CALCULATIONS_GPU
-            calcBondedForcesParallel();
-            calcUnbondedForcesParallel();
-            #else
-            ssbo_force.bind();
-            glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-            ssbo_force.unbind();
-            
-            computeUnbondedForces();
-            #endif
-
-            setPressure(targetPressure);
-            setTemperature(targetTemperature);
-
-            float dt = FEMTOSECOND * m_Timescale;
-
-            for (int32_t i = 0; i < N; ++i)
-            {
-                for (int32_t w = 0; w < wall_charges.size() && f_wallCharges; ++w)
-                {
-                    const float& wall_q = wall_charges[w];
-                    if (wall_q == 0.f) continue;
-         
-                    glm::vec3 force = data.q[i] * wall_q * wall_directions[w];
-                    data.forces[i] += force;
-                }
-
-                if (f_magneticField)
-                {
-                    glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], magnetic_strength);
-                    data.forces[i] += force;
-                }
-                            
-                sf::Vector3f accel = force(i) / atoms[i].mass;
-
-                if (gravity)
-                    accel.z += -mag_gravity;
-
-                add_vel(i, accel * (0.5f * dt));
-            }
-
-            for (int32_t i = 0; i < N; ++i)
-            {
-                sf::Vector3f dPos = vel(i) * dt;
-                add_pos(i, dPos);
-                boundCheck(i);
-            }
-
-            data.forces.assign(N, glm::vec3(0.0f));
-
-            #ifndef CALCULATIONS_GPU
-            calcBondedForcesParallel();
-            calcUnbondedForcesParallel();
-            #else
-            computeUnbondedForces();
-            #endif
-
-            for (int32_t i = 0; i < N; ++i)
-            {
-                for (int32_t w = 0; w < wall_charges.size() && f_wallCharges; ++w)
-                {
-                    const float& wall_q = wall_charges[w];
-                    if (wall_q == 0.f) continue;
-         
-                    glm::vec3 force = data.q[i] * wall_q * wall_directions[w];
-                    data.forces[i] += force;
-                }
-
-                if (f_magneticField)
-                {
-                    glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], magnetic_strength);
-                    data.forces[i] += force;
-                }
-                
-
-                sf::Vector3f accel = force(i) / atoms[i].mass;
-
-                if (gravity)
-                    accel.z += -mag_gravity;
-
-                add_vel(i, accel * (0.5f * dt));
-            }
-
-            if (timeStep % GRID_REBUILD == 0)
-                universe_grid.rebuild(data.positions, box, CELL_CUTOFF);
-
-            ++timeStep;
-            m_accumulatedTime += dt;
-
-            if (timeStep % 1000 == 0)
-                COMDrift(); // fixes simulation box COM drift from numerical errors
-
-            #ifdef CALCULATIONS_GPU
-            updateSSBOs();
-            #endif
-        }
-
-        float universe::calculatePressure()
-        {
-            if (atoms.empty())
-                return 0.f;
-
-            float kinetic = calculateKineticEnergy();
-            float volume = box.x * box.y * box.z;
-            float temperature = (2.0f / 3.0f) * kinetic / atoms.size();
-
-            float P_ideal = atoms.size() * temperature / volume;
-
-            float P_virial = -total_virial / (3.0f * volume);
-
-            float pressure = P_ideal + P_virial;
-            return pressure;
-        }
-
-        void universe::setPressure(float Target_P_Bar)
-        {
-            if (Target_P_Bar <= 0.0f)
-                return;
-            if (timeStep % BAROSTAT_INTERVAL != 0)
-                return;
-
-            constexpr float beta_T = 4.5e-5f;
-            constexpr float tau_P = 1.0f;
-
-            pres = calculatePressure();
-
-            float delta_P = Target_P_Bar - pres;
-            float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
-
-            mu = std::clamp(mu, 0.5f, 1.5f);
-
-            float scale = std::cbrt(mu);
-
-            box.z *= scale;
-
-            for (int32_t i = 0; i < atoms.size(); ++i)
-            {
-                data.positions[i].z *= scale;
-            }
-        }
-
-        // Bussi–Donadio–Parrinello (CSVR) velocity rescaling
-        void universe::setTemperature(float kelvin)
-        {
-            if (timeStep % THERMOSTAT_INTERVAL != 0)
-                return;
-
-            float d = 3.0f * atoms.size() - 3.0f;
-            if (d <= 0)
-                d = 1;
-
-            float KE = calculateKineticEnergy();
-            float current_temp = (2.0f * KE) / (d * KB);
-            temp = current_temp;
-
-            if (!isothermal) return;
-            
-            float target_KE = 0.5f * d * KB * kelvin;
-            float c = target_KE / (KE + std::numeric_limits<float>::epsilon());
-
-            float r = gauss_random();
-            float chi = r * sqrtf(2.0f / d);
-
-            float alpha = sqrtf(c * (1.0f + chi + 0.5f * chi * chi));
-
-            // alpha = sqrtf((c + sigma * r)^2 / 2 + c * (1 - c) * chi²(d-1) / d)
-
-            for (auto &v : data.velocities)
-                v *= alpha;
-        }
-
         // Energy Calculation
         float universe::calculateKineticEnergy()
         {
             float kinetic_energy = 0.0f;
-            for (int32_t i = 0; i < atoms.size(); ++i)
-                kinetic_energy += 0.5f * atoms[i].mass * vel(i).lengthSquared();
+            for (int32_t i = 0; i < atomData.atoms.size(); ++i)
+                kinetic_energy += 0.5f * atomData.atoms[i].mass * glm::length2(data.velocities[i]);
 
             return kinetic_energy;
-        }
-
-        float universe::calculateAtomTemperature(int32_t i)
-        {
-            float ke = 0.5f * atoms[i].mass * vel(i).lengthSquared();
-            return (2.0f / 3.0f) * ke * KB;
         }
 
         void universe::COMDrift()
@@ -1337,10 +460,10 @@ namespace sim
             glm::vec3 totalMomentum{0.f};
             float totalMass = 0.f;
 
-            for (int32_t i = 0; i < atoms.size(); ++i)
+            for (int32_t i = 0; i < atomData.atoms.size(); ++i)
             {
-                totalMomentum += atoms[i].mass * data.velocities[i];
-                totalMass += atoms[i].mass;
+                totalMomentum += atomData.atoms[i].mass * data.velocities[i];
+                totalMass += atomData.atoms[i].mass;
             }
 
             glm::vec3 correction = totalMomentum / totalMass;
@@ -1358,9 +481,9 @@ namespace sim
 
             for (int32_t i = 0; i < subsetIdx.size(); ++i)
             {
-                auto &s = subsets[subsetIdx[i]];
+                auto &s = atomData.subsets[subsetIdx[i]];
                 int32_t centralAtom = s.mainAtomIdx;
-                ++ZIndices[atoms[centralAtom].ZIndex];
+                ++ZIndices[atomData.atoms[centralAtom].ZIndex];
                 ZIndices[1] += s.connectedCount;
             }
 
@@ -1382,7 +505,7 @@ namespace sim
 
             if (!organic)
             {
-                for (int32_t i = 1; i <= COUNT_ATOMS; ++i)
+                for (int32_t i = 1; i <= 119; ++i)
                 {
                     if (ZIndices[i] <= 0)
                         continue;
@@ -1410,7 +533,6 @@ namespace sim
         {
             frame nFrame{};
             nFrame.positions = data.positions;
-            nFrame.global_temperature = temp;
 
             m_frames.emplace_back(std::move(nFrame));
         }
@@ -1424,10 +546,6 @@ namespace sim
             return time_str;
         }
 
-        void universe::runVideo(const video &vid)
-        {
-        }
-
         video universe::saveAsVideo(const std::filesystem::path path, const std::string name)
         {
             if (m_frames.size() == 0)
@@ -1439,7 +557,7 @@ namespace sim
 
             videoMetaData nMetadata{};
             nMetadata.box = box;
-            nMetadata.num_atoms = atoms.size();
+            nMetadata.num_atoms = atomData.atoms.size();
             size_t savedFrameCount = 0;
             for (size_t i = 0; i < m_frames.size(); ++i)
             {
@@ -1453,7 +571,7 @@ namespace sim
                 {
                     {"title", nMetadata.title},
                     {"description", "Molecular dynamics trajectory"},
-                    {"atoms", nMetadata.num_atoms},
+                    {"atomData.atoms", nMetadata.num_atoms},
                     {"frames", nMetadata.num_frames},
                     {"box", {box.x, box.y, box.z}}};
 
@@ -1498,7 +616,7 @@ namespace sim
                 return video{};
             }
 
-            std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " << json_video["metadata"]["atoms"] << " atoms to " << path << '\n';
+            std::cout << "[Recorder] Saved trajectory with " << json_video["metadata"]["frames"] << " frames and " << json_video["metadata"]["atomData.atoms"] << " atomData.atoms to " << path << '\n';
 
             video nVideo{};
             nVideo.frames = m_frames;
@@ -1524,16 +642,16 @@ namespace sim
                 scene["velz"].emplace_back(data.velocities[x].z);
 
                 scene["charge"].emplace_back(data.q[x]);
-                scene["ZIndex"].emplace_back(atoms[x].ZIndex);
-                scene["neutrons"].emplace_back(atoms[x].NCount);
-                scene["electrons"].emplace_back(atoms[x].electrons);
-                scene["boundCount"].emplace_back(atoms[x].bondCount);
-                scene["chirality"].emplace_back(atoms[x].chirality);
+                scene["ZIndex"].emplace_back(atomData.atoms[x].ZIndex);
+                scene["neutrons"].emplace_back(atomData.atoms[x].NCount);
+                scene["electrons"].emplace_back(atomData.atoms[x].electrons);
+                scene["boundCount"].emplace_back(atomData.atoms[x].bondCount);
+                scene["chirality"].emplace_back(atomData.atoms[x].chirality);
             }
 
-            for (int32_t b = 0; b < bonds.size(); ++b)
+            for (int32_t b = 0; b < atomData.bonds.size(); ++b)
             {
-                auto &bond = bonds[b];
+                auto &bond = atomData.bonds[b];
                 nlohmann::json b_json{};
                 b_json["central"] = bond.centralAtom;
                 b_json["bonded"] = bond.bondedAtom;
@@ -1544,9 +662,9 @@ namespace sim
                 scene["bonds"].emplace_back(b_json);
             }
 
-            for (int32_t a = 0; a < angles.size(); ++a)
+            for (int32_t a = 0; a < atomData.angles.size(); ++a)
             {
-                auto &angle = angles[a];
+                auto &angle = atomData.angles[a];
                 nlohmann::json a_json{};
                 a_json["A"] = angle.A;
                 a_json["B"] = angle.B;
@@ -1557,9 +675,9 @@ namespace sim
                 scene["angles"].emplace_back(a_json);
             }
 
-            for (int32_t d = 0; d < dihedral_angles.size(); ++d)
+            for (int32_t d = 0; d < atomData.dihedral_angles.size(); ++d)
             {
-                auto &dihedral = dihedral_angles[d];
+                auto &dihedral = atomData.dihedral_angles[d];
                 nlohmann::json d_json{};
 
                 d_json["A"] = dihedral.A;
@@ -1573,9 +691,9 @@ namespace sim
                 scene["dihedrals"].emplace_back(d_json);
             }
 
-            for (int32_t s = 0; s < subsets.size(); ++s)
+            for (int32_t s = 0; s < atomData.subsets.size(); ++s)
             {
-                auto &subset = subsets[s];
+                auto &subset = atomData.subsets[s];
                 nlohmann::json s_json{};
 
                 s_json["mainAtom"] = subset.mainAtomIdx;
@@ -1589,9 +707,9 @@ namespace sim
                 scene["subsets"].emplace_back(s_json);
             }
 
-            for (int32_t m = 0; m < molecules.size(); ++m)
+            for (int32_t m = 0; m < atomData.molecules.size(); ++m)
             {
-                auto &molecule = molecules[m];
+                auto &molecule = atomData.molecules[m];
                 nlohmann::json m_json{};
 
                 m_json["atomBegin"] = molecule.atomBegin;
@@ -1659,16 +777,7 @@ namespace sim
                 return;
             }
 
-            atoms.clear();
-            bonds.clear();
-            angles.clear();
-            dihedral_angles.clear();
-            subsets.clear();
-            molecules.clear();
-            data.positions.clear();
-            data.velocities.clear();
-            data.lj_params.clear();
-            data.q.clear();
+            clear();
 
             box.x = scene.value("boxx", 50.0f);
             box.y = scene.value("boxy", 50.0f);
@@ -1697,7 +806,7 @@ namespace sim
 
             int32_t N = posx.size();
 
-            atoms.reserve(N);
+            atomData.atoms.reserve(N);
             data.positions.reserve(N);
             data.lj_params.reserve(N);
             data.velocities.reserve(N);
@@ -1719,7 +828,8 @@ namespace sim
                 newAtom.chirality = chiralities[i];
                 newAtom.bondCount = bondCounts[i];
 
-                atoms.emplace_back(std::move(newAtom));
+                atomData.atoms.emplace_back(std::move(newAtom));
+                atomData.frozen_atoms.emplace_back(false);
 
                 emplace_pos(glm::vec3(posx[i], posy[i], posz[i]));
                 emplace_vel(glm::vec3(velx[i], vely[i], velz[i]));
@@ -1741,7 +851,7 @@ namespace sim
                     b.equilibriumLength = b_json["equilibrium"];
                     b.type = static_cast<BondType>(b_json["type"]);
                     b.k = b_json["k"];
-                    bonds.emplace_back(b);
+                    atomData.bonds.emplace_back(b);
                 }
             }
 
@@ -1755,7 +865,7 @@ namespace sim
                     a.C = a_json["C"];
                     a.K = a_json["K"];
                     a.rad = a_json["rad"];
-                    angles.emplace_back(a);
+                    atomData.angles.emplace_back(a);
                 }
             }
 
@@ -1771,7 +881,7 @@ namespace sim
                     d.K = d_json["K"];
                     d.periodicity = d_json["periodicity"];
                     d.rad = d_json["rad"];
-                    dihedral_angles.emplace_back(d);
+                    atomData.dihedral_angles.emplace_back(d);
                 }
             }
 
@@ -1789,7 +899,7 @@ namespace sim
                     s.hydrogenCount = s_json.value("hydrogen_count", UINT32_MAX);
                     s.hydrogenBegin = s_json.value("hydrogen_begin", UINT32_MAX);
 
-                    subsets.emplace_back(s);
+                    atomData.subsets.emplace_back(s);
                 }
             }
 
@@ -1810,16 +920,15 @@ namespace sim
                     m.subsetBegin = m_json["subsetBegin"];
                     m.subsetCount = m_json["subsetCount"];
 
-                    molecules.emplace_back(std::move(m));
+                    atomData.molecules.emplace_back(std::move(m));
                 }
             }
 
             rebuildBondTopology();
-            updateSSBOs();
 
             std::cout << "[Simulation] Successfully loaded scene: " << path.filename()
-                      << " (" << atoms.size() << " atoms, "
-                      << molecules.size() << " molecules)\n";
+                      << " (" << atomData.atoms.size() << " atomData.atoms, "
+                      << atomData.molecules.size() << " molecules)\n";
         }
 
         void universe::loadFrames(const std::filesystem::path path)
@@ -1883,10 +992,10 @@ namespace sim
             }
 
             auto &posArray = j["positions"];
-            /*             if (posArray.size() != expectedFrames * expectedAtoms * 3)
+            /*             if (posArray.size() != expectedFrames * expectedatomData.atoms * 3)
                         {
                             std::cerr << "[Video Load] Position array size mismatch! Expected "
-                                    << expectedFrames * expectedAtoms * 3 << ", got " << posArray.size() << "\n";
+                                    << expectedFrames * expectedatomData.atoms * 3 << ", got " << posArray.size() << "\n";
                             return;
                         } */
 
@@ -1920,7 +1029,7 @@ namespace sim
 
 
             std::cout << "[Video Load] Successfully loaded " << m_frames.size()
-                      << " frames with " << expectedAtoms << " atoms from " << path << "\n";
+                      << " frames with " << expectedAtoms << " atomData.atoms from " << path << "\n";
         }
     } // namespace fun
 } // namespace sim

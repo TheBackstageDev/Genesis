@@ -28,7 +28,7 @@ namespace core
                     .minDisplayTime_s = 5.0f,
                     .onEnter = [&]()
                     {
-                        m_universe->setTimescale(10.f);
+                        m_dynamics->setTimescale(10.f);
                         m_wantedTemperature = 3000.f;
                     },
                 },
@@ -45,7 +45,7 @@ namespace core
                  .minDisplayTime_s = 6.0f,
                  .onEnter = [&]()
                  {
-                     m_universe->setTimescale(200.f);
+                     m_dynamics->setTimescale(200.f);
                      m_wantedTemperature = 200.f;
                  }},
                 {
@@ -53,7 +53,7 @@ namespace core
                     .minDisplayTime_s = 15.0f, 
                     .onEnter = [&]()
                     {
-                        m_universe->setTimescale(400.f);
+                        m_dynamics->setTimescale(400.f);
                         m_wantedTemperature = 90.f;
                     }
                 },
@@ -75,7 +75,7 @@ namespace core
                 .minDisplayTime_s = 12.0f,
                 .onEnter = [&]()
                 {
-                    m_universe->setTimescale(200.f);
+                    m_dynamics->setTimescale(200.f);
                     m_wantedTemperature = 1000.f;
                 },
             },
@@ -88,7 +88,7 @@ namespace core
                 .minDisplayTime_s = 25.0f,
                 .onEnter = [&]()
                 {
-                    m_universe->setTimescale(750.f);
+                    m_dynamics->setTimescale(750.f);
                     m_wantedTemperature = 40.f;
                 },
             },
@@ -123,8 +123,8 @@ namespace core
                 .minDisplayTime_s = 15.0f,
                 .onEnter = [&]()
                 {
-                    m_universe->pause();
-                    m_universe->setTimescale(1.f);
+                    m_dynamics->pause();
+                    m_dynamics->setTimescale(1.f);
 
                     auto argon = sim::parseSMILES("Ar", false);
 
@@ -154,7 +154,7 @@ namespace core
                 .minDisplayTime_s = 15.0f,
                 .onEnter = [&]()
                 {
-                    m_universe->setTimescale(2.f);
+                    m_dynamics->setTimescale(2.f);
                 }
             },
             {
@@ -209,7 +209,7 @@ namespace core
                 {
                     const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
 
-                    m_universe->setTimescale(1.5f);
+                    m_dynamics->setTimescale(1.5f);
                     m_universe->createMolecule(m_compounds["Water"].structure, center);
                 },
             },
@@ -288,7 +288,7 @@ namespace core
                 {
                     const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
 
-                    m_universe->setTimescale(1.f);
+                    m_dynamics->setTimescale(1.f);
                     m_universe->createMolecule(m_compounds.at("Benzene").structure, center);
                 },
             },
@@ -365,7 +365,7 @@ namespace core
                 {
                     const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
 
-                    m_universe->setTimescale(1.f);
+                    m_dynamics->setTimescale(1.f);
                     m_universe->createMolecule(m_compounds.at("Carbon Dioxide").structure, center);
                 },
             },
@@ -512,7 +512,7 @@ namespace core
                     .minDisplayTime_s = 1.0f,
                     .advanceWhen = [&]()
                     {
-                        return m_universe->getTimescale() > 1.5f || m_universe->getTimescale() < 0.5f;
+                        return m_dynamics->timescale() > 1.5f || m_dynamics->timescale() < 0.5f;
                     }
                 },
                 {
@@ -530,8 +530,8 @@ namespace core
                  .minDisplayTime_s = 5.0f,
                  .onEnter = [&]()
                  {
-                    m_universe->pause();
-                    m_universe->setTimescale(500.f);
+                    m_dynamics->pause();
+                    m_dynamics->setTimescale(500.f);
                     m_wantedTemperature = 2.0f;
                  }
                 },
@@ -540,7 +540,7 @@ namespace core
                 .minDisplayTime_s = 5.0f,
                 .onExit = [&]()
                 {
-                    m_universe->unpause();
+                    m_dynamics->unpause();
                 }},
                 {
                     .actions =
@@ -578,7 +578,7 @@ namespace core
                  .minDisplayTime_s = 10.0f,
                  .onEnter = [&]()
                  {
-                    m_universe->setTimescale(500.f);
+                    m_dynamics->setTimescale(500.f);
                     auto argon = sim::parseSMILES("Ar", false);
 
                     m_simpacker.pack(*m_universe, argon, m_universe->boxSizes() * 0.5f, m_universe->boxSizes(), 50);
@@ -601,12 +601,12 @@ namespace core
                 },
                 {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 10.0f, .onEnter = [&]()
                                                                                {
-                                                                                   m_universe->setTimescale(30.f);
+                                                                                   m_dynamics->setTimescale(30.f);
                                                                                    m_wantedTemperature = 120.f;
                                                                                }},
                 {.autoAdvanceAfterNarration = true, .minDisplayTime_s = 10.0f, .onEnter = [&]()
                                                                                {
-                                                                                   m_universe->setTimescale(500.f);
+                                                                                   m_dynamics->setTimescale(500.f);
                                                                                    m_wantedTemperature = 2.0f;
                                                                                }},
                 {
@@ -622,8 +622,8 @@ namespace core
                  .minDisplayTime_s = 15.0f,
                  .onEnter = [&]()
                  {
-                     m_universe->pause();
-                     m_universe->setTimescale(10.f);
+                     m_dynamics->pause();
+                     m_dynamics->setTimescale(10.f);
                      m_wantedTemperature = 250.f;
                  }},
                 {
@@ -654,11 +654,11 @@ namespace core
                     .minDisplayTime_s = 15.0f,
                     .onEnter = [&]()
                     { 
-                        m_universe->unpause(); 
+                        m_dynamics->unpause(); 
                     },
                     .onExit = [&]()
                     {
-                        m_universe->pause();
+                        m_dynamics->pause();
                         m_universe->clear(); 
                     },
                 },
@@ -697,7 +697,7 @@ namespace core
                     .minDisplayTime_s = 25.0f,
                     .onEnter = [&]()
                     {
-                        m_universe->unpause();
+                        m_dynamics->unpause();
                         m_universe->clearArrows();
                     },
                 },
@@ -733,7 +733,7 @@ namespace core
                     .minDisplayTime_s = 25.0f,
                     .onEnter = [&]()
                     {
-                        m_universe->setTimescale(1.f);
+                        m_dynamics->setTimescale(1.f);
                         m_wantedTemperature = 100.f;
 
                         const glm::vec3 center = m_universe->boxSizes() * 0.5f;
@@ -781,7 +781,7 @@ namespace core
                         m_wantedTemperature = 350.f;
 
                         m_universe->clearArrows();
-                        m_universe->setTimescale(3.f);
+                        m_dynamics->setTimescale(3.f);
                         m_simpacker.pack(*m_universe, m_compounds["Water"].structure, m_universe->boxSizes() * 0.5f, m_universe->boxSizes() * 0.3f, 50);
                     }
                 },
@@ -809,7 +809,7 @@ namespace core
                 .minDisplayTime_s = 10.0f,
                 .onEnter = [&]()
                 {
-                    m_universe->pause();
+                    m_dynamics->pause();
                     m_wantedVideoPlay = true;
                     m_wantedFramesPerSecond = 30.f;
                 }

@@ -637,9 +637,11 @@ namespace core
         if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
         {
             simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
+            dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
+            
             savesSelectionOpen = false;
             pauseMenuOpen = false;
-            simulation_universe->pause();
+            dynamics->pause();
             setState(application_state::APP_STATE_SIMULATION);
 
             resetVideoData();
@@ -1187,14 +1189,14 @@ namespace core
             if (ImGui::CollapsingHeader(core_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             {
 
-                ImGui::Text("%s: %.2f K", temperature_string.c_str(), simulation_universe->temperature());
-                ImGui::Text("%s:    %.2f Kpa", core_json["pressure"].get<std::string>().c_str(), simulation_universe->pressure());
+                ImGui::Text("%s: %.2f K", temperature_string.c_str(), dynamics->temperature());
+                ImGui::Text("%s:    %.2f Kpa", core_json["pressure"].get<std::string>().c_str(), dynamics->pressure());
 
                 ImGui::SetNextItemWidth(100.f);
                 ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.0f, 20000.f);
                 ImGui::SetNextItemWidth(100.f);
                 ImGui::DragFloat(core_json["slider_pressure"].get<std::string>().c_str(), &target_pressure, 1.0f, 0.0f, 1000.f);
-                ImGui::Text("%s:        %.2f ps", time_string.c_str(), simulation_universe->getAccumulatedTime());
+                ImGui::Text("%s:        %.2f ps", time_string.c_str(), dynamics->accumulated_time());
                 ImGui::Text("%s:   %zu", core_json["particles"].get<std::string>().c_str(), simulation_universe->numAtoms());
                 ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
             }
@@ -1304,18 +1306,18 @@ namespace core
         ImGui::SameLine();
 
         ImGui::SetNextItemWidth(150.f);
-        ImGui::Text("   %.2f ps   %.1f fs/s   ", simulation_universe->getAccumulatedTime(), simulation_universe->getTimescale());
+        ImGui::Text("   %.2f ps   %.1f fs/s   ", dynamics->accumulated_time(), dynamics->timescale());
 
         ImGui::SameLine();
 
         if (ImGui::ImageButton("##slowdownbutton", textures["left_arrow_icon"], ImVec2(32.f, 32.f)))
         {
-            simulation_universe->setTimescale(simulation_universe->getTimescale() * 0.9f);
+            dynamics->setTimescale(dynamics->timescale() * 0.9f);
         }
         
         if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
-            simulation_universe->setTimescale(simulation_universe->getTimescale() * 0.99f);
+            dynamics->setTimescale(dynamics->timescale() * 0.99f);
         }
         
         std::string slowdown_tooltip  = sim_ui.value("tooltip_slowdown", "Decrease simulation speed");
@@ -1327,12 +1329,12 @@ namespace core
 
         if (ImGui::ImageButton("##speedupbutton", textures["right_arrow_icon"], ImVec2(32.f, 32.f)))
         {
-            simulation_universe->setTimescale(simulation_universe->getTimescale() * 1.1f);
+            dynamics->setTimescale(dynamics->timescale() * 1.1f);
         }
 
         if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
-            simulation_universe->setTimescale(simulation_universe->getTimescale() * 1.01f);
+            dynamics->setTimescale(dynamics->timescale() * 1.01f);
         }
 
         std::string speedup_tooltip  = sim_ui.value("tooltip_speedup", "Increase simulation speed");
@@ -1530,7 +1532,7 @@ namespace core
             for (auto &other_pos : simulation_universe->positions())
             {
                 glm::vec3 r = pos - other_pos;
-                if (glm::length(dynamics->minImageVec(r)) <= minDistance)
+                if (glm::length(simulation_universe->minImageVec(r)) <= minDistance)
                 {
                     ghostColliding = true;
                 }
@@ -2036,7 +2038,7 @@ namespace core
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        simulation_universe->update(target_temperature, target_pressure);
+        dynamics->step(target_temperature, target_pressure);
 
         if (m_reactive) m_reaction_eng.update(*simulation_universe.get());
 
@@ -2045,15 +2047,15 @@ namespace core
 
         std::cout << "Simulation execution time: " << duration.count() << " milliseconds" << std::endl;
 
-        if (m_recordingFrames && simulation_universe->timestep())
+        if (m_recordingFrames && dynamics->timestep())
         {
-            if (simulation_universe->timestep() % 100 == 0)
+            if (dynamics->timestep() % 100 == 0)
             {
-                temperature_log.emplace_back(simulation_universe->temperature());
-                time_log.emplace_back(simulation_universe->timestep());
+                temperature_log.emplace_back(dynamics->temperature());
+                time_log.emplace_back(dynamics->timestep());
             }
 
-            if (simulation_universe->timestep() % 5 == 0)
+            if (dynamics->timestep() % 5 == 0)
             {
                 simulation_universe->saveFrame();
             }
@@ -2221,11 +2223,11 @@ namespace core
         if (ImGui::Button(pause_menu["button_restart"].get<std::string>().c_str(), buttonSize))
         {
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
             m_rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             target_pressure = 0.f;
             target_temperature = 300.f;
-            simulation_universe->unpause();
             pauseMenuOpen = false;
 
             m_scenarioHandler.restart();

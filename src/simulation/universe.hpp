@@ -35,6 +35,20 @@ namespace sim
             alignas(64) std::vector<float> q, lj_params;
         };
 
+        struct atomData
+        {
+            alignas(64) std::vector<atom> atoms;
+            alignas(64) std::vector<subset> subsets;
+            alignas(64) std::vector<molecule> molecules;
+            alignas(64) std::vector<bool> frozen_atoms;
+            
+            alignas(64) std::vector<angle> angles;
+            alignas(64) std::vector<dihedral_angle> dihedral_angles;
+            alignas(64) std::vector<dihedral_angle> improper_angles;
+            
+            alignas(64) std::vector<bond> bonds;
+        };
+
         struct logging_flags
         {
             bool log_reactions = true;
@@ -88,15 +102,13 @@ namespace sim
 
             int32_t createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
-            void createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel = {0.f, 0.f, 0.f});
+            void createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel =
+                 {0.f, 0.f, 0.f});
 
             void createBond(int32_t idx1, int32_t idx2, BondType type = BondType::SINGLE);
             void balanceMolecularCharges(subset& mol);
             
-            void update(float targetTemperature = 1.0f, float targetPressure = 0.f);
             void draw(sf::RenderTarget& target, rendering_info info);
-
-            void runVideo(const video& vid);
 
             // Scenario stuff
             void saveScene(const std::filesystem::path path, const std::string name = "");
@@ -107,6 +119,7 @@ namespace sim
             void saveFrame();
 
             simData& getData() { return data; }
+            atomData& getAtomData() { return atomData; }
             
             _NODISCARD video saveAsVideo(const std::filesystem::path path, const std::string name = "");
             _NODISCARD const std::vector<frame>& getFrames() const { return m_frames; }
@@ -122,20 +135,18 @@ namespace sim
                 data.forces.clear();
                 data.q.clear();
 
-                molecules.clear();
-                atoms.clear();
-                bonds.clear();
-                subsets.clear();
+                atomData.molecules.clear();
+                atomData.atoms.clear();
+                atomData.bonds.clear();
+                atomData.subsets.clear();
 
-                angles.clear();
-                dihedral_angles.clear();
-                improper_angles.clear();
+                atomData.angles.clear();
+                atomData.dihedral_angles.clear();
+                atomData.improper_angles.clear();
 
                 m_highlightedAtoms.clear();
                 m_highlightedBonds.clear();
                 m_Arrows.clear();
-
-                updateSSBOs();
             }
 
             void clearArrows()
@@ -143,16 +154,11 @@ namespace sim
                 m_Arrows.clear();
             }
 
-            void pause() { m_paused = true; }
-            void unpause() { m_paused = false; }
-
             void highlightAtom(uint32_t index) { m_highlightedAtoms.emplace_back(index); }
             void highlightBond(uint32_t index1, uint32_t index2) { m_highlightedBonds.emplace_back(index1, index2); }
             void createArrow(glm::vec3 from, glm::vec3 to) { m_Arrows.emplace_back(from, to); }
 
             // Sets
-
-            void setTimescale(float timescale = 1.0f) { m_Timescale = timescale; }
 
             void setDisplayPositions(const std::vector<glm::vec3>& nPositions)
             {
@@ -188,24 +194,16 @@ namespace sim
             bool wallcollision() { return wall_collision; }
             bool rooffloorcollision() { return roof_floor_collision; }
             
-            const std::vector<atom>& getAtoms() const { return atoms; }
-            std::vector<subset>& getSubsets() { return subsets; }
-            int32_t numBonds() const { return bonds.size(); }
-            int32_t numAtoms() const { return atoms.size(); }
-            int32_t numMolecules() const { return molecules.size(); }
-            float getTimescale() const { return m_Timescale; }
-            float getEffectiveDT() const { return m_Timescale * FEMTOSECOND; }
-            float getAccumulatedTime() const { return m_accumulatedTime; }
+            const std::vector<atom>& getAtoms() const { return atomData.atoms; }
+            std::vector<subset>& getSubsets() { return atomData.subsets; }
+            int32_t numBonds() const { return atomData.bonds.size(); }
+            int32_t numAtoms() const { return atomData.atoms.size(); }
+            int32_t numMolecules() const { return atomData.molecules.size(); }
 
             std::array<float, 6>& getWallCharges() { return wall_charges; }
             glm::vec3& getMagneticFieldStrength() { return magnetic_strength; }
 
             glm::vec3 getForce(uint32_t i) { return data.forces[i]; }
-
-            float temperature() const { return temp; }
-            float pressure() { return calculatePressure(); }
-            size_t timestep() const { return timeStep; }
-
             glm::vec3 boxSizes() { return box; }
 
             _NODISCARD std::vector<glm::vec3> positions() const 
@@ -273,36 +271,9 @@ namespace sim
 
                 return dr;
             }
-        private:
+
             void boundCheck(uint32_t i);
-
-            // Compute Shaders
-
-            core::glProgram unbonded_program, bonded_program, simulation_program;
-            void createComputeShaders();
-            void updateSSBOs();
-
-            core::glBuffer  ssbo_positions;
-            core::glBuffer  ssbo_velocities;
-            core::glBuffer  ssbo_acc;
-            core::glBuffer  ssbo_force;
-            core::glBuffer  ssbo_lj_params;
-            core::glBuffer  ssbo_charges;
-
-            float ljPot(uint32_t i, uint32_t j);
-            float wolfForce(float r, float qi_qj); 
-            glm::vec3 ljForce(uint32_t i, uint32_t j);
-            glm::vec3 coulombForce(uint32_t i, uint32_t j, glm::vec3& dr_vec);
-
-            std::vector<glm::vec3> processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start = 0, int32_t atom_end = 0);
-            void calcUnbondedForcesParallel();
-            void calcBondedForcesParallel();
-            void computeUnbondedForces();
-
-            float calculatePressure();
-            void setPressure(float bar = 100);
-            void setTemperature(float kelvin = 0.f);
-            float calculateDihedral(const glm::vec3& pa, const glm::vec3& pb, const glm::vec3& pc, const glm::vec3& pd);
+        private:
 
             // Energies
             float calculateAtomTemperature(int32_t i);
@@ -324,8 +295,8 @@ namespace sim
             std::vector<std::vector<uint32_t>> bondedBits;
             void markBonded(uint32_t i, uint32_t j)
             {
-                if (i >= bondedBits.size()) bondedBits.resize(atoms.size());
-                if (j >= bondedBits.size()) bondedBits.resize(atoms.size());
+                if (i >= bondedBits.size()) bondedBits.resize(atomData.atoms.size());
+                if (j >= bondedBits.size()) bondedBits.resize(atomData.atoms.size());
                 while (bondedBits[i].size() * 32 <= j) bondedBits[i].push_back(0);
                 while (bondedBits[j].size() * 32 <= i) bondedBits[j].push_back(0);
 
@@ -338,16 +309,7 @@ namespace sim
                 bondedBits[j][word_j] |= (1ull << bit_j);
             }
 
-            std::vector<atom> atoms;
-            std::vector<subset> subsets;
-            std::vector<molecule> molecules;
-            std::vector<bool> frozen_atoms;
-            
-            std::vector<angle> angles;
-            std::vector<dihedral_angle> dihedral_angles;
-            std::vector<dihedral_angle> improper_angles;
-            
-            std::vector<bond> bonds;
+            atomData atomData{};
 
             glm::vec3 box{20.f, 20.f, 20.f};
 
@@ -357,26 +319,16 @@ namespace sim
 
             std::atomic<float> total_virial{0.0f};
             std::array<float, 6> wall_charges{0.f, 0.f, 0.f, 0.f, 0.f, 0.f}; // right, left, top, bottom, front, back
-            const std::array<glm::vec3, 6> wall_directions = 
-                {glm::vec3(1.f, 0.f, 0.f), glm::vec3(-1.f, 0.f, 0.f), 
-                 glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
-                 glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f)};
-
             glm::vec3 magnetic_strength{0.f, 0.f, 2.0f};
 
             bool f_wallCharges = false;
             bool f_magneticField = false;
 
-            float temp = 0;
-            float pres = 0;
-            float m_accumulatedTime = 0.f;
-            size_t timeStep = 0;
-
             void rebuildBondTopology()
             {
-                int32_t N = atoms.size();
+                int32_t N = atomData.atoms.size();
 
-                for (const auto& b : bonds)
+                for (const auto& b : atomData.bonds)
                 {
                     markBonded(b.centralAtom, b.bondedAtom);
                 }
@@ -384,9 +336,9 @@ namespace sim
 
             uint32_t getBond(uint32_t i, uint32_t j)
             {
-                for (int32_t b = 0; b < bonds.size(); ++b)
+                for (int32_t b = 0; b < atomData.bonds.size(); ++b)
                 {
-                    const bond& bond = bonds[b];
+                    const bond& bond = atomData.bonds[b];
                     if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
                     {
                         return b;
@@ -400,17 +352,14 @@ namespace sim
             
             // Flags
 
-            bool m_paused = false;
-
             bool gravity = false;
             bool isothermal = true;
             bool wall_collision = false;
             bool roof_floor_collision = false;
-            bool HMassRepartitioning = true;
+            bool HMassRepartitioning = false;
             logging_flags log_flags;
 
             float mag_gravity = 9.8f;
-            float m_Timescale = 1.0f;
 
             // Visual
 
@@ -425,13 +374,6 @@ namespace sim
             // Other
             std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
             void drawBox(core::window_t& window);
-
-            inline sf::Vector3f pos(uint32_t i) const   { return {data.positions[i].x, data.positions[i].y, data.positions[i].z}; }
-            inline sf::Vector3f vel(uint32_t i) const   { return {data.velocities[i].x, data.velocities[i].y, data.velocities[i].z}; }
-            inline sf::Vector3f force(uint32_t i) const { return {data.forces[i].x, data.forces[i].y, data.forces[i].z}; }
-            inline void add_force(uint32_t i, sf::Vector3f f) { data.forces[i].x += f.x, data.forces[i].y += f.y, data.forces[i].z += f.z; }
-            inline void add_pos(uint32_t i, sf::Vector3f p) { data.positions[i].x += p.x, data.positions[i].y += p.y, data.positions[i].z += p.z; }
-            inline void add_vel(uint32_t i, sf::Vector3f v) { data.velocities[i].x += v.x, data.velocities[i].y += v.y, data.velocities[i].z += v.z; }
 
             inline void emplace_vel(glm::vec3 v) { data.velocities.emplace_back(v); }
             inline void emplace_pos(glm::vec3 p) { data.positions.emplace_back(p); }
