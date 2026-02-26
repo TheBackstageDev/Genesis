@@ -208,6 +208,9 @@ namespace sim
             for (int32_t b = 0; b < structure.bonds.size(); ++b)
             {
                 const def_bond &db = structure.bonds[b];
+                
+                if (db.type == BondType::NONE) continue;
+
                 int32_t central = baseAtomIndex + db.centralAtomIdx;
                 int32_t bonded = baseAtomIndex + db.bondingAtomIdx;
 

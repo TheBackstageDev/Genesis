@@ -33,7 +33,7 @@ namespace constants
 
 #define VERLET_SKIN 2.f
 #define CUTOFF 2.5f
-#define COULOMB_CUTOFF 10.f * MULT_FACTOR
+#define COULOMB_CUTOFF 14.f * MULT_FACTOR
 
 #define CELL_CUTOFF 14 + VERLET_SKIN
 

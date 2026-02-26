@@ -3,6 +3,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 
+#include <iostream>
+
 namespace sim
 {
     sim_dynamics::sim_dynamics(fun::universe &u)
@@ -143,7 +145,7 @@ namespace sim
         std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0, 0, 0});
 
         universe_grid.foreach (cellID, [&](const uint32_t &i)
-                               {
+        {
                 universe_grid.foreach(cellID, [&](const uint32_t& j)
                 {
                     if (j <= i)
@@ -164,7 +166,7 @@ namespace sim
                     local_virial += dr.x * total_force.x +
                                     dr.y * total_force.y +
                                     dr.z * total_force.z;
-                }, atom_start + 1);
+                }, i + 1);
 
                 for (int32_t dx = -1; dx <= 1; ++dx)
                     for (int32_t dy = -1; dy <= 1; ++dy)
@@ -218,8 +220,8 @@ namespace sim
         auto &data = m_universe.getData();
 
         const size_t cells = universe_grid.cellOffsets.size();
-        const int32_t n_threads = std::thread::hardware_concurrency();
-        // const int32_t n_threads = 1;
+        //const int32_t n_threads = std::thread::hardware_concurrency();
+        const int32_t n_threads = 1;
         const int32_t threads_per_top = cells < 9 ? n_threads : std::max(1u, static_cast<uint32_t>(std::floor(static_cast<double>(n_threads / 2)))); // how many threads will run on cells with lots of work
         constexpr int32_t subdivide_top = 4;                                                                                                         // how many of the top cells to subdivide
 
@@ -717,10 +719,7 @@ namespace sim
         auto &atomData = m_universe.getAtomData();
         const size_t N = data.positions.size();
 
-        if (N == 0)
-            return;
-
-        computeForces();
+        if (N == 0) return;
 
         const float effective_dt = m_dt * m_timescale;
         const float half_dt = 0.5f * effective_dt;
@@ -732,7 +731,7 @@ namespace sim
                 data.velocities[i] = glm::vec3{0.0f};
                 continue;
             }
-            
+
             computeExternalForces(i);
 
             const float inv_m = 1.0f / atomData.atoms[i].mass;
@@ -743,14 +742,10 @@ namespace sim
 
         for (size_t i = 0; i < N; ++i)
         {
-            if (atomData.frozen_atoms[i])
-            {
-                data.velocities[i] = glm::vec3{0.0f};
-                continue;
-            }
+            if (atomData.frozen_atoms[i]) continue;
 
-            data.positions[i] += data.velocities[i] * m_dt;
-            univ.boundCheck(i);
+            data.positions[i] += data.velocities[i] * effective_dt;
+            univ.boundCheck(static_cast<uint32_t>(i));
         }
 
         computeForces();
@@ -759,8 +754,8 @@ namespace sim
         {
             ssbo_force.bind();
             glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                               data.forces.size() * sizeof(glm::vec4),
-                               data.forces.data());
+                            data.forces.size() * sizeof(glm::vec4),
+                            data.forces.data());
             ssbo_force.unbind();
         }
 
@@ -787,6 +782,7 @@ namespace sim
             return;
 
         auto &data = m_universe.getData();
+        auto &atomData = m_universe.getAtomData();
 
         integrate();
 
@@ -795,10 +791,15 @@ namespace sim
 
         setTemperature(target_temp);
         setPressure(target_pressure);
-        COMDrift();
+        //COMDrift();
 
         m_step_count++;
         m_accumulated_time += m_dt * m_timescale;
+
+        /* float avg_speed = 0.0f;
+            for (const auto& v : data.velocities) avg_speed += glm::length(v);
+            avg_speed /= atomData.atoms.size();
+            std::cout << "Average molecular speed: " << avg_speed << " A/Ps\n"; */
     }
 
     float sim_dynamics::computePressure()
@@ -891,7 +892,7 @@ namespace sim
 
     void sim_dynamics::COMDrift()
     {
-        if (m_step_count % 1000 != 0)
+        if (m_step_count % 5000 != 0)
             return;
 
         auto &atomData = m_universe.getAtomData();
