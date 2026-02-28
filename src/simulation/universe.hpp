@@ -313,11 +313,6 @@ namespace sim
 
             glm::vec3 box{20.f, 20.f, 20.f};
 
-            core::SpatialGrid universe_grid{};
-
-            void buildVerletList();
-
-            std::atomic<float> total_virial{0.0f};
             std::array<float, 6> wall_charges{0.f, 0.f, 0.f, 0.f, 0.f, 0.f}; // right, left, top, bottom, front, back
             glm::vec3 magnetic_strength{0.f, 0.f, 2.0f};
 
