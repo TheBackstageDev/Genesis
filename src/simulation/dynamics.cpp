@@ -7,9 +7,79 @@
 
 namespace sim
 {
+    void verlet_list::construct(const core::SpatialGrid& grid, fun::universe &u)
+    {
+        verlet.assign(u.numAtoms(), {});
+
+        auto& data = u.getData();
+
+        for (int32_t cell = 0; cell < grid.cellOffsets.size(); ++cell)
+        {
+            glm::ivec3 cellDims = grid.indexToCell(cell);
+
+            grid.foreach (cell, [&](const uint32_t &i)
+            {
+                glm::vec3 pi = data.positions[i];
+
+                for (int32_t dx = -1; dx <= 1; ++dx)
+                for (int32_t dy = -1; dy <= 1; ++dy)
+                for (int32_t dz = -1; dz <= 1; ++dz)
+                {
+                    if (dx == 0 && dy == 0 && dz == 0)
+                    {
+                        grid.foreach(cell, [&](const uint32_t& j)
+                        {
+                            if (j <= i) return;
+
+                            glm::vec3 dr = u.minImageVec(data.positions[j] - pi);
+                            float dr2 = glm::length2(dr);
+
+                            if (dr2 <= cutoff * cutoff)
+                                verlet[i].push_back(j);
+                        }, i + 1, -1);
+                    }
+                    else
+                    {
+                        int32_t n_ix = cellDims.x + dx;
+                        int32_t n_iy = cellDims.y + dy;
+                        int32_t n_iz = cellDims.z + dz;
+
+                        n_ix = (n_ix % grid.gridDimensions.x + grid.gridDimensions.x) % grid.gridDimensions.x;
+                        n_iy = (n_iy % grid.gridDimensions.y + grid.gridDimensions.y) % grid.gridDimensions.y;
+                        n_iz = (n_iz % grid.gridDimensions.z + grid.gridDimensions.z) % grid.gridDimensions.z;
+
+                        int32_t neighbor_id = grid.cellToIndex(n_ix, n_iy, n_iz);
+
+                        if (!u.wallcollision() && !u.rooffloorcollision() && neighbor_id < -1) continue; 
+
+                        grid.foreach(neighbor_id, [&](const uint32_t& j)
+                        {
+                            glm::vec3 dr = u.minImageVec(data.positions[j] - pi);
+                            float dr2 = glm::length2(dr);
+
+                            if (dr2 <= cutoff * cutoff)
+                                verlet[i].push_back(j);
+                        });
+                    }
+                }
+            });
+        }
+
+        for (auto& lst : verlet) 
+            std::sort(lst.begin(), lst.end());
+    }
+
+    bool verlet_list::needsRebuild(const std::vector<glm::vec3>& old_positions,
+                                   const std::vector<glm::vec3>& new_positions)
+    {
+        return false;
+    }
+
     sim_dynamics::sim_dynamics(fun::universe &u)
         : m_universe(u)
     {
+        universe_verlet.cutoff = 12.f;
+        universe_verlet.skin = VERLET_SKIN;
     }
 
     void sim_dynamics::createComputeShaders()
@@ -130,86 +200,45 @@ namespace sim
 
     std::vector<glm::vec3> sim_dynamics::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
     {
-        float local_virial = 0.f;
+        if (universe_verlet.verlet.empty()) return {};
 
+        float local_virial = 0.f;
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
-
         int32_t cellID = universe_grid.cellToIndex(ix, iy, iz);
 
         thread_local std::vector<glm::vec3> local_forces(atomData.atoms.size(), {0, 0, 0});
-
         if (local_forces.size() != atomData.atoms.size())
             local_forces.assign(atomData.atoms.size(), {0.0f, 0.0f, 0.0f});
-
         std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0, 0, 0});
 
-        universe_grid.foreach (cellID, [&](const uint32_t &i)
+        universe_grid.foreach(cellID, [&](const uint32_t& i)
         {
-                universe_grid.foreach(cellID, [&](const uint32_t& j)
-                {
-                    if (j <= i)
-                        return;
+            const glm::vec3& pi = data.positions[i];
 
-                    glm::vec3 dr = m_universe.minImageVec(data.positions[j] - data.positions[i]);
+            for (uint32_t j : universe_verlet.verlet[i])
+            {
+                if (j <= i) continue;
 
-                    if (m_universe.areBonded(i, j))
-                        return;
+                glm::vec3 dr = m_universe.minImageVec(data.positions[j] - pi);
+                float dr2 = glm::length2(dr);
 
-                    glm::vec3 cForce = computeCoulombForce(i, j, dr);
-                    glm::vec3 lForce = computeLJforce(i, j, dr);
+                if (dr2 > CELL_CUTOFF * CELL_CUTOFF || dr2 < EPSILON)
+                    continue;
 
-                    glm::vec3 total_force = cForce + lForce;
-                    local_forces[i] += total_force;
-                    local_forces[j] -= total_force;
+                if (m_universe.areBonded(i, j))
+                    continue;
 
-                    local_virial += dr.x * total_force.x +
-                                    dr.y * total_force.y +
-                                    dr.z * total_force.z;
-                }, i + 1);
+                glm::vec3 cForce = computeCoulombForce(i, j, dr);
+                glm::vec3 lForce = computeLJforce(i, j, dr);
+                glm::vec3 total_force = cForce + lForce;
 
-                for (int32_t dx = -1; dx <= 1; ++dx)
-                    for (int32_t dy = -1; dy <= 1; ++dy)
-                    {
-                        for (int32_t dz = -1; dz <= 1; ++dz)
-                        {
-                            if (dx == 0 && dy == 0 && dz == 0) continue;
+                local_forces[i] += total_force;
+                local_forces[j] -= total_force;
 
-                            int32_t n_ix = ix + dx;
-                            int32_t n_iy = iy + dy;
-                            int32_t n_iz = iz + dz;
-
-                            n_ix = (n_ix % universe_grid.gridDimensions.x + universe_grid.gridDimensions.x) % universe_grid.gridDimensions.x;
-                            n_iy = (n_iy % universe_grid.gridDimensions.y + universe_grid.gridDimensions.y) % universe_grid.gridDimensions.y;
-                            n_iz = (n_iz % universe_grid.gridDimensions.z + universe_grid.gridDimensions.z) % universe_grid.gridDimensions.z;
-
-                            int32_t neighbor_id = universe_grid.cellToIndex(n_ix, n_iy, n_iz);
-
-                            if (!m_universe.wallcollision() && !m_universe.rooffloorcollision() && neighbor_id < -1) continue;
-
-                            universe_grid.foreach(neighbor_id, [&](const uint32_t& j)
-                            {
-                                if (j <= i)
-                                    return;
-
-                                glm::vec3 dr = m_universe.minImageVec(data.positions[j] - data.positions[i]);
-
-                                if (m_universe.areBonded(i, j))
-                                    return;
-
-                                glm::vec3 cForce = computeCoulombForce(i, j, dr);
-                                glm::vec3 lForce = computeLJforce(i, j, dr);
-
-                                glm::vec3 total_force = cForce + lForce;
-                                local_forces[i] += total_force;
-                                local_forces[j] -= total_force;
-
-                                local_virial += dr.x * total_force.x +
-                                                dr.y * total_force.y +
-                                                dr.z * total_force.z;
-                            }, atom_start, atom_end);
-                        }
-                    } }, atom_start, atom_end);
+                local_virial += glm::dot(dr, total_force);
+            }
+        }, atom_start, atom_end);
 
         total_virial.fetch_add(local_virial, std::memory_order_relaxed);
         return local_forces;
@@ -220,8 +249,8 @@ namespace sim
         auto &data = m_universe.getData();
 
         const size_t cells = universe_grid.cellOffsets.size();
-        //const int32_t n_threads = std::thread::hardware_concurrency();
-        const int32_t n_threads = 1;
+        const int32_t n_threads = std::thread::hardware_concurrency();
+        //const int32_t n_threads = 1;
         const int32_t threads_per_top = cells < 9 ? n_threads : std::max(1u, static_cast<uint32_t>(std::floor(static_cast<double>(n_threads / 2)))); // how many threads will run on cells with lots of work
         constexpr int32_t subdivide_top = 4;                                                                                                         // how many of the top cells to subdivide
 
@@ -310,7 +339,7 @@ namespace sim
                     cell_forces = processCellUnbonded(cell.x, cell.y, cell.z, t.atom_start, t.atom_end);
                 }
 
-                for (size_t i = 0; i < m_universe.numAtoms(); ++i)
+                for (size_t i = 0; i < cell_forces.size(); ++i)
                 {
                     thread_forces[i] += cell_forces[i];
                 }
@@ -787,11 +816,14 @@ namespace sim
         integrate();
 
         if (m_step_count % GRID_REBUILD == 0)
+        {
             universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
+            universe_verlet.construct(universe_grid, m_universe);
+        }
 
         setTemperature(target_temp);
         setPressure(target_pressure);
-        //COMDrift();
+        COMDrift();
 
         m_step_count++;
         m_accumulated_time += m_dt * m_timescale;
@@ -892,7 +924,7 @@ namespace sim
 
     void sim_dynamics::COMDrift()
     {
-        if (m_step_count % 5000 != 0)
+        if (m_step_count % 100000 != 0)
             return;
 
         auto &atomData = m_universe.getAtomData();

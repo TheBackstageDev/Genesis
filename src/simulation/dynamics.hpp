@@ -11,6 +11,17 @@
 
 namespace sim
 {
+    struct verlet_list
+    {
+        std::vector<std::vector<uint32_t>> verlet;
+        float cutoff = 0.0f;
+        float skin = 1.0f;
+        
+        void construct(const core::SpatialGrid& grid, fun::universe &u);
+        bool needsRebuild(const std::vector<glm::vec3>& old_positions,
+                          const std::vector<glm::vec3>& new_positions);
+    };
+
     class sim_dynamics
     {
     public:
@@ -91,6 +102,7 @@ namespace sim
         bool m_GPU = false;
         bool m_paused = false;
         core::SpatialGrid universe_grid{};
+        verlet_list universe_verlet{};
 
         void setPressure(float bar = 100);
         void setTemperature(float kelvin = 0.f);

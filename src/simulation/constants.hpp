@@ -766,8 +766,8 @@ namespace constants
         std::pair<float, float> constants; // {sigma (Å), epsilon (kJ/mol)}
         switch (ZIndex)
         {
-            case   1: constants = {2.532f, 0.184f}; break; // H  Hydrogen
-            case   2: constants = {2.362f, 0.0844f}; break; // He Helium
+            case   1: constants = {2.886f, 0.036f}; break; // H  Hydrogen
+            case   2: constants = {2.362f, 0.084f}; break; // He Helium
             case   3: constants = {3.345f, 0.335f}; break; // Li Lithium
             case   4: constants = {3.051f, 0.418f}; break; // Be Beryllium
             case   5: constants = {3.660f, 0.251f}; break; // B  Boron
@@ -776,10 +776,10 @@ namespace constants
             case   8: constants = {3.100f, 0.585f}; break; // O  Oxygen
             case   9: constants = {2.950f, 0.502f}; break; // F  Fluorine
             case  10: constants = {2.800f, 0.205f}; break; // Ne Neon
-            case  11: constants = {3.830f, 0.502f}; break; // Na Sodium
+            case  11: constants = {2.660f, 0.126f}; break; // Na Sodium
             case  12: constants = {3.580f, 0.544f}; break; // Mg Magnesium
             case  13: constants = {4.010f, 0.335f}; break; // Al Aluminium
-            case  14: constants = {3.900f, 0.544f}; break; // Si Silicon
+            case  14: constants = {4.270f, 1.264f}; break; // Si Silicon
             case  15: constants = {3.800f, 0.711f}; break; // P  Phosphorus
             case  16: constants = {3.700f, 0.879f}; break; // S  Sulfur
             case  17: constants = {3.520f, 1.046f}; break; // Cl Chlorine

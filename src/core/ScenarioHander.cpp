@@ -733,15 +733,15 @@ namespace core
                     .minDisplayTime_s = 25.0f,
                     .onEnter = [&]()
                     {
-                        m_dynamics->setTimescale(1.f);
-                        m_wantedTemperature = 100.f;
+                        m_dynamics->setTimescale(5.f);
+                        m_wantedTemperature = 300.f;
 
                         const glm::vec3 center = m_universe->boxSizes() * 0.5f;
 
                         const float spacing = 3.f;
-                        const int nx = 2;
-                        const int ny = 2;
-                        const int nz = 2;
+                        const int nx = 1;
+                        const int ny = 1;
+                        const int nz = 1;
 
                         for (int ix = 0; ix <= nx; ++ix)
                         {
@@ -773,25 +773,68 @@ namespace core
                         m_wantedTemperature = 200.f;
                     },
                 },
-                {
+                {   
+                    .actions =
+                    {
+                        {
+                            .action = [&]()
+                            {
+                                m_universe->clearArrows();
+
+                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
+                                {
+                                    glm::vec3 pos = m_universe->getPosition(i);
+                                    glm::vec3 force = m_universe->getForce(i);
+
+                                    float scale = 0.02f;  
+
+                                    m_universe->createArrow(pos, pos + scale * force);
+                                }
+                            }
+                        }
+                    },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 25.0f,
                     .onEnter = [&]()
                     {
-                        m_wantedTemperature = 350.f;
+                        m_dynamics->setTimescale(0.1f);
+                        m_simpacker.pack(*m_universe, m_compounds["Water"].structure, m_universe->boxSizes() * 0.5f, m_universe->boxSizes() * 0.3f, 70);
+                    }
+                },
+                {
+                    .actions =
+                    {
+                        {
+                            .action = [&]()
+                            {
+                                m_universe->clearArrows();
 
-                        m_universe->clearArrows();
-                        m_dynamics->setTimescale(3.f);
-                        m_simpacker.pack(*m_universe, m_compounds["Water"].structure, m_universe->boxSizes() * 0.5f, m_universe->boxSizes() * 0.3f, 50);
+                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
+                                {
+                                    glm::vec3 pos = m_universe->getPosition(i);
+                                    glm::vec3 force = m_universe->getForce(i);
+
+                                    float scale = 0.02f;  
+
+                                    m_universe->createArrow(pos, pos + scale * force);
+                                }
+                            }
+                        }
+                    },
+                    .autoAdvanceAfterNarration = true,
+                    .minDisplayTime_s = 30.0f,
+                    .onEnter = [&]()
+                    {
+                        m_dynamics->setTimescale(1.0f);
                     }
                 },
                 {
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 30.0f,
-                },
-                {
-                    .autoAdvanceAfterNarration = true,
-                    .minDisplayTime_s = 30.0f,
+                    .onEnter = [&]()
+                    {
+                        m_universe->clearArrows();
+                    }
                 },
                 {
                     .autoAdvanceAfterNarration = false,

@@ -81,7 +81,7 @@ namespace sim
             bool tooClose = false;
             for (const auto& prev : positions) 
             {
-                if (glm::length(spawnCenter - prev) < 2.6f) 
+                if (glm::length(spawnCenter - prev) < 2.8f) 
                 {
                     tooClose = true;
                     break;
