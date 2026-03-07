@@ -20,7 +20,8 @@ namespace sim
                 const std::vector<float> &chances, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount)
     {
         assert(molecules.size() == chances.size() && "Molecules size and Chances must match!");
-        assert(!molecules.empty() && !chances.empty() && "Empty molecules or Chances!");
+        
+        if (molecules.empty() || chances.empty()) return;
 
         uint32_t target_ammount = targetAmmount == 0 ? getSpawnAmmount(box, molecules, chances) : targetAmmount;
 
@@ -33,35 +34,12 @@ namespace sim
             cumulative[i] = cumulative[i - 1] + normalized[i];
         }
 
-        uint32_t created = 0;
-        uint32_t attempts = 0;
+        constexpr uint32_t maxAttempts = 200;
 
-        constexpr uint32_t maxAttempts = 1000;
-
-        float maxExtent = 0.0f;
-        for (const auto& mol : molecules) 
-        {
-            for (const auto& pos : mol.positions) 
-            {
-                float r = pos.length();
-                if (r > maxExtent) maxExtent = r;
-            }
-        }
-
-        glm::vec3 halfBox = box * 0.5f;
-
-        glm::vec3 effectiveHalf = halfBox - maxExtent * 1.3f;
-
-        if (effectiveHalf.x <= 0.0f || effectiveHalf.y <= 0.0f || effectiveHalf.z <= 0.0f)
-        {
-            std::cerr << "[Simulation Packer]: Box too small for molecules!\n";
-            return;
-        }
-
-        auto positions = u.positions();
-        positions.reserve(positions.size() + target_ammount * molecules.size());
-
-        while (created < target_ammount && attempts < maxAttempts)
+        std::vector<float> mol_radii = getMoleculesRadii(molecules);
+        std::vector<uint32_t> mol_ammounts(molecules.size());
+        
+        for (int32_t i = 0; i < target_ammount; ++i)
         {
             float r = randFloat(0.0f, 1.0f);
             size_t typeIndex = 0;
@@ -69,48 +47,106 @@ namespace sim
                 if (r <= cumulative[typeIndex]) break;
             if (typeIndex >= molecules.size()) typeIndex = molecules.size() - 1;
 
-            auto chosenMol = molecules[typeIndex];
+            ++mol_ammounts[typeIndex];
+        }
 
-            glm::vec3 offset(
-                randFloat(-effectiveHalf.x, effectiveHalf.x),
-                randFloat(-effectiveHalf.y, effectiveHalf.y),
-                randFloat(-effectiveHalf.z, effectiveHalf.z)
-            );
-            glm::vec3 spawnCenter = center + offset;
+        std::vector<uint32_t> order(molecules.size()); // the order that the molecules will be placed, from biggest to smallest.
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](const uint32_t a, const uint32_t b){ return mol_radii[a] > mol_radii[b]; });
 
-            bool tooClose = false;
-            for (const auto& prev : positions) 
-            {
-                if (glm::length(spawnCenter - prev) < 2.8f) 
-                {
-                    tooClose = true;
-                    break;
-                }
-            }
-            if (tooClose) 
+        glm::vec3 halfBox = box * 0.5f;
+
+        for (uint32_t ord : order)
+        {
+            uint32_t to_place = mol_ammounts[ord];
+            if (to_place == 0) continue;
+
+            auto mol = molecules[ord];
+            float this_radius = mol_radii[ord];
+
+            uint32_t created_this = 0;
+            uint32_t attempts = 0;
+
+            glm::vec3 effectiveBox = halfBox - this_radius * 0.5f;
+
+            while (created_this < to_place && attempts < maxAttempts)
             {
                 ++attempts;
-                continue;
+
+                glm::vec3 offset(
+                    randFloat(-effectiveBox.x, effectiveBox.x),
+                    randFloat(-effectiveBox.y, effectiveBox.y),
+                    randFloat(-effectiveBox.z, effectiveBox.z)
+                );
+                glm::vec3 spawn_center = center + offset;
+
+                bool quick_reject = false;
+                for (const auto& existing : u.positions()) 
+                {
+                    if (glm::length(spawn_center - existing) < 2.f) 
+                    {
+                        quick_reject = true;
+                        break;
+                    }
+                }
+                if (quick_reject) continue;
+
+                glm::quat rot = randomRotation();
+                glm::mat4 rot_mat = glm::mat4_cast(rot);
+
+                bool collision = false;
+                std::vector<glm::vec3> temp_positions;
+
+                for (const auto& local_pos : mol.positions)
+                {
+                    glm::vec3 rotated = glm::vec3(rot_mat * glm::vec4(local_pos.x, local_pos.y, local_pos.z, 1.0f));
+                    glm::vec3 world_pos = spawn_center + rotated;
+                    
+                    for (const auto& existing : u.positions())
+                    {
+                        glm::vec3 dr = u.minImageVec(world_pos - existing);
+                        if (glm::length(dr) < 2.3f) 
+                        {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if (collision) break;
+
+                    temp_positions.push_back(world_pos);
+                }
+
+                if (collision) continue;
+
+                for (size_t k = 0; k < mol.positions.size(); ++k) 
+                {
+                    mol.positions[k] = temp_positions[k];
+                }
+
+                u.createMolecule(mol, spawn_center,
+                                glm::vec3(randFloat(-0.1f, 0.1f), randFloat(-0.1f, 0.1f), randFloat(-0.1f, 0.1f)));
+
+                auto& data = u.getData();
+
+                size_t start_idx = u.numAtoms() - mol.positions.size();
+                for (size_t k = start_idx; k < u.numAtoms(); ++k) 
+                {
+                    data.positions[k] += glm::vec3(
+                        randFloat(-0.05f, 0.05f),
+                        randFloat(-0.05f, 0.05f),
+                        randFloat(-0.05f, 0.05f)
+                    );
+                }
+
+                ++created_this;
+                attempts = 0;
             }
 
-            glm::quat rotation = randomRotation();
-            glm::mat4 rotationMatrix = glm::mat4_cast(rotation);
-
-            for (auto& pos : chosenMol.positions)
+            if (created_this < to_place) 
             {
-                glm::vec3 local_pos = glm::vec3(pos.x, pos.y, pos.z);
-                glm::vec3 rotatedPos = glm::vec3(rotationMatrix * glm::vec4(local_pos, 1.0f));
-                glm::vec3 finalPos = spawnCenter + rotatedPos;
-
-                pos = sf::Vector3f(finalPos.x, finalPos.y, finalPos.z);
-
-                positions.emplace_back(finalPos);
+                std::cerr << "[Packer] Only placed " << created_this << "/" << to_place 
+                        << " molecules of type " << ord << "\n";
             }
-
-            u.createMolecule(chosenMol, sf::Vector3f(spawnCenter.x, spawnCenter.y, spawnCenter.z), sf::Vector3f(randFloat(-0.1, 0.1), randFloat(-0.1, 0.1), randFloat(-0.1, 0.1)));
-            
-            ++created;
-            attempts = 0;
         }
     }
 
@@ -136,7 +172,24 @@ namespace sim
 
         uint32_t estimated = static_cast<uint32_t>(total_volume / avg_volume * packing_density);
 
-        return estimated;
+        return estimated * 0.3f;
+    }
+
+    std::vector<float> simulation_packer::getMoleculesRadii(const std::vector<fun::molecule_structure> &molecules)
+    {
+        std::vector<float> mol_radii(molecules.size());
+
+        for (size_t m = 0; m < molecules.size(); ++m) 
+        {
+            for (const auto& p : molecules[m].positions) 
+            {
+                float r = glm::length(glm::vec3(p.x, p.y, p.z));
+                if (r > mol_radii[m]) mol_radii[m] = r;
+            }
+            mol_radii[m] += 2.2f;
+        }
+
+        return mol_radii;
     }
 
     uint32_t simulation_packer::getSpawnAmmount(const glm::vec3 box, const fun::molecule_structure &molecule)
@@ -161,7 +214,7 @@ namespace sim
         if (total_chance <= 0.0f)
         {
             std::cerr << "[SIMULATION PACKER]: All chances are zero or negative. Nothing will be spawned.\n";
-            return {};
+            return chances;
         }
 
         std::vector<float> normalizedChances(chances.size(), 0.0f);

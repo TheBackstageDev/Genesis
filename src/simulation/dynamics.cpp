@@ -226,7 +226,7 @@ namespace sim
                 if (dr2 > CELL_CUTOFF * CELL_CUTOFF || dr2 < EPSILON)
                     continue;
 
-                if (m_universe.areBonded(i, j))
+                if (dr2 > 16.f || m_universe.areBonded(i, j))
                     continue;
 
                 glm::vec3 cForce = computeCoulombForce(i, j, dr);
@@ -707,6 +707,7 @@ namespace sim
     {
         auto& wall_charges = m_universe.getWallCharges();
         auto& data = m_universe.getData();
+        auto& atomData = m_universe.getAtomData();
 
         for (int32_t w = 0; w < m_universe.getWallCharges().size() && m_universe.wallChargeEnabled(); ++w)
         {
@@ -788,6 +789,8 @@ namespace sim
             ssbo_force.unbind();
         }
 
+        glm::vec3 grav_accel(0.0f, 0.0f, -m_universe.gravityMagnitude());
+
         for (size_t i = 0; i < N; ++i)
         {
             if (atomData.frozen_atoms[i])
@@ -802,6 +805,12 @@ namespace sim
             const glm::vec3 accel = data.forces[i] * inv_m;
 
             data.velocities[i] += accel * half_dt;
+
+            if (m_universe.gravityEnabled())
+            {
+                if (atomData.frozen_atoms[i]) continue;
+                data.velocities[i] += grav_accel * 1e-8f * effective_dt;
+            }
         }
     }
 
@@ -813,11 +822,21 @@ namespace sim
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
 
+        if (universe_verlet.verlet.size() != m_universe.numAtoms())
+        {
+            universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
+            universe_verlet.construct(universe_grid, m_universe);        
+        }
+
         integrate();
 
         if (m_step_count % GRID_REBUILD == 0)
         {
             universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
+        }
+        
+        if (m_step_count % (GRID_REBUILD * 2) == 0)
+        {
             universe_verlet.construct(universe_grid, m_universe);
         }
 

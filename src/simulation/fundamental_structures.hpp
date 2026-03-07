@@ -89,7 +89,12 @@ namespace sim
             std::vector<std::vector<uint32_t>> rings_aromatic; // for drawing
             std::vector<dihedral_angle> dihedral_angles;
             std::vector<dihedral_angle> improper_angles;
-            std::vector<sf::Vector3f> positions;
+            std::vector<glm::vec3> positions;
+
+            constexpr bool operator==(const molecule_structure& other)
+            {
+                return other.positions == positions;
+            }
         };
 
         // for vizualization and debugging

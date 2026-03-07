@@ -215,6 +215,9 @@ namespace core
         std::vector<scenario_info> m_savedSandbox;
         std::vector<sim::fun::video> m_SimulationVideos;
 
+        std::vector<sim::fun::molecule_structure> m_packChosen;
+        std::vector<std::string> m_packNames;
+
         ScenarioHandler m_scenarioHandler;
         
         void drawTutorialSelection();
@@ -235,10 +238,10 @@ namespace core
         bool sandboxSelectionOpen = false;
         bool challengeSelectionOpen = false;
         bool challengeViewOpen = false;
+        bool packerUIOpen = false;
         bool optionsOpen = false;
         bool statsOpen = false;
         bool videoPlayerOpen = true;
-        bool colorModesOpen = false;
 
         bool savedSimulation = false;
 
@@ -255,7 +258,6 @@ namespace core
         void drawUniverseUI();
 
         void drawHUD();
-        void drawColorOptions();
         void drawStatsWindow();
         void drawTimeControl();
 
@@ -278,6 +280,8 @@ namespace core
         void drawCompoundView(const sim::fun::compound_preset_info& compound);
         void drawCompoundFullView();
         void drawPeriodicTable();
+
+        void drawPackerUI();
 
         void pauseMenu();
 

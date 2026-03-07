@@ -102,7 +102,7 @@ namespace sim
 
             int32_t createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
-            void createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel =
+            void createMolecule(molecule_structure structure, glm::vec3 pos, glm::vec3 vel =
                  {0.f, 0.f, 0.f});
 
             void createBond(int32_t idx1, int32_t idx2, BondType type = BondType::SINGLE);
@@ -117,6 +117,9 @@ namespace sim
             void loadFrames(const std::vector<frame>& nFrames) { m_frames = std::move(nFrames); }
             void loadFrames(const std::filesystem::path path);
             void saveFrame();
+
+            float gravityMagnitude() { return mag_gravity; }
+            bool gravityEnabled() { return gravity; }
 
             simData& getData() { return data; }
             atomData& getAtomData() { return atomData; }

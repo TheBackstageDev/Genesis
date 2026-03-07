@@ -342,6 +342,15 @@
           ["", "", "Cerium", "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "", ""],
           ["", "", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium", "", ""]
         ]
+      },
+      
+      "packer_ui":
+      {
+        "box_size": "Box Size",
+        "probability": "Probability",
+        "quantity": "Quantity",
+        "quantity_available": "As much as fits",
+        "pack_sim": "Pack Simulation"
       }
     },
     "pause_menu":

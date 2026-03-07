@@ -413,6 +413,15 @@
           ["", "", "Cério", "Praseodímio", "Neodímio", "Promécio", "Samário", "Eurípio", "Gadolínio", "Térbio", "Disprósio", "Hólmio", "Érbio", "Túlio", "Itérbio", "Lutécio", "", ""],
           ["", "", "Tório", "Protactínio", "Urânio", "Netúnio", "Plutônio", "Américo", "Cúrio", "Berquélio", "Califórnio", "Einsteinio", "Férmio", "Mendelévio", "Nobélio", "Laurêncio", "", ""]
         ]
+      },
+
+      "packer_ui":
+      {
+        "box_size": "Tamanho da Caixa",
+        "probability": "Probabilidade",
+        "quantity": "Quantidade",
+        "quantity_available": "O Quanto couber",
+        "pack_sim": "Empacotar Simulação"
       }
     },
     "pause_menu":

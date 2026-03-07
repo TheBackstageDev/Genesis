@@ -25,13 +25,11 @@ namespace sim
               HMassRepartitioning(create_info.HMassRepartitioning), roof_floor_collision(create_info.roof_floor_collision),
               log_flags(create_info.log_flags), rendering_eng(rendering_engine)
         {
-            //createComputeShaders();
         }
 
         universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine)
             : rendering_eng(rendering_engine)
         {
-            //createComputeShaders();
             loadScene(path);
         }
 
@@ -174,13 +172,13 @@ namespace sim
             return atomData.subsets.size() - 1; // Index
         }
 
-        void universe::createMolecule(molecule_structure structure, sf::Vector3f pos, sf::Vector3f vel)
+        void universe::createMolecule(molecule_structure structure, glm::vec3 pos, glm::vec3 vel)
         {
             int32_t baseAtomIndex = atomData.atoms.size();
 
             molecule nMolecule{};
 
-            sf::Vector3f centroid{0.f, 0.f, 0.f};
+            glm::vec3 centroid{0.f, 0.f, 0.f};
             for (const auto &p : structure.positions)
             {
                 centroid += p;
@@ -196,8 +194,8 @@ namespace sim
             {
                 const def_atom &a = structure.atoms[i];
 
-                sf::Vector3f end_pos = structure.positions[i] + pos;
-                createAtom(glm::vec3(end_pos.x, end_pos.y, end_pos.z), glm::vec3(vel.x, vel.y, vel.z), a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
+                glm::vec3 end_pos = structure.positions[i] + pos;
+                createAtom(end_pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
                 data.q[i] += structure.atoms[i].charge;
             }
 
@@ -407,7 +405,6 @@ namespace sim
                     z = box.z;
                     vz = -vz;
                 }
-                vz *= 0.99f;
             }
             else
             {
@@ -437,9 +434,6 @@ namespace sim
                     y = box.y;
                     vy = -vy;
                 }
-
-                vx *= 0.99f;
-                vy *= 0.99f;
             }
             else
             {

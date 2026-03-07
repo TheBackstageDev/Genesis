@@ -88,7 +88,7 @@ namespace core
                 .minDisplayTime_s = 25.0f,
                 .onEnter = [&]()
                 {
-                    m_dynamics->setTimescale(750.f);
+                    m_dynamics->setTimescale(300.f);
                     m_wantedTemperature = 40.f;
                 },
             },
@@ -207,10 +207,8 @@ namespace core
 
                 .onEnter = [&]()
                 {
-                    const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
-
                     m_dynamics->setTimescale(1.5f);
-                    m_universe->createMolecule(m_compounds["Water"].structure, center);
+                    m_universe->createMolecule(m_compounds["Water"].structure, m_universe->boxSizes() * 0.5f);
                 },
             },
             {
@@ -286,10 +284,8 @@ namespace core
 
                 .onEnter = [&]()
                 {
-                    const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
-
                     m_dynamics->setTimescale(1.f);
-                    m_universe->createMolecule(m_compounds.at("Benzene").structure, center);
+                    m_universe->createMolecule(m_compounds.at("Benzene").structure, m_universe->boxSizes() * 0.5f);
                 },
             },
             {
@@ -363,10 +359,8 @@ namespace core
 
                 .onEnter = [&]()
                 {
-                    const sf::Vector3f center{m_universe->boxSizes().x * 0.5f, m_universe->boxSizes().y * 0.5f, m_universe->boxSizes().z * 0.5f};
-
                     m_dynamics->setTimescale(1.f);
-                    m_universe->createMolecule(m_compounds.at("Carbon Dioxide").structure, center);
+                    m_universe->createMolecule(m_compounds.at("Carbon Dioxide").structure, m_universe->boxSizes() * 0.5f);
                 },
             },
             {
@@ -802,39 +796,17 @@ namespace core
                     }
                 },
                 {
-                    .actions =
-                    {
-                        {
-                            .action = [&]()
-                            {
-                                m_universe->clearArrows();
-
-                                for (size_t i = 0; i < m_universe->numAtoms(); ++i) 
-                                {
-                                    glm::vec3 pos = m_universe->getPosition(i);
-                                    glm::vec3 force = m_universe->getForce(i);
-
-                                    float scale = 0.02f;  
-
-                                    m_universe->createArrow(pos, pos + scale * force);
-                                }
-                            }
-                        }
-                    },
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 30.0f,
                     .onEnter = [&]()
                     {
+                        m_universe->clearArrows();
                         m_dynamics->setTimescale(1.0f);
                     }
                 },
                 {
                     .autoAdvanceAfterNarration = true,
                     .minDisplayTime_s = 30.0f,
-                    .onEnter = [&]()
-                    {
-                        m_universe->clearArrows();
-                    }
                 },
                 {
                     .autoAdvanceAfterNarration = false,

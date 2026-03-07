@@ -18,6 +18,7 @@ namespace sim
         void optimize(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 molecule_position);
 
         std::vector<float> normalizeChances(const std::vector<float>& chances);
+        std::vector<float> getMoleculesRadii(const std::vector<fun::molecule_structure>& molecules);
 
         uint32_t getSpawnAmmount(const glm::vec3 box, const std::vector<fun::molecule_structure>& molecules, const std::vector<float>& chances);
         uint32_t getSpawnAmmount(const glm::vec3 box, const fun::molecule_structure& molecule);

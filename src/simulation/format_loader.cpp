@@ -24,7 +24,7 @@ namespace sim::io
         if (BONDED(6, 7))
         {
             if (distance < 1.18f) return fun::BondType::TRIPLE;
-            if (distance < 1.34f) return fun::BondType::DOUBLE;
+            if (distance < 1.32f) return fun::BondType::DOUBLE;
             return fun::BondType::SINGLE; 
         }
         
@@ -158,7 +158,7 @@ namespace sim::io
     #undef BONDED
     }
 
-    bool loadXYZ(const std::filesystem::path path, std::vector<fun::def_atom>& atoms, std::vector<fun::def_bond>& bonds, std::vector<sf::Vector3f>& positions)
+    bool loadXYZ(const std::filesystem::path path, std::vector<fun::def_atom>& atoms, std::vector<fun::def_bond>& bonds, std::vector<glm::vec3>& positions)
     {
         std::ifstream file(path);
         if (!file.is_open() || path.extension() != ".xyz") 
@@ -220,7 +220,7 @@ namespace sim::io
             for (size_t j = i + 1; j < atoms.size(); ++j)
             {
                 uint8_t z2 = atoms[j].ZIndex;
-                float dist = (positions[i] - positions[j]).length();
+                float dist = glm::length(positions[i] - positions[j]);
                 float r_cov = (constants::covalent_radius[z1] + constants::covalent_radius[z2]);
 
                 if (dist < r_cov + tolerance) 
