@@ -769,6 +769,17 @@ namespace core
         auto &sandbox_creation = localization_json["Menu"]["Sandbox_Creation"];
 
         ImGui::Begin(sandbox_creation["title"].get<std::string>().c_str(), nullptr, ImGuiWindowFlags_NoMove);
+
+        if (ImGui::ImageButton("##packerbutton", textures["packer_icon"], ImVec2(32.f, 32.f)))
+        {
+            packerUIOpen = !packerUIOpen;
+        }
+
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(10.f, 0.f));
+        ImGui::SameLine();
+        ImGui::Text(sandbox_creation["packer_title"].get<std::string>().c_str());
+
         if (ImGui::CollapsingHeader(sandbox_creation["header_physics"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Checkbox(sandbox_creation["gravity_enabled"].get<std::string>().c_str(), &sandbox_info.has_gravity);
@@ -818,8 +829,6 @@ namespace core
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
-            m_packChosen.clear();
-
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
 
@@ -834,20 +843,38 @@ namespace core
             target_pressure = 0.f;
             target_temperature = 300.f;
 
+            m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packChances, simulation_universe->boxSizes() * 0.5f, simulation_universe->boxSizes());
+
+            m_packChosen.clear();
+            m_packChances.clear();
+
             /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("resource/molecules/dna.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {250, 250, 250}); */
+            simulation_universe->createMolecule(structure, {15, 15, 15}); */
         }
 
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(10.f, 0.f));
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
         if (ImGui::Button(sandbox_creation["button_cancel"].get<std::string>().c_str(), ImVec2(200, 50)))
         {
             sandboxSelectionOpen = false;
+            packerUIOpen = false;
         }
+        ImGui::PopStyleColor();
 
         ImGui::End();
+
+        if (packerUIOpen)
+            drawPackerUI(sandbox_info.box);
+
+        if (compoundSelector)
+            drawCompoundSelector();
     }
 
     void UIHandler::drawTutorialSelection()
@@ -1456,7 +1483,7 @@ namespace core
             drawCompoundSelector();
 
         if (packerUIOpen)
-            drawPackerUI();
+            drawPackerUI(simulation_universe->boxSizes());
 
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
@@ -2066,7 +2093,7 @@ namespace core
         return info;
     }
 
-    void UIHandler::drawPackerUI()
+    void UIHandler::drawPackerUI(const glm::vec3 box_size)
     {
         auto& packerJson = localization_json["Simulation"]["universe_ui"]["packer_ui"];
         auto &compounds = localization_json["Compounds"];
@@ -2077,15 +2104,14 @@ namespace core
             return;
         }
 
-        static std::vector<float> chosenChances;
         static int32_t highlightedMol = -1;
 
-        if (chosenChances.size() != m_packChosen.size())
+        if (m_packChances.size() != m_packChosen.size())
         {
-            chosenChances.resize(m_packChosen.size());
+            m_packChances.resize(m_packChosen.size());
 
-            if (!chosenChances.empty())
-                chosenChances[chosenChances.size() - 1] = 100.f / chosenChances.size();
+            if (!m_packChances.empty())
+                m_packChances[m_packChances.size() - 1] = 100.f / m_packChances.size();
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
@@ -2123,7 +2149,7 @@ namespace core
                 ImGui::SetNextItemWidth(200.f);
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 2.0f));
-                ImGui::DragFloat("##Prob", &chosenChances[i], 0.5f, 0.01f, 100.f, "%.2f");
+                ImGui::DragFloat("##Prob", &m_packChances[i], 0.5f, 0.01f, 100.f, "%.2f");
                 ImGui::PopStyleVar(2);
 
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (content_width - probabilities_size.x) * 0.5f);
@@ -2144,18 +2170,26 @@ namespace core
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
 
-        glm::vec3 box_size = simulation_universe->boxSizes();
-
         static float xyz[3] = {1.0f, 1.0f, 1.0f};
+
+        for (int32_t i = 0; i < 3; ++i)
+            if (xyz[i] > box_size[i]) xyz[i] = box_size[i];
         
         ImGui::BeginGroup();
-        ImGui::Text(packerJson["box_size"].get<std::string>().c_str());
-        ImGui::SetNextItemWidth(100.f);
-        ImGui::SliderFloat("X", &xyz[0], 1.0f, box_size.x, "%.1f");
-        ImGui::SetNextItemWidth(100.f);
-        ImGui::SliderFloat("Y", &xyz[1], 1.0f, box_size.y, "%.1f");
-        ImGui::SetNextItemWidth(100.f);
-        ImGui::SliderFloat("Z", &xyz[2], 1.0f, box_size.z, "%.1f");
+
+        if (!sandboxSelectionOpen)
+        {
+            ImGui::Text(packerJson["box_size"].get<std::string>().c_str());
+            ImGui::SetNextItemWidth(100.f);
+            ImGui::SliderFloat("X", &xyz[0], 1.0f, box_size.x, "%.1f");
+            ImGui::SetNextItemWidth(100.f);
+            ImGui::SliderFloat("Y", &xyz[1], 1.0f, box_size.y, "%.1f");
+            ImGui::SetNextItemWidth(100.f);
+            ImGui::SliderFloat("Z", &xyz[2], 1.0f, box_size.z, "%.1f");
+        }
+
+        ImGui::SetNextItemWidth(200.f);
+        ImGui::DragFloat(packerJson["density"].get<std::string>().c_str(), &m_packDensity, 0.05f, 0.1f, 5.f, "%.4f");
         ImGui::EndGroup();
 
         ImGui::SameLine();
@@ -2171,7 +2205,7 @@ namespace core
         {
             if (highlightedMol >= 0 && highlightedMol < static_cast<int32_t>(m_packChosen.size()))
             {
-                chosenChances.erase(chosenChances.begin() + highlightedMol);
+                m_packChances.erase(m_packChances.begin() + highlightedMol);
                 m_packChosen.erase(m_packChosen.begin() + highlightedMol);
                 m_packNames.erase(m_packNames.begin() + highlightedMol);
                 
@@ -2189,10 +2223,32 @@ namespace core
         } 
         ImGui::PopStyleColor();
 
-        if (ImGui::Button(packerJson["pack_sim"].get<std::string>().c_str()))
+        if (!sandboxSelectionOpen)
         {
-            if (!m_packChosen.empty())
-                m_simpacker.pack(*simulation_universe.get(), m_packChosen, chosenChances, simulation_universe->boxSizes() * 0.5f, glm::vec3(xyz[0], xyz[1], xyz[2]));
+            if (ImGui::Button(packerJson["pack_sim"].get<std::string>().c_str()))
+            {
+                if (!m_packChosen.empty())
+                    m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packChances, simulation_universe->boxSizes() * 0.5f, glm::vec3(xyz[0], xyz[1], xyz[2]));
+            }
+        }
+        else
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.8f, 0.1f, .8f));
+            if (ImGui::Button(packerJson["confirm"].get<std::string>().c_str()))
+            {
+                packerUIOpen = false;
+            }
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, .8f));
+            if (ImGui::Button(packerJson["cancel"].get<std::string>().c_str()))
+            {
+                m_packChances.clear();
+                m_packChosen.clear();
+            }
+            ImGui::PopStyleColor();
         }
 
         ImGui::End();
@@ -2497,7 +2553,11 @@ namespace core
                 resetVideoData();
 
                 m_packChosen.clear();
+                m_packChances.clear();
                 m_packNames.clear();
+
+                m_packDensity = 1.006f;
+
                 m_scenarioHandler.clear();
 
                 if (exitDesktop)

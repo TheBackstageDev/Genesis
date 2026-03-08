@@ -635,7 +635,7 @@ namespace sim
             }
             case fun::color_rendering_mode::VELOCITY:
             {
-                constexpr float d_velocity = 40.f;
+                constexpr float d_velocity = 30.f;
                 float v = glm::length(sim_info.velocities[i]);
                 float t = std::clamp(v / d_velocity, 0.0f, 1.0f);
 

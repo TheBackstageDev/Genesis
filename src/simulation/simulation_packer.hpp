@@ -14,11 +14,16 @@ namespace sim
 
         void pack(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount = 0);
         void pack(fun::universe& u, const std::vector<fun::molecule_structure>& molecules, const std::vector<float>& chances, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount = 0);
+        void packDensity(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 center, const glm::vec3 box, const float density = 1.006f);
+        void packDensity(fun::universe& u, const std::vector<fun::molecule_structure>& molecules, const glm::vec3 center, const glm::vec3 box, const float targetDensity = 1.006f);
     private:
         void optimize(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 molecule_position);
+        void positionMolecules(fun::universe& u, const std::vector<fun::molecule_structure>& molecules, const std::vector<uint32_t> mol_order, 
+                                const std::vector<float> mol_radii, const std::vector<uint32_t> mol_ammounts, const glm::vec3 halfBox, const glm::vec3 center);
 
         std::vector<float> normalizeChances(const std::vector<float>& chances);
         std::vector<float> getMoleculesRadii(const std::vector<fun::molecule_structure>& molecules);
+        std::vector<float> getMoleculesMass(const std::vector<fun::molecule_structure>& molecules);
 
         uint32_t getSpawnAmmount(const glm::vec3 box, const std::vector<fun::molecule_structure>& molecules, const std::vector<float>& chances);
         uint32_t getSpawnAmmount(const glm::vec3 box, const fun::molecule_structure& molecule);

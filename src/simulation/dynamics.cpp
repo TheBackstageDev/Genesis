@@ -809,7 +809,7 @@ namespace sim
             if (m_universe.gravityEnabled())
             {
                 if (atomData.frozen_atoms[i]) continue;
-                data.velocities[i] += grav_accel * 1e-8f * effective_dt;
+                data.velocities[i] += grav_accel * 1e-3f * effective_dt;
             }
         }
     }

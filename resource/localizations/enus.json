@@ -51,6 +51,7 @@
     "Sandbox_Creation":
     {
       "title": "Sandbox Creation Menu",
+      "packer_title": "Initial Config",
 
       "header_physics": "Physics and Thermodynamics",
       "gravity_enabled": "Gravity enabled",
@@ -347,9 +348,12 @@
       "packer_ui":
       {
         "box_size": "Box Size",
+        "density": "Density (g/cm^3)",
         "probability": "Probability",
         "quantity": "Quantity",
         "quantity_available": "As much as fits",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
         "pack_sim": "Pack Simulation"
       }
     },

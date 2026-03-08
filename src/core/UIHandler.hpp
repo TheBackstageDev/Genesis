@@ -217,6 +217,9 @@ namespace core
 
         std::vector<sim::fun::molecule_structure> m_packChosen;
         std::vector<std::string> m_packNames;
+        std::vector<float> m_packChances;
+
+        float m_packDensity = 1.006f;
 
         ScenarioHandler m_scenarioHandler;
         
@@ -281,7 +284,7 @@ namespace core
         void drawCompoundFullView();
         void drawPeriodicTable();
 
-        void drawPackerUI();
+        void drawPackerUI(const glm::vec3 box_size);
 
         void pauseMenu();
 

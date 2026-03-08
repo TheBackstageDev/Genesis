@@ -89,6 +89,14 @@ void main()
     vec3 rimColor = vec3(0.9, 0.95, 1.0);
     final_color.rgb += rimColor * rim * 0.55;
 
+    vec3 viewDir = normalize(-closest);
+
+    vec3 reflectDir = reflect(-u_lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128.0);
+    vec3 specular =  0.5f * spec * vec3(1.0, 1.0, 1.0);   
+    
+    final_color.rgb += specular;
+
     float NdotL = max(0.0, dot(normal, u_lightDir));
     fragColor = vec4(final_color.xyz * (0.1 + 0.8 * NdotL), final_color.w);
 }

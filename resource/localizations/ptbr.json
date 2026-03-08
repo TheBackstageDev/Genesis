@@ -50,6 +50,7 @@
     "Sandbox_Creation":
     {
       "title": "Menu de Criação Sandbox",
+      "packer_title": "Configuração Inicial",
 
       "header_physics": "Física e Termodinâmica",
       "gravity_enabled": "Gravidade ativa",
@@ -419,8 +420,11 @@
       {
         "box_size": "Tamanho da Caixa",
         "probability": "Probabilidade",
+        "density": "Densidade (g/cm^3)",
         "quantity": "Quantidade",
         "quantity_available": "O Quanto couber",
+        "confirm": "Confirmar",
+        "cancel": "Cancelar",
         "pack_sim": "Empacotar Simulação"
       }
     },

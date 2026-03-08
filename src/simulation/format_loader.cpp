@@ -30,8 +30,8 @@ namespace sim::io
         
         if (BONDED(6, 8))
         {
+            if (distance < 1.14f) return fun::BondType::TRIPLE;     // C#O
             if (distance < 1.24f) return fun::BondType::DOUBLE;     // C=O
-            if (distance < 1.17f) return fun::BondType::TRIPLE;     // C#O
             return fun::BondType::SINGLE;                           // C–O
         }
 
