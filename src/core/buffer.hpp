@@ -66,6 +66,11 @@ namespace core
             glBindBuffer(target, 0);
         }
 
+        void destroy()
+        {
+            glDeleteBuffers(1, &m_id);
+        }
+
         void upload(const void* data, GLsizeiptr size, GLenum usage = GL_DYNAMIC_DRAW)
         {
             bind();
@@ -97,7 +102,7 @@ namespace core
             return static_cast<GLsizeiptr>(size);
         }
 
-        GLuint id() const { return m_id; }
+        const GLuint& id() const { return m_id; }
         GLenum target() const { return m_target; }
 
         void bindBase(GLuint binding_point) const

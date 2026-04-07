@@ -19,12 +19,12 @@ namespace sim
     void simulation_packer::pack(fun::universe &u, const fun::molecule_structure &molecule, 
                 const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount)
     {
-        pack(u, {molecule}, {1.0f}, center, box, targetAmmount);
+        pack(u, {std::move(molecule)}, {1.0f}, center, box, targetAmmount);
     }
 
     void packDensity(fun::universe& u, const fun::molecule_structure& molecule, const glm::vec3 center, const glm::vec3 box, const float density)
     {
-        packDensity(u, {molecule}, center, box, density);
+        packDensity(u, {std::move(molecule)}, center, box, density);
     }
 
     void simulation_packer::pack(fun::universe &u, const std::vector<fun::molecule_structure> &molecules, 

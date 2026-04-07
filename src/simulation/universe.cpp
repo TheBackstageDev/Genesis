@@ -23,7 +23,7 @@ namespace sim
             : box(create_info.box), gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
               HMassRepartitioning(create_info.HMassRepartitioning), roof_floor_collision(create_info.roof_floor_collision),
-              log_flags(create_info.log_flags), rendering_eng(rendering_engine)
+              log_flags(create_info.log_flags), rendering_eng(rendering_engine), m_reaction(create_info.reaction)
         {
         }
 
@@ -69,7 +69,6 @@ namespace sim
 
             data.lj_params.emplace_back(constants.first);
             data.lj_params.emplace_back(constants.second);
-            newAtom.radius = constants::VDW_RADII[ZIndex] * 1.5f;
             newAtom.electrons = numElectron;
             newAtom.NCount = numNeutrons == 0 ? constants::NEUTRON_COUNTS[ZIndex] : numNeutrons;
             newAtom.mass = ZIndex * MASS_PROTON + newAtom.NCount * MASS_NEUTRON + numElectron * MASS_ELECTRON;
@@ -97,26 +96,25 @@ namespace sim
             if (idx1 >= atomData.atoms.size() || idx2 >= atomData.atoms.size() || idx1 == idx2)
                 return;
 
-            if (std::find_if(atomData.bonds.begin(), atomData.bonds.end(), [&](bond &a)
-                             { return a.bondedAtom == idx1 && a.centralAtom == idx2 || a.bondedAtom == idx2 && a.centralAtom == idx1; }) != atomData.bonds.end())
-                return;
+            if (areBonded(idx1, idx2)) return;
 
             bond nBond{};
             nBond.bondedAtom = idx1;
             nBond.centralAtom = idx2;
             nBond.type = type;
-            nBond.equilibriumLength = constants::getBondLength(atomData.atoms[idx1].ZIndex, atomData.atoms[idx2].ZIndex, type);
-            nBond.k = constants::getBondHarmonicConstantFromEnergy(atomData.atoms[idx1].ZIndex, atomData.atoms[idx2].ZIndex, type);
 
-            int8_t bondCount = static_cast<int8_t>(type);
-
-            atomData.atoms[idx1].bondCount += bondCount;
-            atomData.atoms[idx2].bondCount += bondCount;
-
+            if (!m_reaction)
+            {
+                int8_t bondCount = static_cast<int8_t>(type);
+    
+                atomData.atoms[idx1].bondCount += bondCount;
+                atomData.atoms[idx2].bondCount += bondCount;
+            }
+            
             float EN1 = constants::getElectronegativity(atomData.atoms[idx1].ZIndex);
             float EN2 = constants::getElectronegativity(atomData.atoms[idx2].ZIndex);
             float deltaEN = std::abs(EN1 - EN2);
-
+            
             if (deltaEN > 0.1f) // Significant electronegativity difference
             {
                 float charge = deltaEN * 0.31f;
@@ -132,9 +130,82 @@ namespace sim
                     data.q[idx1] += charge;
                 }
             }
-
+            
+            nBond.order = static_cast<float>(type) + 0.1f;
+            
             atomData.bonds.emplace_back(std::move(nBond));
         }
+
+        void universe::updateAngles(int32_t idx1)
+        {
+            atomData.angles.erase(
+                std::remove_if(atomData.angles.begin(), atomData.angles.end(),
+                    [&](const angle& a) { return a.B == idx1; }),
+                atomData.angles.end());
+
+            std::vector<uint32_t> neighbors;
+            for (const auto& bond : atomData.bonds) 
+            {
+                if (bond.bondedAtom == idx1) neighbors.push_back(bond.centralAtom);
+                else if (bond.centralAtom == idx1) neighbors.push_back(bond.bondedAtom);
+            }
+
+            /* for (int32_t i = 0; i < neighbors.size(); ++i) 
+            {
+                for (int32_t j = i + 1; j < neighbors.size(); ++j) 
+                {
+                    angle newAngle{neighbors[i], (uint32_t)idx1, neighbors[j]};
+                    atomData.angles.emplace_back(std::move(newAngle));
+                }
+            } */
+
+            /* atomData.dihedral_angles.erase(
+                std::remove_if(atomData.dihedral_angles.begin(), atomData.dihedral_angles.end(),
+                    [&](const dihedral_angle& d) { return (d.B == idx1 || d.C == idx1); }),
+                atomData.dihedral_angles.end());
+
+            for (auto n : neighbors) 
+            {
+                for (auto n1 : neighbors) 
+                {
+                    if (n1 == n) continue;
+
+                    for (const auto& bond : atomData.bonds) 
+                    {
+                        int32_t n2 = -1;
+                        if (bond.centralAtom == n && bond.bondedAtom != idx1) n2 = bond.bondedAtom;
+                        else if (bond.bondedAtom == n && bond.centralAtom != idx1) n2 = bond.centralAtom;
+
+                        if (n2 != -1) 
+                        {
+                            dihedral_angle dih{n1, (uint32_t)idx1, n, (uint32_t)n2};
+                            atomData.dihedral_angles.emplace_back(std::move(dih));
+                        }
+                    }
+                }
+            } */
+
+            /* atomData.improper_angles.erase(
+                std::remove_if(atomData.improper_angles.begin(), atomData.improper_angles.end(),
+                    [&](const dihedral_angle& d) { return d.A == idx1 || d.B == idx1 || d.C == idx1 || d.D == idx1; }),
+                atomData.improper_angles.end());
+
+            if (neighbors.size() >= 3) 
+            {
+                for (int32_t i = 0; i < neighbors.size(); ++i) 
+                {
+                    for (int32_t j = i + 1; j < neighbors.size(); ++j) 
+                    {
+                        for (int32_t k = j + 1; k < neighbors.size(); ++k) 
+                        {
+                            dihedral_angle improper{idx1, neighbors[i], neighbors[j], neighbors[k]};
+                            atomData.improper_angles.emplace_back(std::move(improper));
+                        }
+                    }
+                }
+            } */
+        }
+
 
         int32_t universe::createSubset(const def_subset &nSub, const int32_t baseAtom, const int32_t baseSubset)
         {
@@ -225,7 +296,7 @@ namespace sim
             nMolecule.subsetBegin = baseSubset;
             nMolecule.subsetCount = structure.subsets.size();
 
-            if (nMolecule.subsetCount > 0 && structure.atoms[0].charge == 0)
+            if (!m_reaction && nMolecule.subsetCount > 0 && structure.atoms[0].charge == 0)
                 balanceMolecularCharges(atomData.subsets[baseSubset]);
 
             rebuildBondTopology();
@@ -652,9 +723,7 @@ namespace sim
                 nlohmann::json b_json{};
                 b_json["central"] = bond.centralAtom;
                 b_json["bonded"] = bond.bondedAtom;
-                b_json["equilibrium"] = bond.equilibriumLength;
                 b_json["type"] = static_cast<uint8_t>(bond.type);
-                b_json["k"] = bond.k;
 
                 scene["bonds"].emplace_back(b_json);
             }
@@ -818,7 +887,6 @@ namespace sim
 
                 atom newAtom{};
                 newAtom.ZIndex = Z;
-                newAtom.radius = radius;
                 newAtom.electrons = electrons[i];
                 newAtom.NCount = nNeutrons;
                 newAtom.mass = Z * MASS_PROTON + nNeutrons * MASS_NEUTRON + ((float)electrons[i]) * MASS_ELECTRON;
@@ -836,7 +904,7 @@ namespace sim
                 data.lj_params.emplace_back(epsilon);
             }
 
-            data.forces.assign(N, glm::vec3(0.0f));
+            data.forces.assign(N, glm::vec4(0.0f));
 
             if (scene.contains("bonds"))
             {
@@ -845,9 +913,7 @@ namespace sim
                     bond b{};
                     b.centralAtom = b_json["central"];
                     b.bondedAtom = b_json["bonded"];
-                    b.equilibriumLength = b_json["equilibrium"];
                     b.type = static_cast<BondType>(b_json["type"]);
-                    b.k = b_json["k"];
                     atomData.bonds.emplace_back(b);
                 }
             }

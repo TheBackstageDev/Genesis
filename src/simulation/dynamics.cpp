@@ -7,86 +7,22 @@
 
 namespace sim
 {
-    void verlet_list::construct(const core::SpatialGrid& grid, fun::universe &u)
-    {
-        verlet.assign(u.numAtoms(), {});
-
-        auto& data = u.getData();
-
-        for (int32_t cell = 0; cell < grid.cellOffsets.size(); ++cell)
-        {
-            glm::ivec3 cellDims = grid.indexToCell(cell);
-
-            grid.foreach (cell, [&](const uint32_t &i)
-            {
-                glm::vec3 pi = data.positions[i];
-
-                for (int32_t dx = -1; dx <= 1; ++dx)
-                for (int32_t dy = -1; dy <= 1; ++dy)
-                for (int32_t dz = -1; dz <= 1; ++dz)
-                {
-                    if (dx == 0 && dy == 0 && dz == 0)
-                    {
-                        grid.foreach(cell, [&](const uint32_t& j)
-                        {
-                            if (j <= i) return;
-
-                            glm::vec3 dr = u.minImageVec(data.positions[j] - pi);
-                            float dr2 = glm::length2(dr);
-
-                            if (dr2 <= cutoff * cutoff)
-                                verlet[i].push_back(j);
-                        }, i + 1, -1);
-                    }
-                    else
-                    {
-                        int32_t n_ix = cellDims.x + dx;
-                        int32_t n_iy = cellDims.y + dy;
-                        int32_t n_iz = cellDims.z + dz;
-
-                        n_ix = (n_ix % grid.gridDimensions.x + grid.gridDimensions.x) % grid.gridDimensions.x;
-                        n_iy = (n_iy % grid.gridDimensions.y + grid.gridDimensions.y) % grid.gridDimensions.y;
-                        n_iz = (n_iz % grid.gridDimensions.z + grid.gridDimensions.z) % grid.gridDimensions.z;
-
-                        int32_t neighbor_id = grid.cellToIndex(n_ix, n_iy, n_iz);
-
-                        if (!u.wallcollision() && !u.rooffloorcollision() && neighbor_id < -1) continue; 
-
-                        grid.foreach(neighbor_id, [&](const uint32_t& j)
-                        {
-                            glm::vec3 dr = u.minImageVec(data.positions[j] - pi);
-                            float dr2 = glm::length2(dr);
-
-                            if (dr2 <= cutoff * cutoff)
-                                verlet[i].push_back(j);
-                        });
-                    }
-                }
-            });
-        }
-
-        for (auto& lst : verlet) 
-            std::sort(lst.begin(), lst.end());
-    }
-
-    bool verlet_list::needsRebuild(const std::vector<glm::vec3>& old_positions,
-                                   const std::vector<glm::vec3>& new_positions)
-    {
-        return false;
-    }
-
     sim_dynamics::sim_dynamics(fun::universe &u)
         : m_universe(u)
     {
         universe_verlet.cutoff = 12.f;
         universe_verlet.skin = VERLET_SKIN;
+
+        createComputeShaders();
+    }
+
+    sim_dynamics::~sim_dynamics()
+    {
+        destroySSBOs();
     }
 
     void sim_dynamics::createComputeShaders()
     {
-        if (unbonded_program.id() != 0 && bonded_program.id() != 0 && integrate_program.id() != 0)
-            return;
-
         const std::filesystem::path shaders_path = "resource/shaders";
 
         unbonded_program = core::glProgram{
@@ -100,6 +36,14 @@ namespace sim
         integrate_program = core::glProgram{
             core::glShader{GL_COMPUTE_SHADER, shaders_path / "integrate_program.comp"},
         };
+    }
+
+    void sim_dynamics::destroySSBOs()
+    {
+        ssbo_pos.destroy();
+        ssbo_lj.destroy(); 
+        ssbo_q.destroy();
+        ssbo_force.destroy();
     }
 
     void sim_dynamics::updateSSBOs()
@@ -163,35 +107,42 @@ namespace sim
         }
     }
 
+    void checkGLError(const char* location) 
+    {
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR) {
+            std::cerr << "GL ERROR " << err << " at " << location << std::endl;
+            if (err == GL_INVALID_VALUE) std::cerr << "  (likely bad buffer size, binding, or uniform)\n";
+            if (err == GL_INVALID_OPERATION) std::cerr << "  (likely program not linked or bound wrong)\n";
+        }
+    }
+
     void sim_dynamics::computeUnbondedGPU()
     {
         auto &data = m_universe.getData();
-
         const uint32_t N = static_cast<uint32_t>(m_universe.numAtoms());
+        if (N == 0) return;
+
         const uint32_t local_size = 256;
         const uint32_t num_groups = (N + local_size - 1) / local_size;
 
-        unbonded_program.use();
-        unbonded_program.setUniform("numParticles", N);
-        unbonded_program.setUniform("box", m_universe.boxSizes());
-        unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF);
-        unbonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision());
-        unbonded_program.setUniform("collide_walls", m_universe.wallcollision());
+        unbonded_program.use(); checkGLError("use program");
 
-        ssbo_pos.bindBase(0);
-        ssbo_lj.bindBase(1);
-        ssbo_q.bindBase(2);
-        ssbo_force.bindBase(3);
+        unbonded_program.setUniform("numParticles", N); checkGLError("set numParticles");
+        unbonded_program.setUniform("box", m_universe.boxSizes()); checkGLError("set box");
+        unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF); checkGLError("set r_cut2");
+        unbonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision()); checkGLError("set collide_floor_roof");
+        unbonded_program.setUniform("collide_walls", m_universe.wallcollision()); checkGLError("set collide_walls");
 
-        glDispatchCompute(num_groups, 1, 1);
+        ssbo_pos.bindBase(0);   checkGLError("bind pos");
+        ssbo_lj.bindBase(1);    checkGLError("bind lj");
+        ssbo_q.bindBase(2);     checkGLError("bind q");
+        ssbo_force.bindBase(3); checkGLError("bind force");
 
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glDispatchCompute(num_groups, 1, 1); checkGLError("dispatch compute");
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); checkGLError("memory barrier");
 
-        core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER);
-
-        ssbo_force.bind();
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, N * sizeof(glm::vec4), data.forces.data());
-        ssbo_force.unbind();
+        core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER); checkGLError("unbind SSBO");
     }
 
     void sim_dynamics::computeBondedGPU()
@@ -379,7 +330,7 @@ namespace sim
             auto local_f = fut.get();
 
             for (size_t i = 0; i < m_universe.numAtoms(); ++i)
-                data.forces[i] += local_f[i];
+                data.forces[i] += glm::vec4(local_f[i], 0.0f);
         }
     }
 
@@ -412,16 +363,25 @@ namespace sim
             for (int32_t i = start; i < end; ++i)
             {
                 const sim::fun::bond &b = atomData.bonds[i];
+                
                 int32_t a = b.bondedAtom;
                 int32_t c = b.centralAtom;
 
                 glm::vec3 dr = univ.minImageVec(data.positions[c] - data.positions[a]);
                 float len = glm::length(dr);
-                if (len <= EPSILON)
+                if (len <= EPSILON || len > 3.f)
                     continue;
 
-                float dl = len - b.equilibriumLength;
-                glm::vec3 force = (b.k * dl / len) * dr;
+                uint8_t aZindex = atomData.atoms[a].ZIndex, cZindex = atomData.atoms[c].ZIndex;
+
+                float bondLength = !m_universe.reactive() ? constants::getBondLength(aZindex, cZindex, b.type) : constants::getContinuousBondLength(aZindex, cZindex, b.order);
+                float dl = len - bondLength;
+                
+                float bond_k = !m_universe.reactive() ? constants::getBondHarmonicConstantFromEnergy(aZindex, cZindex, b.type) : constants::getBondHarmonicConstantFromEnergy(aZindex, cZindex, b.order);
+                glm::vec3 force = (bond_k * dl / len) * dr;
+
+                atomData.atoms[a].total_BO += b.order;
+                atomData.atoms[c].total_BO += b.order;
 
                 lf[a] += force;
                 lf[c] -= force;
@@ -464,8 +424,19 @@ namespace sim
                 glm::vec3 dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
                 glm::vec3 dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
 
-                glm::vec3 F_i = -ang.K * delta_theta * dtheta_dri;
-                glm::vec3 F_k = -ang.K * delta_theta * dtheta_drk;
+                float K = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
+
+                /* if (m_universe.reactive())
+                {
+                    const sim::fun::bond& AB = atomData.bonds[m_universe.getBond(i, j)];
+                    const sim::fun::bond& BC = atomData.bonds[m_universe.getBond(k, j)];
+
+                    K = constants::getContinuousAngleConstant(atomData.atoms[i].ZIndex, atomData.atoms[j].ZIndex, atomData.atoms[k].ZIndex, AB.order, BC.order);
+                } */
+                
+                glm::vec3 F_i = -K * delta_theta * dtheta_dri;
+                glm::vec3 F_k = -K * delta_theta * dtheta_drk;
+                
                 glm::vec3 F_j = -F_i - F_k;
 
                 lf[i] += F_i;
@@ -493,8 +464,20 @@ namespace sim
                 glm::vec3 pd = data.positions[da.D];
 
                 float phi = computeDihedral(pa, pb, pc, pd);
+                float target = 0.0f;
+                float K = 6.0f;
+                if (da.periodicity == 3) 
+                {
+                    float phi = computeDihedral(pa, pb, pc, pd);
+                    K          = 1.5f;
+                    target = round(phi / (2.0f * M_PI / 3.0f)) * (2.0f * M_PI / 3.0f);
+                }
+                else if (da.periodicity == 2) 
+                {
+                    K          = 6.0f;
+                    target = (phi > M_PI/2.0f) ? M_PI : 0.0f;
+                }
 
-                float target = da.rad;
                 if (target == 0.0f && da.periodicity == 1)
                 {
                     int32_t chi = atomData.atoms[da.B].chirality ? atomData.atoms[da.B].chirality : atomData.atoms[da.C].chirality;
@@ -607,7 +590,7 @@ namespace sim
             auto local_f = fut.get();
             for (size_t i = 0; i < local_f.size(); ++i)
             {
-                data.forces[i] += local_f[i];
+                data.forces[i] += glm::vec4(local_f[i], 0.0f);
             }
         }
     }
@@ -632,6 +615,7 @@ namespace sim
     glm::vec3 sim_dynamics::computeLJforce(uint32_t i, uint32_t j, glm::vec3 &dr_vec)
     {
         auto &data = m_universe.getData();
+        auto &atomData = m_universe.getAtomData();
 
         const uint32_t base_i = i << 1;
         const uint32_t base_j = j << 1;
@@ -644,8 +628,8 @@ namespace sim
 
         float dr2 = glm::length2(dr_vec);
 
-        const float sigma = (sigma_i + sigma_j) * 0.5f;
-        const float epsilon = sqrtf(epsilon_i * epsilon_j);
+        float sigma = (sigma_i + sigma_j) * 0.5f;
+        float epsilon = sqrtf(epsilon_i * epsilon_j);
 
         if (dr2 < 100.f && dr2 > EPSILON)
         {
@@ -654,10 +638,18 @@ namespace sim
             float inv_r6 = inv_r2 * inv_r2 * inv_r2;
             float inv_r12 = inv_r6 * inv_r6;
 
+            float force_mag = 0.f;
+
+            float sum_cov = constants::covalent_radius[atomData.atoms[i].ZIndex] +
+                            constants::covalent_radius[atomData.atoms[j].ZIndex];
+
             float sr6 = powf(sigma, 6.0f) * inv_r6;
             float sr12 = sr6 * sr6;
 
-            float force_mag = 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r2;
+            force_mag += 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r2;
+            
+            if (m_universe.reactive() && dr2 < sum_cov * sum_cov)
+                force_mag *= 1.f / (1e-6f + std::exp(5.f * dr2));
 
             return force_mag * -dr_vec;
         }
@@ -699,7 +691,7 @@ namespace sim
         }
         else
         {
-            std::fill(data.forces.begin(), data.forces.end(), glm::vec3{0.0f});
+            std::fill(data.forces.begin(), data.forces.end(), glm::vec4{0.0f});
         }
     }
 
@@ -716,13 +708,13 @@ namespace sim
                 continue;
 
             glm::vec3 force = data.q[i] * wall_q * wall_directions[w];
-            data.forces[i] += force;
+            data.forces[i] += glm::vec4(force, 0.0f);
         }
 
         if (m_universe.magneticFieldEnabled())
         {
             glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], m_universe.getMagneticFieldStrength());
-            data.forces[i] += force;
+            data.forces[i] += glm::vec4(force, 0.0f);
         }
     }
 
@@ -732,6 +724,7 @@ namespace sim
 
         if (m_GPU)
         {
+            updateSSBOs();
             computeBondedGPU();
             computeUnbondedGPU();
         }
@@ -756,6 +749,9 @@ namespace sim
 
         for (size_t i = 0; i < N; ++i)
         {
+            // Resets for reaction system
+            atomData.atoms[i].total_BO = 0.f;
+
             if (atomData.frozen_atoms[i])
             {
                 data.velocities[i] = glm::vec3{0.0f};
@@ -765,7 +761,7 @@ namespace sim
             computeExternalForces(i);
 
             const float inv_m = 1.0f / atomData.atoms[i].mass;
-            const glm::vec3 accel = data.forces[i] * inv_m;
+            const glm::vec3 accel = glm::vec3(data.forces[i]) * inv_m;
 
             data.velocities[i] += accel * half_dt;
         }
@@ -782,11 +778,10 @@ namespace sim
 
         if (m_GPU)
         {
-            ssbo_force.bind();
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                            data.forces.size() * sizeof(glm::vec4),
-                            data.forces.data());
-            ssbo_force.unbind();
+            ssbo_force.bind(); checkGLError("bind force for readback");
+            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, N * sizeof(glm::vec4), data.forces.data());
+            checkGLError("get buffer sub data");
+            ssbo_force.unbind(); checkGLError("unbind after readback");
         }
 
         glm::vec3 grav_accel(0.0f, 0.0f, -m_universe.gravityMagnitude());
@@ -802,7 +797,7 @@ namespace sim
             computeExternalForces(i);
 
             const float inv_m = 1.0f / atomData.atoms[i].mass;
-            const glm::vec3 accel = data.forces[i] * inv_m;
+            const glm::vec3 accel = glm::vec4(data.forces[i]) * inv_m;
 
             data.velocities[i] += accel * half_dt;
 
@@ -831,14 +826,12 @@ namespace sim
         integrate();
 
         if (m_step_count % GRID_REBUILD == 0)
-        {
             universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
-        }
         
-        if (m_step_count % (GRID_REBUILD * 2) == 0)
-        {
+        float verletRebuildRate = 20.f / (m_timescale + std::numeric_limits<float>::epsilon());
+
+        if (m_step_count % std::max(1u, static_cast<uint32_t>(verletRebuildRate)) == 0)
             universe_verlet.construct(universe_grid, m_universe);
-        }
 
         setTemperature(target_temp);
         setPressure(target_pressure);
@@ -875,9 +868,9 @@ namespace sim
         return pressure;
     }
 
-    void sim_dynamics::setPressure(float Target_P_Bar)
+    void sim_dynamics::setPressure(float target_p_kpa)
     {
-        if (Target_P_Bar <= 0.0f)
+        if (target_p_kpa <= 0.0f)
             return;
 
         if (m_step_count % BAROSTAT_INTERVAL != 0)
@@ -888,11 +881,11 @@ namespace sim
         auto &atomData = m_universe.getAtomData();
 
         constexpr float beta_T = 4.5e-5f;
-        constexpr float tau_P = 1.0f;
+        constexpr float tau_P = 1e2;
 
         m_pressure = computePressure();
 
-        float delta_P = Target_P_Bar - m_pressure;
+        float delta_P = target_p_kpa - m_pressure;
         float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
 
         mu = std::clamp(mu, 0.5f, 1.5f);
@@ -904,6 +897,7 @@ namespace sim
         for (int32_t i = 0; i < atomData.atoms.size(); ++i)
         {
             data.positions[i].z *= scale;
+            m_universe.setBoxSize(glm::vec3(m_universe.boxSizes().x, m_universe.boxSizes().y, m_universe.boxSizes().z * scale));
         }
     }
 

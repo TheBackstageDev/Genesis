@@ -400,7 +400,6 @@ namespace sim
                     ang.B = B;
                     ang.C = neigh[j];
                     ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type, carborane);
-                    ang.K   = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
                     angles.emplace_back(std::move(ang));
                 }
             }
@@ -469,27 +468,20 @@ namespace sim
                         dihedral_angle dh{};
                         dh.A = A; dh.B = B; dh.C = C; dh.D = D;
 
-                        dh.rad      = M_PI / 3.0f;      // 60°
-                        dh.K          = 1.5f;
                         dh.periodicity = 3;
 
                         if (bc_bond->type == BondType::DOUBLE) 
                         {
-                            dh.rad      = M_PI;        // trans
-                            dh.K          = 6.0f;
                             dh.periodicity = 2;
                         }
                         else if (nAtoms[B].ZIndex == 7 || nAtoms[C].ZIndex == 7) 
                         {
-                            dh.rad      = M_PI;
-                            dh.K          = 4.0f;
                             dh.periodicity = 2;
                         }
 
                         char chi = nAtoms[B].chirality ? nAtoms[B].chirality : nAtoms[C].chirality;
-                        if (chi != 0) {
-                            dh.rad      = 0.0f;
-                            dh.K          = 12.0f;
+                        if (chi != 0) 
+                        {
                             dh.periodicity = 1;
                         }
 

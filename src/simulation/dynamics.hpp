@@ -4,6 +4,7 @@
 #include "core/buffer.hpp"
 
 #include "core/spatialgrid.hpp"
+#include "core/verletlist.hpp"
 #include "universe.hpp"
 
 #include <glad/glad.h>
@@ -11,21 +12,11 @@
 
 namespace sim
 {
-    struct verlet_list
-    {
-        std::vector<std::vector<uint32_t>> verlet;
-        float cutoff = 0.0f;
-        float skin = 1.0f;
-        
-        void construct(const core::SpatialGrid& grid, fun::universe &u);
-        bool needsRebuild(const std::vector<glm::vec3>& old_positions,
-                          const std::vector<glm::vec3>& new_positions);
-    };
-
     class sim_dynamics
     {
     public:
         sim_dynamics(fun::universe &u);
+        ~sim_dynamics();
 
         void step(float target_temp = 300.0f, float target_pressure = 1.01325f);
 
@@ -46,8 +37,10 @@ namespace sim
         float temperature() { return m_temperature; }
         float pressure() { return m_pressure; }
 
+        core::verlet_list& getVerlet() { return universe_verlet; }
         fun::universe &getUniverse() { return m_universe; }
-
+        
+        void destroySSBOs();
     private:
         fun::universe &m_universe;
 
@@ -98,11 +91,10 @@ namespace sim
                  glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                  glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f)};
 
-
         bool m_GPU = false;
         bool m_paused = false;
         core::SpatialGrid universe_grid{};
-        verlet_list universe_verlet{};
+        core::verlet_list universe_verlet{};
 
         void setPressure(float bar = 100);
         void setTemperature(float kelvin = 0.f);

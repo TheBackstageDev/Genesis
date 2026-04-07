@@ -108,11 +108,10 @@ namespace sim
         {
             uint32_t bondedAtom; 
             uint32_t centralAtom; 
+
+            float order = 1.f;
             
-            float equilibriumLength = 0.f;
-            float k = 100.f;
             BondType type;
-            int32_t padding;
         };
 
         struct subset
@@ -153,7 +152,7 @@ namespace sim
         struct atom
         {
             float mass;            
-            float radius;
+            float total_BO = 0.0f;
 
             uint8_t electrons;
             uint8_t ZIndex;

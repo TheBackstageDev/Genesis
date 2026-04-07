@@ -44,11 +44,11 @@ namespace constants
 #define GRID_REBUILD 5
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
 #define THERMOSTAT_INTERVAL 10
-#define BAROSTAT_INTERVAL 10
+#define BAROSTAT_INTERVAL 2
 
 #define COULOMB_K 1389.354576f // kJ·mol⁻¹· Å ·e⁻²
-#define BOND_K 340000.f        // Harmonic force constant
-#define ANGLE_K 12000.f       // J/mol/rad² for angular potential
+#define BOND_K 34000.f        // Harmonic force constant
+#define ANGLE_K 1200.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.f
 
 #define COUNT_ATOMS 118
@@ -56,7 +56,7 @@ namespace constants
     inline constexpr std::array<float, 119> covalent_radius = {
         0.00f,   // Z=0 (dummy)
 
-        0.32f,   // 1  H   (Pyykkö 32 pm)
+        0.5f,   // 1  H   (Pyykkö 32 pm)
         0.46f,   // 2  He  (estimated for rare cases)
 
         1.33f,   // 3  Li
@@ -678,9 +678,65 @@ namespace constants
         return (bonds > 8) ? 4 : bonds;
     }
 
-    inline float lonePairsBO(uint8_t ZIndex, float BO)
+    inline uint8_t getMaxBonds(uint8_t ZIndex)
     {
-        return (getValenceElectrons(ZIndex) - BO) / 2;
+        if (ZIndex == 1)  return 1;
+        if (ZIndex == 2 || ZIndex == 10 || ZIndex == 18 || 
+            ZIndex == 36 || ZIndex == 54 || ZIndex == 86 || ZIndex == 118) 
+            return 0;
+
+        uint8_t ve = getValenceElectrons(ZIndex);
+        if (ve == 0) return 0;
+
+        uint8_t bonds = 8 - ve;
+
+        switch (ZIndex)
+        {
+            case   1: return 1;  // H
+            case   4: return 2;  // Be
+            case   5: return 4;  // B (can expand to 4 in BF4-)
+            case   6: return 4;  // C
+            case   7: return 4;  // N (NH4+)
+            case   8: return 2;  // O (O2, H2O2)
+            case   9: return 1;  // F
+
+            case  13: return 4;  // Al (AlF4-)
+            case  14: return 4;  // Si
+            case  15: return 5;  // P (PCl5)
+            case  16: return 6;  // S (SF6)
+            case  17: return 7;  // Cl (ClF7)
+            case  35: return 7;  // Br (BrF7)
+            case  53: return 7;  // I  (IF7)
+
+            case  21: return 3;  // Sc (Sc3+)
+            case  22: return 4;  // Ti (Ti4+)
+            case  23: return 5;  // V  (V5+)
+            case  24: return 6;  // Cr (Cr6+ in CrO4^2-)
+            case  25: return 7;  // Mn (Mn7+ in MnO4-)
+            case  26: return 6;  // Fe (Fe6+ rare, FeO4^2-)
+            case  27: return 5;  // Co (Co5+ rare, CoF5)
+            case  28: return 4;  // Ni (Ni4+)
+            case  29: return 4;  // Cu (Cu4+ rare)
+            case  30: return 2;  // Zn (Zn2+ only)
+
+            case  50: return 4;  // Sn (SnCl4)
+            case  82: return 4;  // Pb (PbO2, PbCl4)
+
+            default:
+                if (bonds > 4) bonds = 4; // clamp for safety
+                break;
+        }
+
+        return bonds;
+    }
+
+    inline float lonePairsBO(uint8_t ZIndex, float totalBO, float charge = 0.0f)
+    {
+        float VE = static_cast<float>(constants::getValenceElectrons(ZIndex));
+
+        float lone_pair_electrons = VE - charge - totalBO;
+        float LP = 0.5f * lone_pair_electrons;
+        return std::max(0.0f, LP);
     }
 
     inline uint32_t lonePairs(uint8_t ZIndex, const std::vector<sim::fun::BondType>& types)
@@ -955,8 +1011,7 @@ namespace constants
 
     inline float getBondLength(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)
     {
-        float base = (getAtomConstants(Z1).first + getAtomConstants(Z2).first) 
-                    / (4.0f * MULT_FACTOR) * BOND_LENGTH_FACTOR;
+        float base = covalent_radius[Z1] + covalent_radius[Z2];
         float original = base;
 
         #define BONDED(a, b) ((Z1 == (a) && Z2 == (b)) || (Z1 == (b) && Z2 == (a)))
@@ -965,6 +1020,8 @@ namespace constants
         {
             case sim::fun::BondType::SINGLE:
             
+            if      (BONDED(1,1))  base = 0.74f;   // C–H
+
             if      (BONDED(6,1))  base = 1.09f;   // C–H
             else if (BONDED(6,3))  base = 1.82f;   // C–Li 
             else if (BONDED(6,4))  base = 1.70f;   // C–Be 
@@ -1191,7 +1248,8 @@ namespace constants
     {
         #define BONDED(a, b) ((Z1 == (a) && Z2 == (b)) || (Z1 == (b) && Z2 == (a)))
 
-        static const std::map<std::pair<uint8_t, uint8_t>, float> singleBondEnergy = {
+        static const std::map<std::pair<uint8_t, uint8_t>, float> singleBondEnergy = 
+        {
             // Carbon
             {{6,1},  413.0f},   // C–H
             {{6,6},  348.0f},   // C–C
@@ -1401,7 +1459,7 @@ namespace constants
 
     #undef ANY
 
-        return K * 1000.f;
+        return K * 20.f;
     }
 
     inline float getBondHarmonicConstantFromEnergy(uint8_t Z1, uint8_t Z2, sim::fun::BondType type)
@@ -1409,17 +1467,90 @@ namespace constants
         float D = getBondEnergy(Z1, Z2, type);        // kJ/mol
         float r0 = getBondLength(Z1, Z2, type);       // Å
 
-        float D_aJ = D * 1000.0f / AVOGADRO / 4.184f;
+        float k = (D / 348.0f) * BOND_K;
+        return k * static_cast<float>(type);
+    }
+
+    inline float getBondHarmonicConstantFromEnergy(uint8_t Z1, uint8_t Z2, float order)
+    {
+        float D = getBondEnergy(Z1, Z2, sim::fun::BondType::SINGLE);
+        float r0 = getBondLength(Z1, Z2, sim::fun::BondType::SINGLE);
+
+        float k_single = (D / 348.0f) * BOND_K;
+
+        constexpr float alpha = 5.0f;  // growth rate
+        constexpr float gamma = 10.0f;  // steepness
+
+        float factor = std::pow(1.0f - std::exp(-alpha * order), gamma);
+
+        return k_single * factor;
+    }
+
+    inline float getBondHarmonicConstantFromEnergy(float D, float r0, sim::fun::BondType type)
+    {
+        float D_aJ = D * 100.0f / AVOGADRO / 4.184f;
         float k = (D / 348.0f) * BOND_K;
 
         return k * static_cast<float>(type);
     }
 
-    inline float getBondHarmonicConstantFromEnergy(float D, float r0, sim::fun::BondType type)
+    inline float getMaxBondOrder(uint8_t Z1, uint8_t Z2)
     {
-        float D_aJ = D * 1000.0f / AVOGADRO / 4.184f;
-        float k = (D / 348.0f) * BOND_K;
+    #define ANY(a, b) ((Z1 == (a) && Z2 == (b)) || (Z1 == (b) && Z2 == (a)))
 
-        return k * static_cast<float>(type);
+        if (ANY(1, 1)) return 1.f; // H–H
+
+        if (ANY(6, 6)) return 3.f; // C≡C (acetylene)
+        if (ANY(6, 7)) return 3.f; // C≡N (cyanide, HCN)
+        if (ANY(6, 8)) return 3.f; // C≡O (CO)
+
+        if (ANY(7, 7)) return 3.f; // N≡N (N₂)
+
+        if (ANY(8, 8)) return 2.f; // O=O (O₂)
+
+        if ((ANY(9, 9)) || ANY(17, 17) ||
+            ANY(35, 35) || ANY(53, 53))
+            return 1.f;
+
+        if (ANY(24, 24)) return 6.f; // Cr₂ (quadruple bond + extra stabilization)
+        if (ANY(42, 42)) return 4.f; // Mo₂ quadruple bond
+        if (ANY(74, 74)) return 4.f; // W₂ quadruple bond
+
+    #undef ANY
+
+        return 3;
+    }
+
+    inline float getContinuousBondLength(int Zi, int Zj, float order) 
+    {
+        float Lsingle = constants::getBondLength(Zi, Zj, sim::fun::BondType::SINGLE);
+        float Ldouble = constants::getBondLength(Zi, Zj, sim::fun::BondType::DOUBLE);
+        float Ltriple = constants::getBondLength(Zi, Zj, sim::fun::BondType::TRIPLE);
+
+        if (Zi == 1 || Zj == 1)
+        {
+            Ldouble = Lsingle;
+            Ltriple = Lsingle;
+        }
+
+        float beta = log(Lsingle / Ldouble) / log(2.f);
+
+        float length = Lsingle * pow(order, -beta);
+        return std::max(Ltriple, length);
+    }
+
+    inline float getContinuousAngleConstant(int Zi, int Zj, int Zk,
+                                        float BOij, float BOik)
+    {
+        float BOavg = 0.5f * (BOij + BOik);
+
+        if (Zi == 1 || Zj == 1 || Zk == 1)
+            BOavg = std::min(1.0f, BOavg);
+
+        float alpha = 1.5f;
+
+        float strength = getAngleHarmonicConstant(Zi, Zj, Zk) * std::pow(BOavg, alpha);
+
+        return strength;
     }
 }; // namespace constants

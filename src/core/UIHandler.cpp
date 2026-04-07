@@ -794,9 +794,10 @@ namespace core
             ImGui::Checkbox(sandbox_creation["wall_collision"].get<std::string>().c_str(), &sandbox_info.wall_collision);
             ImGui::Checkbox(sandbox_creation["roof_floor_collision"].get<std::string>().c_str(), &sandbox_info.roof_floor_collision);
 
+            ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reaction);
+            
             ImGui::BeginDisabled();
             ImGui::Checkbox(sandbox_creation["isothermal"].get<std::string>().c_str(), &sandbox_info.isothermal);
-            ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &m_reactive);
             ImGui::EndDisabled();
         }
 
@@ -829,7 +830,12 @@ namespace core
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
+            if (dynamics != nullptr) dynamics->destroySSBOs();
+
+            simulation_universe.reset();
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            
+            dynamics.reset();
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
 
             m_rendering_eng.camera().target = sandbox_info.box / 2.f;
@@ -1059,6 +1065,7 @@ namespace core
     {
         auto &chosen_scenario = m_scenarioHandler.getScenarios().at(scenario);
 
+        dynamics->destroySSBOs();
         simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng);
         dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
 
@@ -1562,7 +1569,7 @@ namespace core
             display_universe->setPosition(i, pos);
         }
 
-        constexpr float minDistance = 1.6f;
+        constexpr float minDistance = 1.5f;
         for (auto &pos : display_universe->positions())
         {
             for (auto &other_pos : simulation_universe->positions())
@@ -2247,6 +2254,7 @@ namespace core
             {
                 m_packChances.clear();
                 m_packChosen.clear();
+                packerUIOpen = false;
             }
             ImGui::PopStyleColor();
         }
@@ -2263,7 +2271,7 @@ namespace core
 
         dynamics->step(target_temperature, target_pressure);
 
-        if (m_reactive) m_reaction_eng.update(*simulation_universe.get());
+        if (simulation_universe->reactive()) m_reaction_eng.update(*simulation_universe.get(), dynamics->getVerlet());
 
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration = end - start;
@@ -2445,7 +2453,12 @@ namespace core
 
         if (ImGui::Button(pause_menu["button_restart"].get<std::string>().c_str(), buttonSize))
         {
+            dynamics->destroySSBOs();
+
+            simulation_universe.release();
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            
+            dynamics.release();
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
             m_rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 

@@ -84,26 +84,14 @@ void main()
         // Lennard Jones
 
         float inv_r2 = 1.0 / r2;
-        float inv_r6 = inv_r2 * inv_r2 * inv_r2;
-        float inv_r12 = inv_r6 * inv_r6;
 
         vec3 f_LJ = vec3(0.0);
 
         if (r2 < r_cut2) 
         {
-            /*                
-                float inv_r     = 1.0f / dr;
-                float inv_r2    = inv_r * inv_r;
-                float inv_r6    = inv_r2 * inv_r2 * inv_r2;
-                float inv_r12   = inv_r6 * inv_r6;
+            float inv_r6 = inv_r2 * inv_r2 * inv_r2;
+            float inv_r12 = inv_r6 * inv_r6;
 
-                float sr6  = powf(sigma, 6.0f) * inv_r6;
-                float sr12 = sr6 * sr6;
-
-                float force_mag = 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r;
-                glm::vec3 direction = glm::vec3(dr_vec.x, dr_vec.y, dr_vec.z) * inv_r;
-
-                */
             float sigma_j = lj_params[j * 2];
             float eps_j   = lj_params[j * 2 + 1];
 
@@ -131,8 +119,8 @@ void main()
         }
 
         vec3 total_force_ij = f_LJ + f_C;
-        force_i       +=  total_force_ij;
-        force[j].xyz     += -total_force_ij;
+        force_i       +=  -total_force_ij;
+        force[j].xyz     += total_force_ij;
     }
 
     force[i].xyz += force_i;

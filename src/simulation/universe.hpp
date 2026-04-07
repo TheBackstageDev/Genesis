@@ -31,7 +31,7 @@ namespace sim
         {
             alignas(64) std::vector<glm::vec3> positions;
             alignas(64) std::vector<glm::vec3> velocities;
-            alignas(64) std::vector<glm::vec3> forces;
+            alignas(64) std::vector<glm::vec4> forces;
             alignas(64) std::vector<float> q, lj_params;
         };
 
@@ -60,6 +60,7 @@ namespace sim
             bool wall_collision = false;
             bool roof_floor_collision = false;
             bool isothermal = true;
+            bool reaction = false;
             bool HMassRepartitioning = false;
 
             logging_flags log_flags;
@@ -100,15 +101,65 @@ namespace sim
             universe(const universe_create_info& create_info, rendering_engine& rendering);
             universe(std::filesystem::path scene, rendering_engine& rendering);
 
+            ~universe() = default;
+
             int32_t createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
             void createMolecule(molecule_structure structure, glm::vec3 pos, glm::vec3 vel =
                  {0.f, 0.f, 0.f});
 
             void createBond(int32_t idx1, int32_t idx2, BondType type = BondType::SINGLE);
+            void updateAngles(int32_t idx1);
+            void breakBond(int32_t idx1, int32_t idx2)
+            {
+                const uint32_t bondIndex = getBond(idx1, idx2);
+                if (bondIndex == UINT32_MAX) return;
+
+                atomData.bonds.erase(atomData.bonds.begin() + bondIndex);
+
+                atomData.angles.erase(
+                std::remove_if(atomData.angles.begin(), atomData.angles.end(),
+                    [&](const angle& a) {
+                        return (a.A == idx1 || a.B == idx1 || a.C == idx1 ||
+                                a.A == idx2 || a.B == idx2 || a.C == idx2);
+                    }),
+                atomData.angles.end());
+
+                atomData.dihedral_angles.erase(
+                    std::remove_if(atomData.dihedral_angles.begin(), atomData.dihedral_angles.end(),
+                        [&](const dihedral_angle& d) {
+                            return (d.A == idx1 || d.B == idx1 || d.C == idx1 || d.D == idx1 ||
+                                    d.A == idx2 || d.B == idx2 || d.C == idx2 || d.D == idx2);
+                        }),
+                    atomData.dihedral_angles.end());
+
+                atomData.improper_angles.erase(
+                    std::remove_if(atomData.improper_angles.begin(), atomData.improper_angles.end(),
+                        [&](const dihedral_angle& d) {
+                            return (d.A == idx1 || d.B == idx1 || d.C == idx1 || d.D == idx1 ||
+                                    d.A == idx2 || d.B == idx2 || d.C == idx2 || d.D == idx2);
+                        }),
+                atomData.improper_angles.end());
+                
+                bondedBits.clear();
+                rebuildBondTopology();
+            }
+
+            uint32_t getBond(uint32_t i, uint32_t j)
+            {
+                for (int32_t b = 0; b < atomData.bonds.size(); ++b)
+                {
+                    const bond& bond = atomData.bonds[b];
+                    if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
+                        return b;
+                }
+                return UINT32_MAX;
+            }
+
             void balanceMolecularCharges(subset& mol);
             
             void draw(sf::RenderTarget& target, rendering_info info);
+            void setBoxSize(glm::vec3 nBox) { box = nBox; }
 
             // Scenario stuff
             void saveScene(const std::filesystem::path path, const std::string name = "");
@@ -194,6 +245,7 @@ namespace sim
             bool& wallChargeEnabled() { return f_wallCharges; }
             bool& magneticFieldEnabled() { return f_magneticField; }
 
+            bool reactive() { return m_reaction; }
             bool wallcollision() { return wall_collision; }
             bool rooffloorcollision() { return roof_floor_collision; }
             
@@ -327,23 +379,7 @@ namespace sim
                 int32_t N = atomData.atoms.size();
 
                 for (const auto& b : atomData.bonds)
-                {
                     markBonded(b.centralAtom, b.bondedAtom);
-                }
-            }
-
-            uint32_t getBond(uint32_t i, uint32_t j)
-            {
-                for (int32_t b = 0; b < atomData.bonds.size(); ++b)
-                {
-                    const bond& bond = atomData.bonds[b];
-                    if ((bond.bondedAtom == i && bond.centralAtom == j) || (bond.bondedAtom == j && bond.centralAtom == i))
-                    {
-                        return b;
-                    }
-                }
-
-                return UINT32_MAX;
             }
 
             void COMDrift();
@@ -353,6 +389,7 @@ namespace sim
             bool gravity = false;
             bool isothermal = true;
             bool wall_collision = false;
+            bool m_reaction = false;
             bool roof_floor_collision = false;
             bool HMassRepartitioning = false;
             logging_flags log_flags;

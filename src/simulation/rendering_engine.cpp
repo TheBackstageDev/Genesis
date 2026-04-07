@@ -233,17 +233,21 @@ namespace sim
         {
             const auto &bond = sim_info.bonds[i];
 
+            if (bond.order < 0.1f) continue;
+
             if (sim_info.positions.size() - 1 < bond.bondedAtom || sim_info.positions.size() - 1 < bond.centralAtom) break;
 
-            glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0);
+            float opacity = std::clamp(bond.order, 0.0f, 1.0f);
+
+            glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0f);
             glm::vec4 colA = getAtomColor(info, sim_info, bond.bondedAtom);
             glm::vec4 colB = getAtomColor(info, sim_info, bond.centralAtom);
-
+            
             colA += col_addition;
             colB += col_addition;
 
-            colA.w = info.opacity;
-            colB.w = info.opacity;
+            colA.w = opacity * info.opacity;
+            colB.w = opacity * info.opacity;
 
             int32_t order = static_cast<int32_t>(bond.type);
 

@@ -298,8 +298,6 @@ namespace core
         bool pauseMenuOpen = false;
         bool exitDesktop = false;
 
-        bool m_reactive = false;
-
         std::unique_ptr<sim::sim_dynamics> dynamics;
         std::unique_ptr<sim::fun::universe> simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
