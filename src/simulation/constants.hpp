@@ -32,7 +32,7 @@ namespace constants
 #define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
 #define VERLET_SKIN 2.f
-#define CUTOFF 2.5f
+#define CUTOFF 3.f
 #define COULOMB_CUTOFF 14.f * MULT_FACTOR
 
 #define CELL_CUTOFF 14 + VERLET_SKIN

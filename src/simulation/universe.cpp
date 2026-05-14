@@ -57,6 +57,11 @@ namespace sim
             rendering_eng.draw(target, info, sim_info);
         }
 
+        void universe::moleculeDrawOrder()
+        {
+        
+        }
+
         int32_t universe::createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex, uint8_t numNeutrons, uint8_t numElectron, int32_t chirality)
         {
             atom newAtom{};
@@ -619,20 +624,12 @@ namespace sim
             if (m_frames.size() == 0)
                 return {};
 
-            int32_t m_framesToSaveFactor = 5;
-
             nlohmann::json json_video{};
 
             videoMetaData nMetadata{};
             nMetadata.box = box;
             nMetadata.num_atoms = atomData.atoms.size();
-            size_t savedFrameCount = 0;
-            for (size_t i = 0; i < m_frames.size(); ++i)
-            {
-                if (i % m_framesToSaveFactor == 0)
-                    ++savedFrameCount;
-            }
-            nMetadata.num_frames = savedFrameCount;
+            nMetadata.num_frames = m_frames.size();
             nMetadata.title = name.empty() ? formatTime() : name;
 
             json_video["metadata"] =
@@ -647,9 +644,6 @@ namespace sim
 
             for (int32_t i = 0; i < m_frames.size(); ++i)
             {
-                if (i % m_framesToSaveFactor != 0)
-                    continue;
-
                 const auto &frame = m_frames[i];
                 if (frame.positions.size() != nMetadata.num_atoms)
                 {

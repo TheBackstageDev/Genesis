@@ -27,6 +27,71 @@ namespace sim
         packDensity(u, {std::move(molecule)}, center, box, density);
     }
 
+    void simulation_packer::packDensity(
+        fun::universe& u,
+        const std::vector<fun::molecule_structure>& molecules,
+        const std::vector<float>& parts,
+        const glm::vec3& center,
+        const glm::vec3& box,
+        float density_g_cm3)
+    {
+        assert(molecules.size() == parts.size() && "Molecules and parts must have same size!");
+
+        if (molecules.empty() || parts.empty() || density_g_cm3 <= 0.0f)
+            return;
+
+        std::vector<float> normalizedParts = normalizeChances(parts);
+
+        uint32_t totalMolecules = calculateMoleculesFromDensity(u, molecules, normalizedParts, box, density_g_cm3);
+
+        if (totalMolecules == 0)
+        {
+            std::cerr << "[Packer] Could not calculate molecule count from density.\n";
+            return;
+        }
+
+        std::cout << "[Packer] Packing " << totalMolecules 
+                << " molecules at target density " << density_g_cm3 << " g/cm³\n";
+
+        pack(u, molecules, normalizedParts, center, box, totalMolecules);
+    }
+
+    uint32_t simulation_packer::calculateMoleculesFromDensity(
+        fun::universe& u,
+        const std::vector<fun::molecule_structure>& molecules,
+        const std::vector<float>& normalizedParts,
+        const glm::vec3& box,
+        float density_g_cm3)
+    {
+        if (normalizedParts.empty()) return 0;
+
+        float totalMolarMass = 0.0f;
+        float totalFraction = 0.0f;
+
+        for (size_t i = 0; i < molecules.size(); ++i)
+        {
+            float molMass = 0.0f;
+            for (const auto& atom : molecules[i].atoms)
+                molMass += atom.NIndex * MASS_NEUTRON + atom.ZIndex * MASS_PROTON;
+
+            totalMolarMass += molMass * normalizedParts[i];
+            totalFraction += normalizedParts[i];
+        }
+
+        if (totalFraction <= 0.0f) return 0;
+        float avgMolarMass = totalMolarMass / totalFraction;
+
+        float boxVolume_cm3 = (box.x * box.y * box.z) * 1e-24f;
+
+        float moles = (density_g_cm3 * boxVolume_cm3) / avgMolarMass;
+
+        constexpr float NA = 6.02214076e23f;
+        uint64_t estimatedMolecules = static_cast<uint64_t>(moles * NA);
+
+        constexpr float packingEfficiency = 0.65f;
+        return static_cast<uint32_t>(estimatedMolecules * packingEfficiency);
+    }
+
     void simulation_packer::pack(fun::universe &u, const std::vector<fun::molecule_structure> &molecules, 
                 const std::vector<float> &chances, const glm::vec3 center, const glm::vec3 box, const uint32_t targetAmmount)
     {
@@ -68,47 +133,6 @@ namespace sim
         positionMolecules(u, molecules, order, mol_radii, mol_ammounts, halfBox, center);
     }
 
-    void simulation_packer::packDensity(fun::universe &u, const std::vector<fun::molecule_structure> &molecules, 
-                const glm::vec3 center, const glm::vec3 box, const float density)
-    {
-        /* assert(molecules.size() == chances.size() && "Molecules size and Chances must match!");
-        
-        if (molecules.empty() || chances.empty()) return;
-
-        uint32_t target_ammount = targetAmmount == 0 ? getSpawnAmmount(box, molecules, chances) : targetAmmount;
-
-        std::vector<float> normalized = normalizeChances(chances);
-        std::vector<float> cumulative(normalized.size());
-
-        cumulative[0] = normalized[0];
-        for (size_t i = 1; i < normalized.size(); ++i) 
-        {
-            cumulative[i] = cumulative[i - 1] + normalized[i];
-        }
-
-        std::vector<float> mol_radii = getMoleculesRadii(molecules);
-        std::vector<uint32_t> mol_ammounts(molecules.size());
-        
-        for (int32_t i = 0; i < target_ammount; ++i)
-        {
-            float r = randFloat(0.0f, 1.0f);
-            size_t typeIndex = 0;
-            for (; typeIndex < cumulative.size(); ++typeIndex) 
-                if (r <= cumulative[typeIndex]) break;
-            if (typeIndex >= molecules.size()) typeIndex = molecules.size() - 1;
-
-            ++mol_ammounts[typeIndex];
-        }
-
-        std::vector<uint32_t> order(molecules.size()); // the order that the molecules will be placed, from biggest to smallest.
-        std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(), [&](const uint32_t a, const uint32_t b){ return mol_radii[a] > mol_radii[b]; });
-
-        glm::vec3 halfBox = box * 0.5f;
-
-        positionMolecules(u, molecules, order, mol_radii, mol_ammounts, halfBox, center); */
-    }
-    
     void simulation_packer::positionMolecules(fun::universe& u, const std::vector<fun::molecule_structure>& molecules, const std::vector<uint32_t> mol_order, 
                                                 const std::vector<float> mol_radii, const std::vector<uint32_t> mol_ammounts, const glm::vec3 halfBox, const glm::vec3 center)
     {

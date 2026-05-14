@@ -110,7 +110,7 @@ namespace core
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding_point, m_id);
         }
     private:
-        GLuint m_id;
+        GLuint m_id = 0;
         GLenum m_target;
     };
 } // namespace core

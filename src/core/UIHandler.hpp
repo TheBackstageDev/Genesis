@@ -16,6 +16,7 @@
 #include "simulation/reaction_engine.hpp"
 #include "simulation/universe.hpp"
 #include "simulation/simulation_packer.hpp"
+#include "simulation/simulation_inspector.hpp"
 #include "simulation/dynamics.hpp"
 
 namespace core
@@ -217,7 +218,17 @@ namespace core
 
         std::vector<sim::fun::molecule_structure> m_packChosen;
         std::vector<std::string> m_packNames;
-        std::vector<float> m_packChances;
+        std::vector<float> m_packParts;
+
+        // Stats
+
+        // Graphs
+        std::vector<std::vector<std::pair<std::string, uint32_t>>> m_moleculesxtime{};
+
+        std::unordered_map<std::string, bool> m_graphActive{};
+
+        void drawMoleculesXtime();
+        void drawTemperatureXtime();
 
         float m_packDensity = 1.006f;
 
@@ -305,6 +316,7 @@ namespace core
         sim::rendering_engine m_rendering_eng;
         sim::reaction_engine m_reaction_eng;
         sim::simulation_packer m_simpacker{};
+        sim::simulation_inspector m_siminspector{};
         AudioEngine& m_audio_eng;
 
         // Callbacks
@@ -314,9 +326,6 @@ namespace core
 
         // Video
 
-        std::vector<float> temperature_log{};
-        std::vector<int32_t> time_log{};
-
         void resetVideoData() 
         { 
             m_autoFrame = true;
@@ -325,8 +334,6 @@ namespace core
             m_playingVideo = false;
 
             m_currentFrame = 0;
-
-            temperature_log.clear();
 
             simulation_universe->clearDisplayPositions();
             display_universe->clearDisplayPositions();

@@ -359,7 +359,8 @@
         {
           "title": "Gráficos & Plotagens",
           "warning": "Frames precisam ser gravados em ordem para os graficos funcionarem!",
-          "temperature_v_time": "Temperatura X Tempo"
+          "temperature_v_time": "Temperatura X Tempo",
+          "molecules_x_time": "Moléculas X time"
         }
       },
 
@@ -420,7 +421,7 @@
       "packer_ui":
       {
         "box_size": "Tamanho da Caixa",
-        "probability": "Probabilidade",
+        "parts": "Partes",
         "density": "Densidade (g/cm^3)",
         "quantity": "Quantidade",
         "quantity_available": "O Quanto couber",

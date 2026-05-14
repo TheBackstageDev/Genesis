@@ -40,15 +40,20 @@ namespace sim
 
     void sim_dynamics::destroySSBOs()
     {
+        if (!m_builtSSBOs) return;
+
         ssbo_pos.destroy();
         ssbo_lj.destroy(); 
         ssbo_q.destroy();
         ssbo_force.destroy();
+
+        m_builtSSBOs = false;
     }
 
     void sim_dynamics::updateSSBOs()
     {
         auto &data = m_universe.getData();
+        auto &atomData = m_universe.getAtomData();
         auto &atoms = m_universe.getAtoms();
         size_t N = m_universe.numAtoms();
 
@@ -93,6 +98,65 @@ namespace sim
                 GL_DYNAMIC_DRAW);
         }
 
+        {
+            const size_t bondCount = atomData.bonds.size();
+            std::vector<bufferBond> bonds;
+            bonds.reserve(bondCount);
+
+            std::vector<glm::uvec2> bondedPairs;
+            bondedPairs.reserve(bondCount);
+
+            for (const auto& bond : atomData.bonds)
+            {
+                uint32_t a = bond.centralAtom;
+                uint32_t b = bond.bondedAtom;
+
+                uint8_t zA = atomData.atoms[a].ZIndex;
+                uint8_t zB = atomData.atoms[b].ZIndex;
+
+                float k  = constants::getBondHarmonicConstantFromEnergy(zA, zB, bond.type);
+                float r0 = constants::getBondLength(zA, zB, bond.type);
+
+                if (m_universe.reactive())
+                {
+                    k  = constants::getBondHarmonicConstantFromEnergy(zA, zB, bond.order);
+                    r0 = constants::getContinuousBondLength(zA, zB, bond.order);
+                }
+
+                bonds.emplace_back(b, a, k, r0);
+
+                uint32_t i = std::min(a, b);
+                uint32_t j = std::max(a, b);
+                bondedPairs.emplace_back(i, j);
+            }
+
+            if (!ssbo_bonds.id() || 
+                ssbo_bonds.getSize() != static_cast<GLsizeiptr>(bonds.size() * sizeof(bufferBond)))
+            {
+                ssbo_bonds = core::glBuffer(GL_SHADER_STORAGE_BUFFER,
+                                            bonds.data(),
+                                            bonds.size() * sizeof(bufferBond),
+                                            GL_DYNAMIC_DRAW);
+            }
+            else
+            {
+                ssbo_bonds.update(bonds.data(), bonds.size() * sizeof(bufferBond));
+            }
+
+            if (!ssbo_bondedPairs.id() || 
+                ssbo_bondedPairs.getSize() != static_cast<GLsizeiptr>(bondedPairs.size() * sizeof(glm::uvec2)))
+            {
+                ssbo_bondedPairs = core::glBuffer(GL_SHADER_STORAGE_BUFFER,
+                                                bondedPairs.data(),
+                                                bondedPairs.size() * sizeof(glm::uvec2),
+                                                GL_DYNAMIC_DRAW);
+            }
+            else
+            {
+                ssbo_bondedPairs.update(bondedPairs.data(), bondedPairs.size() * sizeof(glm::uvec2));
+            }
+        }
+
         const GLsizeiptr force_size = N * sizeof(glm::vec4);
 
         bool need_recreate_force = !ssbo_force.id() || ssbo_force.getSize() != force_size;
@@ -105,6 +169,8 @@ namespace sim
             glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         }
+
+        m_builtSSBOs = true;
     }
 
     void checkGLError(const char* location) 
@@ -129,6 +195,7 @@ namespace sim
         unbonded_program.use(); checkGLError("use program");
 
         unbonded_program.setUniform("numParticles", N); checkGLError("set numParticles");
+        unbonded_program.setUniform("numBondedPairs", m_universe.numBonds()); checkGLError("set numBondedPairs");
         unbonded_program.setUniform("box", m_universe.boxSizes()); checkGLError("set box");
         unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF); checkGLError("set r_cut2");
         unbonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision()); checkGLError("set collide_floor_roof");
@@ -138,6 +205,7 @@ namespace sim
         ssbo_lj.bindBase(1);    checkGLError("bind lj");
         ssbo_q.bindBase(2);     checkGLError("bind q");
         ssbo_force.bindBase(3); checkGLError("bind force");
+        ssbo_bondedPairs.bindBase(4); checkGLError("bind bonded pairs");
 
         glDispatchCompute(num_groups, 1, 1); checkGLError("dispatch compute");
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); checkGLError("memory barrier");
@@ -147,6 +215,30 @@ namespace sim
 
     void sim_dynamics::computeBondedGPU()
     {
+        auto &data = m_universe.getData();
+        auto &dataAtoms = m_universe.getAtomData();
+        const uint32_t N = static_cast<uint32_t>(m_universe.numBonds());
+        if (N == 0) return;
+
+        const uint32_t local_size = 256;
+        const uint32_t num_groups = (N + local_size - 1) / local_size;
+
+        unbonded_program.use(); checkGLError("use program");
+
+        unbonded_program.setUniform("numBonds", N); checkGLError("set numBonds");
+        unbonded_program.setUniform("box", m_universe.boxSizes()); checkGLError("set box");
+        unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF); checkGLError("set r_cut2");
+        unbonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision()); checkGLError("set collide_floor_roof");
+        unbonded_program.setUniform("collide_walls", m_universe.wallcollision()); checkGLError("set collide_walls");
+
+        ssbo_pos.bindBase(0);   checkGLError("bind pos");
+        ssbo_bonds.bindBase(2);    checkGLError("bind bonds");
+        ssbo_force.bindBase(3); checkGLError("bind force");
+
+        glDispatchCompute(num_groups, 1, 1); checkGLError("dispatch compute");
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); checkGLError("memory barrier");
+
+        core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER); checkGLError("unbind SSBO");
     }
 
     std::vector<glm::vec3> sim_dynamics::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
@@ -177,7 +269,7 @@ namespace sim
                 if (dr2 > CELL_CUTOFF * CELL_CUTOFF || dr2 < EPSILON)
                     continue;
 
-                if (dr2 > 16.f || m_universe.areBonded(i, j))
+                if (m_universe.areBonded(i, j))
                     continue;
 
                 glm::vec3 cForce = computeCoulombForce(i, j, dr);
@@ -701,7 +793,8 @@ namespace sim
         auto& data = m_universe.getData();
         auto& atomData = m_universe.getAtomData();
 
-        for (int32_t w = 0; w < m_universe.getWallCharges().size() && m_universe.wallChargeEnabled(); ++w)
+        if (m_universe.wallChargeEnabled())
+        for (int32_t w = 0; w < m_universe.getWallCharges().size(); ++w)
         {
             const float &wall_q = wall_charges[w];
             if (wall_q == 0.f)
@@ -747,7 +840,9 @@ namespace sim
         const float effective_dt = m_dt * m_timescale;
         const float half_dt = 0.5f * effective_dt;
 
-        for (size_t i = 0; i < N; ++i)
+        computeForces();
+
+        for (int32_t i = 0; i < N; ++i)
         {
             // Resets for reaction system
             atomData.atoms[i].total_BO = 0.f;
@@ -766,7 +861,7 @@ namespace sim
             data.velocities[i] += accel * half_dt;
         }
 
-        for (size_t i = 0; i < N; ++i)
+        for (int32_t i = 0; i < N; ++i)
         {
             if (atomData.frozen_atoms[i]) continue;
 
@@ -786,7 +881,7 @@ namespace sim
 
         glm::vec3 grav_accel(0.0f, 0.0f, -m_universe.gravityMagnitude());
 
-        for (size_t i = 0; i < N; ++i)
+        for (int32_t i = 0; i < N; ++i)
         {
             if (atomData.frozen_atoms[i])
             {
@@ -797,7 +892,7 @@ namespace sim
             computeExternalForces(i);
 
             const float inv_m = 1.0f / atomData.atoms[i].mass;
-            const glm::vec3 accel = glm::vec4(data.forces[i]) * inv_m;
+            const glm::vec3 accel = glm::vec3(data.forces[i]) * inv_m;
 
             data.velocities[i] += accel * half_dt;
 

@@ -64,7 +64,7 @@ namespace core
         }
     }
 
-    const char* appdata = std::getenv("APPDATA");
+    const char *appdata = std::getenv("APPDATA");
     const std::filesystem::path sandboxSave = std::filesystem::path(appdata) / "Genesis Molecular Dynamics Engine" / "saved";
 
     std::filesystem::path getLocalizationFile(localization lang)
@@ -81,7 +81,7 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine& engine)
+    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine &engine)
         : app_options(app_options), m_window(window), m_rendering_eng(window), m_audio_eng(engine),
           m_scenarioHandler(compound_presets, m_simpacker, dynamics)
     {
@@ -103,6 +103,11 @@ namespace core
             std::cerr << "[UI Handler] JSON parse error: " << e.what() << '\n';
             return;
         }
+
+        auto &graphs_stats = default_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
+        m_graphActive.emplace(graphs_stats.value("Temperature X time", "Temperature X time"), false);
+        m_graphActive.emplace(graphs_stats.value("Molecules X time", "Temperature X time"), false);
+        m_graphActive.emplace(graphs_stats.value("RDF Graph", "RDF Graph"), false);
 
         initCompoundXYZ();
         initImages();
@@ -457,8 +462,7 @@ namespace core
             ImVec2 title_pos(0, (io.DisplaySize.y - 600) * 0.5f);
             ImGui::SetNextWindowPos(title_pos, ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(600, 600));
-            ImGui::Begin("TitleOverlay", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
+            ImGui::Begin("TitleOverlay", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
 
             ImVec2 window_size = ImGui::GetWindowSize();
 
@@ -467,7 +471,7 @@ namespace core
             float image_width = window_size.x * 0.8f;
             float image_height = image_width / aspect_ratio;
 
-            if (image_height > window_size.y * 0.8f) 
+            if (image_height > window_size.y * 0.8f)
             {
                 image_height = window_size.y * 0.8f;
                 image_width = image_height * aspect_ratio;
@@ -491,8 +495,7 @@ namespace core
             ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(buttonWidth + 60, 0));
 
-            ImGui::Begin("NavigationPanel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground);
+            ImGui::Begin("NavigationPanel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground);
 
             // Buttons with consistent style
             if (ImGui::Button(localization_json["Menu"]["button_tutorials"].get<std::string>().c_str(), ImVec2(buttonWidth, buttonHeight)))
@@ -646,7 +649,7 @@ namespace core
         {
             simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
-            
+
             savesSelectionOpen = false;
             pauseMenuOpen = false;
             dynamics->pause();
@@ -795,7 +798,7 @@ namespace core
             ImGui::Checkbox(sandbox_creation["roof_floor_collision"].get<std::string>().c_str(), &sandbox_info.roof_floor_collision);
 
             ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reaction);
-            
+
             ImGui::BeginDisabled();
             ImGui::Checkbox(sandbox_creation["isothermal"].get<std::string>().c_str(), &sandbox_info.isothermal);
             ImGui::EndDisabled();
@@ -830,11 +833,12 @@ namespace core
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
         {
-            if (dynamics != nullptr) dynamics->destroySSBOs();
+            if (dynamics != nullptr)
+                dynamics->destroySSBOs();
 
             simulation_universe.reset();
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
-            
+
             dynamics.reset();
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
 
@@ -849,10 +853,10 @@ namespace core
             target_pressure = 0.f;
             target_temperature = 300.f;
 
-            m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packChances, simulation_universe->boxSizes() * 0.5f, simulation_universe->boxSizes());
+            m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packParts, simulation_universe->boxSizes() * 0.5f, simulation_universe->boxSizes());
 
             m_packChosen.clear();
-            m_packChances.clear();
+            m_packParts.clear();
 
             /* sim::fun::molecule_structure structure{};
             sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
@@ -945,9 +949,9 @@ namespace core
         ImGui::BeginChild(childId.c_str(), ImVec2(-1, 250), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
         ImGui::Columns(2, nullptr, false);
-        ImGui::SetColumnWidth(0, 230.0f); 
+        ImGui::SetColumnWidth(0, 230.0f);
 
-        const sf::Texture* thumb = &placeholder_texture;
+        const sf::Texture *thumb = &placeholder_texture;
         std::string thumbKey = id + ".png";
         if (textures.count(thumbKey))
             thumb = &textures.at(thumbKey);
@@ -959,7 +963,7 @@ namespace core
         ImGui::PopStyleColor();
 
         ImGui::NextColumn();
-        
+
         ImGui::PushFont(bold);
         ImGui::TextColored(ImVec4(0.85f, 0.95f, 1.0f, 1.0f), "%s", info.title.c_str());
         ImGui::PopFont();
@@ -970,8 +974,8 @@ namespace core
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
 
         std::string desc = info.description.empty()
-                            ? "Explore this simulation in real time. Discover the forces, behaviors and patterns that emerge."
-                            : info.description;
+                               ? "Explore this simulation in real time. Discover the forces, behaviors and patterns that emerge."
+                               : info.description;
 
         ImGui::BeginChild("desc_scroll", ImVec2(0, -60), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
         ImGui::TextWrapped("%s", desc.c_str());
@@ -1071,7 +1075,7 @@ namespace core
 
         if (!chosen_scenario.file.empty())
             simulation_universe->loadScene(chosen_scenario.file);
-        
+
         if (!chosen_scenario.video.empty())
             simulation_universe->loadFrames(chosen_scenario.video);
 
@@ -1115,12 +1119,11 @@ namespace core
             hyper_balls = options["render_modes"]["hyper_balls"].get<std::string>();
             licorice = options["render_modes"]["licorice"].get<std::string>();
 
-            const char* modes[3] =
-            {
-                ball_and_stick.c_str(),
-                licorice.c_str(),
-                space_filling.c_str()
-            };
+            const char *modes[3] =
+                {
+                    ball_and_stick.c_str(),
+                    licorice.c_str(),
+                    space_filling.c_str()};
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
             if (ImGui::Combo("##render_mode", &current_mode, modes, IM_ARRAYSIZE(modes)))
@@ -1134,12 +1137,11 @@ namespace core
             velocity = options["color_modes"]["velocity"].get<std::string>();
             charge = options["color_modes"]["charge"].get<std::string>();
 
-            const char* colormodes[3] =
-            {
-                color.c_str(),
-                velocity.c_str(),
-                charge.c_str()
-            };
+            const char *colormodes[3] =
+                {
+                    color.c_str(),
+                    velocity.c_str(),
+                    charge.c_str()};
 
             static int32_t current_color_mode = static_cast<int32_t>(app_options.sim_options.color_mode);
             if (ImGui::Combo("##color_render_mode", &current_color_mode, colormodes, IM_ARRAYSIZE(colormodes)))
@@ -1198,7 +1200,7 @@ namespace core
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"]["stats"];
 
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO &io = ImGui::GetIO();
 
         ImVec2 size(600, 600);
 
@@ -1211,7 +1213,7 @@ namespace core
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.15f, 0.15f, 0.25f, 1.0f));
 
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize |
-                                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+                                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
         std::string window_title = sim_ui["title"];
         if (ImGui::Begin(window_title.c_str(), &statsOpen, flags))
@@ -1232,7 +1234,6 @@ namespace core
             // Basic stats
             if (ImGui::CollapsingHeader(core_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             {
-
                 ImGui::Text("%s: %.2f K", temperature_string.c_str(), dynamics->temperature());
                 ImGui::Text("%s:    %.2f Kpa", core_json["pressure"].get<std::string>().c_str(), dynamics->pressure());
 
@@ -1245,30 +1246,30 @@ namespace core
                 ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
             }
 
-            constexpr std::array<const char*, 6> wall_to_direction =
-            {
-                "+X", "-X", "+Y", "-Y", "+Z", "-Z"
-            };
+            constexpr std::array<const char *, 6> wall_to_direction =
+                {
+                    "+X", "-X", "+Y", "-Y", "+Z", "-Z"};
 
             // Charge Stats
-            if (ImGui::CollapsingHeader(chages_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) 
+            if (ImGui::CollapsingHeader(chages_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             {
-                auto& wallCharges = simulation_universe->getWallCharges();
-                for (int32_t w = 0; w < wallCharges.size(); ++w) 
+                auto &wallCharges = simulation_universe->getWallCharges();
+                for (int32_t w = 0; w < wallCharges.size(); ++w)
                 {
                     ImGui::SetNextItemWidth(50.f);
                     ImGui::PushID(w);
                     ImGui::DragFloat(wall_to_direction[w], &wallCharges[w], 0.1f, -5.0f, 5.0f, "%.1f");
                     ImGui::PopID();
 
-                    if (w % 2 == 0) ImGui::SameLine();
+                    if (w % 2 == 0)
+                        ImGui::SameLine();
                 }
                 ImGui::Checkbox(chages_json["wall_charge_enabled"].get<std::string>().c_str(), &simulation_universe->wallChargeEnabled());
 
-                glm::vec3& magnetic_strength = simulation_universe->getMagneticFieldStrength();
+                glm::vec3 &magnetic_strength = simulation_universe->getMagneticFieldStrength();
 
                 ImGui::Text(chages_json["magnetic_strength"].get<std::string>().c_str());
-                
+
                 ImGui::SetNextItemWidth(50.f);
                 ImGui::DragFloat("X", &magnetic_strength.x, 0.1f, -5.0f, 5.0f, "%.1f");
                 ImGui::SameLine();
@@ -1286,31 +1287,24 @@ namespace core
             {
                 float ke = simulation_universe->calculateKineticEnergy() / 1000.f;
                 ImGui::Text("%s: %.2e kJ", energy_json["kinetic_energy"].get<std::string>().c_str(), ke);
-                //ImGui::Text("%s: N/A", energy_json["potential_energy"].get<std::string>().c_str());
-                //ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
+                // ImGui::Text("%s: N/A", energy_json["potential_energy"].get<std::string>().c_str());
+                // ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
             }
 
-            if (ImGui::CollapsingHeader(graph_json["title"].get<std::string>().c_str())) {
+            if (ImGui::CollapsingHeader(graph_json["title"].get<std::string>().c_str()))
+            {
                 ImGui::Text(graph_json["warning"].get<std::string>().c_str());
 
-                const float* time = reinterpret_cast<const float*>(time_log.data());
-                const float* temperature = reinterpret_cast<const float*>(temperature_log.data());
-                int count = static_cast<int>(std::min(time_log.size(), temperature_log.size()));
-
-                if (ImPlot::BeginPlot(graph_json["temperature_v_time"].get<std::string>().c_str())) 
+                auto &graph_json = sim_ui["graphs_stats"];
+                for (auto &graph : m_graphActive)
                 {
-                    std::string x_label = std::format("{} (fs)", time_string); 
-                    std::string y_label = std::format("{} (°K)", temperature_string); 
-                    ImPlot::SetupAxes(x_label.c_str(), y_label.c_str()); 
+                    ImGui::BeginDisabled();
+                    ImGui::Checkbox(std::string("##checkbox_" + graph.first).c_str(), &graph.second);
+                    ImGui::EndDisabled();
 
-                    ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, 1000.f, ImPlotCond_Always);
-
-                    ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_None);
-
-                    ImPlot::PlotLine(time_string.c_str(), time, temperature, count);
-                    ImPlot::PlotScatter(temperature_string.c_str(), time, temperature, count);
-
-                    ImPlot::EndPlot(); 
+                    ImGui::SameLine();
+                    if (ImGui::Button(graph_json.value(graph.first, graph.first).c_str()))
+                        graph.second = !graph.second;
                 }
             }
 
@@ -1342,7 +1336,7 @@ namespace core
         }
 
         std::string resume_tooltip = sim_ui.value("tooltip_resume", "Resume Simulation");
-        std::string pause_tooltip  = sim_ui.value("tooltip_pause", "Pause Simulation");
+        std::string pause_tooltip = sim_ui.value("tooltip_pause", "Pause Simulation");
 
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(sim_paused ? resume_tooltip.c_str() : pause_tooltip.c_str());
@@ -1358,13 +1352,13 @@ namespace core
         {
             dynamics->setTimescale(dynamics->timescale() * 0.9f);
         }
-        
+
         if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
             dynamics->setTimescale(dynamics->timescale() * 0.99f);
         }
-        
-        std::string slowdown_tooltip  = sim_ui.value("tooltip_slowdown", "Decrease simulation speed");
+
+        std::string slowdown_tooltip = sim_ui.value("tooltip_slowdown", "Decrease simulation speed");
 
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(slowdown_tooltip.c_str());
@@ -1381,7 +1375,7 @@ namespace core
             dynamics->setTimescale(dynamics->timescale() * 1.01f);
         }
 
-        std::string speedup_tooltip  = sim_ui.value("tooltip_speedup", "Increase simulation speed");
+        std::string speedup_tooltip = sim_ui.value("tooltip_speedup", "Increase simulation speed");
 
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(speedup_tooltip.c_str());
@@ -1412,8 +1406,8 @@ namespace core
         ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, panel_height), ImGuiCond_Always);
 
         ImGuiWindowFlags hud_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                                    ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse;
+                                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                     ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse;
 
         ImGui::Begin("HUD", &showHUD, hud_flags);
 
@@ -1466,6 +1460,77 @@ namespace core
 
         ImGui::PopStyleVar(4);
         ImGui::PopStyleColor();
+
+        auto &graphs_ui = localization_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
+
+        for (auto &gw : m_graphActive)
+        {
+            if (gw.second)
+            {
+                std::string title = graphs_ui.value(gw.first, gw.first);
+                ImGui::Begin(title.c_str(), &gw.second, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
+                
+                if (gw.first == "Molecules X time")
+                    drawMoleculesXtime();
+
+                if (gw.first == "Temperature X time")
+                    drawTemperatureXtime();
+
+                ImGui::End();
+            }
+        }
+    }
+
+    void UIHandler::drawMoleculesXtime()
+    {
+        auto &graphs_ui = localization_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
+
+        if (ImPlot::BeginPlot(localization_json.value("Molecules X time", "Molecules X time").c_str()))
+        {
+            std::vector<double> x_data(m_moleculesxtime.size());
+            for (size_t t = 0; t < m_moleculesxtime.size(); ++t)
+                x_data[t] = static_cast<double>(t);
+
+            std::unordered_map<std::string, std::vector<double>> moleculeSeries;
+            for (size_t t = 0; t < m_moleculesxtime.size(); ++t)
+            {
+                for (auto &mol : m_moleculesxtime[t])
+                {
+                    auto &series = moleculeSeries[mol.first];
+                    if (series.size() < m_moleculesxtime.size())
+                        series.resize(m_moleculesxtime.size(), 0.0);
+                    series[t] = static_cast<double>(mol.second);
+                }
+            }
+
+            for (auto &kv : moleculeSeries)
+            {
+                ImPlot::PlotLine(kv.first.c_str(), x_data.data(), kv.second.data(), (int)x_data.size());
+            }
+
+            ImPlot::EndPlot();
+        }
+    }
+
+    void UIHandler::drawTemperatureXtime()
+    {
+        auto &graphs_ui = localization_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
+
+        const auto& frames = simulation_universe->getFrames();
+        if (ImPlot::BeginPlot(localization_json.value("Temperature X time", "Temperature X time").c_str()))
+        {
+            std::vector<double> x_data(frames.size());
+            for (size_t t = 0; t < frames.size(); ++t)
+                x_data[t] = static_cast<double>(t);
+
+            std::vector<double> y_data(frames.size());
+            for (size_t t = 0; t < frames.size(); ++t)
+                y_data[t] = frames[t].global_temperature;
+
+            ImPlot::PlotLine("Temperature", x_data.data(), y_data.data(), (int32_t)x_data.size());
+
+            ImPlot::EndPlot();
+        }
     }
 
     void UIHandler::drawUniverseUI()
@@ -2102,7 +2167,7 @@ namespace core
 
     void UIHandler::drawPackerUI(const glm::vec3 box_size)
     {
-        auto& packerJson = localization_json["Simulation"]["universe_ui"]["packer_ui"];
+        auto &packerJson = localization_json["Simulation"]["universe_ui"]["packer_ui"];
         auto &compounds = localization_json["Compounds"];
 
         if (!ImGui::Begin("##PackerUI", &packerUIOpen, ImGuiWindowFlags_NoTitleBar))
@@ -2113,25 +2178,25 @@ namespace core
 
         static int32_t highlightedMol = -1;
 
-        if (m_packChances.size() != m_packChosen.size())
+        if (m_packParts.size() != m_packChosen.size())
         {
-            m_packChances.resize(m_packChosen.size());
+            m_packParts.resize(m_packChosen.size());
 
-            if (!m_packChances.empty())
-                m_packChances[m_packChances.size() - 1] = 100.f / m_packChances.size();
+            if (!m_packParts.empty())
+                m_packParts[m_packParts.size() - 1] = 100.f / m_packParts.size();
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.3f));
         ImGui::BeginChild("##MoleculeDisplay", ImVec2(0, 310), ImGuiChildFlags_Border);
 
-        int32_t columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
+        int32_t columns = static_cast<int32_t>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
         columns = std::max(1, columns);
-        
+
         if (ImGui::BeginTable("CompoundsGrid", columns, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV))
         {
-            std::string probabilities_text = packerJson["probability"].get<std::string>();
-            ImVec2 probabilities_size = ImGui::CalcTextSize(probabilities_text.c_str());
+            std::string parts_text = packerJson["parts"].get<std::string>();
+            ImVec2 probabilities_size = ImGui::CalcTextSize(parts_text.c_str());
 
             for (int32_t i = 0; i < m_packChosen.size(); ++i)
             {
@@ -2156,11 +2221,11 @@ namespace core
                 ImGui::SetNextItemWidth(200.f);
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 2.0f));
-                ImGui::DragFloat("##Prob", &m_packChances[i], 0.5f, 0.01f, 100.f, "%.2f");
+                ImGui::DragFloat("##Prob", &m_packParts[i], 0.5f, 0.01f, 100.f, "%.2f");
                 ImGui::PopStyleVar(2);
 
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (content_width - probabilities_size.x) * 0.5f);
-                ImGui::Text(probabilities_text.c_str());
+                ImGui::Text(parts_text.c_str());
                 ImGui::EndChild();
 
                 if (ImGui::IsItemClicked())
@@ -2180,8 +2245,9 @@ namespace core
         static float xyz[3] = {1.0f, 1.0f, 1.0f};
 
         for (int32_t i = 0; i < 3; ++i)
-            if (xyz[i] > box_size[i]) xyz[i] = box_size[i];
-        
+            if (xyz[i] > box_size[i])
+                xyz[i] = box_size[i];
+
         ImGui::BeginGroup();
 
         if (!sandboxSelectionOpen)
@@ -2206,16 +2272,16 @@ namespace core
         float total_buttons_width = button_size * 4 + spacing;
 
         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - total_buttons_width - ImGui::GetStyle().WindowPadding.x);
-        
+
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, .8f));
         if (ImGui::ImageButton("##remove", textures["minus_icon"], ImVec2(32, 32)))
         {
             if (highlightedMol >= 0 && highlightedMol < static_cast<int32_t>(m_packChosen.size()))
             {
-                m_packChances.erase(m_packChances.begin() + highlightedMol);
+                m_packParts.erase(m_packParts.begin() + highlightedMol);
                 m_packChosen.erase(m_packChosen.begin() + highlightedMol);
                 m_packNames.erase(m_packNames.begin() + highlightedMol);
-                
+
                 highlightedMol = -1;
             }
         }
@@ -2227,7 +2293,7 @@ namespace core
         if (ImGui::ImageButton("##add", textures["plus_icon"], ImVec2(32, 32)))
         {
             compoundSelector = true;
-        } 
+        }
         ImGui::PopStyleColor();
 
         if (!sandboxSelectionOpen)
@@ -2235,7 +2301,7 @@ namespace core
             if (ImGui::Button(packerJson["pack_sim"].get<std::string>().c_str()))
             {
                 if (!m_packChosen.empty())
-                    m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packChances, simulation_universe->boxSizes() * 0.5f, glm::vec3(xyz[0], xyz[1], xyz[2]));
+                    m_simpacker.packDensity(*simulation_universe.get(), m_packChosen, m_packParts, simulation_universe->boxSizes() * 0.5f, glm::vec3(xyz[0], xyz[1], xyz[2]), m_packDensity);
             }
         }
         else
@@ -2252,7 +2318,7 @@ namespace core
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, .8f));
             if (ImGui::Button(packerJson["cancel"].get<std::string>().c_str()))
             {
-                m_packChances.clear();
+                m_packParts.clear();
                 m_packChosen.clear();
                 packerUIOpen = false;
             }
@@ -2271,7 +2337,8 @@ namespace core
 
         dynamics->step(target_temperature, target_pressure);
 
-        if (simulation_universe->reactive()) m_reaction_eng.update(*simulation_universe.get(), dynamics->getVerlet());
+        if (simulation_universe->reactive())
+            m_reaction_eng.update(*simulation_universe.get(), dynamics->getVerlet());
 
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration = end - start;
@@ -2282,11 +2349,11 @@ namespace core
         {
             if (dynamics->timestep() % 100 == 0)
             {
-                temperature_log.emplace_back(dynamics->temperature());
-                time_log.emplace_back(dynamics->timestep());
+                auto moleculesNow = m_siminspector.getMoleculesPresent(*simulation_universe.get());
+                m_moleculesxtime.emplace_back(std::move(moleculesNow));
             }
 
-            if (dynamics->timestep() % 5 == 0)
+            if (dynamics->timestep() % 100 == 0)
             {
                 simulation_universe->saveFrame();
             }
@@ -2308,7 +2375,7 @@ namespace core
 
         if (screenshotToggle)
         {
-            std::filesystem::path path = "src/resource/screenshots";
+            std::filesystem::path path = "resource/screenshots";
             std::string title = "";
 
             if (savedSimulation)
@@ -2345,7 +2412,7 @@ namespace core
             target_temperature = m_scenarioHandler.getWantedTemperature();
             m_playingVideo = m_scenarioHandler.getWantedVideoPlay();
             m_replaySpeed = m_scenarioHandler.getWantedVideoSpeed();
-            
+
             if (m_scenarioHandler.exit())
             {
                 pauseMenuOpen = false;
@@ -2457,7 +2524,7 @@ namespace core
 
             simulation_universe.release();
             simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
-            
+
             dynamics.release();
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
             m_rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
@@ -2566,7 +2633,7 @@ namespace core
                 resetVideoData();
 
                 m_packChosen.clear();
-                m_packChances.clear();
+                m_packParts.clear();
                 m_packNames.clear();
 
                 m_packDensity = 1.006f;

@@ -22,6 +22,25 @@ layout(std430, binding = 3) restrict buffer Forces
     vec4 force[];
 };
 
+layout(std430, binding = 4) restrict readonly buffer BondedPairs {
+    uvec2 bondedPairs[];   // .x = min index, .y = max index
+};
+
+uniform uint numBondedPairs;
+
+bool isBonded(uint i, uint j)
+{
+    if (i > j) { uint t = i; i = j; j = t; }
+
+    // Linear search
+    for (uint k = 0; k < numBondedPairs; ++k)
+    {
+        uvec2 p = bondedPairs[k];
+        if (p.x == i && p.y == j) return true;
+    }
+    return false;
+}
+
 #define COULOMB_K 1389.354576f
 
 uniform uint numParticles;
@@ -74,6 +93,8 @@ void main()
         float r2 = dot(diff, diff);
 
         if (r2 < 1e-6) continue;
+
+        if (isBonded(i, j)) continue;
 
         const float sigma_j = lj_params[j * 2];
         const float eps_j   = lj_params[j * 2 + 1];

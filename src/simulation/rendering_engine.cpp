@@ -184,7 +184,7 @@ namespace sim
             else
                 radius = info.spaceFilling
                              ? constants::VDW_RADII[atom.ZIndex]
-                              : constants::covalent_radius[atom.ZIndex] * 0.5f;
+                              : constants::covalent_radius[atom.ZIndex] * 0.6f;
 
             glm::vec4 col_addition = glm::vec4(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0);
             glm::vec4 col = getAtomColor(info, sim_info, i);
@@ -232,8 +232,6 @@ namespace sim
         for (int32_t i = 0; i < sim_info.bonds.size(); ++i)
         {
             const auto &bond = sim_info.bonds[i];
-
-            if (bond.order < 0.1f) continue;
 
             if (sim_info.positions.size() - 1 < bond.bondedAtom || sim_info.positions.size() - 1 < bond.centralAtom) break;
 

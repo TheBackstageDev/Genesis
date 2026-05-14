@@ -288,7 +288,9 @@
         {
           "title": "Graphs & Plots",
           "warning": "Frames need to be recorded in order for graphs to work!",
-          "temperature_v_time": "Temperature X time"
+          "Temperature X time": "Temperature X time",
+          "Molecules X time": "Molecules X time",
+          "RDF Graph": "RDF Graph"
         }
       },
 
@@ -350,7 +352,7 @@
       {
         "box_size": "Box Size",
         "density": "Density (g/cm^3)",
-        "probability": "Probability",
+        "parts": "Parts",
         "quantity": "Quantity",
         "quantity_available": "As much as fits",
         "confirm": "Confirm",

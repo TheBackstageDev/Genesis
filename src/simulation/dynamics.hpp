@@ -48,7 +48,20 @@ namespace sim
         core::glProgram bonded_program;
         core::glProgram integrate_program;
 
-        core::glBuffer ssbo_pos, ssbo_vel, ssbo_force, ssbo_lj, ssbo_q;
+        bool m_builtSSBOs = false;
+        core::glBuffer ssbo_pos, ssbo_vel, ssbo_force, ssbo_lj, ssbo_q, ssbo_bonds, ssbo_angles, ssbo_bondedPairs;
+
+        struct bufferBond
+        {
+            uint32_t A, B;
+            float K, r0;
+        };
+
+        struct bufferAngle
+        {
+            uint32_t A, B, C;
+            float theta, k;
+        };
 
         void createComputeShaders();
         void updateSSBOs();

@@ -383,6 +383,7 @@ namespace sim
             }
 
             void COMDrift();
+            void moleculeDrawOrder();
             
             // Flags
 
