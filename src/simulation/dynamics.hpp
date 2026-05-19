@@ -46,6 +46,7 @@ namespace sim
 
         core::glProgram unbonded_program;
         core::glProgram bonded_program;
+        core::glProgram angles_program;
         core::glProgram integrate_program;
 
         bool m_builtSSBOs = false;
@@ -60,7 +61,7 @@ namespace sim
         struct bufferAngle
         {
             uint32_t A, B, C;
-            float theta, k;
+            float k, theta;
         };
 
         void createComputeShaders();
@@ -79,6 +80,7 @@ namespace sim
 
         void computeUnbondedGPU();
         void computeBondedGPU();
+        void computeAnglesGPU();
         void syncBuffers();
 
         float m_dt = FEMTOSECOND;
@@ -89,6 +91,9 @@ namespace sim
         std::atomic<float> total_virial{0.0f};
         float m_temperature = 0.0f;
         float m_pressure = 0.0f;
+
+        size_t m_lastBondCount = 0;
+        size_t m_lastAngleCount = 0;
 
         float gauss_random()
         {
@@ -104,7 +109,7 @@ namespace sim
                  glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                  glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f)};
 
-        bool m_GPU = false;
+        bool m_GPU = true;
         bool m_paused = false;
         core::SpatialGrid universe_grid{};
         core::verlet_list universe_verlet{};

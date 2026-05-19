@@ -33,6 +33,10 @@ namespace sim
             core::glShader{GL_COMPUTE_SHADER, shaders_path / "bonded.comp"},
         };
 
+        angles_program = core::glProgram{
+            core::glShader{GL_COMPUTE_SHADER, shaders_path / "angle.comp"},
+        };
+
         integrate_program = core::glProgram{
             core::glShader{GL_COMPUTE_SHADER, shaders_path / "integrate_program.comp"},
         };
@@ -98,8 +102,13 @@ namespace sim
                 GL_DYNAMIC_DRAW);
         }
 
+        const size_t bondCount = atomData.bonds.size();
+        const size_t angleCount = atomData.angles.size();
+        
+        if (m_lastBondCount != bondCount) 
         {
-            const size_t bondCount = atomData.bonds.size();
+            m_lastBondCount = bondCount;
+
             std::vector<bufferBond> bonds;
             bonds.reserve(bondCount);
 
@@ -157,6 +166,40 @@ namespace sim
             }
         }
 
+        if (m_lastAngleCount != angleCount)
+        {
+            m_lastAngleCount = angleCount;
+
+            std::vector<bufferAngle> angles;
+            angles.reserve(angleCount);
+
+            for (const auto& angle : atomData.angles)
+            {
+                uint32_t a = angle.A;
+                uint32_t b = angle.B;
+                uint32_t c = angle.C;
+
+                uint8_t zA = atomData.atoms[a].ZIndex;
+                uint8_t zB = atomData.atoms[b].ZIndex;
+                uint8_t zC = atomData.atoms[c].ZIndex;
+
+                angles.emplace_back(a, b, c, constants::getAngleHarmonicConstant(zA, zB, zC), angle.rad);
+            }
+
+            if (!ssbo_angles.id() || 
+                ssbo_angles.getSize() != static_cast<GLsizeiptr>(angles.size() * sizeof(bufferAngle)))
+            {
+                ssbo_angles = core::glBuffer(GL_SHADER_STORAGE_BUFFER,
+                                                angles.data(),
+                                                angles.size() * sizeof(bufferAngle),
+                                                GL_DYNAMIC_DRAW);
+            }
+            else
+            {
+                ssbo_angles.update(angles.data(), angles.size() * sizeof(bufferAngle));
+            }
+        }
+
         const GLsizeiptr force_size = N * sizeof(glm::vec4);
 
         bool need_recreate_force = !ssbo_force.id() || ssbo_force.getSize() != force_size;
@@ -195,7 +238,7 @@ namespace sim
         unbonded_program.use(); checkGLError("use program");
 
         unbonded_program.setUniform("numParticles", N); checkGLError("set numParticles");
-        unbonded_program.setUniform("numBondedPairs", m_universe.numBonds()); checkGLError("set numBondedPairs");
+        unbonded_program.setUniform("numBondedPairs", (uint32_t)m_universe.numBonds()); checkGLError("set numBondedPairs");
         unbonded_program.setUniform("box", m_universe.boxSizes()); checkGLError("set box");
         unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF); checkGLError("set r_cut2");
         unbonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision()); checkGLError("set collide_floor_roof");
@@ -215,30 +258,55 @@ namespace sim
 
     void sim_dynamics::computeBondedGPU()
     {
-        auto &data = m_universe.getData();
-        auto &dataAtoms = m_universe.getAtomData();
-        const uint32_t N = static_cast<uint32_t>(m_universe.numBonds());
-        if (N == 0) return;
+        auto &atomData = m_universe.getAtomData();
+        const uint32_t numBonds = static_cast<uint32_t>(atomData.bonds.size());
+        if (numBonds == 0) return;
 
-        const uint32_t local_size = 256;
-        const uint32_t num_groups = (N + local_size - 1) / local_size;
+        bonded_program.use(); checkGLError("bonded_program.use()");
 
-        unbonded_program.use(); checkGLError("use program");
+        bonded_program.setUniform("numBonds", numBonds);
+        bonded_program.setUniform("box", m_universe.boxSizes()); checkGLError("set box");
+        bonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision()); checkGLError("set collide_floor_roof");
+        bonded_program.setUniform("collide_walls", m_universe.wallcollision()); checkGLError("set collide_walls");
 
-        unbonded_program.setUniform("numBonds", N); checkGLError("set numBonds");
-        unbonded_program.setUniform("box", m_universe.boxSizes()); checkGLError("set box");
-        unbonded_program.setUniform("r_cut2", CELL_CUTOFF * CELL_CUTOFF); checkGLError("set r_cut2");
-        unbonded_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision()); checkGLError("set collide_floor_roof");
-        unbonded_program.setUniform("collide_walls", m_universe.wallcollision()); checkGLError("set collide_walls");
+        ssbo_pos.bindBase(0);
+        ssbo_bonds.bindBase(2);
+        ssbo_force.bindBase(3);
 
-        ssbo_pos.bindBase(0);   checkGLError("bind pos");
-        ssbo_bonds.bindBase(2);    checkGLError("bind bonds");
-        ssbo_force.bindBase(3); checkGLError("bind force");
+        uint32_t local_size = 256;
+        uint32_t num_groups = (numBonds + local_size - 1) / local_size;
 
-        glDispatchCompute(num_groups, 1, 1); checkGLError("dispatch compute");
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); checkGLError("memory barrier");
+        glDispatchCompute(num_groups, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-        core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER); checkGLError("unbind SSBO");
+        core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER);
+    }
+
+    void sim_dynamics::computeAnglesGPU()
+    {
+        auto &atomData = m_universe.getAtomData();
+        const uint32_t numAngles = static_cast<uint32_t>(atomData.angles.size());
+        if (numAngles == 0) return;
+
+        angles_program.use(); 
+        checkGLError("angles_program.use()");
+
+        angles_program.setUniform("numAngles", numAngles);
+        angles_program.setUniform("box", m_universe.boxSizes());
+        angles_program.setUniform("collide_floor_roof", m_universe.rooffloorcollision());
+        angles_program.setUniform("collide_walls", m_universe.wallcollision());
+
+        ssbo_pos.bindBase(0);
+        ssbo_angles.bindBase(1);
+        ssbo_force.bindBase(2);
+
+        uint32_t local_size = 256;
+        uint32_t num_groups = (numAngles + local_size - 1) / local_size;
+
+        glDispatchCompute(num_groups, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER);
     }
 
     std::vector<glm::vec3> sim_dynamics::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
@@ -819,6 +887,7 @@ namespace sim
         {
             updateSSBOs();
             computeBondedGPU();
+            computeAnglesGPU();
             computeUnbondedGPU();
         }
         else

@@ -104,11 +104,6 @@ namespace core
             return;
         }
 
-        auto &graphs_stats = default_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
-        m_graphActive.emplace(graphs_stats.value("Temperature X time", "Temperature X time"), false);
-        m_graphActive.emplace(graphs_stats.value("Molecules X time", "Temperature X time"), false);
-        m_graphActive.emplace(graphs_stats.value("RDF Graph", "RDF Graph"), false);
-
         initCompoundXYZ();
         initImages();
         initSavedData();
@@ -1291,23 +1286,6 @@ namespace core
                 // ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
             }
 
-            if (ImGui::CollapsingHeader(graph_json["title"].get<std::string>().c_str()))
-            {
-                ImGui::Text(graph_json["warning"].get<std::string>().c_str());
-
-                auto &graph_json = sim_ui["graphs_stats"];
-                for (auto &graph : m_graphActive)
-                {
-                    ImGui::BeginDisabled();
-                    ImGui::Checkbox(std::string("##checkbox_" + graph.first).c_str(), &graph.second);
-                    ImGui::EndDisabled();
-
-                    ImGui::SameLine();
-                    if (ImGui::Button(graph_json.value(graph.first, graph.first).c_str()))
-                        graph.second = !graph.second;
-                }
-            }
-
             ImGui::End();
         }
 
@@ -1460,77 +1438,6 @@ namespace core
 
         ImGui::PopStyleVar(4);
         ImGui::PopStyleColor();
-
-        auto &graphs_ui = localization_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
-
-        for (auto &gw : m_graphActive)
-        {
-            if (gw.second)
-            {
-                std::string title = graphs_ui.value(gw.first, gw.first);
-                ImGui::Begin(title.c_str(), &gw.second, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
-                
-                if (gw.first == "Molecules X time")
-                    drawMoleculesXtime();
-
-                if (gw.first == "Temperature X time")
-                    drawTemperatureXtime();
-
-                ImGui::End();
-            }
-        }
-    }
-
-    void UIHandler::drawMoleculesXtime()
-    {
-        auto &graphs_ui = localization_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
-
-        if (ImPlot::BeginPlot(localization_json.value("Molecules X time", "Molecules X time").c_str()))
-        {
-            std::vector<double> x_data(m_moleculesxtime.size());
-            for (size_t t = 0; t < m_moleculesxtime.size(); ++t)
-                x_data[t] = static_cast<double>(t);
-
-            std::unordered_map<std::string, std::vector<double>> moleculeSeries;
-            for (size_t t = 0; t < m_moleculesxtime.size(); ++t)
-            {
-                for (auto &mol : m_moleculesxtime[t])
-                {
-                    auto &series = moleculeSeries[mol.first];
-                    if (series.size() < m_moleculesxtime.size())
-                        series.resize(m_moleculesxtime.size(), 0.0);
-                    series[t] = static_cast<double>(mol.second);
-                }
-            }
-
-            for (auto &kv : moleculeSeries)
-            {
-                ImPlot::PlotLine(kv.first.c_str(), x_data.data(), kv.second.data(), (int)x_data.size());
-            }
-
-            ImPlot::EndPlot();
-        }
-    }
-
-    void UIHandler::drawTemperatureXtime()
-    {
-        auto &graphs_ui = localization_json["Simulation"]["universe_ui"]["stats"]["graphs_stats"];
-
-        const auto& frames = simulation_universe->getFrames();
-        if (ImPlot::BeginPlot(localization_json.value("Temperature X time", "Temperature X time").c_str()))
-        {
-            std::vector<double> x_data(frames.size());
-            for (size_t t = 0; t < frames.size(); ++t)
-                x_data[t] = static_cast<double>(t);
-
-            std::vector<double> y_data(frames.size());
-            for (size_t t = 0; t < frames.size(); ++t)
-                y_data[t] = frames[t].global_temperature;
-
-            ImPlot::PlotLine("Temperature", x_data.data(), y_data.data(), (int32_t)x_data.size());
-
-            ImPlot::EndPlot();
-        }
     }
 
     void UIHandler::drawUniverseUI()
@@ -2347,12 +2254,6 @@ namespace core
 
         if (m_recordingFrames && dynamics->timestep())
         {
-            if (dynamics->timestep() % 100 == 0)
-            {
-                auto moleculesNow = m_siminspector.getMoleculesPresent(*simulation_universe.get());
-                m_moleculesxtime.emplace_back(std::move(moleculesNow));
-            }
-
             if (dynamics->timestep() % 100 == 0)
             {
                 simulation_universe->saveFrame();

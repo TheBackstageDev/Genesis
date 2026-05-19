@@ -7,20 +7,20 @@ layout(std430, binding = 0) restrict readonly buffer Positions
     vec4 pos[]; // w is the mass
 };
 
-layout(std430, binding = 3) restrict buffer Forces 
+layout(std430, binding = 2) restrict buffer Forces 
 {
     vec4 force[];
 };
 
 struct Angle {
-    uint a;      // central
-    uint b;      // left
+    uint a;      // left
+    uint b;      // central
     uint c;      // right
-    float theta0;
     float k;
+    float theta0;
 };
 
-layout(std430, binding = 4) restrict readonly buffer Angles {
+layout(std430, binding = 1) restrict readonly buffer Angles {
     Angle angles[];
 };
 
@@ -59,36 +59,36 @@ void main()
     if (idx >= numAngles) return;
 
     Angle ang = angles[idx];
-    
-    vec3 pa = pos[ang.a].xyz;   // central
-    vec3 pb = pos[ang.b].xyz;
+
+    vec3 pa = pos[ang.a].xyz;
+    vec3 pb = pos[ang.b].xyz;   // central atom
     vec3 pc = pos[ang.c].xyz;
 
-    vec3 diff_b = minimum_image(pb - pa);
-    vec3 diff_c = minimum_image(pc - pa);
+    vec3 diff_a = minimum_image(pa - pb);
+    vec3 diff_c = minimum_image(pc - pb);
 
-    float rb2 = dot(diff_b, diff_b);
+    float ra2 = dot(diff_a, diff_a);
     float rc2 = dot(diff_c, diff_c);
-    if (rb2 < 1e-8 || rc2 < 1e-8) return;
+    if (ra2 < 1e-8 || rc2 < 1e-8) return;
 
-    float rb = sqrt(rb2);
+    float ra = sqrt(ra2);
     float rc = sqrt(rc2);
 
-    vec3 ub = diff_b / rb;
+    vec3 ua = diff_a / ra;
     vec3 uc = diff_c / rc;
 
-    float cos_theta = clamp(dot(ub, uc), -0.9999, 0.9999);
+    float cos_theta = clamp(dot(ua, uc), -0.9999, 0.9999);
     float theta = acos(cos_theta);
+    float delta = theta - ang.theta0;
 
-    float dE_dtheta = ang.k * (theta - ang.theta0);
     float sin_theta = sin(theta);
     if (abs(sin_theta) < 1e-6) return;
 
-    float c = dE_dtheta / sin_theta;
+    float coeff = (ang.k * delta) / sin_theta;
 
-    vec3 force_b = c * (uc - cos_theta * ub) / rb;
-    vec3 force_c = c * (ub - cos_theta * uc) / rc;
-    vec3 force_a = -(force_b + force_c);
+    vec3 force_a =  coeff * (uc - cos_theta * ua) / ra;
+    vec3 force_c =  coeff * (ua - cos_theta * uc) / rc;
+    vec3 force_b = -(force_a + force_c);
 
     force[ang.a].xyz += force_a;
     force[ang.b].xyz += force_b;

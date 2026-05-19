@@ -222,14 +222,6 @@ namespace core
 
         // Stats
 
-        // Graphs
-        std::vector<std::vector<std::pair<std::string, uint32_t>>> m_moleculesxtime{};
-
-        std::unordered_map<std::string, bool> m_graphActive{};
-
-        void drawMoleculesXtime();
-        void drawTemperatureXtime();
-
         float m_packDensity = 1.006f;
 
         ScenarioHandler m_scenarioHandler;

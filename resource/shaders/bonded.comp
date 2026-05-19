@@ -16,8 +16,8 @@ struct Bond
 {
     uint a;
     uint b;
-    float r0;
     float k;
+    float r0;
 };
 
 layout(std430, binding = 2) restrict readonly buffer Bonds {
@@ -27,7 +27,6 @@ layout(std430, binding = 2) restrict readonly buffer Bonds {
 uniform uint numBonds;
 
 uniform vec3  box;
-uniform float r_cut2;
 uniform bool collide_floor_roof = false;
 uniform bool collide_walls = false;
 
@@ -53,38 +52,21 @@ vec3 minimum_image(vec3 diff)
     return diff;
 }
 
-void calcBond(Bond b, vec3 diff, float r2)
-{
-    float r = sqrt(r2);
-    if (r < 1e-8) return;
-
-    float dr = r - b.r0;
-    float f_mag = -2.0 * b.k * dr;
-
-    vec3 force_dir = (diff / r) * f_mag;
-    
-    force[b.a].xyz += force_dir;
-    force[b.b].xyz -= force_dir;
-}
-
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= numBonds) return;
-
-    Bond b = bonds[idx];
-
-    vec3 diff = minimum_image(pos[b.b].xyz - pos[b.a].xyz);
-    float r2 = dot(diff, diff);
     
+    Bond b = bonds[idx];
+    vec3 diff = minimum_image(pos[b.b].xyz - pos[b.a].xyz);
+    
+    float r2 = dot(diff, diff);
     float r = sqrt(r2);
     if (r < 1e-8) return;
-
-    float dr = r - b.r0;
-    float f_mag = -2.0 * b.k * dr;
-
-    vec3 force_dir = (diff / r) * f_mag;
     
-    force[b.a].xyz += force_dir;
-    force[b.b].xyz -= force_dir;
+    float dr = b.r0 - r;
+    vec3 force_dir = (b.k * dr / r) * diff;
+
+    force[b.a].xyz -= force_dir;
+    force[b.b].xyz += force_dir;
 }

@@ -26,7 +26,7 @@ layout(std430, binding = 4) restrict readonly buffer BondedPairs {
     uvec2 bondedPairs[];   // .x = min index, .y = max index
 };
 
-uniform uint numBondedPairs;
+uniform uint numBondedPairs = 0;
 
 bool isBonded(uint i, uint j)
 {
