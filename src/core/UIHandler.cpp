@@ -845,8 +845,8 @@ namespace core
 
             setState(application_state::APP_STATE_SIMULATION);
 
-            target_pressure = 0.f;
-            target_temperature = 300.f;
+            dynamics->setTargetPressure(0.f);
+            dynamics->setTargetTemperature(293.15f);
 
             m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packParts, simulation_universe->boxSizes() * 0.5f, simulation_universe->boxSizes());
 
@@ -1232,6 +1232,9 @@ namespace core
                 ImGui::Text("%s: %.2f K", temperature_string.c_str(), dynamics->temperature());
                 ImGui::Text("%s:    %.2f Kpa", core_json["pressure"].get<std::string>().c_str(), dynamics->pressure());
 
+                static float target_temperature = 293.15f;
+                static float target_pressure = 0.f;
+
                 ImGui::SetNextItemWidth(100.f);
                 ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.0f, 20000.f);
                 ImGui::SetNextItemWidth(100.f);
@@ -1239,6 +1242,9 @@ namespace core
                 ImGui::Text("%s:        %.2f ps", time_string.c_str(), dynamics->accumulated_time());
                 ImGui::Text("%s:   %zu", core_json["particles"].get<std::string>().c_str(), simulation_universe->numAtoms());
                 ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
+
+                dynamics->setTargetTemperature(target_temperature);
+                dynamics->setTargetPressure(target_pressure);
             }
 
             constexpr std::array<const char *, 6> wall_to_direction =
@@ -2235,29 +2241,11 @@ namespace core
         ImGui::End();
     }
 
-    void UIHandler::runUniverse()
+    void UIHandler::saveFrame()
     {
-        if (dynamics->isPaused())
-            return;
-
-        auto start = std::chrono::high_resolution_clock::now();
-
-        dynamics->step(target_temperature, target_pressure);
-
-        if (simulation_universe->reactive())
-            m_reaction_eng.update(*simulation_universe.get(), dynamics->getVerlet());
-
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> duration = end - start;
-
-        std::cout << "Simulation execution time: " << duration.count() << " milliseconds" << std::endl;
-
         if (m_recordingFrames && dynamics->timestep())
         {
-            if (dynamics->timestep() % 100 == 0)
-            {
-                simulation_universe->saveFrame();
-            }
+            simulation_universe->saveFrame();
 
             if (m_autoFrame)
                 m_currentFrame = simulation_universe->numFrames();
@@ -2303,14 +2291,12 @@ namespace core
         else if (pauseMenuOpen)
             pauseMenu();
 
-        runUniverse();
-
         playFramesUniverse(*simulation_universe.get());
 
         if (m_scenarioHandler.inScenario())
         {
             m_scenarioHandler.draw(localization_json, m_deltaTime);
-            target_temperature = m_scenarioHandler.getWantedTemperature();
+            dynamics->setTargetTemperature(m_scenarioHandler.getWantedTemperature());
             m_playingVideo = m_scenarioHandler.getWantedVideoPlay();
             m_replaySpeed = m_scenarioHandler.getWantedVideoSpeed();
 
@@ -2430,8 +2416,8 @@ namespace core
             dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
             m_rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
-            target_pressure = 0.f;
-            target_temperature = 300.f;
+            dynamics->setTargetPressure(0.f);
+            dynamics->setTargetTemperature(293.15f);
             pauseMenuOpen = false;
 
             m_packChosen.clear();

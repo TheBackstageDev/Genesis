@@ -140,7 +140,7 @@ void main()
         }
 
         vec3 total_force_ij = f_LJ + f_C;
-        force_i       +=  -total_force_ij;
+        force_i          -= total_force_ij;
         force[j].xyz     += total_force_ij;
     }
 

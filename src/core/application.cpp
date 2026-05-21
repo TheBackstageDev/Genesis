@@ -85,6 +85,11 @@ namespace core
     application::~application()
     {
         save();
+
+        simulationRunning = false;
+        if (simulationThread.joinable())
+            simulationThread.join();
+
         ImPlot::DestroyContext();
         ImGui::SFML::Shutdown(window.getWindow());
     }
@@ -104,6 +109,48 @@ namespace core
         audio.preloadSound("Hover_Effect", (soundsPath / "hover.mp3").string());
         audio.preloadSound("Place_Effect", (soundsPath / "place.mp3").string());
         audio.preloadSound("Click_Effect", (soundsPath / "click.mp3").string());
+    }
+    
+    void application::runUniverse()
+    {
+        auto& dynamics = ui.getDynamics();
+
+        if (!simulationRunning)
+        {
+            simulationRunning = true;
+            simulationThread = std::thread([this]()
+            {
+                while (simulationRunning)
+                {
+                    {
+                        std::lock_guard<std::mutex> lock(simMutex);
+
+                        auto& dynamics = ui.getDynamics();
+
+                        if (current_state == application_state::APP_STATE_SIMULATION && dynamics && 
+                            !dynamics->isPaused())
+                        {
+                            auto start = std::chrono::high_resolution_clock::now();
+                            dynamics->step();
+                            auto end = std::chrono::high_resolution_clock::now();
+
+                            std::chrono::duration<double, std::milli> duration = end - start;
+
+                            static int counter = 0;
+                            if (++counter % 100 == 0)
+                            {
+                                std::cout << "Simulation step time: " << duration.count() 
+                                        << " ms\n";
+
+                                ui.saveFrame();
+                            }
+                        }
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+        }
     }
 
     void application::run()
@@ -126,8 +173,6 @@ namespace core
                 audio.stopSong();
             }
 
-            auto start = std::chrono::high_resolution_clock::now();
-
             if (current_state == application_state::APP_STATE_MENU)
             {
                 ui.drawMenu();        
@@ -139,13 +184,9 @@ namespace core
                 
                 ui.drawUniverse();
                 audio.stopSound("MainMenu_Music");
+
+                runUniverse();
             }
-
-            auto end = std::chrono::high_resolution_clock::now();
-
-            std::chrono::duration<double, std::milli> duration = end - start;
-
-            //std::cout << "UI execution time: " << duration.count() << " milliseconds" << std::endl;
 
             if (app_options.sound_effects)
             {

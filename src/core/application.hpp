@@ -31,6 +31,12 @@ namespace core
         void save();
         void load();
         void initSounds();
+
+        void runUniverse();
+
+        std::thread simulationThread;
+        std::atomic<bool> simulationRunning{false};
+        std::mutex simMutex;
     
         application_state current_state{application_state::APP_STATE_MENU};
         options app_options{};

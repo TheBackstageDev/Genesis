@@ -973,7 +973,7 @@ namespace sim
         }
     }
 
-    void sim_dynamics::step(float target_temp, float target_pressure)
+    void sim_dynamics::step()
     {
         if (m_paused)
             return;
@@ -997,8 +997,8 @@ namespace sim
         if (m_step_count % std::max(1u, static_cast<uint32_t>(verletRebuildRate)) == 0)
             universe_verlet.construct(universe_grid, m_universe);
 
-        setTemperature(target_temp);
-        setPressure(target_pressure);
+        setTemperature(m_targetTemperature);
+        setPressure(m_targetPressure);
         COMDrift();
 
         m_step_count++;

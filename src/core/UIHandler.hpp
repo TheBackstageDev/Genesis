@@ -146,6 +146,7 @@ namespace core
 
         void drawUniverse();
         void screenshotWindow(std::filesystem::path path, std::string name = "");
+        void saveFrame();
 
         // Callback
 
@@ -158,6 +159,8 @@ namespace core
         {
             getState = callback;
         }
+
+        std::unique_ptr<sim::sim_dynamics>& getDynamics() { return dynamics; } 
 
         // Fonts
 
@@ -257,10 +260,6 @@ namespace core
 
         // Universe
 
-        float target_temperature = 300.f;
-        float target_pressure = 0.f;
-        
-        void runUniverse();
         void drawUniverseUI();
 
         void drawHUD();

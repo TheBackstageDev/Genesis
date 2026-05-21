@@ -60,37 +60,32 @@ void main()
 
     Angle ang = angles[idx];
 
-    vec3 pa = pos[ang.a].xyz;
-    vec3 pb = pos[ang.b].xyz;   // central atom
-    vec3 pc = pos[ang.c].xyz;
+    vec3 r_ji = minimum_image(pos[ang.a].xyz - pos[ang.b].xyz);
+    vec3 r_jk = minimum_image(pos[ang.c].xyz - pos[ang.b].xyz);
 
-    vec3 diff_a = minimum_image(pa - pb);
-    vec3 diff_c = minimum_image(pc - pb);
+    float len_ji = length(r_ji);
+    float len_jk = length(r_jk);
 
-    float ra2 = dot(diff_a, diff_a);
-    float rc2 = dot(diff_c, diff_c);
-    if (ra2 < 1e-8 || rc2 < 1e-8) return;
+    if (len_ji < 1e-8 || len_jk < 1e-8) return;
 
-    float ra = sqrt(ra2);
-    float rc = sqrt(rc2);
+    vec3 u_ji = r_ji / len_ji;
+    vec3 u_jk = r_jk / len_jk;
 
-    vec3 ua = diff_a / ra;
-    vec3 uc = diff_c / rc;
+    float cos_theta = clamp(dot(u_ji, u_jk), -0.9999, 0.9999);
+    float sin_theta = sqrt(max(1.0 - cos_theta*cos_theta, 0.0));
+    if (sin_theta < 1e-6) return;
 
-    float cos_theta = clamp(dot(ua, uc), -0.9999, 0.9999);
     float theta = acos(cos_theta);
-    float delta = theta - ang.theta0;
+    float delta_theta = theta - ang.theta0;
 
-    float sin_theta = sin(theta);
-    if (abs(sin_theta) < 1e-6) return;
+    vec3 dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
+    vec3 dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
 
-    float coeff = (ang.k * delta) / sin_theta;
+    vec3 F_i = -ang.k * delta_theta * dtheta_dri;
+    vec3 F_k = -ang.k * delta_theta * dtheta_drk;
+    vec3 F_j = -F_i - F_k;
 
-    vec3 force_a =  coeff * (uc - cos_theta * ua) / ra;
-    vec3 force_c =  coeff * (ua - cos_theta * uc) / rc;
-    vec3 force_b = -(force_a + force_c);
-
-    force[ang.a].xyz += force_a;
-    force[ang.b].xyz += force_b;
-    force[ang.c].xyz += force_c;
+    force[ang.a].xyz += F_i;
+    force[ang.b].xyz += F_j;
+    force[ang.c].xyz += F_k;
 }

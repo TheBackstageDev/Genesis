@@ -18,7 +18,7 @@ namespace sim
         sim_dynamics(fun::universe &u);
         ~sim_dynamics();
 
-        void step(float target_temp = 300.0f, float target_pressure = 1.01325f);
+        void step();
 
         void pause() { m_paused = true; }
         void unpause() { m_paused = false; }
@@ -36,6 +36,9 @@ namespace sim
         float accumulated_time() { return m_accumulated_time; }
         float temperature() { return m_temperature; }
         float pressure() { return m_pressure; }
+
+        void setTargetTemperature(float newTargetTemp) { m_targetTemperature = newTargetTemp; } 
+        void setTargetPressure(float newTargetPressure) { m_targetPressure = newTargetPressure; } 
 
         core::verlet_list& getVerlet() { return universe_verlet; }
         fun::universe &getUniverse() { return m_universe; }
@@ -92,6 +95,9 @@ namespace sim
         float m_temperature = 0.0f;
         float m_pressure = 0.0f;
 
+        float m_targetTemperature = 300.f;
+        float m_targetPressure = 0.f;
+
         size_t m_lastBondCount = 0;
         size_t m_lastAngleCount = 0;
 
@@ -109,7 +115,7 @@ namespace sim
                  glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                  glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f)};
 
-        bool m_GPU = true;
+        bool m_GPU = false;
         bool m_paused = false;
         core::SpatialGrid universe_grid{};
         core::verlet_list universe_verlet{};
