@@ -116,7 +116,7 @@ namespace sim
                  glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f)};
 
         bool m_GPU = false;
-        bool m_paused = false;
+        bool m_paused = true;
         core::SpatialGrid universe_grid{};
         core::verlet_list universe_verlet{};
 
