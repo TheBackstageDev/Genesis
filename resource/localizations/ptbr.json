@@ -330,6 +330,12 @@
       {
         "title": "Estatisticas do Universo",
         
+        "tab_overview": "Visão Geral",
+        "tab_controls": "Controles",
+        "tab_kinetic": "Cinética",
+        "tab_structure": "Strutura",
+        "tab_distributions": "Distribuições",
+
         "core_stats":
         {
           "title": "Estatisticas Centrais",

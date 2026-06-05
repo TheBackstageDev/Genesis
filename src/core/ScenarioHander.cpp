@@ -525,7 +525,7 @@ namespace core
                  .onEnter = [&]()
                  {
                     m_dynamics->pause();
-                    m_dynamics->setTimescale(500.f);
+                    m_dynamics->setTimescale(10.f);
                     m_wantedTemperature = 2.0f;
                  }
                 },
@@ -549,7 +549,7 @@ namespace core
                                     glm::vec3 pos = m_universe->getPosition(i);
                                     glm::vec3 force = m_universe->getForce(i);
 
-                                    float scale = 1.5f;  
+                                    float scale = 2.f;  
 
                                     m_universe->createArrow(pos, pos + scale * force);
                                 }
@@ -572,7 +572,7 @@ namespace core
                  .minDisplayTime_s = 10.0f,
                  .onEnter = [&]()
                  {
-                    m_dynamics->setTimescale(500.f);
+                    m_dynamics->setTimescale(100.f);
                     auto argon = sim::parseSMILES("Ar", false);
 
                     m_simpacker.pack(*m_universe, argon, m_universe->boxSizes() * 0.5f, m_universe->boxSizes(), 50);
@@ -617,7 +617,7 @@ namespace core
                  .onEnter = [&]()
                  {
                      m_dynamics->pause();
-                     m_dynamics->setTimescale(10.f);
+                     m_dynamics->setTimescale(1.f);
                      m_wantedTemperature = 250.f;
                  }},
                 {
@@ -637,7 +637,7 @@ namespace core
                                     glm::vec3 pos = m_universe->getPosition(i);
                                     glm::vec3 force = m_universe->getForce(i);
 
-                                    float scale = 0.005f;  
+                                    float scale = 0.0005f;  
 
                                     m_universe->createArrow(pos, pos + scale * force);
                                 }
@@ -680,7 +680,7 @@ namespace core
                                     glm::vec3 pos = m_universe->getPosition(i);
                                     glm::vec3 force = m_universe->getForce(i);
 
-                                    float scale = 0.005f;  
+                                    float scale = 0.0005f;  
 
                                     m_universe->createArrow(pos, pos + scale * force);
                                 }
@@ -733,9 +733,9 @@ namespace core
                         const glm::vec3 center = m_universe->boxSizes() * 0.5f;
 
                         const float spacing = 3.f;
-                        const int nx = 1;
-                        const int ny = 1;
-                        const int nz = 1;
+                        const int nx = 3;
+                        const int ny = 3;
+                        const int nz = 3;
 
                         for (int ix = 0; ix <= nx; ++ix)
                         {

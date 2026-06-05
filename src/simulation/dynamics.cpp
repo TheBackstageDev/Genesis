@@ -978,6 +978,8 @@ namespace sim
         if (m_paused)
             return;
 
+        total_virial = 0.f;
+
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
 
@@ -992,13 +994,14 @@ namespace sim
         if (m_step_count % GRID_REBUILD == 0)
             universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
         
-        float verletRebuildRate = 20.f / (m_timescale + std::numeric_limits<float>::epsilon());
+        float verletRebuildRate = 30.f / (m_timescale + std::numeric_limits<float>::epsilon());
 
         if (m_step_count % std::max(1u, static_cast<uint32_t>(verletRebuildRate)) == 0)
             universe_verlet.construct(universe_grid, m_universe);
 
         setTemperature(m_targetTemperature);
         setPressure(m_targetPressure);
+
         COMDrift();
 
         m_step_count++;
@@ -1014,40 +1017,46 @@ namespace sim
     {
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
-
+        
         if (atomData.atoms.empty())
             return 0.f;
 
         float kinetic = m_universe.calculateKineticEnergy();
-
         glm::vec3 box = m_universe.boxSizes();
         float volume = box.x * box.y * box.z;
-        float temperature = (2.0f / 3.0f) * kinetic / atomData.atoms.size();
 
-        float P_ideal = atomData.atoms.size() * temperature / volume;
+        size_t N = atomData.atoms.size();
+        float temperature = (2.0f / 3.0f) * kinetic / N;
 
-        float P_virial = -total_virial / (3.0f * volume);
+        const float conv_factor = 1660.53906660f;
 
-        float pressure = P_ideal + P_virial;
-        return pressure;
+        float P_ideal = (N * temperature / volume) * conv_factor;
+        float P_virial = -total_virial / (3.0f * volume) * conv_factor;
+
+        float pressure_kPa = P_ideal + P_virial;
+
+        return pressure_kPa;
     }
 
     void sim_dynamics::setPressure(float target_p_kpa)
     {
-        if (target_p_kpa <= 0.0f)
-            return;
-
+        
         if (m_step_count % BAROSTAT_INTERVAL != 0)
             return;
-
+        
         glm::vec3 box = m_universe.boxSizes();
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
-
+        
         constexpr float beta_T = 4.5e-5f;
-        constexpr float tau_P = 1e2;
-
+        constexpr float tau_P = 150.f;
+        
         m_pressure = computePressure();
+
+        if (target_p_kpa <= 0.0f)
+            return;
+
+        if (m_targetTemperature > 0.f) return;
 
         float delta_P = target_p_kpa - m_pressure;
         float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
@@ -1085,6 +1094,8 @@ namespace sim
         float KE = m_universe.calculateKineticEnergy();
         float current_temp = (2.0f * KE) / (ndof * KB);
         m_temperature = current_temp;
+
+        if (m_targetPressure > 0.f) return;
 
         float target_KE = 0.5f * ndof * KB * kelvin;
 

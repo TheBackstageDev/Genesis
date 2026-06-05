@@ -271,8 +271,8 @@ namespace sim
                 const def_atom &a = structure.atoms[i];
 
                 glm::vec3 end_pos = structure.positions[i] + pos;
-                createAtom(end_pos, vel, a.ZIndex, a.NIndex, a.ZIndex - a.charge, a.chirality);
-                data.q[i] += structure.atoms[i].charge;
+                createAtom(end_pos, vel, a.ZIndex, a.NIndex, a.ZIndex, a.chirality);
+                data.q[baseAtomIndex + i] += structure.atoms[i].charge;
             }
 
             nMolecule.atomBegin = baseAtomIndex;
@@ -459,63 +459,84 @@ namespace sim
             }
         }
 
+        void reflectVelocity(glm::vec3& v, const glm::vec3& normal)
+        {
+            float dot = glm::dot(v, normal);
+            v -= 2.0f * dot * normal;
+        }
+
         void universe::boundCheck(uint32_t i)
         {
-            float &x = data.positions[i].x;
-            float &y = data.positions[i].y;
-            float &z = data.positions[i].z;
+            glm::vec3& pos = data.positions[i];
+            glm::vec3& vel = data.velocities[i];
 
-            float &vx = data.velocities[i].x;
-            float &vy = data.velocities[i].y;
-            float &vz = data.velocities[i].z;
+            bool collided = false;
 
-            if (roof_floor_collision)
-            {
-                if (z < 0.0f)
-                {
-                    z = 0.0f;
-                    vz = -vz;
-                }
-                else if (z > box.z)
-                {
-                    z = box.z;
-                    vz = -vz;
-                }
-            }
-            else
-            {
-                z = std::fmod(std::fmod(z, box.z) + box.z, box.z);
-            }
-
+            // ====================== X Axis ======================
             if (wall_collision)
             {
-                if (x < 0.0f)
+                if (pos.x < 0.0f)
                 {
-                    x = 0.0f;
-                    vx = -vx;
+                    pos.x = 0.0f;
+                    reflectVelocity(vel, glm::vec3(1.0f, 0.0f, 0.0f));  // normal = +X
+                    collided = true;
                 }
-                else if (x > box.x)
+                else if (pos.x > box.x)
                 {
-                    x = box.x;
-                    vx = -vx;
+                    pos.x = box.x;
+                    reflectVelocity(vel, glm::vec3(-1.0f, 0.0f, 0.0f)); // normal = -X
+                    collided = true;
                 }
+            }
+            else // Periodic
+            {
+                pos.x = std::fmod(std::fmod(pos.x, box.x) + box.x, box.x);
+            }
 
-                if (y < 0.0f)
+            // ====================== Y Axis ======================
+            if (wall_collision)
+            {
+                if (pos.y < 0.0f)
                 {
-                    y = 0.0f;
-                    vy = -vy;
+                    pos.y = 0.0f;
+                    reflectVelocity(vel, glm::vec3(0.0f, 1.0f, 0.0f));
+                    collided = true;
                 }
-                else if (y > box.y)
+                else if (pos.y > box.y)
                 {
-                    y = box.y;
-                    vy = -vy;
+                    pos.y = box.y;
+                    reflectVelocity(vel, glm::vec3(0.0f, -1.0f, 0.0f));
+                    collided = true;
                 }
             }
             else
             {
-                x = std::fmod(std::fmod(x, box.x) + box.x, box.x);
-                y = std::fmod(std::fmod(y, box.y) + box.y, box.y);
+                pos.y = std::fmod(std::fmod(pos.y, box.y) + box.y, box.y);
             }
+
+            // ====================== Z Axis ======================
+            if (roof_floor_collision)
+            {
+                if (pos.z < 0.0f)
+                {
+                    pos.z = 0.0f;
+                    reflectVelocity(vel, glm::vec3(0.0f, 0.0f, 1.0f));
+                    collided = true;
+                }
+                else if (pos.z > box.z)
+                {
+                    pos.z = box.z;
+                    reflectVelocity(vel, glm::vec3(0.0f, 0.0f, -1.0f));
+                    collided = true;
+                }
+            }
+            else
+            {
+                pos.z = std::fmod(std::fmod(pos.z, box.z) + box.z, box.z);
+            }
+
+            if (collided)
+                vel *= 0.99f;
         }
 
         // Energy Calculation

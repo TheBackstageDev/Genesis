@@ -258,6 +258,11 @@ namespace core
 
         const float panel_height = 64.0f;
 
+        // Graph
+
+        std::vector<sim::point> m_RDFgraph;
+        int32_t m_RDFframes = 1;
+
         // Universe
 
         void drawUniverseUI();
@@ -301,7 +306,7 @@ namespace core
         bool exitDesktop = false;
 
         std::unique_ptr<sim::sim_dynamics> dynamics;
-        std::unique_ptr<sim::fun::universe> simulation_universe;
+        std::unique_ptr<sim::fun::universe> m_simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
 
         sim::rendering_engine m_rendering_eng;
@@ -326,10 +331,10 @@ namespace core
 
             m_currentFrame = 0;
 
-            simulation_universe->clearDisplayPositions();
+            m_simulation_universe->clearDisplayPositions();
             display_universe->clearDisplayPositions();
 
-            simulation_universe->clearFrames();
+            m_simulation_universe->clearFrames();
             display_universe->clearFrames();
         }
 

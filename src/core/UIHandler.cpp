@@ -105,6 +105,7 @@ namespace core
         }
 
         initCompoundXYZ();
+        initCompoundPresetsImages();
         initImages();
         initSavedData();
     }
@@ -195,8 +196,6 @@ namespace core
 
     void UIHandler::initImages()
     {
-        initCompoundPresetsImages();
-
         sf::Image placeholder_image;
         placeholder_image.createMaskFromColor(sf::Color(80, 80, 90), 255); // Dark gray
         placeholder_texture_id = placeholder_texture.getNativeHandle();
@@ -642,8 +641,8 @@ namespace core
         ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
         if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
         {
-            simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
-            dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
+            m_simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
+            dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
             savesSelectionOpen = false;
             pauseMenuOpen = false;
@@ -792,11 +791,7 @@ namespace core
             ImGui::Checkbox(sandbox_creation["wall_collision"].get<std::string>().c_str(), &sandbox_info.wall_collision);
             ImGui::Checkbox(sandbox_creation["roof_floor_collision"].get<std::string>().c_str(), &sandbox_info.roof_floor_collision);
 
-            ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reaction);
-
-            ImGui::BeginDisabled();
-            ImGui::Checkbox(sandbox_creation["isothermal"].get<std::string>().c_str(), &sandbox_info.isothermal);
-            ImGui::EndDisabled();
+            // ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reaction);
         }
 
         if (ImGui::CollapsingHeader(sandbox_creation["header_box"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
@@ -813,17 +808,6 @@ namespace core
             }
         }
 
-        if (ImGui::CollapsingHeader(sandbox_creation["header_visual"].get<std::string>().c_str()))
-        {
-        }
-
-        if (ImGui::CollapsingHeader(sandbox_creation["header_logging"].get<std::string>().c_str()))
-        {
-            ImGui::BeginDisabled();
-            ImGui::Checkbox(sandbox_creation["log_reactions"].get<std::string>().c_str(), &sandbox_info.log_flags.log_reactions);
-            ImGui::EndDisabled();
-        }
-
         ImGui::Separator();
 
         if (ImGui::Button(sandbox_creation["button_create"].get<std::string>().c_str(), ImVec2(300, 50)))
@@ -831,11 +815,11 @@ namespace core
             if (dynamics != nullptr)
                 dynamics->destroySSBOs();
 
-            simulation_universe.reset();
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            m_simulation_universe.reset();
+            m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
 
             dynamics.reset();
-            dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
+            dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
             m_rendering_eng.camera().target = sandbox_info.box / 2.f;
             m_rendering_eng.camera().distance = glm::length(sandbox_info.box * 1.2f);
@@ -848,7 +832,7 @@ namespace core
             dynamics->setTargetPressure(0.f);
             dynamics->setTargetTemperature(293.15f);
 
-            m_simpacker.pack(*simulation_universe.get(), m_packChosen, m_packParts, simulation_universe->boxSizes() * 0.5f, simulation_universe->boxSizes());
+            m_simpacker.pack(*m_simulation_universe.get(), m_packChosen, m_packParts, m_simulation_universe->boxSizes() * 0.5f, m_simulation_universe->boxSizes());
 
             m_packChosen.clear();
             m_packParts.clear();
@@ -858,7 +842,7 @@ namespace core
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            simulation_universe->createMolecule(structure, {15, 15, 15}); */
+            m_simulation_universe->createMolecule(structure, {15, 15, 15}); */
         }
 
         ImGui::SameLine();
@@ -1064,23 +1048,25 @@ namespace core
     {
         auto &chosen_scenario = m_scenarioHandler.getScenarios().at(scenario);
 
-        dynamics->destroySSBOs();
-        simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng);
-        dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
+        if (dynamics)
+            dynamics->destroySSBOs();
+        
+        m_simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng);
+        dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
         if (!chosen_scenario.file.empty())
-            simulation_universe->loadScene(chosen_scenario.file);
+            m_simulation_universe->loadScene(chosen_scenario.file);
 
         if (!chosen_scenario.video.empty())
-            simulation_universe->loadFrames(chosen_scenario.video);
+            m_simulation_universe->loadFrames(chosen_scenario.video);
 
-        m_scenarioHandler.setCurrentUniverse(simulation_universe.get());
+        m_scenarioHandler.setCurrentUniverse(m_simulation_universe.get());
         m_scenarioHandler.chooseScenario(scenario);
         m_scenarioHandler.startScenario();
 
         auto &cam = m_rendering_eng.camera();
-        cam.target = simulation_universe->boxSizes() * 0.5f;
-        cam.distance = glm::length(simulation_universe->boxSizes() * 1.2f);
+        cam.target = m_simulation_universe->boxSizes() * 0.5f;
+        cam.distance = glm::length(m_simulation_universe->boxSizes() * 1.2f);
 
         setState(core::application_state::APP_STATE_SIMULATION);
     }
@@ -1194,21 +1180,18 @@ namespace core
     void UIHandler::drawStatsWindow()
     {
         auto &sim_ui = localization_json["Simulation"]["universe_ui"]["stats"];
-
         ImGuiIO &io = ImGui::GetIO();
 
-        ImVec2 size(600, 600);
-
+        ImVec2 size(680, 620);  // Slightly larger for tabs
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Appearing);
-        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.12f, 0.95f));
-        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.15f, 0.15f, 0.25f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.12f, 0.96f));
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.15f, 0.15f, 0.28f, 1.0f));
 
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize |
-                                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
         std::string window_title = sim_ui["title"];
         if (ImGui::Begin(window_title.c_str(), &statsOpen, flags))
@@ -1218,82 +1201,198 @@ namespace core
             ImGui::PopFont();
             ImGui::Separator();
 
-            auto &core_json = sim_ui["core_stats"];
-            auto &energy_json = sim_ui["energy_stats"];
-            auto &graph_json = sim_ui["graphs_stats"];
-            auto &chages_json = sim_ui["charge_stats"];
-
-            std::string time_string = core_json["time"].get<std::string>().c_str();
-            std::string temperature_string = core_json["temperature"].get<std::string>().c_str();
-
-            // Basic stats
-            if (ImGui::CollapsingHeader(core_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            if (ImGui::BeginTabBar("StatsTabs"))
             {
-                ImGui::Text("%s: %.2f K", temperature_string.c_str(), dynamics->temperature());
-                ImGui::Text("%s:    %.2f Kpa", core_json["pressure"].get<std::string>().c_str(), dynamics->pressure());
-
-                static float target_temperature = 293.15f;
-                static float target_pressure = 0.f;
-
-                ImGui::SetNextItemWidth(100.f);
-                ImGui::DragFloat(core_json["slider_temperature"].get<std::string>().c_str(), &target_temperature, 1.0f, 0.0f, 20000.f);
-                ImGui::SetNextItemWidth(100.f);
-                ImGui::DragFloat(core_json["slider_pressure"].get<std::string>().c_str(), &target_pressure, 1.0f, 0.0f, 1000.f);
-                ImGui::Text("%s:        %.2f ps", time_string.c_str(), dynamics->accumulated_time());
-                ImGui::Text("%s:   %zu", core_json["particles"].get<std::string>().c_str(), simulation_universe->numAtoms());
-                ImGui::Text("%s:   %zu", core_json["molecules"].get<std::string>().c_str(), simulation_universe->numMolecules());
-
-                dynamics->setTargetTemperature(target_temperature);
-                dynamics->setTargetPressure(target_pressure);
-            }
-
-            constexpr std::array<const char *, 6> wall_to_direction =
+                // ====================== TAB 1: OVERVIEW ======================
+                if (ImGui::BeginTabItem(sim_ui["tab_overview"].get<std::string>().c_str()))
                 {
-                    "+X", "-X", "+Y", "-Y", "+Z", "-Z"};
+                    ImGui::Text("%s: %.3f ps", 
+                                sim_ui["overview"]["time"].get<std::string>().c_str(), 
+                                dynamics->accumulated_time());
 
-            // Charge Stats
-            if (ImGui::CollapsingHeader(chages_json["title"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                auto &wallCharges = simulation_universe->getWallCharges();
-                for (int32_t w = 0; w < wallCharges.size(); ++w)
-                {
-                    ImGui::SetNextItemWidth(50.f);
-                    ImGui::PushID(w);
-                    ImGui::DragFloat(wall_to_direction[w], &wallCharges[w], 0.1f, -5.0f, 5.0f, "%.1f");
-                    ImGui::PopID();
+                    ImGui::Text("%s: %zu | %s: %zu", 
+                                sim_ui["overview"]["particles"].get<std::string>().c_str(), 
+                                m_simulation_universe->numAtoms(),
+                                sim_ui["overview"]["molecules"].get<std::string>().c_str(), 
+                                m_simulation_universe->numMolecules());
 
-                    if (w % 2 == 0)
-                        ImGui::SameLine();
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+
+                    ImGui::TextColored(ImVec4(0.8f, 0.5f, 0.2f, 1.0f), "%s %.2f K", 
+                                    sim_ui["overview"]["temperature"].get<std::string>().c_str(), 
+                                    dynamics->temperature());
+
+                    ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.1f, 1.0f), "%s %.2f kPa", 
+                                    sim_ui["overview"]["pressure"].get<std::string>().c_str(), 
+                                    dynamics->pressure());
+
+                    float totalE = m_siminspector.calculatePotentialEnergy(*m_simulation_universe.get()) 
+                                + m_siminspector.calculateKineticEnergy(*m_simulation_universe.get());
+
+                    ImGui::Text("%s: %.2e kJ", 
+                                sim_ui["overview"]["total_energy"].get<std::string>().c_str(), 
+                                totalE / 1000.f);
+
+                    ImGui::EndTabItem();
                 }
-                ImGui::Checkbox(chages_json["wall_charge_enabled"].get<std::string>().c_str(), &simulation_universe->wallChargeEnabled());
 
-                glm::vec3 &magnetic_strength = simulation_universe->getMagneticFieldStrength();
+                static uint32_t chartUpdateRate = 1000;
 
-                ImGui::Text(chages_json["magnetic_strength"].get<std::string>().c_str());
+                // ====================== TAB 2: CONTROLS ======================
+                if (ImGui::BeginTabItem(sim_ui["tab_controls"].get<std::string>().c_str()))
+                {
+                    static float targetTemp = 293.15f;
+                    static float targetPress = 0.0f; //101.325f
 
-                ImGui::SetNextItemWidth(50.f);
-                ImGui::DragFloat("X", &magnetic_strength.x, 0.1f, -5.0f, 5.0f, "%.1f");
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(50.f);
-                ImGui::DragFloat("Y", &magnetic_strength.y, 0.1f, -5.0f, 5.0f, "%.1f");
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(50.f);
-                ImGui::DragFloat("Z", &magnetic_strength.z, 0.1f, -5.0f, 5.0f, "%.1f");
+                    static bool constPress = false;
+                    static bool constTemp = true;
 
-                ImGui::Checkbox(chages_json["magnetic_enabled"].get<std::string>().c_str(), &simulation_universe->magneticFieldEnabled());
+                    ImGui::Text(sim_ui["controls"].value("thermostat", "Thermostat").c_str());
+
+                    ImGui::PushItemWidth(200.f);
+                    ImGui::DragFloat(sim_ui["controls"].value("targetTemp", "Target Temperature (K)").c_str(), &targetTemp, 0.1f, 0.1f, 5000.0f);
+
+                    ImGui::SameLine();
+                    if (ImGui::Checkbox(sim_ui["controls"].value("constant", "Constant").c_str(), &constTemp))
+                        constPress = false;
+
+                    ImGui::PushItemWidth(200.f);
+                    ImGui::DragFloat(sim_ui["controls"].value("targetPress", "Target Pressure (kPa)").c_str(), &targetPress, 0.1f, 0.0f, 10000.0f);
+
+                    ImGui::SameLine();
+                    if (ImGui::Checkbox(sim_ui["controls"].value("constant", "Constant").c_str(), &constPress))
+                        constTemp = false;
+
+                    if (constTemp)
+                        dynamics->setTargetTemperature(targetTemp);
+                    else
+                        dynamics->setTargetTemperature(0.f);
+
+                    if (constPress)
+                        dynamics->setTargetPressure(targetPress);
+                    else
+                        dynamics->setTargetPressure(0.f);
+
+                    ImGui::Separator();
+                    ImGui::Text(sim_ui["controls"].value("externalFields", "External Fields").c_str());
+
+                    // Wall Charges
+                    auto &wallCharges = m_simulation_universe->getWallCharges();
+                    constexpr std::array<const char*, 6> dirs = {"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
+                    for (int i = 0; i < 6; ++i)
+                    {
+                        ImGui::PushID(i);
+                        ImGui::SetNextItemWidth(80.f);
+                        ImGui::DragFloat(dirs[i], &wallCharges[i], 0.05f, -10.f, 10.f, "%.2f");
+                        ImGui::PopID();
+                        if (i % 2 == 1) ImGui::SameLine();
+                    }
+
+                    ImGui::Separator();
+
+                    ImGui::Checkbox(sim_ui["controls"].value("wallChargeEnable", "Enable Wall Charges").c_str(), &m_simulation_universe->wallChargeEnabled());
+
+                    ImGui::Separator();
+                    glm::vec3 &mag = m_simulation_universe->getMagneticFieldStrength();
+                    ImGui::Text(sim_ui["controls"].value("magneticField", "Magnetic Field").c_str());
+                    ImGui::DragFloat3(sim_ui["controls"].value("magneticFieldStrength", "Strength (X/Y/Z)").c_str(), &mag.x, 0.05f, -20.f, 20.f);
+                    ImGui::Checkbox(sim_ui["controls"].value("magneticFieldEnable", "Enable Magnetic FIelds").c_str(), &m_simulation_universe->magneticFieldEnabled());
+
+                    ImGui::EndTabItem();
+                }
+
+                // ====================== TAB 3: KINETIC / ENERGY ======================
+                if (ImGui::BeginTabItem(sim_ui["tab_kinetic"].get<std::string>().c_str()))
+                {
+                    float ke = m_siminspector.calculateKineticEnergy(*m_simulation_universe.get()) / 1000.f;
+                    float pe = m_siminspector.calculatePotentialEnergy(*m_simulation_universe.get()) / 1000.f;
+
+                    ImGui::Text("%s: %.4e kJ", 
+                                sim_ui["kinetic"]["kinetic_energy"].get<std::string>().c_str(), ke);
+                    ImGui::Text("%s: %.4e kJ", 
+                                sim_ui["kinetic"]["potential_energy"].get<std::string>().c_str(), pe);
+                    ImGui::Text("%s: %.4e kJ", 
+                                sim_ui["kinetic"]["total_energy"].get<std::string>().c_str(), ke + pe);
+
+                    ImGui::Separator();
+                    ImGui::Text("%s: %.2f m/s", 
+                                sim_ui["kinetic"]["mean_speed"].get<std::string>().c_str(), 
+                                m_siminspector.meanParticleSpeed(*m_simulation_universe.get()));
+
+                    ImGui::Text("%s", sim_ui["kinetic"]["energy_over_time"].get<std::string>().c_str());
+                    ImGui::Dummy(ImVec2(0, 180)); // Reserve space
+
+                    ImGui::EndTabItem();
+                }
+
+                // ====================== TAB 4: STRUCTURE ======================
+                if (ImGui::BeginTabItem(sim_ui["tab_structure"].get<std::string>().c_str()))
+                {
+                    ImGui::Text("%s", sim_ui["structure"]["rdf_title"].get<std::string>().c_str());
+                    ImGui::Separator();
+
+                    if (ImPlot::BeginPlot(sim_ui["structure"]["rdf_plot"].get<std::string>().c_str())) {
+                        ImPlot::SetupAxes("r", "g(r)");
+
+                        std::vector<double> xs, ys;
+                        xs.reserve(m_RDFgraph.size());
+                        ys.reserve(m_RDFgraph.size());
+
+                        for (const auto& p : m_RDFgraph) {
+                            xs.push_back(p.x);
+                            ys.push_back(p.y);
+                        }
+
+                        ImPlot::SetNextLineStyle(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 2.5f);
+                        ImPlot::PlotShaded("g(r)", xs.data(), ys.data(), (int)xs.size());
+
+                        ImPlot::EndPlot();
+                    }
+
+                    static char Zi[3] = "H";
+                    static char Zj[3] = "H";
+
+                    ImGui::InputText(sim_ui["structure"]["element_a"].get<std::string>().c_str(), Zi, sizeof(Zi));
+                    ImGui::InputText(sim_ui["structure"]["element_b"].get<std::string>().c_str(), Zj, sizeof(Zj));
+                    ImGui::InputInt(sim_ui["structure"]["rdf_steps"].get<std::string>().c_str(), &m_RDFframes, 1, 100);
+
+                    if (ImGui::Button(sim_ui["structure"]["update_graph"].get<std::string>().c_str()))
+                    {
+                        if (m_RDFframes == 1)
+                            m_RDFgraph = m_siminspector.getRDFgraph(*m_simulation_universe.get(),
+                                                                    (uint32_t)constants::symbolToZ((std::string)Zi),
+                                                                    (uint32_t)constants::symbolToZ((std::string)Zj));
+                        else
+                            m_siminspector.beginRDFaccumulation((uint32_t)constants::symbolToZ((std::string)Zi),
+                                                                (uint32_t)constants::symbolToZ((std::string)Zj),
+                                                                m_RDFframes,
+                                                                *m_simulation_universe.get());
+                    }
+
+                    ImGui::EndTabItem();
+                }
+
+                // ====================== TAB 5: DISTRIBUTIONS ======================
+                if (ImGui::BeginTabItem(sim_ui["tab_distributions"].get<std::string>().c_str()))
+                {
+                    ImGui::Text("%s", sim_ui["distributions"]["velocity_distribution"].get<std::string>().c_str());
+                    ImGui::Dummy(ImVec2(0, 200));
+                    // Placeholder for Maxwell-Boltzmann histogram
+
+                    ImGui::Separator();
+                    ImGui::Text("%s", sim_ui["distributions"]["speed_distribution"].get<std::string>().c_str());
+                    ImGui::Dummy(ImVec2(0, 180));
+
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
             }
-
-            // Energy stats
-            if (ImGui::CollapsingHeader(energy_json["title"].get<std::string>().c_str()))
-            {
-                float ke = simulation_universe->calculateKineticEnergy() / 1000.f;
-                ImGui::Text("%s: %.2e kJ", energy_json["kinetic_energy"].get<std::string>().c_str(), ke);
-                // ImGui::Text("%s: N/A", energy_json["potential_energy"].get<std::string>().c_str());
-                // ImGui::Text("%s:   %.2e kJ", energy_json["total_energy"].get<std::string>().c_str(), ke);
-            }
-
-            ImGui::End();
         }
+
+        ImGui::End();
 
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
@@ -1448,7 +1547,7 @@ namespace core
 
     void UIHandler::drawUniverseUI()
     {
-        ImGui::PushFont(regular);
+        ImGui::PushFont(regular_font());
         drawHUD();
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.04f, 0.18f, 0.28f, 0.88f));
@@ -1468,7 +1567,7 @@ namespace core
             drawCompoundSelector();
 
         if (packerUIOpen)
-            drawPackerUI(simulation_universe->boxSizes());
+            drawPackerUI(m_simulation_universe->boxSizes());
 
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
@@ -1550,10 +1649,10 @@ namespace core
         constexpr float minDistance = 1.5f;
         for (auto &pos : display_universe->positions())
         {
-            for (auto &other_pos : simulation_universe->positions())
+            for (auto &other_pos : m_simulation_universe->positions())
             {
                 glm::vec3 r = pos - other_pos;
-                if (glm::length(simulation_universe->minImageVec(r)) <= minDistance)
+                if (glm::length(m_simulation_universe->minImageVec(r)) <= minDistance)
                 {
                     ghostColliding = true;
                 }
@@ -1579,7 +1678,7 @@ namespace core
 
         if (ImGui::IsKeyPressed(ImGuiKey_G) && !ghostColliding)
         {
-            simulation_universe->createMolecule(m_currentSelectedCompound.structure, cam.target);
+            m_simulation_universe->createMolecule(m_currentSelectedCompound.structure, cam.target);
 
             if (app_options.sound_effects)
                 m_audio_eng.playPreloaded("Place_Effect", 0.1f);
@@ -1737,7 +1836,7 @@ namespace core
             return;
         }
 
-        ImGui::PushFont(bold);
+        ImGui::PushFont(bold_font());
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "%s", full_view["preview"].get<std::string>().c_str());
         ImGui::PopFont();
 
@@ -1949,7 +2048,7 @@ namespace core
 
         constexpr float box_size = 54.f;
 
-        ImGui::PushFont(bold_big);
+        ImGui::PushFont(bold_big_font());
         std::string title = comp_sel["periodic_title"].get<std::string>();
         std::string subtitle = comp_sel["periodic_subtitle"].get<std::string>();
 
@@ -2025,7 +2124,7 @@ namespace core
                 ImU32 smallTextColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
                 ImU32 nameColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-                ImGui::PushFont(regular_small);
+                ImGui::PushFont(regular_font_small());
                 draw_list->AddText(ImVec2(buttonMin.x + 4.0f, buttonMin.y + 4.0f),
                                    smallTextColor,
                                    std::to_string(Z).c_str());
@@ -2042,7 +2141,7 @@ namespace core
                                    symbol.c_str());
                 ImGui::PopFont();
 
-                ImGui::PushFont(regular_small);
+                ImGui::PushFont(regular_font_small());
                 ImVec2 nameSize = ImGui::CalcTextSize(name.c_str());
                 draw_list->AddText(ImVec2(buttonCenter.x - nameSize.x * 0.5f, buttonMax.y - nameSize.y - 4.0f),
                                    nameColor,
@@ -2214,7 +2313,7 @@ namespace core
             if (ImGui::Button(packerJson["pack_sim"].get<std::string>().c_str()))
             {
                 if (!m_packChosen.empty())
-                    m_simpacker.packDensity(*simulation_universe.get(), m_packChosen, m_packParts, simulation_universe->boxSizes() * 0.5f, glm::vec3(xyz[0], xyz[1], xyz[2]), m_packDensity);
+                    m_simpacker.packDensity(*m_simulation_universe.get(), m_packChosen, m_packParts, m_simulation_universe->boxSizes() * 0.5f, glm::vec3(xyz[0], xyz[1], xyz[2]), m_packDensity);
             }
         }
         else
@@ -2245,10 +2344,10 @@ namespace core
     {
         if (m_recordingFrames && dynamics->timestep())
         {
-            simulation_universe->saveFrame();
+            m_simulation_universe->saveFrame();
 
             if (m_autoFrame)
-                m_currentFrame = simulation_universe->numFrames();
+                m_currentFrame = m_simulation_universe->numFrames();
         }
     }
 
@@ -2259,7 +2358,7 @@ namespace core
         rendering_info info = getSimulationRenderingInfo(app_options.sim_options.render_mode);
         info.universeBox = !(screenshotToggle && savedSimulation);
 
-        simulation_universe->draw(m_window.getWindow(), info);
+        m_simulation_universe->draw(m_window.getWindow(), info);
         m_rendering_eng.handleCamera();
 
         if (screenshotToggle)
@@ -2291,7 +2390,7 @@ namespace core
         else if (pauseMenuOpen)
             pauseMenu();
 
-        playFramesUniverse(*simulation_universe.get());
+        playFramesUniverse(*m_simulation_universe.get());
 
         if (m_scenarioHandler.inScenario())
         {
@@ -2330,6 +2429,11 @@ namespace core
             compoundSelector = false;
             dynamics->pause();
         }
+
+        if (m_simulation_universe && !m_siminspector.accumulating() && m_siminspector.rdfInProgress())
+            m_RDFgraph = m_siminspector.finalizeRDF(*m_simulation_universe.get());
+        else if (m_simulation_universe && m_siminspector.rdfInProgress())
+            m_siminspector.accumulateRDFFrame(*m_simulation_universe.get());
     }
 
     std::string formatTime()
@@ -2409,11 +2513,11 @@ namespace core
         {
             dynamics->destroySSBOs();
 
-            simulation_universe.release();
-            simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            m_simulation_universe.release();
+            m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
 
             dynamics.release();
-            dynamics = std::make_unique<sim::sim_dynamics>(*simulation_universe.get());
+            dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
             m_rendering_eng.camera().target = {sandbox_info.box.x / 2.f, sandbox_info.box.y / 2.f, sandbox_info.box.z / 2.f};
 
             dynamics->setTargetPressure(0.f);
@@ -2473,8 +2577,8 @@ namespace core
                 if (std::find(m_savedSandbox.begin(), m_savedSandbox.end(), saved) == m_savedSandbox.end())
                     m_savedSandbox.emplace_back(std::move(saved));
 
-                simulation_universe->saveScene(sandboxSave, std::string(input));
-                (void)simulation_universe->saveAsVideo(sandboxSave, std::string(input));
+                m_simulation_universe->saveScene(sandboxSave, std::string(input));
+                (void)m_simulation_universe->saveAsVideo(sandboxSave, std::string(input));
 
                 savedSimulation = true;
                 screenshotToggle = true;
@@ -2629,7 +2733,7 @@ namespace core
             m_recordingFrames = !m_recordingFrames;
 
             if (!m_recordingFrames)
-                simulation_universe->clearDisplayPositions();
+                m_simulation_universe->clearDisplayPositions();
         }
 
         ImGui::SameLine();
@@ -2642,32 +2746,23 @@ namespace core
         ImGui::SameLine();
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 50);
-        if (ImGui::SliderInt("##Frame", &m_currentFrame, 0, simulation_universe->numFrames(),
+        if (ImGui::SliderInt("##Frame", &m_currentFrame, 0, m_simulation_universe->numFrames(),
                              "Frame %d", ImGuiSliderFlags_AlwaysClamp))
         {
             m_playingVideo = false;
 
-            if (m_currentFrame != simulation_universe->numFrames())
+            if (m_currentFrame != m_simulation_universe->numFrames())
             {
-                simulation_universe->setDisplayPositions(simulation_universe->getFrame(m_currentFrame).positions);
+                m_simulation_universe->setDisplayPositions(m_simulation_universe->getFrame(m_currentFrame).positions);
                 m_autoFrame = false;
             }
             else
             {
                 m_autoFrame = true;
-                simulation_universe->clearDisplayPositions();
+                m_simulation_universe->clearDisplayPositions();
             }
         }
 
         ImGui::End();
-    }
-
-    // Saving
-
-    nlohmann::json UIHandler::save()
-    {
-        nlohmann::json UI_json{};
-
-        return UI_json;
     }
 } // namespace core

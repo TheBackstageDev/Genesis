@@ -259,38 +259,55 @@
       {
         "title": "Universe Stats",
 
-        "core_stats":
+        "tab_overview": "Overview",
+        "tab_controls": "Controls",
+        "tab_kinetic": "Kinetics",
+        "tab_structure": "Structure",
+        "tab_distributions": "Distributions",
+        
+        "overview": 
         {
-          "title": "Core Stats",
-          "temperature": "Temperature (K):",
-          "pressure": "Pressure (Kpa):",
           "time": "Time",
           "particles": "Particles",
           "molecules": "Molecules",
-          "slider_temperature": "Target T (K):",
-          "slider_pressure": "Target P (Kpa):"
-        },
-        "charge_stats":
-        {
-          "title": "Charge Stats",
-          "wall_charge_enabled": "Wall Charges Enabled",
-          "magnetic_strength": "Magnetic Field Strength",
-          "magnetic_enabled": "Magnetic Field Enabled"
-        },
-        "energy_stats":
-        {
-          "title": "Energy & Kinetics",
-          "kinetic_energy": "Kinetic Energy",
-          "potential_energy": "Potential Energy",
+          "temperature": "Temperature (K):",
+          "pressure": "Pressure (kPa):",
           "total_energy": "Total Energy"
         },
-        "graphs_stats":
+        "controls":
         {
-          "title": "Graphs & Plots",
-          "warning": "Frames need to be recorded in order for graphs to work!",
-          "Temperature X time": "Temperature X time",
-          "Molecules X time": "Molecules X time",
-          "RDF Graph": "RDF Graph"
+          "thermostat": "Thermostat",
+          "targetTemp": "Target Temperature (K)",
+          "targetPress": "Target Pressure (kPa)",
+          "constant": "Constant",
+
+          "externalFields": "External Fields",
+          "magneticField": "Magnetic FIeld",
+          "magneticFieldStrength": "Strength (X/Y/Z)",
+          "wallChargeEnable": "Enable Wall Charges",
+          "magneticFieldEnable": "Enable Magnetic FIeld"
+        },
+        "kinetic": 
+        {
+          "kinetic_energy": "Kinetic Energy",
+          "potential_energy": "Potential Energy",
+          "total_energy": "Total Energy",
+          "mean_speed": "Mean Particle Speed",
+          "energy_over_time": "Energy over Time"
+        },
+        "structure": 
+        {
+          "rdf_title": "Radial Distribution Function g(r)",
+          "rdf_plot": "RDF Plot",
+          "element_a": "Element A",
+          "element_b": "Element B",
+          "rdf_steps": "Amount of Steps",
+          "update_graph": "Update Graph"
+        },
+        "distributions": 
+        {
+          "velocity_distribution": "Velocity Distribution",
+          "speed_distribution": "Speed Distribution"
         }
       },
 
