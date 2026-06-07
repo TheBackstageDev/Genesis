@@ -1,5 +1,5 @@
 #pragma once
-#include <SFML/Graphics.hpp>
+
 #include "simulation/constants.hpp"
 #include "core/window.hpp"
 #include <algorithm>

@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include <map>
 #include <string>
-#include <SFML/Graphics.hpp>
 #include <cmath>
+
+#include <glm/glm.hpp>
 
 namespace sim
 {
@@ -442,49 +444,49 @@ namespace constants
         2.00f    //118 Og
     };
 
-    inline sf::Color getElementColor(uint8_t Z)
+    inline glm::vec3 getElementColor(uint8_t Z)
     {
         switch (Z)
         {
-            case  1: return sf::Color(210, 210, 210);    // H  - Hydrogen     (White)
-            case  2: return sf::Color(217, 255, 255);    // He - Helium       (Light Cyan)
-            case  3: return sf::Color(204, 128, 255);    // Li - Lithium      (Violet)
-            case  4: return sf::Color(178, 255, 255);    // Be - Beryllium    (Light Green)
-            case  5: return sf::Color(128, 128, 128);    // B  - Boron        (Dark Gray)
-            case  6: return sf::Color(138, 138, 138);    // C  - Carbon       (Gray)
-            case  7: return sf::Color( 48,  80, 248);    // N  - Nitrogen     (Blue)
-            case  8: return sf::Color(255,  13,  13);    // O  - Oxygen       (Red)
-            case  9: return sf::Color(  0, 233, 233);    // F  - Fluorine     (Cyan)
-            case 10: return sf::Color(179, 227, 245);    // Ne - Neon         (Pale Blue)
-            case 11: return sf::Color( 42,  82, 190);    // Na - Sodium       (Blue)
-            case 12: return sf::Color(  0, 130,  70);    // Mg - Magnesium    (Dark Green)
-            case 13: return sf::Color(194, 194, 194);    // Al - Aluminum     (Silver)
-            case 14: return sf::Color( 99,  99,  99);    // Si - Silicon      (Gray)
-            case 15: return sf::Color(255, 165,   0);    // P  - Phosphorus   (Orange)
-            case 16: return sf::Color(200, 200,   1);    // S  - Sulfur       (Yellow)
-            case 17: return sf::Color( 50, 205,  50);    // Cl - Chlorine     (Green)
-            case 18: return sf::Color(115, 3, 192);    // Ar - Argon        (Dark Purple)
-            case 19: return sf::Color(160,  82,  45);    // K  - Potassium    (Brown)
-            case 20: return sf::Color(135, 206, 235);    // Ca - Calcium      (Sky Blue)
-            case 21: return sf::Color(108, 108, 100);    // Sc - Scandium     (Gray)
-            case 22: return sf::Color(  0, 100,   0);    // Ti - Titanium     (Dark Green)
-            case 23: return sf::Color(148,   0, 211);    // V  - Vanadium     (Purple)
-            case 24: return sf::Color( 70, 130, 180);    // Cr - Chromium     (Steel Blue)
-            case 25: return sf::Color( 25,  25, 112);    // Mn - Manganese    (Midnight Blue)
-            case 26: return sf::Color(194,  78,  84);    // Fe - Iron         (Rust Red)
-            case  36: return sf::Color(50, 200, 50); // Kr
-            case 53: return sf::Color(150, 5, 200); // I
-            case  54: return sf::Color(  0, 120, 120); // Xe 
-            case 79: return sf::Color(222, 222, 1); // Au
-            case  86: return sf::Color( 80,  80,  80); // Rn (dark gray)
-            case 92: return sf::Color(100, 200, 0); // U
+            case  1: return glm::vec3(210, 210, 210);    // H  - Hydrogen     (White)
+            case  2: return glm::vec3(217, 255, 255);    // He - Helium       (Light Cyan)
+            case  3: return glm::vec3(204, 128, 255);    // Li - Lithium      (Violet)
+            case  4: return glm::vec3(178, 255, 255);    // Be - Beryllium    (Light Green)
+            case  5: return glm::vec3(128, 128, 128);    // B  - Boron        (Dark Gray)
+            case  6: return glm::vec3(138, 138, 138);    // C  - Carbon       (Gray)
+            case  7: return glm::vec3( 48,  80, 248);    // N  - Nitrogen     (Blue)
+            case  8: return glm::vec3(255,  13,  13);    // O  - Oxygen       (Red)
+            case  9: return glm::vec3(  0, 233, 233);    // F  - Fluorine     (Cyan)
+            case 10: return glm::vec3(179, 227, 245);    // Ne - Neon         (Pale Blue)
+            case 11: return glm::vec3( 42,  82, 190);    // Na - Sodium       (Blue)
+            case 12: return glm::vec3(  0, 130,  70);    // Mg - Magnesium    (Dark Green)
+            case 13: return glm::vec3(194, 194, 194);    // Al - Aluminum     (Silver)
+            case 14: return glm::vec3( 99,  99,  99);    // Si - Silicon      (Gray)
+            case 15: return glm::vec3(255, 165,   0);    // P  - Phosphorus   (Orange)
+            case 16: return glm::vec3(200, 200,   1);    // S  - Sulfur       (Yellow)
+            case 17: return glm::vec3( 50, 205,  50);    // Cl - Chlorine     (Green)
+            case 18: return glm::vec3(115, 3, 192);    // Ar - Argon        (Dark Purple)
+            case 19: return glm::vec3(160,  82,  45);    // K  - Potassium    (Brown)
+            case 20: return glm::vec3(135, 206, 235);    // Ca - Calcium      (Sky Blue)
+            case 21: return glm::vec3(108, 108, 100);    // Sc - Scandium     (Gray)
+            case 22: return glm::vec3(  0, 100,   0);    // Ti - Titanium     (Dark Green)
+            case 23: return glm::vec3(148,   0, 211);    // V  - Vanadium     (Purple)
+            case 24: return glm::vec3( 70, 130, 180);    // Cr - Chromium     (Steel Blue)
+            case 25: return glm::vec3( 25,  25, 112);    // Mn - Manganese    (Midnight Blue)
+            case 26: return glm::vec3(194,  78,  84);    // Fe - Iron         (Rust Red)
+            case  36: return glm::vec3(50, 200, 50); // Kr
+            case 53: return glm::vec3(150, 5, 200); // I
+            case  54: return glm::vec3(  0, 120, 120); // Xe 
+            case 79: return glm::vec3(222, 222, 1); // Au
+            case  86: return glm::vec3( 80,  80,  80); // Rn (dark gray)
+            case 92: return glm::vec3(100, 200, 0); // U
             default:
             {
-                if (Z >= 21 && Z <= 30)  return sf::Color(200, 150, 150); // transition metals reddish
-                if (Z >= 31 && Z <= 48)  return sf::Color(150, 200, 150); // post-transition greenish
-                if (Z >= 57 && Z <= 71)  return sf::Color(255, 200, 100); // lanthanides orange
-                if (Z >= 89 && Z <= 103) return sf::Color(255, 150, 200); // actinides pink
-                return sf::Color(200, 200, 200); // unknown
+                if (Z >= 21 && Z <= 30)  return glm::vec3(200, 150, 150); // transition metals reddish
+                if (Z >= 31 && Z <= 48)  return glm::vec3(150, 200, 150); // post-transition greenish
+                if (Z >= 57 && Z <= 71)  return glm::vec3(255, 200, 100); // lanthanides orange
+                if (Z >= 89 && Z <= 103) return glm::vec3(255, 150, 200); // actinides pink
+                return glm::vec3(200, 200, 200); // unknown
             }
         }
     }

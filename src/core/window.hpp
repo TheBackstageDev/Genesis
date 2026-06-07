@@ -1,55 +1,53 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <glad.h>
+#include <GLFW/glfw3.h>
 
-#include <imgui/imgui.h>
-#include "imgui/imgui-SFML.h"
-
-#include <SFML/Graphics.hpp>
-#include <SFML/OpenGL.hpp>
-
-#define MIN_ZOOM 0.001f
-#define MAX_ZOOM 100.f
-#define ZOOM_SPEED 0.1f
-
-#define PAN_SPEED 1.f
+#include <vector>
 
 namespace core
-{
+{   
+    struct extent2D 
+    {
+        uint32_t width;
+        uint32_t height;
+    };
+
     class window_t
     {
     public:
-        window_t(uint32_t width, uint32_t height, const std::string& title, float boxSize = 50.f, uint32_t framerate = 60);
+        window_t(int32_t width, int32_t height, const char* title);
         ~window_t();
 
-        bool pollEvents(); 
+        window_t(const window_t &) = delete;
+        window_t &operator=(const window_t &) = delete;
 
-        bool isOpen() const { return window.isOpen(); }
+        const char* get_title() { return title; }
 
-        void refresh()
+        GLFWwindow* getWindow() { return p_window; }
+
+        extent2D extent() const 
         {
-            window.setView(view);
+            int32_t width, height;
+
+            glfwGetWindowSize(p_window, &width, &height);
+
+            return extent2D{static_cast<uint32_t>(width), static_cast<uint32_t>(height)}; 
         }
 
-        void draw(sf::Drawable& drawable) { window.draw(drawable); }
+        bool should_close() { return glfwWindowShouldClose(p_window); }
+        bool resized() { return _resized; }
 
-        void clear(sf::Color color = sf::Color::Black) { window.clear(sf::Color::Black); glClearColor(0.00f, 0.00f, 0.00f, 1.0f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);}
-        void display() { window.display(); }
-        void handleCameraInput();
+        void resetResizedFlag() { _resized = false; }
+        void processInput();
 
-        sf::View& getuiview() { return uiView; };
-        sf::Font& getFont() { return arial; }
-        
-        sf::RenderWindow& getWindow() { return window; }
-
+        operator GLFWwindow *() const { return p_window; }
     private:
-        uint32_t height; uint32_t width;
-        float boxSize;
-        
-        sf::RenderWindow window;
-        sf::View view;
-        sf::View uiView;
+        static void frameBufferResizeCallback(GLFWwindow *window, int width, int height);
 
-        sf::Font arial;
+        bool _resized = false;
+        
+        const char* title = nullptr;
+        GLFWwindow* p_window = nullptr;
     };
 } // namespace core

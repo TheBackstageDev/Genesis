@@ -7,6 +7,7 @@
 
 #include <implot.h>
 
+#include "framebufferUtils.hpp"
 #include "simulation/smiles_parser.hpp"
 #include "simulation/format_loader.hpp"
 
@@ -178,28 +179,8 @@ namespace core
         }
     }
 
-    void resize_texture(sf::Texture &tex, sf::Vector2u size)
-    {
-        if (!tex.resize(size))
-        {
-            std::cerr << "[UI HANDLER]: icon couldn't resize! \n";
-        }
-    }
-
-    void load_texture(sf::Texture &tex, std::filesystem::path path)
-    {
-        if (!tex.loadFromFile(path))
-        {
-            std::cerr << "[UI HANDLER]: icon couldn't load! \n";
-        }
-    }
-
     void UIHandler::initImages()
     {
-        sf::Image placeholder_image;
-        placeholder_image.createMaskFromColor(sf::Color(80, 80, 90), 255); // Dark gray
-        placeholder_texture_id = placeholder_texture.getNativeHandle();
-
         std::filesystem::path icons = "resource/images/icons";
         std::filesystem::path magnifying_glass = icons / "magnifying_glass.png";
         std::filesystem::path pause = icons / "pause.png";
@@ -212,44 +193,16 @@ namespace core
         std::filesystem::path genesis_icon = icons / "Genesis.png";
         std::filesystem::path packer_icon = icons / "packer.png";
 
-        sf::Texture magnifying_texture{};
-        sf::Texture pause_texture{};
-        sf::Texture resume_texture{};
-        sf::Texture right_arrow_texture{};
-        sf::Texture left_arrow_texture{};
-        sf::Texture plus_texture{};
-        sf::Texture minus_texture{};
-        sf::Texture stats_texture{};
-        sf::Texture genesis_icon_texture{};
-        sf::Texture packer_texture{};
-
-        resize_texture(magnifying_texture, {64, 64});
-        resize_texture(pause_texture, {32, 32});
-        resize_texture(resume_texture, {32, 32});
-        resize_texture(right_arrow_texture, {32, 32});
-        resize_texture(left_arrow_texture, {32, 32});
-        resize_texture(plus_texture, {32, 32});
-        load_texture(magnifying_texture, magnifying_glass);
-        load_texture(genesis_icon_texture, genesis_icon);
-        load_texture(pause_texture, pause);
-        load_texture(resume_texture, resume);
-        load_texture(right_arrow_texture, right_arrow);
-        load_texture(left_arrow_texture, left_arrow);
-        load_texture(plus_texture, plus);
-        load_texture(minus_texture, minus);
-        load_texture(stats_texture, stats);
-        load_texture(packer_texture, packer_icon);
-
-        textures.emplace("magnifying_texture", std::move(magnifying_texture));
-        textures.emplace("genesis_icon", std::move(genesis_icon_texture));
-        textures.emplace("pause_icon", std::move(pause_texture));
-        textures.emplace("resume_icon", std::move(resume_texture));
-        textures.emplace("right_arrow_icon", std::move(right_arrow_texture));
-        textures.emplace("left_arrow_icon", std::move(left_arrow_texture));
-        textures.emplace("plus_icon", std::move(plus_texture));
-        textures.emplace("minus_icon", std::move(minus_texture));
-        textures.emplace("stats_icon", std::move(stats_texture));
-        textures.emplace("packer_icon", std::move(packer_texture));
+        m_images.emplace("magnifying_texture", core::loadTexture(magnifying_glass));
+        m_images.emplace("genesis_icon", core::loadTexture(genesis_icon));
+        m_images.emplace("pause_icon", core::loadTexture(pause));
+        m_images.emplace("resume_icon", core::loadTexture(resume));
+        m_images.emplace("right_arrow_icon", core::loadTexture(right_arrow));
+        m_images.emplace("left_arrow_icon", core::loadTexture(left_arrow));
+        m_images.emplace("plus_icon", core::loadTexture(plus));
+        m_images.emplace("minus_icon", core::loadTexture(minus));
+        m_images.emplace("stats_icon", core::loadTexture(stats));
+        m_images.emplace("packer_icon", core::loadTexture(packer_icon));
 
         const std::filesystem::path scenarios_dir = "scenes/scenarios";
         if (!std::filesystem::exists(sandboxSave))
@@ -262,14 +215,14 @@ namespace core
         {
             if (entry.is_regular_file() && entry.path().extension() == ".png")
             {
-                sf::Texture scenario_texture{};
-                if (!scenario_texture.loadFromFile(entry.path()))
+                GLuint scenario_texture = core::loadTexture(entry.path());
+                if (scenario_texture == 0)
                 {
                     std::cerr << "[UI HANDLER]: Couldn't load sandbox image!" << entry.path() << "\n";
                     continue;
                 }
 
-                textures.emplace(entry.path().filename().string(), std::move(scenario_texture));
+                m_images.emplace(entry.path().filename().string(), std::move(scenario_texture));
             }
         }
 
@@ -283,14 +236,14 @@ namespace core
         {
             if (entry.is_regular_file() && entry.path().extension() == ".png")
             {
-                sf::Texture scenario_texture{};
-                if (!scenario_texture.loadFromFile(entry.path()))
+                GLuint scenario_texture = core::loadTexture(entry.path());
+                if (scenario_texture == 0)
                 {
                     std::cerr << "[UI HANDLER]: Couldn't load scenario image!" << entry.path() << "\n";
                     continue;
                 }
 
-                textures.emplace(entry.path().filename().string(), std::move(scenario_texture));
+                m_images.emplace(entry.path().filename().string(), std::move(scenario_texture));
             }
         }
     }
@@ -315,7 +268,6 @@ namespace core
 
         for (auto &[name, compound] : compound_presets)
         {
-            sf::RenderTexture thumbnail_renderer;
             display_universe->clear();
             display_universe->createMolecule(compound.structure, {0.f, 0.f, 0.f});
 
@@ -334,15 +286,37 @@ namespace core
             rendering_info info = getSimulationRenderingInfo(simulation_render_mode::SPACE_FILLING);
             info.universeBox = false;
 
-            m_window.clear();
-            display_universe->draw(m_window.getWindow(), info);
+            glClearColor(0.02f, 0.02f, 0.02f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            display_universe->draw(info);
 
-            sf::Texture thumb_texture;
-            if (!thumb_texture.resize(m_window.getWindow().getSize()))
-                continue;
+            int32_t width, height;
+            glfwGetFramebufferSize(m_window, &width, &height);
 
-            thumb_texture.update(m_window.getWindow());
-            thumb_textures.emplace(name, std::move(thumb_texture));
+            auto pixels = fbutils::captureFramebuffer(width, height);
+
+            GLuint textureID;
+            glGenTextures(1, &textureID);
+            glBindTexture(GL_TEXTURE_2D, textureID);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA8,
+                width,
+                height,
+                0,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                pixels.data()
+            );
+
+            m_images.emplace(name, std::move(textureID));
         }
 
         display_universe->clear();
@@ -471,7 +445,7 @@ namespace core
                 image_width = image_height * aspect_ratio;
             }
 
-            ImGui::Image(textures["genesis_icon"], ImVec2(image_width, image_height));
+            ImGui::Image(m_images["genesis_icon"], ImVec2(image_width, image_height));
 
             ImGui::End();
         }
@@ -602,7 +576,7 @@ namespace core
         }
 
         auto &current_universe = m_backgroundUniverses[m_currentDisplay];
-        current_universe->draw(m_window.getWindow(), getSimulationRenderingInfo(app_options.sim_options.render_mode));
+        current_universe->draw(getSimulationRenderingInfo(app_options.sim_options.render_mode));
         camera.rotateAroundTarget(10.f * m_deltaTime, 0.f);
 
         if (current_universe->numFrames() > 0)
@@ -614,18 +588,18 @@ namespace core
     void UIHandler::drawSandboxSave(scenario_info &info)
     {
         const float image_save_size = image_size;
-        const sf::Texture *thumbnail = &placeholder_texture;
+        GLuint thumbnail = 0;
 
         std::string thumb_key = info.title + ".png";
-        if (textures.count(thumb_key))
-            thumbnail = &textures.at(thumb_key);
+        if (m_images.count(thumb_key))
+            thumbnail = m_images.at(thumb_key);
 
         float avail_width = ImGui::GetContentRegionAvail().x;
         float offset_x = (avail_width - image_save_size) * 0.5f;
         if (offset_x > 0)
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
-        ImGui::Image(*thumbnail, ImVec2(image_save_size, image_save_size));
+        ImGui::Image((ImTextureID)thumbnail, ImVec2(image_save_size, image_save_size));
 
         ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -693,7 +667,7 @@ namespace core
 
                     std::filesystem::remove(thumb_path);
 
-                    textures.erase(it->title + ".png");
+                    m_images.erase(it->title + ".png");
                     m_savedSandbox.erase(it);
                 }
 
@@ -742,7 +716,7 @@ namespace core
                 ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.9f));
 
                 ImGui::BeginChild(ImGui::GetID(sandbox.title.c_str()),
-                                  ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+                                  ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
                 drawSandboxSave(sandbox);
 
                 ImGui::PopStyleColor();
@@ -767,7 +741,7 @@ namespace core
 
         ImGui::Begin(sandbox_creation["title"].get<std::string>().c_str(), nullptr, ImGuiWindowFlags_NoMove);
 
-        if (ImGui::ImageButton("##packerbutton", textures["packer_icon"], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##packerbutton", m_images["packer_icon"], ImVec2(32.f, 32.f)))
         {
             packerUIOpen = !packerUIOpen;
         }
@@ -930,14 +904,14 @@ namespace core
         ImGui::Columns(2, nullptr, false);
         ImGui::SetColumnWidth(0, 230.0f);
 
-        const sf::Texture *thumb = &placeholder_texture;
+        GLuint thumb = 0;
         std::string thumbKey = id + ".png";
-        if (textures.count(thumbKey))
-            thumb = &textures.at(thumbKey);
+        if (m_images.count(thumbKey))
+            thumb = m_images.at(thumbKey);
 
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.7f, 1.0f, 0.6f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
-        ImGui::Image(*thumb, ImVec2(220, 220));
+        ImGui::Image((ImTextureID)thumb, ImVec2(220, 220));
         ImGui::PopStyleVar();
         ImGui::PopStyleColor();
 
@@ -1345,7 +1319,6 @@ namespace core
                             ys.push_back(p.y);
                         }
 
-                        ImPlot::SetNextLineStyle(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 2.5f);
                         ImPlot::PlotShaded("g(r)", xs.data(), ys.data(), (int)xs.size());
 
                         ImPlot::EndPlot();
@@ -1413,7 +1386,7 @@ namespace core
 
         ImGui::BeginChild("TimeControl", timecontrol_size);
 
-        if (ImGui::ImageButton("##timebutton", textures[mode], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##timebutton", m_images[mode], ImVec2(32.f, 32.f)))
         {
             sim_paused ? dynamics->unpause() : dynamics->pause();
         }
@@ -1431,7 +1404,7 @@ namespace core
 
         ImGui::SameLine();
 
-        if (ImGui::ImageButton("##slowdownbutton", textures["left_arrow_icon"], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##slowdownbutton", m_images["left_arrow_icon"], ImVec2(32.f, 32.f)))
         {
             dynamics->setTimescale(dynamics->timescale() * 0.9f);
         }
@@ -1448,7 +1421,7 @@ namespace core
 
         ImGui::SameLine();
 
-        if (ImGui::ImageButton("##speedupbutton", textures["right_arrow_icon"], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##speedupbutton", m_images["right_arrow_icon"], ImVec2(32.f, 32.f)))
         {
             dynamics->setTimescale(dynamics->timescale() * 1.1f);
         }
@@ -1507,7 +1480,7 @@ namespace core
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.7f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
 
-        if (ImGui::ImageButton("##compoundsbutton", textures["plus_icon"], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##compoundsbutton", m_images["plus_icon"], ImVec2(32.f, 32.f)))
         {
             compoundSelector = !compoundSelector;
         }
@@ -1521,7 +1494,7 @@ namespace core
         ImGui::SameLine();
         ImGui::SetCursorPosX((io.DisplaySize.x - 120.0f));
 
-        if (ImGui::ImageButton("##packerbutton", textures["packer_icon"], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##packerbutton", m_images["packer_icon"], ImVec2(32.f, 32.f)))
         {
             packerUIOpen = !packerUIOpen;
         }
@@ -1529,7 +1502,7 @@ namespace core
         ImGui::SameLine();
         ImGui::SetCursorPosX((io.DisplaySize.x - 64.0f));
 
-        if (ImGui::ImageButton("##statsbutton", textures["stats_icon"], ImVec2(32.f, 32.f)))
+        if (ImGui::ImageButton("##statsbutton", m_images["stats_icon"], ImVec2(32.f, 32.f)))
         {
             statsOpen = !statsOpen;
         }
@@ -1713,7 +1686,7 @@ namespace core
         if (offset_x > 0)
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
-        ImGui::Image(thumb_textures[compound.name], ImVec2(image_size, image_size));
+        ImGui::Image(m_images[compound.name], ImVec2(image_size, image_size));
         ImGui::PopStyleVar();
 
         ImGui::SameLine(11.f);
@@ -1727,7 +1700,7 @@ namespace core
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
-        if (ImGui::ImageButton("##fullviewbutton", textures["magnifying_texture"], ImVec2(30.f, 30.f), sf::Color::White))
+        if (ImGui::ImageButton("##fullviewbutton", m_images["magnifying_texture"], ImVec2(30.f, 30.f)))
         {
             selectedCompound = compound.name;
             compoundFullView = true;
@@ -1779,7 +1752,7 @@ namespace core
 
         ImGui::SetCursorPosX(row_width * 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        if (ImGui::ImageButton("##addcompound", textures["plus_icon"].getNativeHandle(), ImVec2(32.0f, 32.0f)))
+        if (ImGui::ImageButton("##addcompound", m_images["plus_icon"], ImVec2(32.0f, 32.0f)))
         {
             compoundSelector = false;
             selectedCompound = compound.name;
@@ -1856,7 +1829,7 @@ namespace core
         ImGui::BeginChild("##3DPreview", ImVec2(400, 410), true, ImGuiWindowFlags_HorizontalScrollbar);
         {
             ImGui::SetCursorPosX(15);
-            ImGui::Image(thumb_textures[compound.name],
+            ImGui::Image(m_images[compound.name],
                          ImVec2(360, 360));
         }
         ImGui::EndChild();
@@ -1956,7 +1929,7 @@ namespace core
                             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.9f));
 
                             ImGui::BeginChild(ImGui::GetID(name.c_str()),
-                                              ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+                                              ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
                             drawCompoundView(compound);
                             ImGui::EndChild();
 
@@ -2200,7 +2173,7 @@ namespace core
 
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.3f));
-        ImGui::BeginChild("##MoleculeDisplay", ImVec2(0, 310), ImGuiChildFlags_Border);
+        ImGui::BeginChild("##MoleculeDisplay", ImVec2(0, 310), ImGuiChildFlags_Borders);
 
         int32_t columns = static_cast<int32_t>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
         columns = std::max(1, columns);
@@ -2219,9 +2192,9 @@ namespace core
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.0f);
                 ImGui::PushStyleColor(ImGuiCol_ChildBg, highlightedMol == i ? ImVec4(0.42f, 0.32f, 0.48f, 0.9f) : ImVec4(0.12f, 0.12f, 0.18f, 0.9f));
 
-                ImGui::BeginChild(ImGui::GetID(i), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+                ImGui::BeginChild(ImGui::GetID(i), ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
 
-                ImGui::Image(thumb_textures[m_packNames[i]], ImVec2(image_size, image_size));
+                ImGui::Image(m_images[m_packNames[i]], ImVec2(image_size, image_size));
                 std::string name = app_options.lang == localization::EN_US ? m_packNames[i] : compounds["compound_names"][m_packNames[i]].get<std::string>();
 
                 ImVec2 name_size = ImGui::CalcTextSize(name.c_str());
@@ -2286,7 +2259,7 @@ namespace core
         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - total_buttons_width - ImGui::GetStyle().WindowPadding.x);
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, .8f));
-        if (ImGui::ImageButton("##remove", textures["minus_icon"], ImVec2(32, 32)))
+        if (ImGui::ImageButton("##remove", m_images["minus_icon"], ImVec2(32, 32)))
         {
             if (highlightedMol >= 0 && highlightedMol < static_cast<int32_t>(m_packChosen.size()))
             {
@@ -2302,7 +2275,7 @@ namespace core
         ImGui::SameLine();
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.8f, 0.1f, .8f));
-        if (ImGui::ImageButton("##add", textures["plus_icon"], ImVec2(32, 32)))
+        if (ImGui::ImageButton("##add", m_images["plus_icon"], ImVec2(32, 32)))
         {
             compoundSelector = true;
         }
@@ -2358,7 +2331,7 @@ namespace core
         rendering_info info = getSimulationRenderingInfo(app_options.sim_options.render_mode);
         info.universeBox = !(screenshotToggle && savedSimulation);
 
-        m_simulation_universe->draw(m_window.getWindow(), info);
+        m_simulation_universe->draw(info);
         m_rendering_eng.handleCamera();
 
         if (screenshotToggle)
@@ -2378,11 +2351,11 @@ namespace core
 
         info.universeBox = false;
         info.opacity = 0.7f;
-        info.color_addition = ghostColliding ? ImVec4(0.8f, 0.f, 0.f, 0.f) : ImVec4(0.f, 0.f, 0.f, 0.f);
+        info.color_addition = ghostColliding ? glm::vec4(0.8f, 0.f, 0.f, 0.f) : glm::vec4(0.f, 0.f, 0.f, 0.f);
         if (ghostDisplay)
         {
             handleGhost();
-            display_universe->draw(m_window.getWindow(), info);
+            display_universe->draw(info);
         }
 
         if (!pauseMenuOpen || !showHUD)
@@ -2446,28 +2419,21 @@ namespace core
 
     void UIHandler::screenshotWindow(std::filesystem::path path, std::string name)
     {
-        sf::Texture screenshot{};
-        if (!screenshot.resize(m_window.getWindow().getSize()))
-        {
-            std::cerr << "[UI HANDLER]: Failed to Screenshot!";
-            return;
-        }
+        int32_t width, height;
+        glfwGetFramebufferSize(m_window, &width, &height);
 
-        screenshot.update(m_window.getWindow());
-        sf::Image image = screenshot.copyToImage();
+        auto pixels = fbutils::captureFramebuffer(width, height);
 
-        std::filesystem::path filepath = name.empty() ? path / (formatTime() + ".png") : path / (name + ".png");
-        if (!image.saveToFile(filepath))
-        {
-            std::cerr << "[UI HANDLER]: Failed to save Screenshot!";
-        }
+        std::filesystem::path filepath = name.empty()
+            ? path / (formatTime() + ".png")
+            : path / (name + ".png");
 
-        if (!name.empty())
+        if (!fbutils::savePNG(filepath, width, height, pixels))
         {
-            textures.emplace(name + ".png", screenshot);
+            std::cerr << "[UI HANDLER]: Failed to save Screenshot!" << std::endl;
         }
     }
-
+    
     void UIHandler::pauseMenu()
     {
         auto &pause_menu = localization_json["Simulation"]["pause_menu"];

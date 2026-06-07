@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glad/glad.h>
+#include <imgui.h>
 
 #include "core/camera.hpp"
 #include "core/window.hpp"
@@ -15,7 +16,6 @@
 #include <glm/gtc/constants.hpp>
 
 #include <functional>
-#include <SFML/Graphics.hpp>
 
 namespace sim
 {   
@@ -25,7 +25,7 @@ namespace sim
         rendering_engine(core::window_t &window);
         ~rendering_engine() = default;
 
-        void draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void draw(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void drawAngle(ImDrawList* draw_list, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
 
         void drawDebug();
@@ -66,23 +66,23 @@ namespace sim
 
         const float licorice_radius = 0.2f;
 
-        void drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info);
-        void drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info);
-        void drawBox(const glm::vec3 &box, sf::RenderTarget &target);
+        void drawHydrogenBond(int32_t H, const fun::rendering_simulation_info &sim_info);
+        void drawChargeField(const fun::rendering_simulation_info &sim_info);
+        void drawBox(const glm::vec3 &box);
 
         // Init
 
         void loadProgram(const std::string key, const std::string& vert, const std::string& frag);
 
-        void bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
-        void bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
-        void bindArrow(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void bindColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void bindBond(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void bindArrow(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         // Others
 
-        void drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
-        void drawBondHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
-        void drawAtomHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void drawHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void drawBondHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void drawAtomHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         glm::vec4 getAtomColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info, const uint32_t i);
 
@@ -92,6 +92,10 @@ namespace sim
         std::function<glm::vec3(glm::vec3 dir)> minImageVec;
 
         // Camera
+
+        glm::mat4 lastProj{1.f};
+        glm::mat4 lastView{1.f};
+
         ImVec2 lastMouse;
         glm::vec2 project(const glm::vec3 &p) const;
         core::camera_t cam;

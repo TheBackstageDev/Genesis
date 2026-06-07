@@ -33,7 +33,7 @@ namespace sim
             loadScene(path);
         }
 
-        void universe::draw(sf::RenderTarget &target, rendering_info info)
+        void universe::draw(rendering_info info)
         {
             rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions,
                                                .velocities = data.velocities,
@@ -54,7 +54,7 @@ namespace sim
                 info.arrows = m_Arrows;
             }
 
-            rendering_eng.draw(target, info, sim_info);
+            rendering_eng.draw(info, sim_info);
         }
 
         void universe::moleculeDrawOrder()

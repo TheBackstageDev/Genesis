@@ -1,7 +1,5 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
-
 #include "core/window.hpp"
 #include "core/camera.hpp"
 #include <vector>
@@ -183,7 +181,7 @@ namespace sim
             color_rendering_mode color_mode{color_rendering_mode::COLOR};
 
             float opacity = 1.0f;
-            ImVec4 color_addition{0.0f, 0.0f, 0.0f, 0.0f};
+            glm::vec4 color_addition{0.0f, 0.0f, 0.0f, 0.0f};
 
             bool flag_highlights = true;
             bool flag_arrows = true;

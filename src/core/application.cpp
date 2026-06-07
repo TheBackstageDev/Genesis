@@ -1,43 +1,37 @@
 #include "application.hpp"
 
-#include <imgui-SFML.h>
 #include <implot.h>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
 
+#include <chrono>
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
-        : window(width, height, name, 50.f, 0), ui(app_options, window, audio)
+        : window(width, height, name.c_str()), ui(app_options, window, audio)
     {
-        if (!ImGui::SFML::Init(window.getWindow(), false))
-            throw std::runtime_error("Error! failed to init Imgui");
-
-        sf::Image icon;
-        if (!icon.loadFromFile("resource/images/icons/window.png"))
-        {
-            std::cerr << "Error loading icon.png" << std::endl;
-        }
-
-        window.getWindow().setIcon(sf::Vector2u(icon.getSize().x, icon.getSize().y), icon.getPixelsPtr());
-
-        ImPlot::CreateContext();
-
         load();
         ui.set_language(app_options.lang);
         ui.setApplicationStateCallback([&](application_state newState)
         {
             current_state = newState;
         });
-
+        
         ui.setGetApplicationStateCallback([&]()
         {
             return current_state;
         });
         
+        initIMGUI();
+        ImPlot::CreateContext();
+        
         ImGuiIO& io = ImGui::GetIO();
-        io.Fonts = new ImFontAtlas();
 
         io.Fonts->AddFontDefault();
         constexpr float size = 18.5f;
@@ -74,12 +68,25 @@ namespace core
         ui.set_bold_big_font(bold_big);
         ui.set_black_font(black);
 
-        if (!ImGui::SFML::UpdateFontTexture())
-        {
-            throw std::runtime_error("[APPLICATION]: IMGUI SFML Couldn't update it's fonts");
-        }
+        io.Fonts->Build();
 
         initSounds();
+    }
+
+    void application::initIMGUI()
+    {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImPlot::CreateContext();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+        ImGui_ImplOpenGL3_Init("#version 130");
+        ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
+
+        ImGui::StyleColorsDark();
     }
 
     application::~application()
@@ -90,8 +97,10 @@ namespace core
         if (simulationThread.joinable())
             simulationThread.join();
 
+            
+        ImGui::DestroyContext();
+        ImGui_ImplOpenGL3_Shutdown();
         ImPlot::DestroyContext();
-        ImGui::SFML::Shutdown(window.getWindow());
     }
 
     void application::initSounds()
@@ -127,7 +136,7 @@ namespace core
 
                         auto& dynamics = ui.getDynamics();
 
-                        if (current_state == application_state::APP_STATE_SIMULATION && dynamics && 
+                        if (dynamics && current_state == application_state::APP_STATE_SIMULATION && 
                             !dynamics->isPaused())
                         {
                             auto start = std::chrono::high_resolution_clock::now();
@@ -155,23 +164,29 @@ namespace core
 
     void application::run()
     {
-        sf::Clock deltaClock;
-        while (window.isOpen() && current_state != application_state::APP_STATE_EXIT)
-        {
-            window.pollEvents(); 
-            
-            ui.setDeltaTime(deltaClock.getElapsedTime().asSeconds());
-            ImGui::SFML::Update(window.getWindow(), deltaClock.restart());
+        double lastTime = glfwGetTime();
 
-            window.getWindow().setFramerateLimit(app_options.target_fps);
-            window.refresh();
-            window.clear();
+        while (!window.should_close() && current_state != application_state::APP_STATE_EXIT)
+        {
+            glfwPollEvents();
+
+            double currentTime = glfwGetTime();
+            float deltaTime = static_cast<float>(currentTime - lastTime);
+            lastTime = currentTime;
+            ui.setDeltaTime(deltaTime);
+
+            glClearColor(0.01f, 0.01f, 0.01f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             if (!app_options.background_music)
             {
                 audio.stopSound("MainMenu_Music");
                 audio.stopSong();
             }
+
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
 
             if (current_state == application_state::APP_STATE_MENU)
             {
@@ -187,6 +202,9 @@ namespace core
 
                 runUniverse();
             }
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
             if (app_options.sound_effects)
             {
@@ -205,9 +223,12 @@ namespace core
                 wasAnyItemHoveredLastFrame = isAnyItemHoveredThisFrame;
             }
 
-            ImGui::SFML::Render(window.getWindow());
-            window.display();
+            glfwSwapBuffers(window);
         }
+
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
     }
 
     void application::save()

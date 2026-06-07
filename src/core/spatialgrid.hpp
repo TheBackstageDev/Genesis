@@ -1,6 +1,8 @@
 #pragma once
 
 #include <glm/glm.hpp>
+
+#include <algorithm>
 #include "simulation/constants.hpp"
 
 namespace core

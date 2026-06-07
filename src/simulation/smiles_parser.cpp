@@ -614,7 +614,7 @@ namespace sim
         }
     }
 
-    sf::Vector3f rotateDirection(const sf::Vector3f &v, const sf::Vector3f &axis, float angle)
+    glm::vec3 rotateDirection(const glm::vec3 &v, const glm::vec3 &axis, float angle)
     {
         const float c = std::cos(angle);
         const float s = std::sin(angle);
@@ -624,11 +624,11 @@ namespace sim
         const float xx = x * x, yy = y * y, zz = z * z;
         const float xy = x * y, xz = x * z, yz = y * z;
 
-        const sf::Vector3f row1(t * xx + c, t * xy - s * z, t * xz + s * y);
-        const sf::Vector3f row2(t * xy + s * z, t * yy + c, t * yz - s * x);
-        const sf::Vector3f row3(t * xz - s * y, t * yz + s * x, t * zz + c);
+        const glm::vec3 row1(t * xx + c, t * xy - s * z, t * xz + s * y);
+        const glm::vec3 row2(t * xy + s * z, t * yy + c, t * yz - s * x);
+        const glm::vec3 row3(t * xz - s * y, t * yz + s * x, t * zz + c);
 
-        return sf::Vector3f(
+        return glm::vec3(
             v.x * row1.x + v.y * row1.y + v.z * row1.z,
             v.x * row2.x + v.y * row2.y + v.z * row2.z,
             v.x * row3.x + v.y * row3.y + v.z * row3.z);

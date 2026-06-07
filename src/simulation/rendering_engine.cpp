@@ -112,7 +112,7 @@ namespace sim
             });
     }
 
-    void rendering_engine::drawBox(const glm::vec3 &box, sf::RenderTarget &target)
+    void rendering_engine::drawBox(const glm::vec3 &box)
     {
         const std::array<glm::vec3, 8> corners = {{
             {0.f, 0.f, 0.f},
@@ -150,8 +150,8 @@ namespace sim
         auto& box_program = programs["box"];
         box_program.use();
 
-        box_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
-        box_program.setUniform("u_view", cam.getViewMatrix());
+        box_program.setUniform("u_proj", lastProj);
+        box_program.setUniform("u_view", lastView);
 
         glEnable(GL_DEPTH_TEST);
         glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVertices.size()));
@@ -164,7 +164,7 @@ namespace sim
         }
     }
 
-    void rendering_engine::bindColor(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::bindColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (info.hyperBalls || info.wireframe && !(info.lennardBall || info.licorice)) return;
 
@@ -206,8 +206,8 @@ namespace sim
         auto& atom_program = programs["atom"];
         atom_program.use();
 
-        atom_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
-        atom_program.setUniform("u_view", cam.getViewMatrix());
+        atom_program.setUniform("u_proj", lastProj);
+        atom_program.setUniform("u_view", lastView);
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -218,10 +218,10 @@ namespace sim
             std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
         }
 
-        drawHighlight(target, info, sim_info);
+        drawHighlight(info, sim_info);
     }
 
-    void rendering_engine::bindBond(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::bindBond(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (info.spaceFilling || (!info.lennardBall && !info.licorice && !info.hyperBalls))
             return;
@@ -306,8 +306,8 @@ namespace sim
         auto& bond_program = programs["bond"];
         info.hyperBalls ? programs["hyper_balls"].use() : bond_program.use();
 
-        bond_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
-        bond_program.setUniform("u_view", cam.getViewMatrix());
+        bond_program.setUniform("u_proj", lastProj);
+        bond_program.setUniform("u_view", lastView);
 
         if (!info.hyperBalls) 
             bond_program.setUniform("licorice", static_cast<uint8_t>(info.licorice));
@@ -322,7 +322,7 @@ namespace sim
         }
     }
 
-    void rendering_engine::bindArrow(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::bindArrow(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (!info.flag_arrows) return;
 
@@ -353,8 +353,8 @@ namespace sim
         auto& arrow_program = programs["arrow"];
         arrow_program.use();
 
-        arrow_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
-        arrow_program.setUniform("u_view", cam.getViewMatrix());
+        arrow_program.setUniform("u_proj", lastProj);
+        arrow_program.setUniform("u_view", lastView);
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -366,16 +366,16 @@ namespace sim
         }
     }
 
-    void rendering_engine::drawHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::drawHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (!info.flag_highlights)
             return;
             
-        drawAtomHighlight(target, info, sim_info);
-        drawBondHighlight(target, info, sim_info);
+        drawAtomHighlight(info, sim_info);
+        drawBondHighlight(info, sim_info);
     }
 
-    void rendering_engine::drawBondHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::drawBondHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         if (info.spaceFilling || !info.lennardBall)
             return;
@@ -447,8 +447,8 @@ namespace sim
         auto& bond_program = programs["bond"];
         bond_program.use();
 
-        bond_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
-        bond_program.setUniform("u_view", cam.getViewMatrix());
+        bond_program.setUniform("u_proj", lastProj);
+        bond_program.setUniform("u_view", lastView);
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -460,7 +460,7 @@ namespace sim
         }
     }
 
-    void rendering_engine::drawAtomHighlight(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::drawAtomHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
         std::vector<AtomInstance> instances;
         instances.reserve(info.highlight_indices.size());
@@ -493,8 +493,8 @@ namespace sim
         auto& atom_program = programs["atom"];
         atom_program.use();
 
-        atom_program.setUniform("u_proj", cam.getProjectionMatrix(target.getView().getSize().x, target.getView().getSize().y));
-        atom_program.setUniform("u_view", cam.getViewMatrix());
+        atom_program.setUniform("u_proj", lastProj);
+        atom_program.setUniform("u_view", lastView);
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -506,14 +506,19 @@ namespace sim
         }
     }
 
-    void rendering_engine::draw(sf::RenderTarget &target, const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::draw(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (info.universeBox)
-            drawBox(sim_info.box, target);
+        core::extent2D windowExtent = window.extent();
 
-        bindBond(target, info, sim_info);
-        bindColor(target, info, sim_info);
-        bindArrow(target, info, sim_info);
+        lastProj = cam.getProjectionMatrix(windowExtent.width, windowExtent.height);
+        lastView = cam.getViewMatrix();
+        
+        if (info.universeBox)
+            drawBox(sim_info.box);
+
+        bindBond(info, sim_info);
+        bindColor(info, sim_info);
+        bindArrow(info, sim_info);
 
         glBindVertexArray(0);
         glUseProgram(0);
@@ -592,11 +597,11 @@ namespace sim
         );
     }
 
-    void rendering_engine::drawChargeField(sf::RenderTarget &target, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::drawChargeField(const fun::rendering_simulation_info &sim_info)
     {
     }
 
-    void rendering_engine::drawHydrogenBond(sf::RenderTarget &target, int32_t H, const fun::rendering_simulation_info &sim_info)
+    void rendering_engine::drawHydrogenBond(int32_t H, const fun::rendering_simulation_info &sim_info)
     {
     }
 
@@ -606,8 +611,8 @@ namespace sim
 
     glm::vec2 rendering_engine::project(const glm::vec3 &p) const
     {
-        auto size = window.getWindow().getView().getSize();
-        return cam.project(p, size.x, size.y);
+        auto size = window.extent();
+        return cam.project(p, size.width, size.height);
     }
 
     glm::vec3 hsv2rgb(glm::vec3 c) 
@@ -621,7 +626,7 @@ namespace sim
     {
         const auto &atom = sim_info.atoms[i];
         
-        sf::Color default_color = constants::getElementColor(atom.ZIndex);
+        glm::vec3 default_color = constants::getElementColor(atom.ZIndex);
         glm::vec4 default_norm(default_color.r / 255.f, default_color.g / 255.f, default_color.b / 255.f, info.opacity);
 
         switch(info.color_mode)

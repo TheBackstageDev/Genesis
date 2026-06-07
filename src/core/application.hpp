@@ -1,7 +1,6 @@
 #pragma once
 
-#include <imgui/imgui.h>
-#include <imgui/imgui-SFML.h>
+#include <imgui.h>
 
 #include "window.hpp"
 #include "UIHandler.hpp"
@@ -22,6 +21,8 @@ namespace core
 
         void run();
     private:
+        void initIMGUI();
+
         bool wasAnyItemHoveredLastFrame = false;
         bool wasMouseActiveLastFrame = false;
 

@@ -7,8 +7,6 @@
 
 #include "core/spatialgrid.hpp"
 
-#include <SFML/Graphics.hpp>
-
 #include <thread>
 #include <future>
 #include <queue>
@@ -103,6 +101,8 @@ namespace sim
 
             ~universe() = default;
 
+            void draw(rendering_info info);
+
             int32_t createAtom(glm::vec3 p, glm::vec3 v, uint8_t ZIndex = 1, uint8_t numNeutrons = 0, uint8_t numElectrons = 1, int32_t chirality = 0);
             int32_t createSubset(const def_subset& nSub, const int32_t baseAtom, const int32_t baseSubset);
             void createMolecule(molecule_structure structure, glm::vec3 pos, glm::vec3 vel =
@@ -157,8 +157,6 @@ namespace sim
             }
 
             void balanceMolecularCharges(subset& mol);
-            
-            void draw(sf::RenderTarget& target, rendering_info info);
             void setBoxSize(glm::vec3 nBox) { box = nBox; }
 
             // Scenario stuff
@@ -287,7 +285,7 @@ namespace sim
             // Energies
             float calculateKineticEnergy();
 
-            sf::Vector3f minImageVec(sf::Vector3f dr)
+            glm::vec3 minImageVec(glm::vec3 dr)
             {
                 bool wall_col = wallcollision();
                 bool rf_col = rooffloorcollision();
@@ -301,27 +299,6 @@ namespace sim
                 {
                     dr.x -= box.x * std::round(dr.x / box.x);
                     dr.y -= box.y * std::round(dr.y / box.y);
-                }
-
-                return dr;
-            }
-
-            glm::vec3 minImageVec(glm::vec3 dr)
-            {
-                bool wall_col = wallcollision();
-                bool rf_col = rooffloorcollision();
-
-                if (wall_col && rf_col) return dr;
-
-                glm::vec3 box_sizes = boxSizes();
-
-                if (!rf_col)
-                    dr.z -= box_sizes.z * std::round(dr.z / box_sizes.z);
-
-                if (!wall_col)
-                {
-                    dr.x -= box_sizes.x * std::round(dr.x / box_sizes.x);
-                    dr.y -= box_sizes.y * std::round(dr.y / box_sizes.y);
                 }
 
                 return dr;

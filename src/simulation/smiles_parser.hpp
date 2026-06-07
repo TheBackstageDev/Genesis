@@ -5,8 +5,6 @@
 #include <unordered_map>
 #include <string>
 
-#include <SFML/Graphics.hpp>
-
 #include "fundamental_structures.hpp"
 #include "constants.hpp"
 
@@ -19,5 +17,5 @@ namespace sim
     void organizeSubsets(std::vector<def_subset>& nSubsets, const std::vector<def_atom>& nAtoms, const std::vector<def_bond>& nBonds);
     void addImplicitHydrogens(std::vector<def_atom>& nAtoms, std::vector<def_bond>& nBonds);
 
-    sf::Vector3f rotateDirection(const sf::Vector3f& v, const sf::Vector3f& axis, float angle);
+    glm::vec3 rotateDirection(const glm::vec3& v, const glm::vec3& axis, float angle);
 } // namespace sim

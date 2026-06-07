@@ -11,50 +11,58 @@ set(SFML_STATIC_LIBRARIES TRUE)
 set(IMGUI_STATIC_LIBRARY TRUE)
 
 FetchContent_Declare(
-    SFML
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.1
+    GLFW
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
     GIT_SHALLOW ON
     EXCLUDE_FROM_ALL
     SYSTEM
 )
-FetchContent_MakeAvailable(SFML)
+FetchContent_MakeAvailable(GLFW)
 
 FetchContent_Declare(
     ImGui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.8
+    GIT_TAG docking
     GIT_SHALLOW ON
     EXCLUDE_FROM_ALL
     SYSTEM
 )
 FetchContent_MakeAvailable(ImGui)
 
-FetchContent_GetProperties(ImGui SOURCE_DIR IMGUI_DIR)
-
-set(IMGUI_INCLUDE_DIR ${IMGUI_DIR})
-
-set(IMGUI_SFML_FIND_SFML OFF)
-
 FetchContent_Declare(
-    ImGui-SFML
-    GIT_REPOSITORY https://github.com/SFML/imgui-sfml
-    GIT_TAG v3.0
-    GIT_SHALLOW ON
-    EXCLUDE_FROM_ALL
-    SYSTEM
+  implot
+  GIT_REPOSITORY https://github.com/epezent/implot.git
+  GIT_TAG        master
 )
-FetchContent_MakeAvailable(ImGui-SFML)
+FetchContent_MakeAvailable(implot)
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp include/imgui/*.cpp)
+set(IMGUI_SRC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    ${implot_SOURCE_DIR}/implot.cpp
+    ${implot_SOURCE_DIR}/implot_items.cpp
+)
 
-add_executable(${PROJECT_NAME} ${SRC_FILES})
+file(GLOB_RECURSE SRC_FILES src/*.cpp)
+
+add_executable(${PROJECT_NAME}
+    ${SRC_FILES}
+    include/glad/glad.c
+    ${IMGUI_SRC}
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src/
     include/
     include/glad/
-    include/imgui/
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+    ${implot_SOURCE_DIR}
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -63,10 +71,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    sfml-graphics
-    sfml-window
-    sfml-system
-    ImGui-SFML::ImGui-SFML
+    glfw
+    OpenGL::GL
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

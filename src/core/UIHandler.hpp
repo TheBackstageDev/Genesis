@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
-#include <imgui/imgui.h>
+#include <imgui.h>
+#include <implot.h>
 
 #include <vector>
 #include <map>
@@ -13,6 +13,7 @@
 
 #include "core/audio.hpp"
 #include "core/ScenarioHandler.hpp"
+#include "core/image_utils.hpp"
 #include "simulation/reaction_engine.hpp"
 #include "simulation/universe.hpp"
 #include "simulation/simulation_packer.hpp"
@@ -197,11 +198,7 @@ namespace core
 
         // Menu
 
-        sf::Texture placeholder_texture;
-        uint32_t placeholder_texture_id = 0;
-
-        std::unordered_map<std::string, sf::Texture> thumb_textures;
-        std::unordered_map<std::string, sf::Texture> textures;
+        std::unordered_map<std::string, GLuint> m_images;
 
         const float image_size = 200.f;
 
