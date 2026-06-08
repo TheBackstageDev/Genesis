@@ -811,12 +811,12 @@ namespace core
             m_packChosen.clear();
             m_packParts.clear();
 
-            /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::fun::molecule_structure structure{};
+            sim::io::loadXYZ("resource/molecules/dna.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            m_simulation_universe->createMolecule(structure, {15, 15, 15}); */
+            m_simulation_universe->createMolecule(structure, {60, 60, 60});
         }
 
         ImGui::SameLine();
@@ -1229,14 +1229,14 @@ namespace core
                     ImGui::DragFloat(sim_ui["controls"].value("targetTemp", "Target Temperature (K)").c_str(), &targetTemp, 0.1f, 0.1f, 5000.0f);
 
                     ImGui::SameLine();
-                    if (ImGui::Checkbox(sim_ui["controls"].value("constant", "Constant").c_str(), &constTemp))
+                    if (ImGui::Checkbox(std::string(sim_ui["controls"].value("constant", "Constant") + "##Temperature").c_str(), &constTemp))
                         constPress = false;
 
                     ImGui::PushItemWidth(200.f);
-                    ImGui::DragFloat(sim_ui["controls"].value("targetPress", "Target Pressure (kPa)").c_str(), &targetPress, 0.1f, 0.0f, 10000.0f);
+                    ImGui::DragFloat(std::string(sim_ui["controls"].value("targetPress", "Target Pressure (kPa)") + "##Pressure").c_str(), &targetPress, 0.1f, 0.0f, 10000.0f);
 
                     ImGui::SameLine();
-                    if (ImGui::Checkbox(sim_ui["controls"].value("constant", "Constant").c_str(), &constPress))
+                    if (ImGui::Checkbox(sim_ui["controls"].value("constant", "##Constant").c_str(), &constPress))
                         constTemp = false;
 
                     if (constTemp)
@@ -1280,11 +1280,15 @@ namespace core
                 // ====================== TAB 3: KINETIC / ENERGY ======================
                 if (ImGui::BeginTabItem(sim_ui["tab_kinetic"].get<std::string>().c_str()))
                 {
-                    float ke = m_siminspector.calculateKineticEnergy(*m_simulation_universe.get()) / 1000.f;
-                    float pe = m_siminspector.calculatePotentialEnergy(*m_simulation_universe.get()) / 1000.f;
+                    float ke = m_siminspector.calculateKineticEnergy(*m_simulation_universe.get());
+                    float pe = m_siminspector.calculatePotentialEnergy(*m_simulation_universe.get());
 
-                    ImGui::Text("%s: %.4e kJ", 
-                                sim_ui["kinetic"]["kinetic_energy"].get<std::string>().c_str(), ke);
+                    const float joule_to_kj = 1.0e-3f;
+                    ke *= joule_to_kj;
+                    pe *= joule_to_kj;
+
+                    ImGui::Text("%s: %.4e kJ/mol", 
+                                sim_ui["kinetic"]["kinetic_energy"].get<std::string>().c_str(), ke * AVOGADRO);
                     ImGui::Text("%s: %.4e kJ", 
                                 sim_ui["kinetic"]["potential_energy"].get<std::string>().c_str(), pe);
                     ImGui::Text("%s: %.4e kJ", 
@@ -1314,7 +1318,8 @@ namespace core
                         xs.reserve(m_RDFgraph.size());
                         ys.reserve(m_RDFgraph.size());
 
-                        for (const auto& p : m_RDFgraph) {
+                        for (const auto& p : m_RDFgraph) 
+                        {
                             xs.push_back(p.x);
                             ys.push_back(p.y);
                         }

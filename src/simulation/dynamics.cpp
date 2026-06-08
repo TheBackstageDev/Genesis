@@ -490,7 +490,10 @@ namespace sim
             auto local_f = fut.get();
 
             for (size_t i = 0; i < m_universe.numAtoms(); ++i)
+            {
+                if (i > local_f.size()) break;
                 data.forces[i] += glm::vec4(local_f[i], 0.0f);
+            }
         }
     }
 

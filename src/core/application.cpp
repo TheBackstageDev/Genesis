@@ -97,9 +97,9 @@ namespace core
         if (simulationThread.joinable())
             simulationThread.join();
 
-            
+        ImGui_ImplGlfw_Shutdown();
+
         ImGui::DestroyContext();
-        ImGui_ImplOpenGL3_Shutdown();
         ImPlot::DestroyContext();
     }
 

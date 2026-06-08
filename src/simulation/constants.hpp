@@ -39,7 +39,7 @@ namespace constants
 
 #define CELL_CUTOFF 14 + VERLET_SKIN
 
-#define AVOGADRO 6.02214076e26f                                   // conversion from Daltons to Kg
+#define AVOGADRO 6.02214076e23f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB 0.008314462618f // A^2 D ps^-2 K^-1
 
