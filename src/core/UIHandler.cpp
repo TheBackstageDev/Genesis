@@ -811,12 +811,12 @@ namespace core
             m_packChosen.clear();
             m_packParts.clear();
 
-            sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("resource/molecules/dna.xyz", structure.atoms, structure.bonds, structure.positions);
+            /* sim::fun::molecule_structure structure{};
+            sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            m_simulation_universe->createMolecule(structure, {60, 60, 60});
+            m_simulation_universe->createMolecule(structure, {60, 60, 60}); */
         }
 
         ImGui::SameLine();
