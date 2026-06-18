@@ -60,9 +60,7 @@ void main()
     else if (tt.y > 0.001) t = tt.y;
 
     if (t < 0) 
-    {
         discard;
-    }
 
     vec3 hit = ro + t * rd;
 
@@ -90,6 +88,15 @@ void main()
     final_color.rgb += rimColor * rim * 0.55;
 
     vec3 viewDir = normalize(-closest);
+    
+    float ao = 0.5 + 0.5 * normal.z;
+    ao = pow(ao, 1.8);
+
+    float edgeAO = 1.0 - smoothstep(0.6, 1.0, length(v_corner.xy));
+    ao = min(ao, edgeAO);
+
+    float distAO = 1.0 - smoothstep(0.0, v_radius * 3.f, length(closest - center));
+    ao *= distAO;
 
     vec3 reflectDir = reflect(-u_lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128.0);

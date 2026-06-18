@@ -1043,38 +1043,29 @@ namespace sim
 
     void sim_dynamics::setPressure(float target_p_kpa)
     {
-        
-        if (m_step_count % BAROSTAT_INTERVAL != 0)
-            return;
-        
-        glm::vec3 box = m_universe.boxSizes();
-        auto &data = m_universe.getData();
-        auto &atomData = m_universe.getAtomData();
-        
-        constexpr float beta_T = 4.5e-5f;
-        constexpr float tau_P = 150.f;
-        
         m_pressure = computePressure();
 
-        if (target_p_kpa <= 0.0f)
+        if (m_step_count % BAROSTAT_INTERVAL != 0 || target_p_kpa <= 0.0f)
             return;
 
-        if (m_targetTemperature > 0.f) return;
+        constexpr float tau_P = 500.0f;
+        constexpr float beta_T = 4.5e-5f;
 
         float delta_P = target_p_kpa - m_pressure;
-        float mu = 1.0f - (2.f / tau_P) * beta_T * delta_P;
-
-        mu = std::clamp(mu, 0.5f, 1.5f);
+        float mu = 1.0f - (beta_T * delta_P) / tau_P; 
+        mu = std::clamp(mu, 0.8f, 1.25f);
 
         float scale = std::cbrt(mu);
 
-        box.z *= scale;
+        glm::vec3 box = m_universe.boxSizes();
+        glm::vec3 new_box = box * scale;
 
-        for (int32_t i = 0; i < atomData.atoms.size(); ++i)
-        {
-            data.positions[i].z *= scale;
-            m_universe.setBoxSize(glm::vec3(m_universe.boxSizes().x, m_universe.boxSizes().y, m_universe.boxSizes().z * scale));
-        }
+        m_universe.setBoxSize({box.x, box.y, new_box.z});
+
+        auto &data = m_universe.getData();
+        auto &atomData = m_universe.getAtomData();
+        for (size_t i = 0; i < atomData.atoms.size(); ++i) data.positions[i].z *= scale;
+        for (auto& v : data.velocities) v *= std::sqrt(scale);
     }
 
     // Bussi–Donadio–Parrinello (CSVR) velocity rescaling

@@ -536,7 +536,7 @@ namespace sim
             }
 
             if (collided)
-                vel *= 0.99f;
+                vel *= 0.999f;
         }
 
         // Energy Calculation
@@ -545,7 +545,7 @@ namespace sim
             float kinetic_energy = 0.0f;
             for (int32_t i = 0; i < atomData.atoms.size(); ++i)
                 kinetic_energy += 0.5f * atomData.atoms[i].mass * glm::length2(data.velocities[i]);
-
+ 
             return kinetic_energy;
         }
 

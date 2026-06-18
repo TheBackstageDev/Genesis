@@ -131,6 +131,16 @@ namespace core
         bool background_music{true};
     };
 
+    struct Selection
+    {
+        std::vector<uint32_t> selectedAtoms{};
+
+        void clear() { selectedAtoms.clear(); }
+        void addAtom(int32_t id) { selectedAtoms.emplace_back(id); }
+        void toggleAtom(int32_t id) {};
+        bool isSelected(int32_t atomId) const { return std::find(selectedAtoms.begin(), selectedAtoms.end(), atomId) != selectedAtoms.end(); }
+    };
+
     class UIHandler
     {
     public:
@@ -261,6 +271,8 @@ namespace core
         int32_t m_RDFframes = 1;
 
         // Universe
+
+        Selection m_selection{};
 
         void drawUniverseUI();
 

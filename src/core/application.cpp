@@ -96,11 +96,11 @@ namespace core
         simulationRunning = false;
         if (simulationThread.joinable())
             simulationThread.join();
+            
+        ImPlot::DestroyContext();
 
         ImGui_ImplGlfw_Shutdown();
-
         ImGui::DestroyContext();
-        ImPlot::DestroyContext();
     }
 
     void application::initSounds()

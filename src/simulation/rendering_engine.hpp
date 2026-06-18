@@ -31,6 +31,8 @@ namespace sim
         void drawDebug();
         void handleCamera();
         core::camera_t &camera() { return cam; }
+
+        int32_t pickAtom(ImVec2 mousePos, const std::vector<sim::fun::atom>& atoms);
         
     private:
         core::window_t &window;
@@ -43,6 +45,7 @@ namespace sim
             alignas(16) glm::vec3 position;
             alignas(16) float radius;
             alignas(16) glm::vec4 color;
+            alignas(16) uint32_t id;
         };
 
         struct BondInstance
@@ -64,6 +67,16 @@ namespace sim
             alignas(16) float radius = 0.0f;
         };
 
+        struct SelectBuffer 
+        {
+            GLuint fbo = 0;
+            GLuint texture = 0;
+            int32_t width = 0;
+            int32_t height = 0;
+        } selectBuffer;
+
+        std::vector<AtomInstance> m_atomInstances{};
+
         const float licorice_radius = 0.2f;
 
         void drawHydrogenBond(int32_t H, const fun::rendering_simulation_info &sim_info);
@@ -77,6 +90,8 @@ namespace sim
         void bindColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindBond(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindArrow(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+
+        void createSelectBuffer(core::extent2D windowExtent);
 
         // Others
 

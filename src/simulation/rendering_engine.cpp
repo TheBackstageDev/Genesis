@@ -11,6 +11,8 @@
 #include <fstream>
 #include <sstream>
 
+#include "core/framebufferUtils.hpp"
+
 namespace sim
 {
     rendering_engine::rendering_engine(core::window_t &window)
@@ -21,6 +23,7 @@ namespace sim
         loadProgram("bond",       "bond.vert",       "bond.frag");
         loadProgram("hyperballs", "hyper_balls.vert","hyper_balls.frag");
         loadProgram("arrow",      "arrow.vert",      "arrow.frag");
+        loadProgram("select",     "select.vert",     "select.frag");
 
         glGenVertexArrays(1, &box_vao);
         glGenBuffers(1, &box_vbo);
@@ -47,6 +50,10 @@ namespace sim
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(AtomInstance), (void *)offsetof(AtomInstance, color));
         glVertexAttribDivisor(2, 1);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE, sizeof(AtomInstance), (void *)offsetof(AtomInstance, id));
+        glVertexAttribDivisor(3, 1);
 
         glGenVertexArrays(1, &bond_vao);
         glGenBuffers(1, &bond_vbo);
@@ -101,6 +108,8 @@ namespace sim
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, radius));
         glVertexAttribDivisor(3, 1);
+
+        createSelectBuffer(window.extent());
     }
 
     void rendering_engine::loadProgram(const std::string key, const std::string& vert, const std::string& frag)
@@ -110,6 +119,86 @@ namespace sim
                 core::glShader{GL_VERTEX_SHADER,   "resource/shaders/" + vert},
                 core::glShader{GL_FRAGMENT_SHADER, "resource/shaders/" + frag}
             });
+    }
+
+    int32_t rendering_engine::pickAtom(ImVec2 mousePos, const std::vector<sim::fun::atom>& atoms)
+    {
+        if (!selectBuffer.fbo || mousePos.x < 0 || mousePos.y < 0)
+            return -1;
+
+        core::extent2D extent = window.extent();
+        if (selectBuffer.width != extent.width || selectBuffer.height != extent.height)
+            createSelectBuffer(extent);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, selectBuffer.fbo);
+        glViewport(0, 0, selectBuffer.width, selectBuffer.height);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        auto& prog = programs["select"];
+        prog.use();
+
+        // Use fresh matrices
+        prog.setUniform("u_proj", cam.getProjectionMatrix(extent));
+        prog.setUniform("u_view", cam.getViewMatrix());
+
+        glBindVertexArray(color_vao);
+
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(m_atomInstances.size()));
+
+        // Read pixel
+        GLuint pixel[3] = {0, 0, 0};
+        int fbY = selectBuffer.height - static_cast<int>(mousePos.y) - 1;
+        glReadPixels(static_cast<int>(mousePos.x), fbY, 1, 1, 
+                    GL_RGB_INTEGER, GL_UNSIGNED_INT, pixel);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR) {
+            std::cerr << "[PICKING] glReadPixels error: 0x" << std::hex << err << std::endl;
+        }
+
+        uint32_t id = pixel[0] | (pixel[1] << 8) | (pixel[2] << 16);
+
+        std::cout << "[PICKING] Raw pixel: " << pixel[0] << "," << pixel[1] << "," << pixel[2] 
+                << " → ID = " << id << std::endl;
+
+        return (id < atoms.size()) ? static_cast<int32_t>(id) : -1;
+    }
+
+    void rendering_engine::createSelectBuffer(core::extent2D windowExtent)
+    {
+        if (selectBuffer.fbo) 
+        {
+            glDeleteFramebuffers(1, &selectBuffer.fbo);
+            glDeleteTextures(1, &selectBuffer.texture);
+        }
+
+        selectBuffer.width = windowExtent.width;
+        selectBuffer.height = windowExtent.height;
+
+        glGenFramebuffers(1, &selectBuffer.fbo);
+        glGenTextures(1, &selectBuffer.texture);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, selectBuffer.fbo);
+
+        glBindTexture(GL_TEXTURE_2D, selectBuffer.texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32UI, windowExtent.width, windowExtent.height, 0, GL_RGB_INTEGER, GL_UNSIGNED_INT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, selectBuffer.texture, 0);
+
+        GLuint rbo;
+        glGenRenderbuffers(1, &rbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, windowExtent.width, windowExtent.height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            std::cerr << "Pick framebuffer incomplete!\n";
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     void rendering_engine::drawBox(const glm::vec3 &box)
@@ -168,8 +257,8 @@ namespace sim
     {
         if (info.hyperBalls || info.wireframe && !(info.lennardBall || info.licorice)) return;
 
-        std::vector<AtomInstance> instances;
-        instances.reserve(sim_info.atoms.size());
+        m_atomInstances.clear();
+        m_atomInstances.reserve(sim_info.atoms.size());
 
         for (int32_t i = 0; i < sim_info.atoms.size(); ++i)
         {
@@ -192,13 +281,13 @@ namespace sim
             col += col_addition;
             col.w = info.opacity;
 
-            instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col);
+            m_atomInstances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col, i);
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
         glBufferData(GL_ARRAY_BUFFER,
-                     instances.size() * sizeof(AtomInstance),
-                     instances.data(),
+                     m_atomInstances.size() * sizeof(AtomInstance),
+                     m_atomInstances.data(),
                      GL_DYNAMIC_DRAW);
 
         glBindVertexArray(color_vao);
@@ -210,7 +299,7 @@ namespace sim
         atom_program.setUniform("u_view", lastView);
 
         glEnable(GL_DEPTH_TEST);
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(m_atomInstances.size()));
 
         GLenum err = glGetError();
         if (err != GL_NO_ERROR)
@@ -508,9 +597,7 @@ namespace sim
 
     void rendering_engine::draw(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        core::extent2D windowExtent = window.extent();
-
-        lastProj = cam.getProjectionMatrix(windowExtent.width, windowExtent.height);
+        lastProj = cam.getProjectionMatrix(window.extent());
         lastView = cam.getViewMatrix();
         
         if (info.universeBox)
@@ -611,8 +698,7 @@ namespace sim
 
     glm::vec2 rendering_engine::project(const glm::vec3 &p) const
     {
-        auto size = window.extent();
-        return cam.project(p, size.width, size.height);
+        return cam.project(p, window.extent());
     }
 
     glm::vec3 hsv2rgb(glm::vec3 c) 
@@ -642,7 +728,7 @@ namespace sim
             }
             case fun::color_rendering_mode::VELOCITY:
             {
-                constexpr float d_velocity = 30.f;
+                constexpr float d_velocity = 15.f;
                 float v = glm::length(sim_info.velocities[i]);
                 float t = std::clamp(v / d_velocity, 0.0f, 1.0f);
 

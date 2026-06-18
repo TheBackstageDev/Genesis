@@ -71,10 +71,10 @@ namespace core
             }
         }
 
-        glm::vec2 project(const glm::vec3& worldPos, float viewportWidth, float viewportHeight) const
+        glm::vec2 project(const glm::vec3& worldPos, core::extent2D viewport) const
         {
             glm::mat4 view = getViewMatrix();
-            glm::mat4 proj = getProjectionMatrix(viewportWidth, viewportHeight);
+            glm::mat4 proj = getProjectionMatrix(viewport);
 
             glm::vec4 clip = proj * view * glm::vec4(worldPos, 1.0f);
 
@@ -83,15 +83,17 @@ namespace core
 
             glm::vec3 ndc = glm::vec3(clip) / clip.w;
 
-            float screenX = (ndc.x * 0.5f + 0.5f) * viewportWidth;
-            float screenY = (1.0f - ndc.y * 0.5f - 0.5f) * viewportHeight;
+            float screenX = (ndc.x * 0.5f + 0.5f) * viewport.width;
+            float screenY = (1.0f - ndc.y * 0.5f - 0.5f) * viewport.height;
 
             return glm::vec2(screenX, screenY);
         }
 
-        glm::mat4 getProjectionMatrix(float viewportWidth, float viewportHeight) const 
+        glm::mat4 getProjectionMatrix(core::extent2D viewport) const 
         {
-            float aspect = static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight);
+            if (viewport.height <= 0 || viewport.width <= 0) return glm::mat4(1.f);
+
+            float aspect = static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
 
             return glm::perspective(
                 glm::radians(fov),

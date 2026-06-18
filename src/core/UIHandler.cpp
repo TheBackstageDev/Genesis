@@ -816,7 +816,7 @@ namespace core
             sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
             sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
 
-            m_simulation_universe->createMolecule(structure, {60, 60, 60}); */
+            m_simulation_universe->createMolecule(structure, {30, 30, 30}); */
         }
 
         ImGui::SameLine();
@@ -1214,11 +1214,12 @@ namespace core
 
                 static uint32_t chartUpdateRate = 1000;
 
+                static float targetTemp = 293.15f;
+                static float targetPress = 101.325f;
+
                 // ====================== TAB 2: CONTROLS ======================
                 if (ImGui::BeginTabItem(sim_ui["tab_controls"].get<std::string>().c_str()))
                 {
-                    static float targetTemp = 293.15f;
-                    static float targetPress = 0.0f; //101.325f
 
                     static bool constPress = false;
                     static bool constTemp = true;
@@ -1233,7 +1234,7 @@ namespace core
                         constPress = false;
 
                     ImGui::PushItemWidth(200.f);
-                    ImGui::DragFloat(std::string(sim_ui["controls"].value("targetPress", "Target Pressure (kPa)") + "##Pressure").c_str(), &targetPress, 0.1f, 0.0f, 10000.0f);
+                    ImGui::DragFloat(std::string(sim_ui["controls"].value("targetPress", "Target Pressure (kPa)") + "##Pressure").c_str(), &targetPress, 0.1f, 0.0f, 1000000.0f);
 
                     ImGui::SameLine();
                     if (ImGui::Checkbox(sim_ui["controls"].value("constant", "##Constant").c_str(), &constPress))
@@ -1242,12 +1243,18 @@ namespace core
                     if (constTemp)
                         dynamics->setTargetTemperature(targetTemp);
                     else
+                    {
+                        targetTemp = dynamics->temperature();
                         dynamics->setTargetTemperature(0.f);
+                    }
 
                     if (constPress)
                         dynamics->setTargetPressure(targetPress);
                     else
+                    {
+                        targetPress = dynamics->pressure();
                         dynamics->setTargetPressure(0.f);
+                    }
 
                     ImGui::Separator();
                     ImGui::Text(sim_ui["controls"].value("externalFields", "External Fields").c_str());
@@ -2412,6 +2419,14 @@ namespace core
             m_RDFgraph = m_siminspector.finalizeRDF(*m_simulation_universe.get());
         else if (m_simulation_universe && m_siminspector.rdfInProgress())
             m_siminspector.accumulateRDFFrame(*m_simulation_universe.get());
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F))
+        {
+            int32_t select = m_rendering_eng.pickAtom(ImGui::GetMousePos(), m_simulation_universe->getAtoms());
+
+            if (select != -1)
+                m_simulation_universe->highlightAtom(select);
+        }
     }
 
     std::string formatTime()

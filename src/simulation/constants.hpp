@@ -22,7 +22,7 @@ namespace constants
 
 #define MASS_PROTON 1.0007     // Daltons
 #define MASS_NEUTRON 1.0008    // Daltons
-#define MASS_ELECTRON 1 / 1337 // Daltons
+#define MASS_ELECTRON 1 / 1836 // Daltons
 
 #define EPSILON 0.001f
 #define FEMTOSECOND 0.001f // ps
@@ -35,9 +35,9 @@ namespace constants
 
 #define VERLET_SKIN 2.f
 #define CUTOFF 3.f
-#define COULOMB_CUTOFF 14.f * MULT_FACTOR
+#define COULOMB_CUTOFF 12.f * MULT_FACTOR
 
-#define CELL_CUTOFF 14 + VERLET_SKIN
+#define CELL_CUTOFF 12 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e23f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
@@ -58,7 +58,7 @@ namespace constants
     inline constexpr std::array<float, 119> covalent_radius = {
         0.00f,   // Z=0 (dummy)
 
-        0.5f,   // 1  H   (Pyykkö 32 pm)
+        0.32f,   // 1  H   (Pyykkö 32 pm)
         0.46f,   // 2  He  (estimated for rare cases)
 
         1.33f,   // 3  Li
@@ -824,24 +824,24 @@ namespace constants
         std::pair<float, float> constants; // {sigma (Å), epsilon (kJ/mol)}
         switch (ZIndex)
         {
-            case   1: constants = {2.886f, 0.036f}; break; // H  Hydrogen
-            case   2: constants = {2.362f, 0.084f}; break; // He Helium
-            case   3: constants = {3.345f, 0.335f}; break; // Li Lithium
-            case   4: constants = {3.051f, 0.418f}; break; // Be Beryllium
-            case   5: constants = {3.660f, 0.251f}; break; // B  Boron
-            case   6: constants = {3.500f, 0.276f}; break; // C  Carbon
-            case   7: constants = {3.300f, 0.460f}; break; // N  Nitrogen
-            case   8: constants = {3.100f, 0.585f}; break; // O  Oxygen
-            case   9: constants = {2.950f, 0.502f}; break; // F  Fluorine
-            case  10: constants = {2.800f, 0.205f}; break; // Ne Neon
-            case  11: constants = {2.660f, 0.126f}; break; // Na Sodium
-            case  12: constants = {3.580f, 0.544f}; break; // Mg Magnesium
-            case  13: constants = {4.010f, 0.335f}; break; // Al Aluminium
-            case  14: constants = {4.270f, 1.264f}; break; // Si Silicon
-            case  15: constants = {3.800f, 0.711f}; break; // P  Phosphorus
-            case  16: constants = {3.700f, 0.879f}; break; // S  Sulfur
-            case  17: constants = {3.520f, 1.046f}; break; // Cl Chlorine
-            case  18: constants = {3.410f, 0.996f}; break; // Ar Argon
+            case 1:  constants = {2.571f, 0.184f}; break;   // H
+            case 2:  constants = {2.104f, 0.234f}; break;   // He
+            case 3:  constants = {2.184f, 0.105f}; break;   // Li
+            case 4:  constants = {2.446f, 0.356f}; break;   // Be
+            case 5:  constants = {3.638f, 0.754f}; break;   // B
+            case 6:  constants = {3.431f, 0.440f}; break;   // C
+            case 7:  constants = {3.261f, 0.289f}; break;   // N
+            case 8:  constants = {3.118f, 0.251f}; break;   // O
+            case 9:  constants = {2.997f, 0.210f}; break;   // F
+            case 10: constants = {3.243f, 0.234f}; break;   // Ne (approx)
+            case 11: constants = {2.658f, 0.126f}; break;   // Na
+            case 12: constants = {2.691f, 0.465f}; break;   // Mg
+            case 13: constants = {4.008f, 2.115f}; break;   // Al
+            case 14: constants = {3.826f, 1.684f}; break;   // Si
+            case 15: constants = {3.695f, 1.278f}; break;   // P
+            case 16: constants = {3.595f, 1.148f}; break;   // S
+            case 17: constants = {3.516f, 0.951f}; break;   // Cl
+            case 18: constants = {3.446f, 0.775f}; break;   // Ar
             case  19: constants = {4.230f, 0.335f}; break; // K  Potassium
             case  20: constants = {3.830f, 0.418f}; break; // Ca Calcium
             case  21: constants = {3.400f, 0.084f}; break; // Sc Scandium
