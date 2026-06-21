@@ -7,9 +7,9 @@
 
 #include <implot.h>
 
-#include "framebufferUtils.hpp"
-#include "simulation/smiles_parser.hpp"
-#include "simulation/format_loader.hpp"
+#include "core/graphics/framebufferUtils.hpp"
+#include "simulation/io/smiles_parser.hpp"
+#include "simulation/io/format_loader.hpp"
 
 namespace core
 {
@@ -82,8 +82,8 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine &engine)
-        : app_options(app_options), m_window(window), m_rendering_eng(window), m_audio_eng(engine),
+    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine &engine, sim::simulation_inspector& siminspector)
+        : app_options(app_options), m_window(window), m_rendering_eng(window), m_audio_eng(engine), m_siminspector(siminspector),
           m_scenarioHandler(compound_presets, m_simpacker, dynamics)
     {
         write_localization_json(lang);
@@ -1209,6 +1209,14 @@ namespace core
                                 sim_ui["overview"]["total_energy"].get<std::string>().c_str(), 
                                 totalE / 1000.f);
 
+                    ImGui::SetNextItemWidth(100.f);
+                    ImGui::InputInt(sim_ui["overview"]["graph_analysis"].get<std::string>().c_str(), &m_graphAnalysisTime, 1, 10);
+
+                    if (m_graphAnalysisTime <= 0)
+                        m_graphAnalysisTime = 1;
+
+                    m_siminspector.set_analysis_window(m_graphAnalysisTime);
+
                     ImGui::EndTabItem();
                 }
 
@@ -1317,21 +1325,42 @@ namespace core
                 {
                     ImGui::Text("%s", sim_ui["structure"]["rdf_title"].get<std::string>().c_str());
                     ImGui::Separator();
+                    
+                    std::vector<std::string> activePairs = m_siminspector.getActiveRDFs();
+                    static int32_t chosenPair = 0;
 
-                    if (ImPlot::BeginPlot(sim_ui["structure"]["rdf_plot"].get<std::string>().c_str())) {
-                        ImPlot::SetupAxes("r", "g(r)");
+                    if (chosenPair >= (int)activePairs.size()) chosenPair = 0;
 
-                        std::vector<double> xs, ys;
-                        xs.reserve(m_RDFgraph.size());
-                        ys.reserve(m_RDFgraph.size());
+                    std::vector<const char*> activePairNames;
+                    activePairNames.reserve(activePairs.size());
+                    for (const auto &s : activePairs) activePairNames.push_back(s.c_str());
 
-                        for (const auto& p : m_RDFgraph) 
+                    ImGui::Combo("Select RDF Pair", &chosenPair, activePairNames.empty() ? nullptr : activePairNames.data(), (int)activePairNames.size());
+
+                    auto allRDFs = m_siminspector.getRDFs(*m_simulation_universe.get());
+                    
+                    if (ImPlot::BeginPlot(sim_ui["structure"]["rdf_plot"].get<std::string>().c_str())) 
+                    {
+                        ImPlot::SetupAxes("r (Å)", "g(r)");
+
+                        if (chosenPair < allRDFs.size())
                         {
-                            xs.push_back(p.x);
-                            ys.push_back(p.y);
+                            std::vector<double> xs, ys;
+                            xs.reserve(allRDFs[chosenPair].size());
+                            ys.reserve(allRDFs[chosenPair].size());
+    
+                            for (const auto& p : allRDFs[chosenPair]) 
+                            {
+                                xs.push_back(p.x);
+                                ys.push_back(p.y);
+                            }
+    
+                            //ImPlot::PlotLine("g(r)", xs.data(), ys.data(), (int32_t)xs.size());
+    
+                            ImPlot::PushStyleVar(ImPlotStyleVar_MinorAlpha, 0.1f);
+                            ImPlot::PlotShaded("g(r)", xs.data(), ys.data(), (int32_t)xs.size());
+                            ImPlot::PopStyleVar();
                         }
-
-                        ImPlot::PlotShaded("g(r)", xs.data(), ys.data(), (int)xs.size());
 
                         ImPlot::EndPlot();
                     }
@@ -1341,19 +1370,14 @@ namespace core
 
                     ImGui::InputText(sim_ui["structure"]["element_a"].get<std::string>().c_str(), Zi, sizeof(Zi));
                     ImGui::InputText(sim_ui["structure"]["element_b"].get<std::string>().c_str(), Zj, sizeof(Zj));
-                    ImGui::InputInt(sim_ui["structure"]["rdf_steps"].get<std::string>().c_str(), &m_RDFframes, 1, 100);
 
-                    if (ImGui::Button(sim_ui["structure"]["update_graph"].get<std::string>().c_str()))
+                    if (ImGui::Button(sim_ui["structure"]["rdf_add"].get<std::string>().c_str()))
                     {
-                        if (m_RDFframes == 1)
-                            m_RDFgraph = m_siminspector.getRDFgraph(*m_simulation_universe.get(),
-                                                                    (uint32_t)constants::symbolToZ((std::string)Zi),
-                                                                    (uint32_t)constants::symbolToZ((std::string)Zj));
-                        else
-                            m_siminspector.beginRDFaccumulation((uint32_t)constants::symbolToZ((std::string)Zi),
-                                                                (uint32_t)constants::symbolToZ((std::string)Zj),
-                                                                m_RDFframes,
-                                                                *m_simulation_universe.get());
+                        uint32_t z_i = constants::symbolToZ(Zi);
+                        uint32_t z_j = constants::symbolToZ(Zj);
+
+                        if (z_i != 0 && z_j != 0)
+                            m_siminspector.startRDF(z_i, z_j);
                     }
 
                     ImGui::EndTabItem();
@@ -2415,17 +2439,10 @@ namespace core
             dynamics->pause();
         }
 
-        if (m_simulation_universe && !m_siminspector.accumulating() && m_siminspector.rdfInProgress())
-            m_RDFgraph = m_siminspector.finalizeRDF(*m_simulation_universe.get());
-        else if (m_simulation_universe && m_siminspector.rdfInProgress())
-            m_siminspector.accumulateRDFFrame(*m_simulation_universe.get());
-
-        if (ImGui::IsKeyPressed(ImGuiKey_F))
-        {
-            int32_t select = m_rendering_eng.pickAtom(ImGui::GetMousePos(), m_simulation_universe->getAtoms());
-
-            if (select != -1)
-                m_simulation_universe->highlightAtom(select);
+        if (m_simulation_universe)
+        {   
+            if (m_siminspector.isRDFready())
+                m_RDFgraphs = m_siminspector.getRDFs(*m_simulation_universe.get());
         }
     }
 
@@ -2616,6 +2633,7 @@ namespace core
                 m_packDensity = 1.006f;
 
                 m_scenarioHandler.clear();
+                m_siminspector.clear();
 
                 if (exitDesktop)
                     setState(application_state::APP_STATE_EXIT);

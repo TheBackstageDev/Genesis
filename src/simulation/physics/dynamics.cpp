@@ -1009,11 +1009,6 @@ namespace sim
 
         m_step_count++;
         m_accumulated_time += m_dt * m_timescale;
-
-        /* float avg_speed = 0.0f;
-            for (const auto& v : data.velocities) avg_speed += glm::length(v);
-            avg_speed /= atomData.atoms.size();
-            std::cout << "Average molecular speed: " << avg_speed << " A/Ps\n"; */
     }
 
     float sim_dynamics::computePressure()
@@ -1048,7 +1043,7 @@ namespace sim
         if (m_step_count % BAROSTAT_INTERVAL != 0 || target_p_kpa <= 0.0f)
             return;
 
-        constexpr float tau_P = 500.0f;
+        constexpr float tau_P = 400.0f;
         constexpr float beta_T = 4.5e-5f;
 
         float delta_P = target_p_kpa - m_pressure;

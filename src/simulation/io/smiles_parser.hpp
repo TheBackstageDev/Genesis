@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <string>
 
-#include "fundamental_structures.hpp"
-#include "constants.hpp"
+#include "simulation/fundamental_structures.hpp"
+#include "simulation/constants.hpp"
 
 using namespace sim::fun;
 namespace sim

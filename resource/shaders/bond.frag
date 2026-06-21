@@ -92,7 +92,7 @@ void main()
     float ao = 0.5 + 0.5 * normal.z;
     ao = pow(ao, 1.8);
 
-    float edgeAO = 1.0 - smoothstep(0.6, 1.0, length(v_corner.xy));
+    float edgeAO = 1.0 - smoothstep(0.5, 1.0, length(v_corner.xy));
     ao = min(ao, edgeAO);
 
     float distAO = 1.0 - smoothstep(0.0, v_radius * 3.f, length(closest - center));
@@ -102,6 +102,7 @@ void main()
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128.0);
     vec3 specular =  0.5f * spec * vec3(1.0, 1.0, 1.0);   
     
+    final_color *= (0.7 + 0.3 * ao);
     final_color.rgb += specular;
 
     float NdotL = max(0.0, dot(normal, u_lightDir));

@@ -1,6 +1,6 @@
 #include "ScenarioHandler.hpp"
 
-#include "simulation/smiles_parser.hpp"
+#include "simulation/io/smiles_parser.hpp"
 #include <random>
 
 namespace core

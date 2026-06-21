@@ -34,10 +34,10 @@ namespace constants
 #define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
 #define VERLET_SKIN 2.f
-#define CUTOFF 3.f
-#define COULOMB_CUTOFF 12.f * MULT_FACTOR
+#define CUTOFF 8.f
+#define COULOMB_CUTOFF 10.f * MULT_FACTOR
 
-#define CELL_CUTOFF 12 + VERLET_SKIN
+#define CELL_CUTOFF 10 + VERLET_SKIN
 
 #define AVOGADRO 6.02214076e23f                                   // conversion from Daltons to Kg
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1

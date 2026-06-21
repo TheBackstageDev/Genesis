@@ -14,7 +14,7 @@
 namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
-        : window(width, height, name.c_str()), ui(app_options, window, audio)
+        : window(width, height, name.c_str()), ui(app_options, window, audio, m_siminspector)
     {
         load();
         ui.set_language(app_options.lang);
@@ -122,41 +122,64 @@ namespace core
     
     void application::runUniverse()
     {
-        auto& dynamics = ui.getDynamics();
-
         if (!simulationRunning)
         {
             simulationRunning = true;
             simulationThread = std::thread([this]()
             {
+                uint64_t totalSteps = 0;
+                uint64_t stepsThisSecond = 0;
+                auto lastReportTime = std::chrono::high_resolution_clock::now();
+                auto lastStepTime = std::chrono::high_resolution_clock::now();
+
+                double totalStepTimeMs = 0.0;
+
                 while (simulationRunning)
                 {
                     {
                         std::lock_guard<std::mutex> lock(simMutex);
 
                         auto& dynamics = ui.getDynamics();
-
-                        if (dynamics && current_state == application_state::APP_STATE_SIMULATION && 
+                        if (dynamics && current_state == application_state::APP_STATE_SIMULATION &&
                             !dynamics->isPaused())
                         {
-                            auto start = std::chrono::high_resolution_clock::now();
+                            auto stepStart = std::chrono::high_resolution_clock::now();
+
                             dynamics->step();
-                            auto end = std::chrono::high_resolution_clock::now();
 
-                            std::chrono::duration<double, std::milli> duration = end - start;
+                            auto stepEnd = std::chrono::high_resolution_clock::now();
+                            auto stepDurationMs = std::chrono::duration<double, std::milli>(stepEnd - stepStart).count();
 
-                            static int counter = 0;
-                            if (++counter % 100 == 0)
-                            {
-                                std::cout << "Simulation step time: " << duration.count() 
-                                        << " ms\n";
+                            totalStepTimeMs += stepDurationMs;
+                            totalSteps++;
+                            stepsThisSecond++;
 
+                            static int32_t frameCounter = 0;
+                            if (++frameCounter % 100 == 0)
                                 ui.saveFrame();
+
+                            auto now = std::chrono::high_resolution_clock::now();
+                            std::chrono::duration<double> elapsed = now - lastReportTime;
+
+                            if (elapsed.count() >= 1.0)
+                            {
+                                double avgMsPerStep = (stepsThisSecond > 0) ? (totalStepTimeMs / stepsThisSecond) : 0.0;
+                                double stepsPerSecond = stepsThisSecond;
+
+                                std::cout << "=== Performance Report ===\n";
+                                std::cout << "Steps per second : " << stepsPerSecond << "\n";
+                                std::cout << "Avg time per step: " << avgMsPerStep << " ms\n";
+                                std::cout << "Total steps      : " << totalSteps << "\n";
+                                std::cout << "------------------------\n";
+
+                                stepsThisSecond = 0;
+                                totalStepTimeMs = 0.0;
+                                lastReportTime = now;
                             }
+
+                            m_siminspector.update(dynamics->getUniverse());
                         }
                     }
-
-                    //std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             });
         }

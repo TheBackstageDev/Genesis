@@ -1,7 +1,7 @@
 #pragma once
 
 #include "spatialgrid.hpp"
-#include "simulation/universe.hpp"
+#include "simulation/core/universe.hpp"
 
 #include <vector>
 #include <glm/glm.hpp>

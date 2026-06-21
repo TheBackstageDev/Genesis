@@ -8,7 +8,7 @@
 #include <queue>
 #include <fstream>
 
-#include "constants.hpp"
+#include "simulation/constants.hpp"
 
 #include <glad/glad.h>
 

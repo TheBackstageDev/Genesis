@@ -2,7 +2,7 @@
 
 #include <random>
 #include <glm/glm.hpp>
-#include "fundamental_structures.hpp"
+#include "simulation/fundamental_structures.hpp"
 #include "universe.hpp"
 
 namespace sim

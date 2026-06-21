@@ -11,14 +11,14 @@
 
 #include "json.hpp"
 
-#include "core/audio.hpp"
-#include "core/ScenarioHandler.hpp"
-#include "core/image_utils.hpp"
-#include "simulation/reaction_engine.hpp"
-#include "simulation/universe.hpp"
-#include "simulation/simulation_packer.hpp"
-#include "simulation/simulation_inspector.hpp"
-#include "simulation/dynamics.hpp"
+#include "core/audio/audio.hpp"
+#include "core/ui/ScenarioHandler.hpp"
+#include "core/graphics/image_utils.hpp"
+#include "simulation/chemistry/reaction_engine.hpp"
+#include "simulation/core/universe.hpp"
+#include "simulation/core/simulation_packer.hpp"
+#include "simulation/core/simulation_inspector.hpp"
+#include "simulation/physics/dynamics.hpp"
 
 namespace core
 {
@@ -144,7 +144,7 @@ namespace core
     class UIHandler
     {
     public:
-        UIHandler(options& app_options, window_t& window, AudioEngine& engine);
+        UIHandler(options& app_options, window_t& window, AudioEngine& engine, sim::simulation_inspector& siminspector);
 
         void set_language(localization new_lang) { lang = new_lang; write_localization_json(lang); }
         void setDeltaTime(float dt) { m_deltaTime = dt; }
@@ -267,8 +267,8 @@ namespace core
 
         // Graph
 
-        std::vector<sim::point> m_RDFgraph;
-        int32_t m_RDFframes = 1;
+        int32_t m_graphAnalysisTime = 50;
+        std::vector<std::vector<sim::point>> m_RDFgraphs;
 
         // Universe
 
@@ -321,7 +321,7 @@ namespace core
         sim::rendering_engine m_rendering_eng;
         sim::reaction_engine m_reaction_eng;
         sim::simulation_packer m_simpacker{};
-        sim::simulation_inspector m_siminspector{};
+        sim::simulation_inspector& m_siminspector;
         AudioEngine& m_audio_eng;
 
         // Callbacks

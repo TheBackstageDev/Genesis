@@ -1,7 +1,7 @@
 #pragma once
 
-#include "constants.hpp"
-#include "fundamental_structures.hpp"
+#include "simulation/constants.hpp"
+#include "simulation/fundamental_structures.hpp"
 #include <filesystem>
 
 namespace sim::io

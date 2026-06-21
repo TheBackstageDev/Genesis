@@ -1,7 +1,7 @@
 #pragma once
 
 #include "simulation/constants.hpp"
-#include "core/window.hpp"
+#include "core/graphics/window.hpp"
 #include <algorithm>
 #include <cmath>
 

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "fundamental_structures.hpp"
-#include "rendering_engine.hpp"
-#include "core/shader.hpp"
-#include "core/buffer.hpp"
+#include "simulation/fundamental_structures.hpp"
+#include "simulation/core/rendering_engine.hpp"
+#include "core/graphics/shader.hpp"
+#include "core/utils/buffer.hpp"
 
-#include "core/spatialgrid.hpp"
+#include "core/utils/spatialgrid.hpp"
 
 #include <thread>
 #include <future>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/window.hpp"
-#include "core/camera.hpp"
+#include "core/graphics/window.hpp"
+#include "core/graphics/camera.hpp"
 #include <vector>
 #include <map>
 #include <unordered_map>

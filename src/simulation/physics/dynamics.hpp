@@ -1,11 +1,11 @@
 #pragma once
 
-#include "core/shader.hpp"
-#include "core/buffer.hpp"
+#include "core/graphics/shader.hpp"
+#include "core/utils/buffer.hpp"
 
-#include "core/spatialgrid.hpp"
-#include "core/verletlist.hpp"
-#include "universe.hpp"
+#include "core/utils/spatialgrid.hpp"
+#include "core/utils/verletlist.hpp"
+#include "simulation/core/universe.hpp"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>

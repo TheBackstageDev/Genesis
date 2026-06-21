@@ -11,7 +11,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "core/framebufferUtils.hpp"
+#include "core/graphics/framebufferUtils.hpp"
 
 namespace sim
 {
@@ -23,7 +23,6 @@ namespace sim
         loadProgram("bond",       "bond.vert",       "bond.frag");
         loadProgram("hyperballs", "hyper_balls.vert","hyper_balls.frag");
         loadProgram("arrow",      "arrow.vert",      "arrow.frag");
-        loadProgram("select",     "select.vert",     "select.frag");
 
         glGenVertexArrays(1, &box_vao);
         glGenBuffers(1, &box_vbo);
@@ -108,8 +107,6 @@ namespace sim
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, radius));
         glVertexAttribDivisor(3, 1);
-
-        createSelectBuffer(window.extent());
     }
 
     void rendering_engine::loadProgram(const std::string key, const std::string& vert, const std::string& frag)
@@ -119,86 +116,6 @@ namespace sim
                 core::glShader{GL_VERTEX_SHADER,   "resource/shaders/" + vert},
                 core::glShader{GL_FRAGMENT_SHADER, "resource/shaders/" + frag}
             });
-    }
-
-    int32_t rendering_engine::pickAtom(ImVec2 mousePos, const std::vector<sim::fun::atom>& atoms)
-    {
-        if (!selectBuffer.fbo || mousePos.x < 0 || mousePos.y < 0)
-            return -1;
-
-        core::extent2D extent = window.extent();
-        if (selectBuffer.width != extent.width || selectBuffer.height != extent.height)
-            createSelectBuffer(extent);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, selectBuffer.fbo);
-        glViewport(0, 0, selectBuffer.width, selectBuffer.height);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        auto& prog = programs["select"];
-        prog.use();
-
-        // Use fresh matrices
-        prog.setUniform("u_proj", cam.getProjectionMatrix(extent));
-        prog.setUniform("u_view", cam.getViewMatrix());
-
-        glBindVertexArray(color_vao);
-
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(m_atomInstances.size()));
-
-        // Read pixel
-        GLuint pixel[3] = {0, 0, 0};
-        int fbY = selectBuffer.height - static_cast<int>(mousePos.y) - 1;
-        glReadPixels(static_cast<int>(mousePos.x), fbY, 1, 1, 
-                    GL_RGB_INTEGER, GL_UNSIGNED_INT, pixel);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        GLenum err = glGetError();
-        if (err != GL_NO_ERROR) {
-            std::cerr << "[PICKING] glReadPixels error: 0x" << std::hex << err << std::endl;
-        }
-
-        uint32_t id = pixel[0] | (pixel[1] << 8) | (pixel[2] << 16);
-
-        std::cout << "[PICKING] Raw pixel: " << pixel[0] << "," << pixel[1] << "," << pixel[2] 
-                << " → ID = " << id << std::endl;
-
-        return (id < atoms.size()) ? static_cast<int32_t>(id) : -1;
-    }
-
-    void rendering_engine::createSelectBuffer(core::extent2D windowExtent)
-    {
-        if (selectBuffer.fbo) 
-        {
-            glDeleteFramebuffers(1, &selectBuffer.fbo);
-            glDeleteTextures(1, &selectBuffer.texture);
-        }
-
-        selectBuffer.width = windowExtent.width;
-        selectBuffer.height = windowExtent.height;
-
-        glGenFramebuffers(1, &selectBuffer.fbo);
-        glGenTextures(1, &selectBuffer.texture);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, selectBuffer.fbo);
-
-        glBindTexture(GL_TEXTURE_2D, selectBuffer.texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32UI, windowExtent.width, windowExtent.height, 0, GL_RGB_INTEGER, GL_UNSIGNED_INT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, selectBuffer.texture, 0);
-
-        GLuint rbo;
-        glGenRenderbuffers(1, &rbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, windowExtent.width, windowExtent.height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            std::cerr << "Pick framebuffer incomplete!\n";
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     void rendering_engine::drawBox(const glm::vec3 &box)
@@ -599,6 +516,9 @@ namespace sim
     {
         lastProj = cam.getProjectionMatrix(window.extent());
         lastView = cam.getViewMatrix();
+
+        m_maxSimVelocity = 0.f;
+        calculateMaxSimVelocity(sim_info);
         
         if (info.universeBox)
             drawBox(sim_info.box);
@@ -728,17 +648,24 @@ namespace sim
             }
             case fun::color_rendering_mode::VELOCITY:
             {
-                constexpr float d_velocity = 15.f;
                 float v = glm::length(sim_info.velocities[i]);
-                float t = std::clamp(v / d_velocity, 0.0f, 1.0f);
+                float t = std::clamp(v / m_maxSimVelocity, 0.0f, 1.0f);
 
-                float hue = glm::mix(0.0f, 0.75f, t); 
+                float hue = glm::mix(0.0f, 0.4f, t); 
                 glm::vec3 rgb = hsv2rgb(glm::vec3(hue, 1.0f, 1.0f)); 
                 return glm::vec4(rgb, 1.0f);
             }
             default:
                 return default_norm;
         }
+    }
+
+    void rendering_engine::calculateMaxSimVelocity(const fun::rendering_simulation_info &sim_info)
+    {
+        auto& vel = sim_info.velocities;
+
+        for (const auto& v : vel)
+            m_maxSimVelocity = std::max(m_maxSimVelocity, glm::length(v));
     }
 
     void rendering_engine::handleCamera()

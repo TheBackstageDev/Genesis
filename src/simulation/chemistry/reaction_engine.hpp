@@ -1,10 +1,10 @@
 #pragma once
 
-#include "fundamental_structures.hpp"
-#include "universe.hpp"
+#include "simulation/fundamental_structures.hpp"
+#include "simulation/core/universe.hpp"
 
-#include "core/verletlist.hpp"
-#include "core/spatialgrid.hpp"
+#include "core/utils/verletlist.hpp"
+#include "core/utils/spatialgrid.hpp"
 
 #include <vector>
 #include <functional>

@@ -55,7 +55,7 @@ void main()
     float ao = 0.5 + 0.5 * hit_normal.z;
     ao = pow(ao, 1.8);
 
-    float edgeAO = 1.0 - smoothstep(0.6, 1.0, length(v_uv));
+    float edgeAO = 1.0 - smoothstep(0.5, 1.0, length(v_uv));
     ao = min(ao, edgeAO);
 
     float distAO = 1.0 - smoothstep(0.0, v_radius * 3.f, length(hitPos_view - v_center));
@@ -68,7 +68,7 @@ void main()
 
     vec3 final_color = ambient + diffuse;
 
-    final_color *= (0.6 + 0.4 * ao);
+    final_color *= (0.7 + 0.3 * ao);
 
     vec3 viewDir = normalize(-hitPos_view);
     vec3 reflectDir = reflect(-u_lightDir, hit_normal);

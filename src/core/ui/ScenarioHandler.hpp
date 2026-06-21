@@ -1,8 +1,8 @@
 #pragma once
 
-#include "simulation/universe.hpp"
-#include "simulation/simulation_packer.hpp"
-#include "simulation/dynamics.hpp"
+#include "simulation/core/universe.hpp"
+#include "simulation/core/simulation_packer.hpp"
+#include "simulation/physics/dynamics.hpp"
 #include <functional>
 
 #include <filesystem>

@@ -2,9 +2,10 @@
 
 #include <imgui.h>
 
-#include "window.hpp"
-#include "UIHandler.hpp"
-#include "audio.hpp"
+#include "graphics/window.hpp"
+#include "simulation/core/simulation_inspector.hpp"
+#include "ui/UIHandler.hpp"
+#include "core/audio/audio.hpp"
 
 #include "json.hpp"
 
@@ -44,6 +45,7 @@ namespace core
     
         window_t window;
         AudioEngine audio{};
+        sim::simulation_inspector m_siminspector{};
         UIHandler ui;
     };
 } // namespace core

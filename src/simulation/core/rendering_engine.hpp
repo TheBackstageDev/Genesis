@@ -3,9 +3,9 @@
 #include <glad/glad.h>
 #include <imgui.h>
 
-#include "core/camera.hpp"
-#include "core/window.hpp"
-#include "core/shader.hpp"
+#include "core/graphics/camera.hpp"
+#include "core/graphics/window.hpp"
+#include "core/graphics/shader.hpp"
 #include "simulation/fundamental_structures.hpp"
 
 #define GLM_FORCE_RADIANS
@@ -31,8 +31,6 @@ namespace sim
         void drawDebug();
         void handleCamera();
         core::camera_t &camera() { return cam; }
-
-        int32_t pickAtom(ImVec2 mousePos, const std::vector<sim::fun::atom>& atoms);
         
     private:
         core::window_t &window;
@@ -67,14 +65,6 @@ namespace sim
             alignas(16) float radius = 0.0f;
         };
 
-        struct SelectBuffer 
-        {
-            GLuint fbo = 0;
-            GLuint texture = 0;
-            int32_t width = 0;
-            int32_t height = 0;
-        } selectBuffer;
-
         std::vector<AtomInstance> m_atomInstances{};
 
         const float licorice_radius = 0.2f;
@@ -91,8 +81,6 @@ namespace sim
         void bindBond(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindArrow(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
-        void createSelectBuffer(core::extent2D windowExtent);
-
         // Others
 
         void drawHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
@@ -100,6 +88,9 @@ namespace sim
         void drawAtomHighlight(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         glm::vec4 getAtomColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info, const uint32_t i);
+        void calculateMaxSimVelocity(const fun::rendering_simulation_info &sim_info);
+
+        float m_maxSimVelocity = 0.0f;
 
         // Callbacks
 

@@ -272,7 +272,8 @@
           "molecules": "Molecules",
           "temperature": "Temperature (K):",
           "pressure": "Pressure (kPa):",
-          "total_energy": "Total Energy"
+          "total_energy": "Total Energy",
+          "graph_analysis": "Graph analysis timeframe: "
         },
         "controls":
         {
@@ -299,6 +300,7 @@
         {
           "rdf_title": "Radial Distribution Function g(r)",
           "rdf_plot": "RDF Plot",
+          "rdf_add": "Add RDF pair",
           "element_a": "Element A",
           "element_b": "Element B",
           "rdf_steps": "Amount of Steps",
