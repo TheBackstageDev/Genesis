@@ -1652,7 +1652,7 @@ namespace core
         for (size_t i = 0; i < base_positions.size(); ++i)
         {
             glm::vec3 pos = base_positions[i] + cam.target;
-            display_universe->setPosition(i, pos);
+            display_universe->setPosition(pos, i);
         }
 
         constexpr float minDistance = 1.5f;

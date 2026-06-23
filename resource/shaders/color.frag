@@ -8,6 +8,7 @@ in vec2  v_uv;
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
+uniform vec3 u_lightDir2 = normalize(vec3(0.4, -2.0, 1.2));
 uniform vec3 u_campos = vec3(0.0);
 
 out vec4 fragColor;
@@ -66,16 +67,27 @@ void main()
     vec3 ambient = v_color.rgb * 0.25;
     vec3 diffuse = v_color.rgb * 0.75 * NdotL;
 
+    float NdotL2 = max(0.0, dot(hit_normal, u_lightDir2));
+
+    vec3 cyanLight = 0.1 * NdotL2 * vec3(0.3, 1.0, 1.0);
+
+    diffuse += cyanLight;
+
     vec3 final_color = ambient + diffuse;
 
     final_color *= (0.7 + 0.3 * ao);
 
     vec3 viewDir = normalize(-hitPos_view);
     vec3 reflectDir = reflect(-u_lightDir, hit_normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128.0);
-    vec3 specular = 0.6 * spec * vec3(1.0);
+    vec3 reflectDir2 = reflect(-u_lightDir2, hit_normal);
 
-    final_color += specular;
+    float spec1 = pow(max(dot(viewDir, reflectDir), 0.0), 246.0);
+    vec3 specular1 = 0.6 * spec1 * vec3(1.0);
 
+    float spec2 = pow(max(dot(viewDir, reflectDir2), 0.0), 246.0);
+    vec3 specular2 = 0.2 * spec2 * vec3(0.3, 1.0, 1.0);
+
+    final_color += specular1 + specular2;
+        
     fragColor = vec4(final_color, v_color.w);
 }

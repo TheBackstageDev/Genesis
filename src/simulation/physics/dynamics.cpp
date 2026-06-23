@@ -4,6 +4,7 @@
 #include <glm/gtx/norm.hpp>
 
 #include <iostream>
+#include <immintrin.h>
 
 namespace sim
 {
@@ -66,7 +67,7 @@ namespace sim
 
         std::vector<glm::vec4> pos_data(N);
         for (size_t i = 0; i < N; ++i)
-            pos_data[i] = glm::vec4(data.positions[i], atoms[i].mass);
+            pos_data[i] = glm::vec4(data.position(i), atoms[i].mass);
 
         if (!ssbo_pos.id() ||
             ssbo_pos.getSize() != static_cast<GLsizeiptr>(N * sizeof(glm::vec4)))
@@ -83,22 +84,22 @@ namespace sim
         }
 
         if (!ssbo_lj.id() ||
-            ssbo_lj.getSize() != static_cast<GLsizeiptr>(data.lj_params.size() * sizeof(float)))
+            ssbo_lj.getSize() != static_cast<GLsizeiptr>(data.mobileCount() * 2 * sizeof(float)))
         {
             ssbo_lj = core::glBuffer(
                 GL_SHADER_STORAGE_BUFFER,
-                data.lj_params.data(),
-                data.lj_params.size() * sizeof(float),
+                data.ljParamsData(),
+                data.mobileCount() * 2 * sizeof(float),
                 GL_STATIC_DRAW);
         }
 
         if (!ssbo_q.id() ||
-            ssbo_q.getSize() != static_cast<GLsizeiptr>(data.q.size() * sizeof(float)))
+            ssbo_q.getSize() != static_cast<GLsizeiptr>(data.mobileCount() * sizeof(float)))
         {
             ssbo_q = core::glBuffer(
                 GL_SHADER_STORAGE_BUFFER,
-                data.q.data(),
-                data.q.size() * sizeof(float),
+                data.qData(),
+                data.mobileCount() * sizeof(float),
                 GL_DYNAMIC_DRAW);
         }
 
@@ -309,30 +310,35 @@ namespace sim
         core::glBuffer::unbind(GL_SHADER_STORAGE_BUFFER);
     }
 
-    std::vector<glm::vec3> sim_dynamics::processCellUnbonded(int32_t ix, int32_t iy, int32_t iz, int32_t atom_start, int32_t atom_end)
+    std::vector<glm::vec3> sim_dynamics::processCellUnbonded(
+        int32_t ix, int32_t iy, int32_t iz,
+        int32_t atom_start, int32_t atom_end)
     {
         if (universe_verlet.verlet.empty()) return {};
 
         float local_virial = 0.f;
-        auto &data = m_universe.getData();
-        auto &atomData = m_universe.getAtomData();
+        auto &storage = m_universe.getData();
         int32_t cellID = universe_grid.cellToIndex(ix, iy, iz);
 
-        thread_local std::vector<glm::vec3> local_forces(atomData.atoms.size(), {0, 0, 0});
-        if (local_forces.size() != atomData.atoms.size())
-            local_forces.assign(atomData.atoms.size(), {0.0f, 0.0f, 0.0f});
-        std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0, 0, 0});
+        float* __restrict x = storage.xData();
+        float* __restrict y = storage.yData();
+        float* __restrict z = storage.zData();
+        float* __restrict q = storage.qData();
+        float* __restrict ljParams = storage.ljParamsData();
 
-        universe_grid.foreach(cellID, [&](const uint32_t& i)
+        thread_local std::vector<glm::vec3> local_forces(storage.mobileCount(), {0,0,0});
+        if (local_forces.size() != storage.mobileCount())
+            local_forces.assign(storage.mobileCount(), {0.0f,0.0f,0.0f});
+        std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0,0,0});
+
+        for (int32_t i = atom_start; i < atom_end; ++i)
         {
-            const glm::vec3& pi = data.positions[i];
-
             for (uint32_t j : universe_verlet.verlet[i])
             {
                 if (j <= i) continue;
 
-                glm::vec3 dr = m_universe.minImageVec(data.positions[j] - pi);
-                float dr2 = glm::length2(dr);
+                glm::vec3 dr = glm::vec3(x[i] - x[j], y[i] - y[j], z[i] - z[j]);
+                float dr2 = glm::dot(dr, dr);
 
                 if (dr2 > CELL_CUTOFF * CELL_CUTOFF || dr2 < EPSILON)
                     continue;
@@ -340,8 +346,8 @@ namespace sim
                 if (m_universe.areBonded(i, j))
                     continue;
 
-                glm::vec3 cForce = computeCoulombForce(i, j, dr);
-                glm::vec3 lForce = computeLJforce(i, j, dr);
+                glm::vec3 cForce = computeCoulombForce(i, j, x, y, z, q);
+                glm::vec3 lForce = computeLJforce(i, j, x, y, z, ljParams);
                 glm::vec3 total_force = cForce + lForce;
 
                 local_forces[i] += total_force;
@@ -349,8 +355,8 @@ namespace sim
 
                 local_virial += glm::dot(dr, total_force);
             }
-        }, atom_start, atom_end);
-
+        }
+   
         total_virial.fetch_add(local_virial, std::memory_order_relaxed);
         return local_forces;
     }
@@ -485,14 +491,20 @@ namespace sim
             }
         }
 
+        float* __restrict fx = data.fxData();
+        float* __restrict fy = data.fyData();
+        float* __restrict fz = data.fzData();
+
         for (auto &fut : futures)
         {
             auto local_f = fut.get();
-
-            for (size_t i = 0; i < m_universe.numAtoms(); ++i)
+            for (size_t i = 0; i < local_f.size(); ++i)
             {
                 if (i > local_f.size()) break;
-                data.forces[i] += glm::vec4(local_f[i], 0.0f);
+
+                fx[i] += local_f[i].x;
+                fy[i] += local_f[i].y;
+                fz[i] += local_f[i].z;
             }
         }
     }
@@ -502,13 +514,17 @@ namespace sim
         auto &univ = m_universe;
         auto &atomData = univ.getAtomData();
         auto &data = univ.getData();
-        const uint32_t n_threads = std::max(1u, std::thread::hardware_concurrency());
+        const uint32_t n_threads = 2u;
+
+        const float* __restrict x = data.xData();
+        const float* __restrict y = data.yData();
+        const float* __restrict z = data.zData();
 
         std::vector<std::future<std::vector<glm::vec3>>> futures;
 
-        auto make_task = [this, &atomData](auto &&func)
+        auto make_task = [this, &atomData, x, y, z](auto &&func)
         {
-            return [this, &atomData, func](int32_t start, int32_t end) -> std::vector<glm::vec3>
+            return [this, &atomData, func, x, y, z](int32_t start, int32_t end) -> std::vector<glm::vec3>
             {
                 thread_local std::vector<glm::vec3> local_forces;
                 if (local_forces.size() != atomData.atoms.size())
@@ -516,31 +532,44 @@ namespace sim
                     local_forces.assign(atomData.atoms.size(), glm::vec3{0.0f});
                 }
                 std::fill(local_forces.begin(), local_forces.end(), glm::vec3{0.0f});
-                func(start, end, local_forces);
+                func(start, end, local_forces, x, y, z);
                 return local_forces;
             };
         };
 
-        auto bond_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf)
+        auto bond_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf,
+                            const float* __restrict x,
+                            const float* __restrict y,
+                            const float* __restrict z)
         {
             for (int32_t i = start; i < end; ++i)
             {
                 const sim::fun::bond &b = atomData.bonds[i];
-                
                 int32_t a = b.bondedAtom;
                 int32_t c = b.centralAtom;
 
-                glm::vec3 dr = univ.minImageVec(data.positions[c] - data.positions[a]);
-                float len = glm::length(dr);
-                if (len <= EPSILON || len > 3.f)
-                    continue;
+                float dx = x[c] - x[a];
+                float dy = y[c] - y[a];
+                float dz = z[c] - z[a];
 
-                uint8_t aZindex = atomData.atoms[a].ZIndex, cZindex = atomData.atoms[c].ZIndex;
+                glm::vec3 dr = univ.minImageVec(glm::vec3(dx, dy, dz));
+                float len2 = glm::dot(dr, dr);
+                float len = sqrtf(len2);
 
-                float bondLength = !m_universe.reactive() ? constants::getBondLength(aZindex, cZindex, b.type) : constants::getContinuousBondLength(aZindex, cZindex, b.order);
+                if (len <= EPSILON || len > 3.f) continue;
+
+                uint8_t aZ = atomData.atoms[a].ZIndex;
+                uint8_t cZ = atomData.atoms[c].ZIndex;
+
+                float bondLength = !m_universe.reactive()
+                    ? constants::getBondLength(aZ, cZ, b.type)
+                    : constants::getContinuousBondLength(aZ, cZ, b.order);
+
                 float dl = len - bondLength;
-                
-                float bond_k = !m_universe.reactive() ? constants::getBondHarmonicConstantFromEnergy(aZindex, cZindex, b.type) : constants::getBondHarmonicConstantFromEnergy(aZindex, cZindex, b.order);
+                float bond_k = !m_universe.reactive()
+                    ? constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.type)
+                    : constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.order);
+
                 glm::vec3 force = (bond_k * dl / len) * dr;
 
                 atomData.atoms[a].total_BO += b.order;
@@ -558,28 +587,37 @@ namespace sim
             futures.emplace_back(std::async(std::launch::async, make_task(bond_func), start, end));
         }
 
-        auto angle_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf)
+        auto angle_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf,
+                            const float* __restrict x,
+                            const float* __restrict y,
+                            const float* __restrict z)
         {
             for (int32_t a = start; a < end; ++a)
             {
                 const fun::angle &ang = atomData.angles[a];
                 int32_t i = ang.A, j = ang.B, k = ang.C;
 
-                glm::vec3 r_ji = univ.minImageVec(data.positions[i] - data.positions[j]);
-                glm::vec3 r_jk = univ.minImageVec(data.positions[k] - data.positions[j]);
+                float dx_ji = x[i] - x[j];
+                float dy_ji = y[i] - y[j];
+                float dz_ji = z[i] - z[j];
+
+                float dx_jk = x[k] - x[j];
+                float dy_jk = y[k] - y[j];
+                float dz_jk = z[k] - z[j];
+
+                glm::vec3 r_ji = univ.minImageVec(glm::vec3(dx_ji, dy_ji, dz_ji));
+                glm::vec3 r_jk = univ.minImageVec(glm::vec3(dx_jk, dy_jk, dz_jk));
 
                 float len_ji = glm::length(r_ji);
                 float len_jk = glm::length(r_jk);
-                if (len_ji < EPSILON || len_jk < EPSILON)
-                    continue;
+                if (len_ji < EPSILON || len_jk < EPSILON) continue;
 
                 glm::vec3 u_ji = r_ji / len_ji;
                 glm::vec3 u_jk = r_jk / len_jk;
 
                 float cos_theta = std::clamp(glm::dot(u_ji, u_jk), -1.0f, 1.0f);
                 float sin_theta = std::sqrt(std::max(1.0f - cos_theta * cos_theta, 0.0f));
-                if (sin_theta < 1e-6f)
-                    sin_theta = 1e-6f;
+                if (sin_theta < 1e-6f) sin_theta = 1e-6f;
 
                 float theta = std::acos(cos_theta);
                 float delta_theta = theta - ang.rad;
@@ -589,17 +627,8 @@ namespace sim
 
                 float K = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
 
-                /* if (m_universe.reactive())
-                {
-                    const sim::fun::bond& AB = atomData.bonds[m_universe.getBond(i, j)];
-                    const sim::fun::bond& BC = atomData.bonds[m_universe.getBond(k, j)];
-
-                    K = constants::getContinuousAngleConstant(atomData.atoms[i].ZIndex, atomData.atoms[j].ZIndex, atomData.atoms[k].ZIndex, AB.order, BC.order);
-                } */
-                
                 glm::vec3 F_i = -K * delta_theta * dtheta_dri;
                 glm::vec3 F_k = -K * delta_theta * dtheta_drk;
-                
                 glm::vec3 F_j = -F_i - F_k;
 
                 lf[i] += F_i;
@@ -615,35 +644,38 @@ namespace sim
             futures.emplace_back(std::async(std::launch::async, make_task(angle_func), start, end));
         }
 
-        auto dihedral_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf)
+        auto dihedral_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf,
+                                const float* __restrict x,
+                                const float* __restrict y,
+                                const float* __restrict z)
         {
             for (int32_t d = start; d < end; ++d)
             {
                 const fun::dihedral_angle &da = atomData.dihedral_angles[d];
 
-                glm::vec3 pa = data.positions[da.A];
-                glm::vec3 pb = data.positions[da.B];
-                glm::vec3 pc = data.positions[da.C];
-                glm::vec3 pd = data.positions[da.D];
+                // Positions from SoA
+                glm::vec3 pa(x[da.A], y[da.A], z[da.A]);
+                glm::vec3 pb(x[da.B], y[da.B], z[da.B]);
+                glm::vec3 pc(x[da.C], y[da.C], z[da.C]);
+                glm::vec3 pd(x[da.D], y[da.D], z[da.D]);
 
                 float phi = computeDihedral(pa, pb, pc, pd);
                 float target = 0.0f;
                 float K = 6.0f;
-                if (da.periodicity == 3) 
-                {
-                    float phi = computeDihedral(pa, pb, pc, pd);
-                    K          = 1.5f;
+
+                if (da.periodicity == 3) {
+                    phi = computeDihedral(pa, pb, pc, pd);
+                    K   = 1.5f;
                     target = round(phi / (2.0f * M_PI / 3.0f)) * (2.0f * M_PI / 3.0f);
                 }
-                else if (da.periodicity == 2) 
-                {
-                    K          = 6.0f;
+                else if (da.periodicity == 2) {
+                    K   = 6.0f;
                     target = (phi > M_PI/2.0f) ? M_PI : 0.0f;
                 }
 
-                if (target == 0.0f && da.periodicity == 1)
-                {
-                    int32_t chi = atomData.atoms[da.B].chirality ? atomData.atoms[da.B].chirality : atomData.atoms[da.C].chirality;
+                if (target == 0.0f && da.periodicity == 1) {
+                    int32_t chi = atomData.atoms[da.B].chirality ? atomData.atoms[da.B].chirality
+                                                                : atomData.atoms[da.C].chirality;
                     if (chi == 1)
                         target = (phi < M_PI) ? 1.047f : 5.236f;
                     if (chi == 2)
@@ -651,10 +683,8 @@ namespace sim
                 }
 
                 float diff = phi - target;
-                while (diff > M_PI)
-                    diff -= 2.0f * M_PI;
-                while (diff < -M_PI)
-                    diff += 2.0f * M_PI;
+                while (diff > M_PI)  diff -= 2.0f * M_PI;
+                while (diff < -M_PI) diff += 2.0f * M_PI;
 
                 glm::vec3 b1 = pb - pa;
                 glm::vec3 b2 = pc - pb;
@@ -692,24 +722,25 @@ namespace sim
             futures.emplace_back(std::async(std::launch::async, make_task(dihedral_func), start, end));
         }
 
-        auto improper_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf)
+        auto improper_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf,
+                                const float* __restrict x,
+                                const float* __restrict y,
+                                const float* __restrict z)
         {
             for (int32_t d = start; d < end; ++d)
             {
                 const fun::dihedral_angle &imp = atomData.improper_angles[d];
 
-                glm::vec3 pa = data.positions[imp.A];
-                glm::vec3 pb = data.positions[imp.B];
-                glm::vec3 pc = data.positions[imp.C];
-                glm::vec3 pd = data.positions[imp.D];
+                glm::vec3 pa(x[imp.A], y[imp.A], z[imp.A]);
+                glm::vec3 pb(x[imp.B], y[imp.B], z[imp.B]);
+                glm::vec3 pc(x[imp.C], y[imp.C], z[imp.C]);
+                glm::vec3 pd(x[imp.D], y[imp.D], z[imp.D]);
 
                 float phi = computeDihedral(pa, pb, pc, pd);
 
                 float diff = phi - imp.rad;
-                while (diff > M_PI)
-                    diff -= 2.0f * M_PI;
-                while (diff < -M_PI)
-                    diff += 2.0f * M_PI;
+                while (diff > M_PI)  diff -= 2.0f * M_PI;
+                while (diff < -M_PI) diff += 2.0f * M_PI;
 
                 float dE_dphi = imp.K * diff;
 
@@ -748,76 +779,82 @@ namespace sim
             futures.emplace_back(std::async(std::launch::async, make_task(improper_func), start, end));
         }
 
+        float* __restrict fx = data.fxData();
+        float* __restrict fy = data.fyData();
+        float* __restrict fz = data.fzData();
+
         for (auto &fut : futures)
         {
             auto local_f = fut.get();
             for (size_t i = 0; i < local_f.size(); ++i)
             {
-                data.forces[i] += glm::vec4(local_f[i], 0.0f);
+                fx[i] += local_f[i].x;
+                fy[i] += local_f[i].y;
+                fz[i] += local_f[i].z;
             }
         }
     }
 
-    glm::vec3 sim_dynamics::computeCoulombForce(uint32_t i, uint32_t j, glm::vec3 &dr_vec)
+    inline glm::vec3 sim_dynamics::computeCoulombForce(
+        uint32_t i, uint32_t j,
+        const float* __restrict x,
+        const float* __restrict y,
+        const float* __restrict z,
+        const float* __restrict q)
     {
-        auto &data = m_universe.getData();
-        float dr2 = glm::length2(dr_vec);
+        float dx = x[j] - x[i];
+        float dy = y[j] - y[i];
+        float dz = z[j] - z[i];
+
+        glm::vec3 dr = m_universe.minImageVec(glm::vec3(dx, dy, dz));
+        float dr2 = glm::dot(dr, dr);
 
         if (dr2 < EPSILON || dr2 > COULOMB_CUTOFF * COULOMB_CUTOFF)
-            return {0.f, 0.f, 0.f};
+            return glm::vec3{0.f};
 
-        float qq = data.q[i] * data.q[j];
+        float qq = q[i] * q[j];
         if (qq == 0.f)
-            return {0.f, 0.f, 0.f};
+            return glm::vec3{0.f};
 
         float inv_r = 1.0f / sqrtf(dr2);
         float forceMag = COULOMB_K * qq * inv_r * inv_r * inv_r;
-        return forceMag * -dr_vec;
+
+        return glm::vec3{-forceMag * dr.x, -forceMag * dr.y, -forceMag * dr.z};
     }
 
-    glm::vec3 sim_dynamics::computeLJforce(uint32_t i, uint32_t j, glm::vec3 &dr_vec)
+    inline glm::vec3 sim_dynamics::computeLJforce(
+        uint32_t i, uint32_t j,
+        const float* __restrict x,
+        const float* __restrict y,
+        const float* __restrict z,
+        const float* __restrict ljParams)
     {
-        auto &data = m_universe.getData();
-        auto &atomData = m_universe.getAtomData();
+        float dx = x[j] - x[i];
+        float dy = y[j] - y[i];
+        float dz = z[j] - z[i];
+        float dr2 = dx*dx + dy*dy + dz*dz;
 
-        const uint32_t base_i = i << 1;
-        const uint32_t base_j = j << 1;
+        if (dr2 > CELL_CUTOFF*CELL_CUTOFF || dr2 < EPSILON)
+            return glm::vec3{0.f};
 
-        const float sigma_i = data.lj_params[base_i];
-        const float epsilon_i = data.lj_params[base_i + 1];
+        float sigma_i   = ljParams[i*2];
+        float epsilon_i = ljParams[i*2 + 1];
+        float sigma_j   = ljParams[j*2];
+        float epsilon_j = ljParams[j*2 + 1];
 
-        const float sigma_j = data.lj_params[base_j];
-        const float epsilon_j = data.lj_params[base_j + 1];
-
-        float dr2 = glm::length2(dr_vec);
-
-        float sigma = (sigma_i + sigma_j) * 0.5f;
+        float sigma = 0.5f * (sigma_i + sigma_j);
         float epsilon = sqrtf(epsilon_i * epsilon_j);
 
-        if (dr2 < 100.f && dr2 > EPSILON)
-        {
-            float inv_r = 1.f / sqrtf(dr2);
-            float inv_r2 = 1.f / dr2;
-            float inv_r6 = inv_r2 * inv_r2 * inv_r2;
-            float inv_r12 = inv_r6 * inv_r6;
+        float inv_r2 = 1.f / dr2;
+        float inv_r6 = inv_r2 * inv_r2 * inv_r2;
+        float inv_r12 = inv_r6 * inv_r6;
 
-            float force_mag = 0.f;
+        float sig6 = sigma*sigma*sigma*sigma*sigma*sigma;
+        float sig12 = sig6 * sig6;
 
-            float sum_cov = constants::covalent_radius[atomData.atoms[i].ZIndex] +
-                            constants::covalent_radius[atomData.atoms[j].ZIndex];
+        float force_mag = 24.f * epsilon * inv_r2 * (2.f * sig12 * inv_r12 - sig6 * inv_r6);
 
-            float sr6 = powf(sigma, 6.0f) * inv_r6;
-            float sr12 = sr6 * sr6;
-
-            force_mag += 24.0f * epsilon * (2.0f * sr12 - sr6) * inv_r2;
-            
-            if (m_universe.reactive() && dr2 < sum_cov * sum_cov)
-                force_mag *= 1.f / (1e-6f + std::exp(5.f * dr2));
-
-            return force_mag * -dr_vec;
-        }
-
-        return glm::vec3{0.f, 0.f, 0.f};
+        return glm::vec3{-force_mag * dx, -force_mag * dy, -force_mag * dz};
     }
 
     float sim_dynamics::computeDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
@@ -854,31 +891,46 @@ namespace sim
         }
         else
         {
-            std::fill(data.forces.begin(), data.forces.end(), glm::vec4{0.0f});
+            data.clearForces();
         }
     }
 
     void sim_dynamics::computeExternalForces(uint32_t i)
     {
         auto& wall_charges = m_universe.getWallCharges();
-        auto& data = m_universe.getData();
-        auto& atomData = m_universe.getAtomData();
+        auto& storage = m_universe.getData();
 
+        float* __restrict q  = storage.qData();
+        float* __restrict vx = storage.vxData();
+        float* __restrict vy = storage.vyData();
+        float* __restrict vz = storage.vzData();
+
+        float* __restrict fx = storage.fxData();
+        float* __restrict fy = storage.fyData();
+        float* __restrict fz = storage.fzData();
+        
         if (m_universe.wallChargeEnabled())
-        for (int32_t w = 0; w < m_universe.getWallCharges().size(); ++w)
         {
-            const float &wall_q = wall_charges[w];
-            if (wall_q == 0.f)
-                continue;
+            for (int32_t w = 0; w < static_cast<int32_t>(wall_charges.size()); ++w)
+            {
+                const float wall_q = wall_charges[w];
+                if (wall_q == 0.f) continue;
 
-            glm::vec3 force = data.q[i] * wall_q * wall_directions[w];
-            data.forces[i] += glm::vec4(force, 0.0f);
+                glm::vec3 force = q[i] * wall_q * wall_directions[w];
+                fx[i] += force.x;
+                fy[i] += force.y;
+                fz[i] += force.z;
+            }
         }
 
         if (m_universe.magneticFieldEnabled())
         {
-            glm::vec3 force = data.q[i] * glm::cross(data.velocities[i], m_universe.getMagneticFieldStrength());
-            data.forces[i] += glm::vec4(force, 0.0f);
+            glm::vec3 vel(vx[i], vy[i], vz[i]);
+            glm::vec3 force = q[i] * glm::cross(vel, m_universe.getMagneticFieldStrength());
+
+            fx[i] += force.x;
+            fy[i] += force.y;
+            fz[i] += force.z;
         }
     }
 
@@ -889,55 +941,69 @@ namespace sim
         if (m_GPU)
         {
             updateSSBOs();
+            computeUnbondedGPU();
             computeBondedGPU();
             computeAnglesGPU();
-            computeUnbondedGPU();
         }
         else
         {
-            computeBondedCPU();
             computeUnbondedCPU();
+            computeBondedCPU();
         }
     }
 
     void sim_dynamics::integrate()
     {
         auto &univ = m_universe;
-        auto &data = m_universe.getData();
+        auto &storage = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
-        const size_t N = data.positions.size();
+        const size_t N = storage.mobileCount();
 
         if (N == 0) return;
+
+        float* __restrict x  = storage.xData();
+        float* __restrict y  = storage.yData();
+        float* __restrict z  = storage.zData();
+        float* __restrict vx = storage.vxData();
+        float* __restrict vy = storage.vyData();
+        float* __restrict vz = storage.vzData();
+        float* __restrict fx = storage.fxData();
+        float* __restrict fy = storage.fyData();
+        float* __restrict fz = storage.fzData();
+        float* __restrict invMass = storage.invMassData();
+        float* __restrict q = storage.qData();
 
         const float effective_dt = m_dt * m_timescale;
         const float half_dt = 0.5f * effective_dt;
 
         computeForces();
 
-        for (int32_t i = 0; i < N; ++i)
+        for (size_t i = 0; i < N; ++i)
         {
-            // Resets for reaction system
-            atomData.atoms[i].total_BO = 0.f;
-
-            if (atomData.frozen_atoms[i])
-            {
-                data.velocities[i] = glm::vec3{0.0f};
+            if (atomData.frozen_atoms[i]) {
+                vx[i] = vy[i] = vz[i] = 0.0f;
                 continue;
             }
 
-            computeExternalForces(i);
+            computeExternalForces(static_cast<uint32_t>(i));
 
-            const float inv_m = 1.0f / atomData.atoms[i].mass;
-            const glm::vec3 accel = glm::vec3(data.forces[i]) * inv_m;
+            float ax = fx[i] * invMass[i];
+            float ay = fy[i] * invMass[i];
+            float az = fz[i] * invMass[i];
 
-            data.velocities[i] += accel * half_dt;
+            vx[i] += ax * half_dt;
+            vy[i] += ay * half_dt;
+            vz[i] += az * half_dt;
         }
 
-        for (int32_t i = 0; i < N; ++i)
+        for (size_t i = 0; i < N; ++i)
         {
             if (atomData.frozen_atoms[i]) continue;
 
-            data.positions[i] += data.velocities[i] * effective_dt;
+            x[i] += vx[i] * effective_dt;
+            y[i] += vy[i] * effective_dt;
+            z[i] += vz[i] * effective_dt;
+
             univ.boundCheck(static_cast<uint32_t>(i));
         }
 
@@ -946,32 +1012,35 @@ namespace sim
         if (m_GPU)
         {
             ssbo_force.bind(); checkGLError("bind force for readback");
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, N * sizeof(glm::vec4), data.forces.data());
+            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, N * sizeof(glm::vec4), storage.fxData());
             checkGLError("get buffer sub data");
             ssbo_force.unbind(); checkGLError("unbind after readback");
         }
 
         glm::vec3 grav_accel(0.0f, 0.0f, -m_universe.gravityMagnitude());
 
-        for (int32_t i = 0; i < N; ++i)
+        for (size_t i = 0; i < N; ++i)
         {
-            if (atomData.frozen_atoms[i])
-            {
-                data.velocities[i] = glm::vec3{0.0f};
+            if (atomData.frozen_atoms[i]) {
+                vx[i] = vy[i] = vz[i] = 0.0f;
                 continue;
             }
 
-            computeExternalForces(i);
+            computeExternalForces(static_cast<uint32_t>(i));
 
-            const float inv_m = 1.0f / atomData.atoms[i].mass;
-            const glm::vec3 accel = glm::vec3(data.forces[i]) * inv_m;
+            float ax = fx[i] * invMass[i];
+            float ay = fy[i] * invMass[i];
+            float az = fz[i] * invMass[i];
 
-            data.velocities[i] += accel * half_dt;
+            vx[i] += ax * half_dt;
+            vy[i] += ay * half_dt;
+            vz[i] += az * half_dt;
 
             if (m_universe.gravityEnabled())
             {
-                if (atomData.frozen_atoms[i]) continue;
-                data.velocities[i] += grav_accel * 1e-3f * effective_dt;
+                vx[i] += grav_accel.x * 1e-3f * effective_dt;
+                vy[i] += grav_accel.y * 1e-3f * effective_dt;
+                vz[i] += grav_accel.z * 1e-3f * effective_dt;
             }
         }
     }
@@ -983,19 +1052,23 @@ namespace sim
 
         total_virial = 0.f;
 
-        auto &data = m_universe.getData();
-        auto &atomData = m_universe.getAtomData();
+        auto &storage = m_universe.getData();
+        const size_t N = storage.mobileCount();
 
         if (universe_verlet.verlet.size() != m_universe.numAtoms())
         {
-            universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
+            universe_grid.rebuild(storage.xData(), storage.yData(), storage.zData(), storage.mobileCount(),
+                                m_universe.boxSizes(), CELL_CUTOFF);
             universe_verlet.construct(universe_grid, m_universe);        
         }
 
         integrate();
 
         if (m_step_count % GRID_REBUILD == 0)
-            universe_grid.rebuild(data.positions, m_universe.boxSizes(), CELL_CUTOFF);
+        {
+            universe_grid.rebuild(storage.xData(), storage.yData(), storage.zData(), storage.mobileCount(),
+                                m_universe.boxSizes(), CELL_CUTOFF);
+        }
         
         float verletRebuildRate = 30.f / (m_timescale + std::numeric_limits<float>::epsilon());
 
@@ -1043,7 +1116,7 @@ namespace sim
         if (m_step_count % BAROSTAT_INTERVAL != 0 || target_p_kpa <= 0.0f)
             return;
 
-        constexpr float tau_P = 400.0f;
+        constexpr float tau_P = 300.0f;
         constexpr float beta_T = 4.5e-5f;
 
         float delta_P = target_p_kpa - m_pressure;
@@ -1057,10 +1130,20 @@ namespace sim
 
         m_universe.setBoxSize({box.x, box.y, new_box.z});
 
+        float* __restrict z = m_universe.getData().zData();
+        float* __restrict vx = m_universe.getData().vxData();
+        float* __restrict vy = m_universe.getData().vyData();
+        float* __restrict vz = m_universe.getData().vzData();
+
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
-        for (size_t i = 0; i < atomData.atoms.size(); ++i) data.positions[i].z *= scale;
-        for (auto& v : data.velocities) v *= std::sqrt(scale);
+        for (size_t i = 0; i < atomData.atoms.size(); ++i) z[i] *= scale;
+        for (int32_t v = 0; v < m_universe.getData().mobileCount(); ++v)
+        {
+            vx[v] *= std::sqrt(scale);
+            vy[v] *= std::sqrt(scale);
+            vz[v] *= std::sqrt(scale);
+        } 
     }
 
     // Bussi–Donadio–Parrinello (CSVR) velocity rescaling
@@ -1095,8 +1178,16 @@ namespace sim
 
         float alpha = sqrtf(c * (1.0f + chi + 0.5f * chi * chi));
 
-        for (auto &v : data.velocities)
-            v *= alpha;
+        float* __restrict vx = data.vxData();
+        float* __restrict vy = data.vyData();
+        float* __restrict vz = data.vzData();
+
+        for (int32_t v = 0; v < data.mobileCount(); ++v)
+        {
+            vx[v] *= alpha;
+            vy[v] *= alpha;
+            vz[v] *= alpha;
+        }
     }
 
     void sim_dynamics::COMDrift()
@@ -1107,20 +1198,26 @@ namespace sim
         auto &atomData = m_universe.getAtomData();
         auto &data = m_universe.getData();
 
+        float* __restrict vx = data.vxData();
+        float* __restrict vy = data.vyData();
+        float* __restrict vz = data.vzData();
+
         glm::vec3 totalMomentum{0.f};
         float totalMass = 0.f;
 
         for (int32_t i = 0; i < atomData.atoms.size(); ++i)
         {
-            totalMomentum += atomData.atoms[i].mass * data.velocities[i];
+            totalMomentum += atomData.atoms[i].mass * glm::vec3(vx[i], vy[i], vz[i]);
             totalMass += atomData.atoms[i].mass;
         }
 
         glm::vec3 correction = totalMomentum / totalMass;
 
-        for (auto &v : data.velocities)
+        for (int32_t v = 0; v < data.mobileCount(); ++v)
         {
-            v -= correction;
+            vx[v] -= correction.x;
+            vy[v] -= correction.y;
+            vz[v] -= correction.z;
         }
     }
 } // namespace sim

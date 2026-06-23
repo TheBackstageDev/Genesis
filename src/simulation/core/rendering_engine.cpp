@@ -651,7 +651,7 @@ namespace sim
                 float v = glm::length(sim_info.velocities[i]);
                 float t = std::clamp(v / m_maxSimVelocity, 0.0f, 1.0f);
 
-                float hue = glm::mix(0.0f, 0.4f, t); 
+                float hue = glm::mix(0.0f, 0.25f, t); 
                 glm::vec3 rgb = hsv2rgb(glm::vec3(hue, 1.0f, 1.0f)); 
                 return glm::vec4(rgb, 1.0f);
             }

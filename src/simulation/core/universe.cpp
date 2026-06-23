@@ -35,9 +35,17 @@ namespace sim
 
         void universe::draw(rendering_info info)
         {
-            rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? data.positions : m_displayPositions,
-                                               .velocities = data.velocities,
-                                               .q = data.q,
+            auto positionsvec = positions();
+            auto velocitiesvec = velocities();
+
+            std::vector<float> qvec{};
+            float* q = m_atomStorage.qData();
+            for (int32_t i = 0; i < m_atomStorage.mobileCount(); ++i)
+                qvec.emplace_back(q[i]);
+
+            rendering_simulation_info sim_info{.positions = m_displayPositions.empty() ? positionsvec : m_displayPositions,
+                                               .velocities = velocitiesvec,
+                                               .q = qvec,
                                                .atoms = atomData.atoms,
                                                .bonds = atomData.bonds,
                                                .molecules = atomData.molecules,
@@ -66,14 +74,6 @@ namespace sim
         {
             atom newAtom{};
             newAtom.ZIndex = ZIndex;
-
-            emplace_vel(v);
-            emplace_pos(p);
-
-            std::pair<float, float> constants = constants::getAtomConstants(ZIndex);
-
-            data.lj_params.emplace_back(constants.first);
-            data.lj_params.emplace_back(constants.second);
             newAtom.electrons = numElectron;
             newAtom.NCount = numNeutrons == 0 ? constants::NEUTRON_COUNTS[ZIndex] : numNeutrons;
             newAtom.mass = ZIndex * MASS_PROTON + newAtom.NCount * MASS_NEUTRON + numElectron * MASS_ELECTRON;
@@ -88,12 +88,34 @@ namespace sim
                     newAtom.mass -= 3.f;
             }
 
-            data.q.emplace_back(float(ZIndex - numElectron));
             atomData.atoms.emplace_back(std::move(newAtom));
             atomData.frozen_atoms.emplace_back(false);
-            data.forces.resize(atomData.atoms.size());
 
-            return atomData.atoms.size() - 1;
+            size_t atomSize = atomData.atoms.size();
+
+            m_atomStorage.resize(atomSize);
+
+            const auto ljParams = constants::getAtomConstants(ZIndex);
+
+            sim::atomView view{};
+            view.i = atomSize - 1;
+            view.vx = v.x;
+            view.vy = v.y;
+            view.vz = v.z;
+            view.fx = 0.f;
+            view.fy = 0.f;
+            view.fz = 0.f;
+            view.px = p.x;
+            view.py = p.y;
+            view.pz = p.z;
+            view.invMass = 1.f / newAtom.mass;
+            view.q = float(ZIndex - numElectron);
+            view.sigma = ljParams.first;            
+            view.epsilon = ljParams.second;            
+
+            m_atomStorage.setAtom(view);
+
+            return atomSize - 1;
         }
 
         void universe::createBond(int32_t idx1, int32_t idx2, BondType type)
@@ -126,13 +148,13 @@ namespace sim
 
                 if (EN1 > EN2)
                 {
-                    data.q[idx1] -= charge;
-                    data.q[idx2] += charge;
+                    m_atomStorage.charge(idx1) -= charge;
+                    m_atomStorage.charge(idx2) += charge;
                 }
                 else
                 {
-                    data.q[idx2] -= charge;
-                    data.q[idx1] += charge;
+                    m_atomStorage.charge(idx2) -= charge;
+                    m_atomStorage.charge(idx1) += charge;
                 }
             }
             
@@ -272,7 +294,7 @@ namespace sim
 
                 glm::vec3 end_pos = structure.positions[i] + pos;
                 createAtom(end_pos, vel, a.ZIndex, a.NIndex, a.ZIndex, a.chirality);
-                data.q[baseAtomIndex + i] += structure.atoms[i].charge;
+                m_atomStorage.charge(baseAtomIndex + i) += structure.atoms[i].charge;
             }
 
             nMolecule.atomBegin = baseAtomIndex;
@@ -352,7 +374,7 @@ namespace sim
 
         void universe::balanceMolecularCharges(subset &mol)
         {
-            auto it = std::find_if(atomData.subsets.begin(), atomData.subsets.end(), [&](const subset &s)
+            /* auto it = std::find_if(atomData.subsets.begin(), atomData.subsets.end(), [&](const subset &s)
                                    { return &s == &mol; });
             if (it == atomData.subsets.end())
                 return;
@@ -456,87 +478,101 @@ namespace sim
                 {
                     data.q[idx] += adjustment;
                 }
-            }
+            } */
         }
 
-        void reflectVelocity(glm::vec3& v, const glm::vec3& normal)
+        void reflectVelocity(float& vx, float& vy, float& vz, const glm::vec3& normal)
         {
+            glm::vec3 v(vx, vy, vz);
+
             float dot = glm::dot(v, normal);
-            v -= 2.0f * dot * normal;
+            glm::vec3 reflected = v - 2.0f * dot * normal;
+
+            vx = reflected.x;
+            vy = reflected.y;
+            vz = reflected.z;
         }
 
         void universe::boundCheck(uint32_t i)
         {
-            glm::vec3& pos = data.positions[i];
-            glm::vec3& vel = data.velocities[i];
+            float* __restrict x  = m_atomStorage.xData();
+            float* __restrict y  = m_atomStorage.yData();
+            float* __restrict z  = m_atomStorage.zData();
+            float* __restrict vx = m_atomStorage.vxData();
+            float* __restrict vy = m_atomStorage.vyData();
+            float* __restrict vz = m_atomStorage.vzData();
 
             bool collided = false;
 
             // ====================== X Axis ======================
             if (wall_collision)
             {
-                if (pos.x < 0.0f)
+                if (x[i] < 0.0f)
                 {
-                    pos.x = 0.0f;
-                    reflectVelocity(vel, glm::vec3(1.0f, 0.0f, 0.0f));  // normal = +X
+                    x[i] = 0.0f;
+                    reflectVelocity(vx[i], vy[i], vz[i], glm::vec3(1.0f, 0.0f, 0.0f));
                     collided = true;
                 }
-                else if (pos.x > box.x)
+                else if (x[i] > box.x)
                 {
-                    pos.x = box.x;
-                    reflectVelocity(vel, glm::vec3(-1.0f, 0.0f, 0.0f)); // normal = -X
+                    x[i] = box.x;
+                    reflectVelocity(vx[i], vy[i], vz[i], glm::vec3(-1.0f, 0.0f, 0.0f));
                     collided = true;
                 }
             }
             else // Periodic
             {
-                pos.x = std::fmod(std::fmod(pos.x, box.x) + box.x, box.x);
+                x[i] = std::fmod(std::fmod(x[i], box.x) + box.x, box.x);
             }
 
             // ====================== Y Axis ======================
             if (wall_collision)
             {
-                if (pos.y < 0.0f)
+                if (y[i] < 0.0f)
                 {
-                    pos.y = 0.0f;
-                    reflectVelocity(vel, glm::vec3(0.0f, 1.0f, 0.0f));
+                    y[i] = 0.0f;
+                    reflectVelocity(vx[i], vy[i], vz[i], glm::vec3(0.0f, 1.0f, 0.0f));
                     collided = true;
                 }
-                else if (pos.y > box.y)
+                else if (y[i] > box.y)
                 {
-                    pos.y = box.y;
-                    reflectVelocity(vel, glm::vec3(0.0f, -1.0f, 0.0f));
+                    y[i] = box.y;
+                    reflectVelocity(vx[i], vy[i], vz[i], glm::vec3(0.0f, -1.0f, 0.0f));
                     collided = true;
                 }
             }
             else
             {
-                pos.y = std::fmod(std::fmod(pos.y, box.y) + box.y, box.y);
+                y[i] = std::fmod(std::fmod(y[i], box.y) + box.y, box.y);
             }
 
             // ====================== Z Axis ======================
             if (roof_floor_collision)
             {
-                if (pos.z < 0.0f)
+                if (z[i] < 0.0f)
                 {
-                    pos.z = 0.0f;
-                    reflectVelocity(vel, glm::vec3(0.0f, 0.0f, 1.0f));
+                    z[i] = 0.0f;
+                    reflectVelocity(vx[i], vy[i], vz[i], glm::vec3(0.0f, 0.0f, 1.0f));
                     collided = true;
                 }
-                else if (pos.z > box.z)
+                else if (z[i] > box.z)
                 {
-                    pos.z = box.z;
-                    reflectVelocity(vel, glm::vec3(0.0f, 0.0f, -1.0f));
+                    z[i] = box.z;
+                    reflectVelocity(vx[i], vy[i], vz[i], glm::vec3(0.0f, 0.0f, -1.0f));
                     collided = true;
                 }
             }
             else
             {
-                pos.z = std::fmod(std::fmod(pos.z, box.z) + box.z, box.z);
+                z[i] = std::fmod(std::fmod(z[i], box.z) + box.z, box.z);
             }
 
             if (collided)
-                vel *= 0.999f;
+            {
+                vx[i] *= 0.999f;
+                vy[i] *= 0.999f;
+                vz[i] *= 0.999f;
+            }
         }
 
         // Energy Calculation
@@ -544,27 +580,41 @@ namespace sim
         {
             float kinetic_energy = 0.0f;
             for (int32_t i = 0; i < atomData.atoms.size(); ++i)
-                kinetic_energy += 0.5f * atomData.atoms[i].mass * glm::length2(data.velocities[i]);
+                kinetic_energy += 0.5f * atomData.atoms[i].mass * glm::length2(m_atomStorage.velocity(i));
  
             return kinetic_energy;
         }
 
         void universe::COMDrift()
         {
+            auto &storage = m_atomStorage;
+
+            float* __restrict vx = storage.vxData();
+            float* __restrict vy = storage.vyData();
+            float* __restrict vz = storage.vzData();
+            float* __restrict invMass = storage.invMassData();
+
+            size_t N = storage.mobileCount();
+
             glm::vec3 totalMomentum{0.f};
             float totalMass = 0.f;
 
-            for (int32_t i = 0; i < atomData.atoms.size(); ++i)
+            for (size_t i = 0; i < N; ++i)
             {
-                totalMomentum += atomData.atoms[i].mass * data.velocities[i];
-                totalMass += atomData.atoms[i].mass;
+                float mass = 1.0f / invMass[i]; 
+                totalMomentum.x += mass * vx[i];
+                totalMomentum.y += mass * vy[i];
+                totalMomentum.z += mass * vz[i];
+                totalMass += mass;
             }
 
             glm::vec3 correction = totalMomentum / totalMass;
 
-            for (auto &v : data.velocities)
+            for (size_t i = 0; i < N; ++i)
             {
-                v -= correction;
+                vx[i] -= correction.x;
+                vy[i] -= correction.y;
+                vz[i] -= correction.z;
             }
         }
 
@@ -617,16 +667,12 @@ namespace sim
             return name;
         }
 
-        void universe::initReaxParams()
-        {
-        }
-
         // loading and saving scenes
 
         void universe::saveFrame()
         {
             frame nFrame{};
-            nFrame.positions = data.positions;
+            nFrame.positions = positions();
 
             m_frames.emplace_back(std::move(nFrame));
         }
@@ -715,21 +761,32 @@ namespace sim
 
             nlohmann::json scene{};
 
-            for (int32_t x = 0; x < data.positions.size(); ++x)
-            {
-                scene["posx"].emplace_back(data.positions[x].x);
-                scene["posy"].emplace_back(data.positions[x].y);
-                scene["posz"].emplace_back(data.positions[x].z);
-                scene["velx"].emplace_back(data.velocities[x].x);
-                scene["vely"].emplace_back(data.velocities[x].y);
-                scene["velz"].emplace_back(data.velocities[x].z);
+            float* __restrict x  = m_atomStorage.xData();
+            float* __restrict y  = m_atomStorage.yData();
+            float* __restrict z  = m_atomStorage.zData();
+            float* __restrict vx = m_atomStorage.vxData();
+            float* __restrict vy = m_atomStorage.vyData();
+            float* __restrict vz = m_atomStorage.vzData();
+            float* __restrict q  = m_atomStorage.qData();
 
-                scene["charge"].emplace_back(data.q[x]);
-                scene["ZIndex"].emplace_back(atomData.atoms[x].ZIndex);
-                scene["neutrons"].emplace_back(atomData.atoms[x].NCount);
-                scene["electrons"].emplace_back(atomData.atoms[x].electrons);
-                scene["boundCount"].emplace_back(atomData.atoms[x].bondCount);
-                scene["chirality"].emplace_back(atomData.atoms[x].chirality);
+            for (int32_t i = 0; i < m_atomStorage.mobileCount(); ++i)
+            {
+
+                scene["posx"].emplace_back(x[i]);
+                scene["posy"].emplace_back(y[i]);
+                scene["posz"].emplace_back(z[i]);
+
+                scene["velx"].emplace_back(vx[i]);
+                scene["vely"].emplace_back(vy[i]);
+                scene["velz"].emplace_back(vz[i]);
+
+                scene["charge"].emplace_back(q[i]);
+
+                scene["ZIndex"].emplace_back(atomData.atoms[i].ZIndex);
+                scene["neutrons"].emplace_back(atomData.atoms[i].NCount);
+                scene["electrons"].emplace_back(atomData.atoms[i].electrons);
+                scene["boundCount"].emplace_back(atomData.atoms[i].bondCount);
+                scene["chirality"].emplace_back(atomData.atoms[i].chirality);
             }
 
             for (int32_t b = 0; b < atomData.bonds.size(); ++b)
@@ -888,10 +945,7 @@ namespace sim
             int32_t N = posx.size();
 
             atomData.atoms.reserve(N);
-            data.positions.reserve(N);
-            data.lj_params.reserve(N);
-            data.velocities.reserve(N);
-            data.q.reserve(N);
+            m_atomStorage.resize(N);
 
             for (int32_t i = 0; i < N; ++i)
             {
@@ -911,15 +965,32 @@ namespace sim
                 atomData.atoms.emplace_back(std::move(newAtom));
                 atomData.frozen_atoms.emplace_back(false);
 
-                emplace_pos(glm::vec3(posx[i], posy[i], posz[i]));
-                emplace_vel(glm::vec3(velx[i], vely[i], velz[i]));
+                size_t atomSize = atomData.atoms.size();
 
-                data.q.emplace_back(charges[i]);
-                data.lj_params.emplace_back(sigma);
-                data.lj_params.emplace_back(epsilon);
+                m_atomStorage.resize(atomSize);
+
+                const auto ljParams = constants::getAtomConstants(Z);
+
+                sim::atomView view{};
+                view.i = i;
+                view.vx = velx[i];
+                view.vy = vely[i];
+                view.vz = velz[i];
+                view.fx = 0.f;
+                view.fy = 0.f;
+                view.fz = 0.f;
+                view.px = posx[i];
+                view.py = posy[i];
+                view.pz = posz[i];
+                view.invMass = 1.f / newAtom.mass;
+                view.q = charges[i];
+                view.sigma = ljParams.first;            
+                view.epsilon = ljParams.second;            
+
+                m_atomStorage.setAtom(view);
             }
 
-            data.forces.assign(N, glm::vec4(0.0f));
+            m_atomStorage.clearForces();
 
             if (scene.contains("bonds"))
             {

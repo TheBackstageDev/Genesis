@@ -75,8 +75,17 @@ namespace sim
         void computeBondedCPU();
         void computeExternalForces(uint32_t i);
 
-        glm::vec3 computeLJforce(uint32_t i, uint32_t j, glm::vec3 &dr_vec);
-        glm::vec3 computeCoulombForce(uint32_t i, uint32_t j, glm::vec3 &dr_vec);
+        glm::vec3 computeLJforce(uint32_t i, uint32_t j,
+                                const float* __restrict x,
+                                const float* __restrict y,
+                                const float* __restrict z,
+                                const float* __restrict ljParams);
+        glm::vec3 computeCoulombForce(uint32_t i, uint32_t j,
+                                    const float* __restrict x,
+                                    const float* __restrict y,
+                                    const float* __restrict z,
+                                    const float* __restrict q);
+
         float computeDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd);
         float computePressure();
         void COMDrift();

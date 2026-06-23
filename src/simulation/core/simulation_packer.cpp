@@ -208,12 +208,14 @@ namespace sim
                 auto& data = u.getData();
 
                 size_t start_idx = u.numAtoms() - mol.positions.size();
-                for (size_t k = start_idx; k < u.numAtoms(); ++k) {
-                    glm::vec3 local = data.positions[k] - spawn_center;
+                for (size_t k = start_idx; k < u.numAtoms(); ++k) 
+                {
+                    glm::vec3 positionK = data.position(k);
+                    glm::vec3 local = positionK - spawn_center;
                     glm::vec3 rotated = glm::vec3(rot_mat * glm::vec4(local, 1.0f));
-                    data.positions[k] = spawn_center + rotated;
+                    positionK = spawn_center + rotated;
 
-                    data.positions[k] += glm::vec3(
+                    positionK += glm::vec3(
                         randFloat(-0.05f, 0.05f),
                         randFloat(-0.05f, 0.05f),
                         randFloat(-0.05f, 0.05f)

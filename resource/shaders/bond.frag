@@ -10,6 +10,7 @@ in vec3  v_corner;
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
+uniform vec3 u_lightDir2 = normalize(vec3(0.4, -2.0, 1.2));
 uniform bool licorice = false;
 
 out vec4 fragColor;
@@ -99,11 +100,19 @@ void main()
     ao *= distAO;
 
     vec3 reflectDir = reflect(-u_lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128.0);
-    vec3 specular =  0.5f * spec * vec3(1.0, 1.0, 1.0);   
-    
-    final_color *= (0.7 + 0.3 * ao);
-    final_color.rgb += specular;
+    vec3 reflectDir2 = reflect(-u_lightDir2, normal);
+
+    float spec1 = pow(max(dot(viewDir, reflectDir), 0.0), 128.0);
+    vec3 specular1 = 0.5 * spec1 * vec3(1.0);
+
+    float spec2 = pow(max(dot(viewDir, reflectDir2), 0.0), 128.0);
+    vec3 specular2 = 0.25 * spec2 * vec3(0.3, 1.0, 1.0);
+
+    float NdotL2 = max(0.0, dot(normal, vec3(0.4, -2.0, 1.2)));
+    vec3 cyanLight = 0.1 * NdotL2 * vec3(0.3, 1.0, 1.0);
+
+    final_color.rgb += cyanLight;
+    final_color.rgb += specular1 + specular2;
 
     float NdotL = max(0.0, dot(normal, u_lightDir));
     fragColor = vec4(final_color.xyz * (0.1 + 0.8 * NdotL), final_color.w);

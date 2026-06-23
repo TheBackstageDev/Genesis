@@ -100,7 +100,7 @@ namespace sim
     {
         std::vector<float> hist(nbins_gr, 0.0f);
         const auto& atoms = u.getAtomData().atoms;
-        const auto& positions = u.getData().positions;
+        auto& data = const_cast<decltype(u.getData())>(u.getData());
 
         std::vector<int> idx_i, idx_j;
         for (size_t i = 0; i < atoms.size(); ++i) {
@@ -113,7 +113,7 @@ namespace sim
             for (int j : idx_j) 
             {
                 if (Zi == Zj && i == j) continue;
-                float dist = glm::length(u.minImageVec(positions[i] - positions[j]));
+                float dist = glm::length(u.minImageVec(data.position(i) - data.position(j)));
                 if (dist < r_max_gr && dist > 0.001f) 
                 {
                     int bin = static_cast<int>(dist / dr_gr);
@@ -308,7 +308,7 @@ namespace sim
 
     float simulation_inspector::meanParticleSpeed(fun::universe& u) const
     {
-        const auto& velocities = u.getData().velocities;
+        const auto& velocities = u.velocities();
         float totalVelocity = 0.f;
 
         for (const glm::vec3& velocity : velocities)
@@ -327,10 +327,10 @@ namespace sim
 
     float simulation_inspector::coulombPotential(fun::universe& u, int32_t i, int32_t j)
     {
-        const auto& data = u.getData();
+        auto& data = u.getData();
 
-        float r = glm::length(data.positions[i] - data.positions[j]);
+        float r = glm::length(data.position(i) - data.position(j));
 
-        return COULOMB_K * data.q[i] * data.q[j] / r;
+        return COULOMB_K * data.charge(i) * data.charge(j) / r;
     }
 } // namespace sim

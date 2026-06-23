@@ -2,6 +2,7 @@
 
 #include "simulation/fundamental_structures.hpp"
 #include "simulation/core/rendering_engine.hpp"
+#include "simulation/core/atom_storage.hpp"
 #include "core/graphics/shader.hpp"
 #include "core/utils/buffer.hpp"
 
@@ -25,14 +26,6 @@ namespace sim
 {
     namespace fun
     {
-        struct simData
-        {
-            alignas(64) std::vector<glm::vec3> positions;
-            alignas(64) std::vector<glm::vec3> velocities;
-            alignas(64) std::vector<glm::vec4> forces;
-            alignas(64) std::vector<float> q, lj_params;
-        };
-
         struct atomData
         {
             alignas(64) std::vector<atom> atoms;
@@ -170,7 +163,7 @@ namespace sim
             float gravityMagnitude() { return mag_gravity; }
             bool gravityEnabled() { return gravity; }
 
-            simData& getData() { return data; }
+            sim::atomStorage& getData() { return m_atomStorage; }
             atomData& getAtomData() { return atomData; }
             
             _NODISCARD video saveAsVideo(const std::filesystem::path path, const std::string name = "");
@@ -182,10 +175,7 @@ namespace sim
 
             void clear()
             {
-                data.positions.clear();
-                data.velocities.clear();
-                data.forces.clear();
-                data.q.clear();
+                m_atomStorage.clear();
 
                 atomData.molecules.clear();
                 atomData.atoms.clear();
@@ -217,21 +207,6 @@ namespace sim
                 m_displayPositions = nPositions;
             }
 
-            void setPositions(const std::vector<glm::vec3>& nPositions)
-            {
-                data.positions = nPositions;
-            }
-
-            void setPosition(size_t i, glm::vec3 p)
-            {
-                data.positions[i] = p;
-            }
-            
-            void addVelocity(size_t i, glm::vec3 v)
-            {
-                data.velocities[i] += v;
-            }
-
             void setMagneticFieldEnabled(bool state) { f_magneticField = state; }
             void setWallChargesEnabled(bool state) { f_wallCharges = state; }
             void setMagneticFieldStrength(glm::vec3 strength) { magnetic_strength = strength; }
@@ -256,12 +231,38 @@ namespace sim
             std::array<float, 6>& getWallCharges() { return wall_charges; }
             glm::vec3& getMagneticFieldStrength() { return magnetic_strength; }
 
-            glm::vec3 getForce(uint32_t i) { return data.forces[i]; }
+            glm::vec3 getForce(uint32_t i) { return m_atomStorage.force(i); }
             glm::vec3 boxSizes() { return box; }
+
+            void setPosition(glm::vec3 pos, uint32_t i)
+            {
+                if (i >= m_atomStorage.mobileCount()) return;
+
+                m_atomStorage.xData()[i] = pos.x;
+                m_atomStorage.yData()[i] = pos.y;
+                m_atomStorage.zData()[i] = pos.z;
+            }
 
             _NODISCARD std::vector<glm::vec3> positions() const 
             {
-                return data.positions;
+                std::vector<glm::vec3> positions_vec{};
+                auto& storage = const_cast<sim::atomStorage&>(m_atomStorage);
+
+                for (int32_t i = 0; i < storage.mobileCount(); ++i)
+                    positions_vec.emplace_back(storage.position(i));
+
+                return positions_vec;
+            }
+
+            _NODISCARD std::vector<glm::vec3> velocities() const 
+            {
+                std::vector<glm::vec3> velocity_vec{};
+                auto& storage = const_cast<sim::atomStorage&>(m_atomStorage);
+
+                for (int32_t i = 0; i < storage.mobileCount(); ++i)
+                    velocity_vec.emplace_back(storage.velocity(i));
+
+                return velocity_vec;
             }
 
             void clearDisplayPositions()
@@ -271,7 +272,7 @@ namespace sim
 
             glm::vec3 getPosition(size_t i)
             {
-                return data.positions[i];
+                return m_atomStorage.position(i);
             }
 
             inline bool areBonded(uint32_t i, uint32_t j) const
@@ -288,17 +289,17 @@ namespace sim
             glm::vec3 minImageVec(glm::vec3 dr)
             {
                 bool wall_col = wallcollision();
-                bool rf_col = rooffloorcollision();
+                bool rf_col   = rooffloorcollision();
 
                 if (wall_col && rf_col) return dr;
 
                 if (!rf_col)
-                    dr.z -= box.z * std::round(dr.z / box.z);
+                    dr.z -= box.z * std::floor(dr.z / box.z + 0.5f);
 
                 if (!wall_col)
                 {
-                    dr.x -= box.x * std::round(dr.x / box.x);
-                    dr.y -= box.y * std::round(dr.y / box.y);
+                    dr.x -= box.x * std::floor(dr.x / box.x + 0.5f);
+                    dr.y -= box.y * std::floor(dr.y / box.y + 0.5f);
                 }
 
                 return dr;
@@ -321,7 +322,7 @@ namespace sim
 
             rendering_engine& rendering_eng;
 
-            simData data;
+            sim::atomStorage m_atomStorage;
             std::vector<glm::vec3> m_displayPositions{};
 
             std::vector<std::vector<uint32_t>> bondedBits;
@@ -386,12 +387,6 @@ namespace sim
 
             // Other
             std::string moleculeName(const std::vector<uint32_t>& subsetIdx);
-            void drawBox(core::window_t& window);
-
-            inline void emplace_vel(glm::vec3 v) { data.velocities.emplace_back(v); }
-            inline void emplace_pos(glm::vec3 p) { data.positions.emplace_back(p); }
-
-            void initReaxParams();
         };
     } // namespace fun
 } // namespace sim

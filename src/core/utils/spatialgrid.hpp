@@ -14,7 +14,9 @@ namespace core
         std::vector<uint32_t> particleIndices; // first number is always the ammount of particles in the cell
         std::vector<uint32_t> cellOffsets;
 
-        void rebuild(const std::vector<glm::vec3>& positions, const glm::vec3& box, float cutoff = CELL_CUTOFF)
+        float cell_size = CELL_CUTOFF;
+
+        void rebuild(const float* __restrict x, const float* __restrict y, const float* __restrict z, size_t N, const glm::vec3& box, float cutoff = CELL_CUTOFF)
         {
             gridDimensions = glm::ivec3(
                 std::ceil(box.x / cutoff),
@@ -22,14 +24,16 @@ namespace core
                 std::ceil(box.z / cutoff)
             );
 
+            cell_size = cutoff;
+
             size_t numCells = static_cast<size_t>(gridDimensions.x) *
                             gridDimensions.y * gridDimensions.z;
 
             std::vector<std::vector<uint32_t>> tempLists(numCells);
 
-            for (size_t i = 0; i < positions.size(); ++i)
+            for (size_t i = 0; i < N; ++i)
             {
-                glm::vec3 p = positions[i];
+                glm::vec3 p = glm::vec3(x[i], y[i], z[i]);
 
                 p.x -= cutoff * std::floor(p.x / cutoff);
                 p.y -= cutoff * std::floor(p.y / cutoff);
@@ -51,7 +55,7 @@ namespace core
             particleIndices.clear();
             cellOffsets.clear();
 
-            size_t totalSize = numCells + positions.size();
+            size_t totalSize = numCells + N;
             particleIndices.reserve(totalSize);
             cellOffsets.reserve(numCells);
 
@@ -91,30 +95,37 @@ namespace core
                             static_cast<int32_t>(y),
                             static_cast<int32_t>(z));
         }
-
+        
         template<typename Func>
         void foreach(size_t cellId, Func&& func,
                     uint32_t target_start = UINT32_MAX,
-                    uint32_t target_end   = UINT32_MAX) const
+                    uint32_t target_end = UINT32_MAX) const
         {
-            if (cellId + 1 >= cellOffsets.size()) return;
+            if (cellId >= cellOffsets.size()) return;
 
-            uint32_t cellStartOffset = cellOffsets[cellId];
-            uint32_t cellCount       = particleIndices[cellStartOffset];
+            uint32_t cellStart = cellOffsets[cellId];
+            uint32_t count = particleIndices[cellStart];
+            if (count == 0) return;
 
-            uint32_t start = (target_start == UINT32_MAX) ? cellStartOffset + 1 : target_start;
-            uint32_t end   = (target_end   == UINT32_MAX) ? cellStartOffset + 1 + cellCount : target_end + 1;
+            uint32_t start = (target_start == UINT32_MAX) ? cellStart + 1 : target_start;
+            uint32_t end   = (target_end == UINT32_MAX) ? cellStart + 1 + count : target_end + 1;
 
-            start = std::max(start, cellStartOffset + 1);
-            end   = std::min(end,   cellStartOffset + 1 + cellCount);
-
-            if (start >= end) return;
+            start = std::max(start, cellStart + 1);
+            end   = std::min(end, cellStart + 1 + count);
 
             for (uint32_t idx = start; idx < end; ++idx)
             {
-                uint32_t atomId = particleIndices[idx];
-                func(atomId);
+                func(particleIndices[idx]);
             }
+        }
+
+        glm::ivec3 positionToCell(const glm::vec3& pos) const
+        {
+            return glm::ivec3(
+                static_cast<int32_t>(std::floor(pos.x / cell_size)),
+                static_cast<int32_t>(std::floor(pos.y / cell_size)),
+                static_cast<int32_t>(std::floor(pos.z / cell_size))
+            );
         }
     };
 } // namespace core
