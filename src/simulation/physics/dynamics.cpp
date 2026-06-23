@@ -548,32 +548,31 @@ namespace sim
                 int32_t a = b.bondedAtom;
                 int32_t c = b.centralAtom;
 
-                float dx = x[c] - x[a];
-                float dy = y[c] - y[a];
-                float dz = z[c] - z[a];
-
-                glm::vec3 dr = univ.minImageVec(glm::vec3(dx, dy, dz));
+                glm::vec3 dr = univ.minImageVec(glm::vec3(x[c] - x[a], y[c] - y[a], z[c] - z[a]));
                 float len2 = glm::dot(dr, dr);
-                float len = sqrtf(len2);
+                if (len2 <= EPSILON*EPSILON || len2 > 9.0f) continue;
 
-                if (len <= EPSILON || len > 3.f) continue;
+                float len = sqrtf(len2);
+                glm::vec3 unit_dr = dr / len;
 
                 uint8_t aZ = atomData.atoms[a].ZIndex;
                 uint8_t cZ = atomData.atoms[c].ZIndex;
 
-                float bondLength = !m_universe.reactive()
-                    ? constants::getBondLength(aZ, cZ, b.type)
-                    : constants::getContinuousBondLength(aZ, cZ, b.order);
+                float bondLength = m_universe.reactive()
+                    ? constants::getContinuousBondLength(aZ, cZ, b.order)
+                    : constants::getBondLength(aZ, cZ, b.type);
 
                 float dl = len - bondLength;
-                float bond_k = !m_universe.reactive()
-                    ? constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.type)
-                    : constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.order);
+                float bond_k = m_universe.reactive()
+                    ? constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.order)
+                    : constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.type);
 
-                glm::vec3 force = (bond_k * dl / len) * dr;
+                glm::vec3 force = bond_k * dl * unit_dr;
 
-                atomData.atoms[a].total_BO += b.order;
-                atomData.atoms[c].total_BO += b.order;
+                if (m_universe.reactive()) {
+                    atomData.atoms[a].total_BO += b.order;
+                    atomData.atoms[c].total_BO += b.order;
+                }
 
                 lf[a] += force;
                 lf[c] -= force;
@@ -653,38 +652,17 @@ namespace sim
             {
                 const fun::dihedral_angle &da = atomData.dihedral_angles[d];
 
-                // Positions from SoA
                 glm::vec3 pa(x[da.A], y[da.A], z[da.A]);
                 glm::vec3 pb(x[da.B], y[da.B], z[da.B]);
                 glm::vec3 pc(x[da.C], y[da.C], z[da.C]);
                 glm::vec3 pd(x[da.D], y[da.D], z[da.D]);
 
                 float phi = computeDihedral(pa, pb, pc, pd);
-                float target = 0.0f;
-                float K = 6.0f;
-
-                if (da.periodicity == 3) {
-                    phi = computeDihedral(pa, pb, pc, pd);
-                    K   = 1.5f;
-                    target = round(phi / (2.0f * M_PI / 3.0f)) * (2.0f * M_PI / 3.0f);
-                }
-                else if (da.periodicity == 2) {
-                    K   = 6.0f;
-                    target = (phi > M_PI/2.0f) ? M_PI : 0.0f;
-                }
-
-                if (target == 0.0f && da.periodicity == 1) {
-                    int32_t chi = atomData.atoms[da.B].chirality ? atomData.atoms[da.B].chirality
-                                                                : atomData.atoms[da.C].chirality;
-                    if (chi == 1)
-                        target = (phi < M_PI) ? 1.047f : 5.236f;
-                    if (chi == 2)
-                        target = (phi < M_PI) ? 5.236f : 1.047f;
-                }
-
-                float diff = phi - target;
+                float diff = phi - da.rad;
                 while (diff > M_PI)  diff -= 2.0f * M_PI;
                 while (diff < -M_PI) diff += 2.0f * M_PI;
+
+                float torque_mag = da.K * da.periodicity * std::sin(da.periodicity * phi - da.rad);
 
                 glm::vec3 b1 = pb - pa;
                 glm::vec3 b2 = pc - pb;
@@ -694,24 +672,13 @@ namespace sim
                 glm::vec3 n2 = glm::normalize(glm::cross(b2, b3));
                 glm::vec3 u2 = glm::normalize(b2);
 
-                float sin_term = std::sin(da.periodicity * phi - da.rad);
-                float torque_mag = da.K * da.periodicity * sin_term;
+                glm::vec3 fA = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
+                glm::vec3 fD = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
 
-                glm::vec3 axis = glm::normalize(pc - pb);
-                glm::vec3 rA = pa - pb;
-                glm::vec3 torqueA = glm::normalize(glm::cross(axis, rA)) * torque_mag;
-
-                glm::vec3 rD = glm::normalize(pd - pc);
-                glm::vec3 torqueD = glm::normalize(glm::cross(axis, rD)) * (-torque_mag);
-
-                glm::vec3 f1 = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
-                glm::vec3 f4 = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
-
-                lf[da.A] += -f1;
-                lf[da.D] += -f4;
-                lf[da.B] += f1;
-                lf[da.C] += f4;
-                lf[da.D] += -torqueD * 0.5f;
+                lf[da.A] += -fA;
+                lf[da.D] += -fD;
+                lf[da.B] += fA;
+                lf[da.C] += fD;
             }
         };
 
@@ -737,12 +704,11 @@ namespace sim
                 glm::vec3 pd(x[imp.D], y[imp.D], z[imp.D]);
 
                 float phi = computeDihedral(pa, pb, pc, pd);
-
                 float diff = phi - imp.rad;
                 while (diff > M_PI)  diff -= 2.0f * M_PI;
                 while (diff < -M_PI) diff += 2.0f * M_PI;
 
-                float dE_dphi = imp.K * diff;
+                float torque_mag = imp.K * imp.periodicity * std::sin(imp.periodicity * phi - imp.rad);
 
                 glm::vec3 b1 = pb - pa;
                 glm::vec3 b2 = pc - pb;
@@ -752,23 +718,13 @@ namespace sim
                 glm::vec3 n2 = glm::normalize(glm::cross(b2, b3));
                 glm::vec3 u2 = glm::normalize(b2);
 
-                float sin_term = std::sin(imp.periodicity * phi - imp.rad);
-                float torque_mag = imp.K * imp.periodicity * sin_term;
+                glm::vec3 fA = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
+                glm::vec3 fD = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
 
-                glm::vec3 axis = glm::normalize(pc - pb);
-                glm::vec3 rA = pa - pb;
-                glm::vec3 torqueA = glm::normalize(glm::cross(axis, rA)) * torque_mag;
-
-                glm::vec3 rD = glm::normalize(pd - pc);
-                glm::vec3 torqueD = glm::normalize(glm::cross(axis, rD)) * (-torque_mag);
-
-                glm::vec3 f1 = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
-                glm::vec3 f4 = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
-
-                lf[imp.A] += -f1;
-                lf[imp.D] += -f4;
-                lf[imp.B] += f1 + f4;
-                lf[imp.C] += -torqueD * 0.5f;
+                lf[imp.A] += -fA;
+                lf[imp.D] += -fD;
+                lf[imp.B] += fA;
+                lf[imp.C] += fD;
             }
         };
 
