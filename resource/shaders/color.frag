@@ -10,6 +10,7 @@ uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
 uniform vec3 u_lightDir2 = normalize(vec3(0.4, -2.0, 1.2));
 uniform vec3 u_campos = vec3(0.0);
+uniform float u_time; // for glow animation
 
 out vec4 fragColor;
 
@@ -55,39 +56,56 @@ void main()
 
     float ao = 0.5 + 0.5 * hit_normal.z;
     ao = pow(ao, 1.8);
-
     float edgeAO = 1.0 - smoothstep(0.5, 1.0, length(v_uv));
     ao = min(ao, edgeAO);
-
     float distAO = 1.0 - smoothstep(0.0, v_radius * 3.f, length(hitPos_view - v_center));
     ao *= distAO;
 
     float NdotL = max(0.0, dot(hit_normal, u_lightDir));
-    
     vec3 ambient = v_color.rgb * 0.25;
     vec3 diffuse = v_color.rgb * 0.75 * NdotL;
 
     float NdotL2 = max(0.0, dot(hit_normal, u_lightDir2));
-
     vec3 cyanLight = 0.1 * NdotL2 * vec3(0.3, 1.0, 1.0);
-
     diffuse += cyanLight;
 
     vec3 final_color = ambient + diffuse;
-
     final_color *= (0.7 + 0.3 * ao);
 
     vec3 viewDir = normalize(-hitPos_view);
-    vec3 reflectDir = reflect(-u_lightDir, hit_normal);
-    vec3 reflectDir2 = reflect(-u_lightDir2, hit_normal);
 
-    float spec1 = pow(max(dot(viewDir, reflectDir), 0.0), 246.0);
+    vec3 halfDir1 = normalize(u_lightDir + viewDir);
+    float spec1 = pow(max(dot(hit_normal, halfDir1), 0.0), 512.0);
     vec3 specular1 = 0.6 * spec1 * vec3(1.0);
 
-    float spec2 = pow(max(dot(viewDir, reflectDir2), 0.0), 246.0);
-    vec3 specular2 = 0.2 * spec2 * vec3(0.3, 1.0, 1.0);
+    vec3 halfDir2 = normalize(u_lightDir2 + viewDir);
+    float spec2 = pow(max(dot(hit_normal, halfDir2), 0.0), 256.0);
+    vec3 specular2 = 0.4 * spec2 * vec3(0.3, 1.0, 1.0);
 
-    final_color += specular1 + specular2;
-        
+    float fresnel = pow(1.0 - max(dot(viewDir, hit_normal), 0.0), 5.0);
+    vec3 fresnelBoost = fresnel * vec3(1.0);
+
+    vec3 specTint = mix(vec3(1.0), v_color.rgb, 0.3);
+
+    final_color += (specular1 + specular2) * specTint + fresnelBoost * 0.2;
+
+    float rim = pow(1.0 - max(dot(viewDir, hit_normal), 0.0), 3.0);
+    final_color += rim * vec3(1.0) * 0.15;
+
+    float backLight = max(0.0, dot(-u_lightDir, hit_normal));
+    final_color += backLight * vec3(1.0, 0.6, 0.4) * 0.1;
+
+    float outline = 1.0 - smoothstep(0.8, 1.0, length(v_uv));
+    final_color *= (1.0 - 0.2 * outline);
+
+    float glow = 0.5 + 0.5 * sin(u_time * 2.0);
+    final_color += v_color.rgb * glow * 0.1;
+
+    float depthTint = gl_FragDepth;
+    final_color = mix(final_color, final_color * vec3(0.8, 0.9, 1.0), depthTint * 0.3);
+
     fragColor = vec4(final_color, v_color.w);
+    
+    float edgeFade = pow(1.0 - abs(dot(viewDir, hit_normal)), 2.0);
+    fragColor.rgb = mix(fragColor.rgb, vec3(0.0), edgeFade * 0.1);
 }

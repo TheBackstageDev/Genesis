@@ -107,6 +107,8 @@ namespace sim
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, radius));
         glVertexAttribDivisor(3, 1);
+
+        glEnable(GL_MULTISAMPLE);
     }
 
     void rendering_engine::loadProgram(const std::string key, const std::string& vert, const std::string& frag)
@@ -215,6 +217,10 @@ namespace sim
         atom_program.setUniform("u_proj", lastProj);
         atom_program.setUniform("u_view", lastView);
 
+        auto now = std::chrono::high_resolution_clock::now();
+        float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();
+        atom_program.setUniform("u_time", timeValue);
+
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(m_atomInstances.size()));
 
@@ -314,6 +320,10 @@ namespace sim
 
         bond_program.setUniform("u_proj", lastProj);
         bond_program.setUniform("u_view", lastView);
+
+        auto now = std::chrono::high_resolution_clock::now();
+        float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();
+        bond_program.setUniform("u_time", timeValue);
 
         if (!info.hyperBalls) 
             bond_program.setUniform("licorice", static_cast<uint8_t>(info.licorice));
