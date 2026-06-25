@@ -25,6 +25,10 @@ namespace sim
         invMass.resize(n);
         q.resize(n);
         ljParams.resize(n * 2);
+
+        De.resize(n);
+        re.resize(n);
+        a.resize(n);
     }
 
     void atomStorage::clear()
@@ -46,6 +50,10 @@ namespace sim
         invMass.clear();
         q.clear();
         ljParams.clear();
+
+        De.clear();
+        re.clear();
+        a.clear();
     }
 
     void atomStorage::clearForces()
@@ -68,5 +76,9 @@ namespace sim
         q[i] = aView.q;
         ljParams[i*2]     = aView.sigma;
         ljParams[i*2 + 1] = aView.epsilon;
+        
+        De[i] = aView.De;
+        re[i] = aView.re;
+        a[i] = aView.a;
     }
 } // namespace sim

@@ -58,9 +58,6 @@ namespace sim
 
         void exportData(const std::filesystem::path where);
     private:
-        float ljPotential(fun::universe& u, int32_t i, int32_t j);
-        float coulombPotential(fun::universe& u, int32_t i, int32_t j);
-
         uint32_t m_analysisWindow = 50;
         uint32_t m_totalFrames    = 0;
 

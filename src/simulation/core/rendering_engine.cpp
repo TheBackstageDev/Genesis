@@ -280,12 +280,14 @@ namespace sim
 
             const float offsetStep = 0.08f;
 
-            if (order == 1 || info.hyperBalls)
+            if (order == 1 || info.hyperBalls) 
             {
                 instances.emplace_back(
                     glm::vec4(posA, 1.0f),
                     glm::vec4(posB, 1.0f),
-                    colA, colB, bondR, radiusA, radiusB);
+                    colA, colB,
+                    bondR, radiusA, radiusB
+                );
             }
             else
             {
@@ -315,8 +317,8 @@ namespace sim
 
         glBindVertexArray(bond_vao);
 
-        auto& bond_program = programs["bond"];
-        info.hyperBalls ? programs["hyper_balls"].use() : bond_program.use();
+        auto& bond_program = info.hyperBalls ? programs["hyper_balls"] : programs["bond"];
+        bond_program.use();
 
         bond_program.setUniform("u_proj", lastProj);
         bond_program.setUniform("u_view", lastView);
@@ -325,7 +327,7 @@ namespace sim
         float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();
         bond_program.setUniform("u_time", timeValue);
 
-        if (!info.hyperBalls) 
+        if (!info.hyperBalls)
             bond_program.setUniform("licorice", static_cast<uint8_t>(info.licorice));
 
         glEnable(GL_DEPTH_TEST);

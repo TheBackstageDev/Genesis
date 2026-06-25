@@ -286,7 +286,7 @@ namespace core
             rendering_info info = getSimulationRenderingInfo(simulation_render_mode::SPACE_FILLING);
             info.universeBox = false;
 
-            glClearColor(0.02f, 0.02f, 0.02f, 1.0f);
+            glClearColor(0.05f, 0.07f, 0.15f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             display_universe->draw(info);
 

@@ -198,7 +198,7 @@ namespace core
             lastTime = currentTime;
             ui.setDeltaTime(deltaTime);
 
-            glClearColor(0.01f, 0.01f, 0.01f, 1.0f);
+            glClearColor(0.05f, 0.07f, 0.15f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             if (!app_options.background_music)

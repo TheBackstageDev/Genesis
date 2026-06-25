@@ -1,36 +1,50 @@
 #version 330 core
 
-in vec3  v_start;       // view-space center A
-in vec3  v_end;         // view-space center B
+in vec3  v_start;
+in vec3  v_end;
 in vec4  v_colorStart;
 in vec4  v_colorEnd;
 in float v_radius;
-in float v_radiusA;
-in float v_radiusB;
 in vec3  v_corner;
 
 uniform mat4 u_view;
 uniform mat4 u_proj;
 uniform vec3 u_lightDir = normalize(vec3(0.4, 0.8, 1.2));
-uniform float hyperLambda = 0.85;
+uniform vec3 u_lightDir2 = normalize(vec3(0.4, -2.0, 1.2));
+uniform bool licorice = false;
+uniform float u_time;
 
 out vec4 fragColor;
 
-vec2 sphIntersect(vec3 ro, vec3 rd, vec3 ce, float ra)
+vec2 cylIntersect(in vec3 ro, in vec3 rd, in vec3 c0, in vec3 c1, in float ra) 
 {
-    vec3 oc = ro - ce;
-    float b = dot(oc, rd);
-    float c = dot(oc, oc) - ra*ra;
-    float h = b*b - c;
-    
+    vec3  ba = c1 - c0;
+    vec3  ca = ro - c0;
+    float baba = dot(ba, ba);
+    float bard = dot(ba, rd);
+    float baca = dot(ba, ca);
+    float card = dot(ca, rd);
+    float caca = dot(ca, ca);
+
+    float k2 = baba - bard*bard;
+    if (abs(k2) < 1e-6) return vec2(-1.0);
+
+    float k1 = baba * card - baca * bard;
+    float k0 = baba * caca - baca * baca - ra*ra * baba;
+
+    float h = k1*k1 - k0*k2;
     if (h < 0.0) return vec2(-1.0);
     h = sqrt(h);
-    return vec2(-b - h, -b + h);
+
+    float t1 = (-k1 - h) / k2;
+    float t2 = (-k1 + h) / k2;
+
+    return vec2(t1, t2);
 }
 
-float viewPosToDepth(vec3 viewPos)
+float viewPosToDepth(vec3 viewPos) 
 {
-    vec4 clip = u_proj * vec4(viewPos, 1.0);
+    vec4 clip   = u_proj * vec4(viewPos, 1.0);
     float ndc_z = clip.z / clip.w;
     return 0.5 * ndc_z + 0.5;
 }
@@ -40,119 +54,70 @@ void main()
     vec3 ro = vec3(0.0);
     vec3 rd = normalize(v_corner);
 
-    vec3 C1 = v_start;
-    vec3 C2 = v_end;
-    float r1 = v_radiusA;
-    float r2 = v_radiusB;
+    vec3 center = (v_start + v_end) * 0.5;
+    vec2 tt = cylIntersect(ro, rd, v_start, v_end, v_radius);
 
     float t = -1.0;
-    vec3 hitPos;
-    vec3 normal;
-    vec4 baseColor;
+    if (tt.x > 0.001) t = tt.x;
+    else if (tt.y > 0.001) t = tt.y;
 
-    // Sphere A
-    vec2 ttA = sphIntersect(ro, rd, C1, r1);
-    float tA = -1.0;
-    if (ttA.x > 0.001) tA = ttA.x;
-    else if (ttA.y > 0.001) tA = ttA.y;
+    if (t < 0) discard;
 
-    if (tA > 0.001)
-    {
-        t = tA;
-        hitPos = ro + t * rd;
-        normal = normalize(hitPos - C1);
-        baseColor = v_colorStart;
-    }
-    else
-    {
-        // Sphere B
-        vec2 ttB = sphIntersect(ro, rd, C2, r2);
-        float tB = -1.0;
-        if (ttB.x > 0.001) tB = ttB.x;
-        else if (ttB.y > 0.001) tB = ttB.y;
+    vec3 hit = ro + t * rd;
 
-        if (tB > 0.001)
-        {
-            t = tB;
-            hitPos = ro + t * rd;
-            normal = normalize(hitPos - C2);
-            baseColor = v_colorEnd;
-        }
-    }
+    vec3 ba = v_end - v_start;
+    float len2 = dot(ba, ba);
+    float h = dot(hit - v_start, ba) / len2;
 
-    if (t < 0.0)
-    {
-        vec3 ba     = C2 - C1;
-        float lenBA = length(ba);
-        if (lenBA < 0.001) discard;
+    if (h < 0.0 || h > 1.0) discard;
 
-        vec3 dir    = ba / lenBA;
-        vec3 oc     = ro - C1;
-        float proj  = dot(oc, dir);
-        vec3 oc_perp = oc - proj * dir;
+    gl_FragDepth = viewPosToDepth(hit);
 
-        float rd_proj = dot(rd, dir);
-        vec3 rd_perp  = rd - rd_proj * dir;
+    vec3 closest = v_start + h * ba;
+    vec3 normal = normalize(hit - closest);
 
-        float ll = hyperLambda * hyperLambda;
+    vec4 final_color = h > 0.5 ? v_colorEnd : v_colorStart;
 
-        float qa = dot(rd_perp, rd_perp) - ll * rd_proj * rd_proj;
-        float qb = 2.0 * (dot(oc_perp, rd_perp) - ll * proj * rd_proj);
-        float qc = dot(oc_perp, oc_perp) - ll * proj * proj - r1*r1;
+    float VdotN = dot(normalize(-hit), normal);
+    float rim = pow(smoothstep(0.3, 0.0, abs(VdotN)), 1.6);
+    final_color.rgb += vec3(0.9, 0.95, 1.0) * rim * 0.55;
 
-        float disc = qb*qb - 4.0*qa*qc;
-        if (disc < 0.0) discard;
+    vec3 viewDir = normalize(-closest);
 
-        float sqrtD = sqrt(disc);
-        float t0 = (-qb - sqrtD) / (2.0 * qa);
-        float t1 = (-qb + sqrtD) / (2.0 * qa);
+    float ao = 0.5 + 0.5 * normal.z;
+    ao = pow(ao, 1.8);
+    float edgeAO = 1.0 - smoothstep(0.5, 1.0, length(v_corner.xy));
+    ao = min(ao, edgeAO);
+    float distAO = 1.0 - smoothstep(0.0, v_radius * 3.f, length(closest - center));
+    ao *= distAO;
 
-        t = -1.0;
-        if (t0 > 0.001) t = t0;
-        if (t1 > 0.001 && (t < 0.0 || t1 < t)) t = t1;
+    vec3 halfDir1 = normalize(u_lightDir + viewDir);
+    float spec1 = pow(max(dot(normal, halfDir1), 0.0), 128.0);
+    vec3 specular1 = 0.6 * spec1 * vec3(1.0);
 
-        if (t < 0.001) discard;
+    vec3 halfDir2 = normalize(u_lightDir2 + viewDir);
+    float spec2 = pow(max(dot(normal, halfDir2), 0.0), 64.0);
+    vec3 specular2 = 0.4 * spec2 * vec3(0.3, 1.0, 1.0);
 
-        hitPos = ro + t * rd;
+    float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 5.0);
+    vec3 fresnelBoost = fresnel * vec3(1.0);
 
-        float h = dot(hitPos - C1, dir);
+    vec3 specTint = mix(vec3(1.0), final_color.rgb, 0.3);
+    final_color.rgb += (specular1 + specular2) * specTint + fresnelBoost * 0.2;
 
-        float margin = 0.05 * lenBA;
+    float glow = 0.5 + 0.5 * sin(u_time * 2.0);
+    final_color.rgb += final_color.rgb * glow * 0.1;
 
-        if (h < -margin || h > lenBA + margin)
-        {
-            discard;
-        }
-
-        vec3 closestPoint = C1 + h * dir;
-        float distToAxis = length(hitPos - closestPoint);
-        float expectedR = mix(r1, r2, clamp(h / lenBA, 0.0, 1.0));
-
-        if (abs(distToAxis - expectedR) > 0.25 * expectedR)
-        {
-            discard;
-        }
-
-        vec3 posA = hitPos - C1;
-        vec3 posB = hitPos - C2;
-        normal = normalize(posA / (r1*r1) + posB / (r2*r2));
-
-        float interp = clamp(h / lenBA, 0.0, 1.0);
-        baseColor = mix(v_colorStart, v_colorEnd, interp);
-    }
-
-    if (t < 0.0) discard;
-
-    gl_FragDepth = viewPosToDepth(hitPos);
+    float depthTint = gl_FragDepth;
+    final_color.rgb = mix(final_color.rgb, final_color.rgb * vec3(0.05f, 0.07f, 0.15f), depthTint * 0.3);
 
     float NdotL = max(0.0, dot(normal, u_lightDir));
-    float VdotN = dot(normalize(-hitPos), normal);
-    float rim = smoothstep(0.3, 0.0, abs(VdotN));
-    rim = pow(rim, 1.6);
+    final_color.rgb *= (0.1 + 0.8 * NdotL) * (0.7 + 0.3 * ao);
 
-    vec3 rimColor = vec3(0.9, 0.95, 1.0);
-    vec3 litColor = baseColor.rgb * (0.1 + 0.8 * NdotL);
-    litColor += rimColor * rim * 0.55;
+    fragColor = vec4(final_color.rgb, final_color.a);
+    float edgeFade = pow(1.0 - abs(dot(viewDir, normal)), 2.0);
+    fragColor.rgb = mix(fragColor.rgb, vec3(0.0), edgeFade * 0.1);
 
-    fragColor = vec4(litColor, baseColor.a);
+    float gamma = 1.2;
+    fragColor.rgb = pow(fragColor.rgb, vec3(1.0/gamma));
 }

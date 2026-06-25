@@ -520,6 +520,10 @@ namespace sim
         const float* __restrict y = data.yData();
         const float* __restrict z = data.zData();
 
+        const float* __restrict De = data.DeData();
+        const float* __restrict re = data.reData();
+        const float* __restrict a = data.aData();
+
         std::vector<std::future<std::vector<glm::vec3>>> futures;
 
         auto make_task = [this, &atomData, x, y, z](auto &&func)
@@ -537,6 +541,8 @@ namespace sim
             };
         };
 
+        bool useMorse = false; // temporary toggle
+
         auto bond_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf,
                             const float* __restrict x,
                             const float* __restrict y,
@@ -545,37 +551,48 @@ namespace sim
             for (int32_t i = start; i < end; ++i)
             {
                 const sim::fun::bond &b = atomData.bonds[i];
-                int32_t a = b.bondedAtom;
-                int32_t c = b.centralAtom;
+                int32_t ai = b.bondedAtom;
+                int32_t ci = b.centralAtom;
 
-                glm::vec3 dr = univ.minImageVec(glm::vec3(x[c] - x[a], y[c] - y[a], z[c] - z[a]));
+                glm::vec3 dr = univ.minImageVec(glm::vec3(x[ci] - x[ai], y[ci] - y[ai], z[ci] - z[ai]));
                 float len2 = glm::dot(dr, dr);
                 if (len2 <= EPSILON*EPSILON || len2 > 9.0f) continue;
 
                 float len = sqrtf(len2);
                 glm::vec3 unit_dr = dr / len;
 
-                uint8_t aZ = atomData.atoms[a].ZIndex;
-                uint8_t cZ = atomData.atoms[c].ZIndex;
+                if (useMorse)
+                {
+                    float De_ = De[ai];
+                    float re_ = re[ai];
+                    float a_  = a[ai];
 
-                float bondLength = m_universe.reactive()
-                    ? constants::getContinuousBondLength(aZ, cZ, b.order)
-                    : constants::getBondLength(aZ, cZ, b.type);
+                    float expTerm = std::exp(-a_ * (len - re_));
+                    float Fmag = 2.0f * a_ * De_ * (1.0f - expTerm) * expTerm;
 
-                float dl = len - bondLength;
-                float bond_k = m_universe.reactive()
-                    ? constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.order)
-                    : constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.type);
-
-                glm::vec3 force = bond_k * dl * unit_dr;
-
-                if (m_universe.reactive()) {
-                    atomData.atoms[a].total_BO += b.order;
-                    atomData.atoms[c].total_BO += b.order;
+                    glm::vec3 force = Fmag * unit_dr;
+                    lf[ai] += force;
+                    lf[ci] -= force;
                 }
+                else
+                {
+                    // --- Harmonic spring ---
+                    uint8_t aZ = atomData.atoms[ai].ZIndex;
+                    uint8_t cZ = atomData.atoms[ci].ZIndex;
 
-                lf[a] += force;
-                lf[c] -= force;
+                    float bondLength = m_universe.reactive()
+                        ? constants::getContinuousBondLength(aZ, cZ, b.order)
+                        : constants::getBondLength(aZ, cZ, b.type);
+
+                    float dl = len - bondLength;
+                    float bond_k = m_universe.reactive()
+                        ? constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.order)
+                        : constants::getBondHarmonicConstantFromEnergy(aZ, cZ, b.type);
+
+                    glm::vec3 force = bond_k * dl * unit_dr;
+                    lf[ai] += force;
+                    lf[ci] -= force;
+                }
             }
         };
 
@@ -749,68 +766,6 @@ namespace sim
                 fz[i] += local_f[i].z;
             }
         }
-    }
-
-    inline glm::vec3 sim_dynamics::computeCoulombForce(
-        uint32_t i, uint32_t j,
-        const float* __restrict x,
-        const float* __restrict y,
-        const float* __restrict z,
-        const float* __restrict q)
-    {
-        float dx = x[j] - x[i];
-        float dy = y[j] - y[i];
-        float dz = z[j] - z[i];
-
-        glm::vec3 dr = m_universe.minImageVec(glm::vec3(dx, dy, dz));
-        float dr2 = glm::dot(dr, dr);
-
-        if (dr2 < EPSILON || dr2 > COULOMB_CUTOFF * COULOMB_CUTOFF)
-            return glm::vec3{0.f};
-
-        float qq = q[i] * q[j];
-        if (qq == 0.f)
-            return glm::vec3{0.f};
-
-        float inv_r = 1.0f / sqrtf(dr2);
-        float forceMag = COULOMB_K * qq * inv_r * inv_r * inv_r;
-
-        return glm::vec3{-forceMag * dr.x, -forceMag * dr.y, -forceMag * dr.z};
-    }
-
-    inline glm::vec3 sim_dynamics::computeLJforce(
-        uint32_t i, uint32_t j,
-        const float* __restrict x,
-        const float* __restrict y,
-        const float* __restrict z,
-        const float* __restrict ljParams)
-    {
-        float dx = x[j] - x[i];
-        float dy = y[j] - y[i];
-        float dz = z[j] - z[i];
-        float dr2 = dx*dx + dy*dy + dz*dz;
-
-        if (dr2 > CELL_CUTOFF*CELL_CUTOFF || dr2 < EPSILON)
-            return glm::vec3{0.f};
-
-        float sigma_i   = ljParams[i*2];
-        float epsilon_i = ljParams[i*2 + 1];
-        float sigma_j   = ljParams[j*2];
-        float epsilon_j = ljParams[j*2 + 1];
-
-        float sigma = 0.5f * (sigma_i + sigma_j);
-        float epsilon = sqrtf(epsilon_i * epsilon_j);
-
-        float inv_r2 = 1.f / dr2;
-        float inv_r6 = inv_r2 * inv_r2 * inv_r2;
-        float inv_r12 = inv_r6 * inv_r6;
-
-        float sig6 = sigma*sigma*sigma*sigma*sigma*sigma;
-        float sig12 = sig6 * sig6;
-
-        float force_mag = 24.f * epsilon * inv_r2 * (2.f * sig12 * inv_r12 - sig6 * inv_r6);
-
-        return glm::vec3{-force_mag * dx, -force_mag * dy, -force_mag * dz};
     }
 
     float sim_dynamics::computeDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd)
@@ -1102,22 +1057,19 @@ namespace sim
         } 
     }
 
-    // Bussi–Donadio–Parrinello (CSVR) velocity rescaling
+    // Bussi–Donadio–Parrinello
     void sim_dynamics::setTemperature(float kelvin)
     {
         if (m_step_count % THERMOSTAT_INTERVAL != 0)
             return;
 
-        auto &atomData = m_universe.getAtomData();
-        auto &data = m_universe.getData();
-
+        auto& atomData = m_universe.getAtomData();
+        auto& data = m_universe.getData();
         size_t N = atomData.atoms.size();
-        if (N == 0)
-            return;
+        if (N == 0) return;
 
         float ndof = 3.0f * static_cast<float>(N) - 3.0f;
-        if (ndof <= 0.0f)
-            ndof = 1.0f;
+        if (ndof <= 0.0f) ndof = 1.0f;
 
         float KE = m_universe.calculateKineticEnergy();
         float current_temp = (2.0f * KE) / (ndof * KB);
@@ -1127,23 +1079,22 @@ namespace sim
 
         float target_KE = 0.5f * ndof * KB * kelvin;
 
-        float c = target_KE / (KE + 1e-10f);
+        const float tau = 200.0f * m_dt;
 
-        float r = gauss_random();
-        float chi = r * sqrtf(2.0f / ndof);
+        float lambda_sq = 1.0f + (THERMOSTAT_INTERVAL * m_dt / tau) * (target_KE / (KE + 1e-12f) - 1.0f);
+        float lambda = std::sqrt(std::max(0.0f, lambda_sq));
 
-        float alpha = sqrtf(c * (1.0f + chi + 0.5f * chi * chi));
-
-        float* __restrict vx = data.vxData();
-        float* __restrict vy = data.vyData();
-        float* __restrict vz = data.vzData();
+        float* vx = data.vxData();
+        float* vy = data.vyData();
+        float* vz = data.vzData();
 
         for (int32_t v = 0; v < data.mobileCount(); ++v)
         {
-            vx[v] *= alpha;
-            vy[v] *= alpha;
-            vz[v] *= alpha;
+            vx[v] *= lambda;
+            vy[v] *= lambda;
+            vz[v] *= lambda;
         }
+        // ============================================================
     }
 
     void sim_dynamics::COMDrift()

@@ -15,6 +15,11 @@ namespace sim
         float q;
         float sigma;
         float epsilon;
+
+        // Morse parameters
+        float De = 0.f;
+        float re = 0.f;
+        float a = 0.f;
     };
     
     class atomStorage 
@@ -45,6 +50,10 @@ namespace sim
         float* qData() { return q.data(); }
         float* ljParamsData() { return ljParams.data(); }
         float* invMassData() { return invMass.data(); }
+
+        float* DeData() { return De.data(); }
+        float* reData() { return re.data(); }
+        float* aData()  { return a.data(); }
         
         glm::vec3 position(size_t i) { return glm::vec3(x[i], y[i], z[i]); }
         glm::vec3 force(size_t i) { return glm::vec3(fx[i], fy[i], fz[i]); }
@@ -58,5 +67,9 @@ namespace sim
         std::vector<float> fx, fy, fz;
         std::vector<float> invMass;
         std::vector<float> q, ljParams;
+
+        std::vector<float> De;
+        std::vector<float> re;
+        std::vector<float> a;
     };
 } // namespace sim

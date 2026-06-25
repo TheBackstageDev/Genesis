@@ -317,20 +317,4 @@ namespace sim
         return totalVelocity / static_cast<float>(velocities.size()) * 100.f; // 100.f to convert from A/Ps to m/s
     }
 
-    // Energies from Forces
-
-    float simulation_inspector::ljPotential(fun::universe& u, int32_t i, int32_t j)
-    {
-        const auto& data = u.getData();
-        return 0.f;
-    }
-
-    float simulation_inspector::coulombPotential(fun::universe& u, int32_t i, int32_t j)
-    {
-        auto& data = u.getData();
-
-        float r = glm::length(data.position(i) - data.position(j));
-
-        return COULOMB_K * data.charge(i) * data.charge(j) / r;
-    }
 } // namespace sim

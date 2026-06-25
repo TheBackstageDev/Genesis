@@ -62,7 +62,7 @@ void main()
     ao *= distAO;
 
     float NdotL = max(0.0, dot(hit_normal, u_lightDir));
-    vec3 ambient = v_color.rgb * 0.25;
+    vec3 ambient = vec3(0.05f, 0.07f, 0.15f) * v_color.rgb * 0.25;
     vec3 diffuse = v_color.rgb * 0.75 * NdotL;
 
     float NdotL2 = max(0.0, dot(hit_normal, u_lightDir2));
@@ -105,7 +105,10 @@ void main()
     final_color = mix(final_color, final_color * vec3(0.8, 0.9, 1.0), depthTint * 0.3);
 
     fragColor = vec4(final_color, v_color.w);
-    
+
     float edgeFade = pow(1.0 - abs(dot(viewDir, hit_normal)), 2.0);
     fragColor.rgb = mix(fragColor.rgb, vec3(0.0), edgeFade * 0.1);
+        
+    float gamma = 1.2;
+    fragColor.rgb = pow(fragColor.rgb, vec3(1.0/gamma));
 }

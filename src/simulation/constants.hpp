@@ -34,8 +34,7 @@ namespace constants
 #define PRESSURE_CONVERSION 16387.9f // converts (kcal/mol)/Å³ → bar
 
 #define VERLET_SKIN 2.f
-#define CUTOFF 9.f
-#define COULOMB_CUTOFF 10.f * MULT_FACTOR
+#define CUTOFF 10.f
 
 #define CELL_CUTOFF 10 + VERLET_SKIN
 
@@ -43,12 +42,11 @@ namespace constants
 #define BOLTZMAN_CONSTANT 1.380649e-23f                           // Boltzman Constant m^2 kg s^-2 K^-1
 #define KB 0.008314462618f // A^2 D ps^-2 K^-1
 
-#define GRID_REBUILD 5
+#define GRID_REBUILD 20
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 10
-#define BAROSTAT_INTERVAL 10
+#define THERMOSTAT_INTERVAL 200
+#define BAROSTAT_INTERVAL 50
 
-#define COULOMB_K 1389.354576f // kJ·mol⁻¹· Å ·e⁻²
 #define BOND_K 34000.f        // Harmonic force constant
 #define ANGLE_K 1200.f       // J/mol/rad² for angular potential
 #define BOND_LENGTH_FACTOR 1.f

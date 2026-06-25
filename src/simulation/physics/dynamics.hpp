@@ -7,6 +7,10 @@
 #include "core/utils/verletlist.hpp"
 #include "simulation/core/universe.hpp"
 
+#include "simulation/physics/fields/lennard_jones.hpp"
+#include "simulation/physics/fields/morse.hpp"
+#include "simulation/physics/fields/coulomb.hpp"
+
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
@@ -75,17 +79,6 @@ namespace sim
         void computeBondedCPU();
         void computeExternalForces(uint32_t i);
 
-        glm::vec3 computeLJforce(uint32_t i, uint32_t j,
-                                const float* __restrict x,
-                                const float* __restrict y,
-                                const float* __restrict z,
-                                const float* __restrict ljParams);
-        glm::vec3 computeCoulombForce(uint32_t i, uint32_t j,
-                                    const float* __restrict x,
-                                    const float* __restrict y,
-                                    const float* __restrict z,
-                                    const float* __restrict q);
-
         float computeDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd);
         float computePressure();
         void COMDrift();
@@ -117,6 +110,14 @@ namespace sim
             static std::normal_distribution<float> dist(0.0f, 1.0f);
 
             return dist(gen);
+        }
+
+        float random_float(float min, float max)
+        {
+            static std::random_device rd;
+            static std::mt19937 gen(rd());
+            std::uniform_real_distribution<float> dis(min, max);
+            return dis(gen);
         }
 
         const std::array<glm::vec3, 6> wall_directions = 

@@ -110,8 +110,14 @@ namespace sim
             view.pz = p.z;
             view.invMass = 1.f / newAtom.mass;
             view.q = float(ZIndex - numElectron);
+
             view.sigma = ljParams.first;            
-            view.epsilon = ljParams.second;            
+            view.epsilon = ljParams.second;
+
+            // Morse Params (Placeholder)
+            view.De = 976.f;
+            view.re = 1.10f;
+            view.a  = 2.3f;
 
             m_atomStorage.setAtom(view);
 
