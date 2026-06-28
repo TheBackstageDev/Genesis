@@ -59,6 +59,7 @@ namespace core
         void setUniform(const std::string& name, const int32_t v) const { glUniform1i(getUniformLocation(name), v); }
         void setUniform(const std::string& name, const uint32_t v) const { glUniform1ui(getUniformLocation(name), v); }
         void setUniform(const std::string& name, const glm::vec3& v) const { glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(v)); }
+        void setUniform(const std::string& name, const glm::vec2& v) const { glUniform2fv(getUniformLocation(name), 1, glm::value_ptr(v)); }
         void setUniform(const std::string& name, const glm::vec4& v) const { glUniform4fv(getUniformLocation(name), 1, glm::value_ptr(v)); }
         void setUniform(const std::string& name, const glm::mat4& m) const { glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(m)); }
 

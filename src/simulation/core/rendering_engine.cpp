@@ -216,6 +216,8 @@ namespace sim
 
         atom_program.setUniform("u_proj", lastProj);
         atom_program.setUniform("u_view", lastView);
+        atom_program.setUniform("u_campos", cam.eye());
+        atom_program.setUniform("u_screen", glm::vec2(window.extent().width, window.extent().height));
 
         auto now = std::chrono::high_resolution_clock::now();
         float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();
@@ -317,11 +319,15 @@ namespace sim
 
         glBindVertexArray(bond_vao);
 
-        auto& bond_program = info.hyperBalls ? programs["hyper_balls"] : programs["bond"];
+        auto& bond_program = info.hyperBalls ? programs["hyperballs"] : programs["bond"];
         bond_program.use();
 
         bond_program.setUniform("u_proj", lastProj);
         bond_program.setUniform("u_view", lastView);
+        bond_program.setUniform("u_campos", cam.eye());
+
+        if (info.hyperBalls)
+            bond_program.setUniform("u_screen", glm::vec2(window.extent().width, window.extent().height));
 
         auto now = std::chrono::high_resolution_clock::now();
         float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();

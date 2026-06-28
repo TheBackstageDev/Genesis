@@ -1074,11 +1074,12 @@ namespace core
             hyper_balls = options["render_modes"]["hyper_balls"].get<std::string>();
             licorice = options["render_modes"]["licorice"].get<std::string>();
 
-            const char *modes[3] =
+            const char *modes[4] =
                 {
                     ball_and_stick.c_str(),
                     licorice.c_str(),
-                    space_filling.c_str()};
+                    space_filling.c_str(),
+                    hyper_balls.c_str()};
 
             static int32_t current_mode = static_cast<int32_t>(app_options.sim_options.render_mode);
             if (ImGui::Combo("##render_mode", &current_mode, modes, IM_ARRAYSIZE(modes)))
