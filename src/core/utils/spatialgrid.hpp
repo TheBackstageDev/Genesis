@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include "simulation/constants.hpp"
+#include "simulation/physics/utils.hpp"
 
 namespace core
 {
@@ -18,10 +19,11 @@ namespace core
 
         void rebuild(const float* __restrict x, const float* __restrict y, const float* __restrict z, size_t N, const glm::vec3& box, float cutoff = CELL_CUTOFF)
         {
+            float one_over_cutoff = 1.f / cutoff;
             gridDimensions = glm::ivec3(
-                std::ceil(box.x / cutoff),
-                std::ceil(box.y / cutoff),
-                std::ceil(box.z / cutoff)
+                std::ceil(box.x * one_over_cutoff),
+                std::ceil(box.y * one_over_cutoff),
+                std::ceil(box.z * one_over_cutoff)
             );
 
             cell_size = cutoff;
@@ -35,13 +37,13 @@ namespace core
             {
                 glm::vec3 p = glm::vec3(x[i], y[i], z[i]);
 
-                p.x -= cutoff * std::floor(p.x / cutoff);
-                p.y -= cutoff * std::floor(p.y / cutoff);
-                p.z -= cutoff * std::floor(p.z / cutoff);
+                p.x -= cutoff * int32_t(p.x * one_over_cutoff);
+                p.y -= cutoff * int32_t(p.y * one_over_cutoff);
+                p.z -= cutoff * int32_t(p.z * one_over_cutoff);
 
-                int32_t ix = static_cast<int32_t>(p.x / cutoff);
-                int32_t iy = static_cast<int32_t>(p.y / cutoff);
-                int32_t iz = static_cast<int32_t>(p.z / cutoff);
+                int32_t ix = static_cast<int32_t>(p.x * one_over_cutoff);
+                int32_t iy = static_cast<int32_t>(p.y * one_over_cutoff);
+                int32_t iz = static_cast<int32_t>(p.z * one_over_cutoff);
 
                 ix = std::clamp(ix, 0, gridDimensions.x - 1);
                 iy = std::clamp(iy, 0, gridDimensions.y - 1);
@@ -121,10 +123,12 @@ namespace core
 
         glm::ivec3 positionToCell(const glm::vec3& pos) const
         {
+            float one_over_cellsize = 1.f / cell_size;
+
             return glm::ivec3(
-                static_cast<int32_t>(std::floor(pos.x / cell_size)),
-                static_cast<int32_t>(std::floor(pos.y / cell_size)),
-                static_cast<int32_t>(std::floor(pos.z / cell_size))
+                static_cast<int32_t>(std::floor(pos.x * one_over_cellsize)),
+                static_cast<int32_t>(std::floor(pos.y * one_over_cellsize)),
+                static_cast<int32_t>(std::floor(pos.z * one_over_cellsize))
             );
         }
     };

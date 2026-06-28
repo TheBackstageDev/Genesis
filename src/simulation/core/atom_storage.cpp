@@ -34,6 +34,7 @@ namespace sim
     void atomStorage::clear()
     {
         N = 0;
+        m_mass = 0.f;
 
         x.clear();
         y.clear();
@@ -80,5 +81,7 @@ namespace sim
         De[i] = aView.De;
         re[i] = aView.re;
         a[i] = aView.a;
+
+        m_mass += 1.f / aView.invMass;
     }
 } // namespace sim

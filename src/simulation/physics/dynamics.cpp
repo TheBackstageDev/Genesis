@@ -975,16 +975,25 @@ namespace sim
 
         integrate();
 
-        if (m_step_count % GRID_REBUILD == 0)
+        if (m_step_count % m_verletRebuildSteps == 0)
         {
             universe_grid.rebuild(storage.xData(), storage.yData(), storage.zData(), storage.mobileCount(),
-                                m_universe.boxSizes(), CELL_CUTOFF);
+            m_universe.boxSizes(), CELL_CUTOFF);
+
+            float avgKE = m_universe.calculateKineticEnergy();
+            float mass = storage.mass();
+            float v_rms = std::sqrtf(2.0f * avgKE / mass);
+        
+            float displacement_per_step = v_rms * m_timescale;
+            float max_safe_steps = (0.5f * universe_verlet.skin) / (displacement_per_step + 1e-8f);
+
+            m_verletRebuildSteps = std::clamp(uint32_t(max_safe_steps), 10u, m_maxRebuildSteps);
         }
         
-        float verletRebuildRate = 30.f / (m_timescale + std::numeric_limits<float>::epsilon());
-
-        if (m_step_count % std::max(1u, static_cast<uint32_t>(verletRebuildRate)) == 0)
+        if (m_step_count % m_verletRebuildSteps == 0)
+        {
             universe_verlet.construct(universe_grid, m_universe);
+        }
 
         setTemperature(m_targetTemperature);
         setPressure(m_targetPressure);
@@ -1079,7 +1088,7 @@ namespace sim
 
         float target_KE = 0.5f * ndof * KB * kelvin;
 
-        const float tau = 200.0f * m_dt;
+        const float tau = 100.0f * m_dt;
 
         float lambda_sq = 1.0f + (THERMOSTAT_INTERVAL * m_dt / tau) * (target_KE / (KE + 1e-12f) - 1.0f);
         float lambda = std::sqrt(std::max(0.0f, lambda_sq));
@@ -1094,7 +1103,6 @@ namespace sim
             vy[v] *= lambda;
             vz[v] *= lambda;
         }
-        // ============================================================
     }
 
     void sim_dynamics::COMDrift()

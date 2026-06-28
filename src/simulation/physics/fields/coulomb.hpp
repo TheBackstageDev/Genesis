@@ -4,7 +4,7 @@
 
 namespace sim
 {
-    constexpr float COULOMB_CUTOFF = 10.f;
+    constexpr float COULOMB_CUTOFF = 12.f;
     constexpr float COULOMB_K = 1389.354576f; // kJ·mol⁻¹· Å ·e⁻²
 
     glm::vec3 computeCoulombForce(

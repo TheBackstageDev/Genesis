@@ -35,6 +35,8 @@ namespace sim
         void resize(size_t n);
         void setAtom(const atomView& aView);
 
+        float mass() { return m_mass; }
+
         float* xData() { return x.data(); }
         float* yData() { return y.data(); }
         float* zData() { return z.data(); }
@@ -61,6 +63,7 @@ namespace sim
         float& charge(size_t i) { return q[i]; }
     private:
         size_t N = 0;
+        float m_mass = 0.f;
 
         std::vector<float> x, y, z;
         std::vector<float> vx, vy, vz;

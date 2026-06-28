@@ -93,6 +93,9 @@ namespace sim
         float m_accumulated_time = 0.0f;
         uint64_t m_step_count = 0;
 
+        uint32_t m_verletRebuildSteps = 100u;
+        uint32_t m_maxRebuildSteps = 500u;
+
         std::atomic<float> total_virial{0.0f};
         float m_temperature = 0.0f;
         float m_pressure = 0.0f;

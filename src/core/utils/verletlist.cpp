@@ -58,9 +58,35 @@ namespace core
         }
     }
 
-    bool verlet_list::needsRebuild(const std::vector<glm::vec3>& old_positions,
-                                   const std::vector<glm::vec3>& new_positions)
+    bool verlet_list::needsRebuild(sim::fun::universe& u)
     {
+        auto& storage = u.getData();
+        
+        size_t N = storage.mobileCount();
+
+        if (old_x.size() != N)
+        {
+            old_x.resize(N);
+            old_y.resize(N);
+            old_z.resize(N);
+            
+            return true;
+        }
+
+        const float* __restrict x = storage.xData();
+        const float* __restrict y = storage.yData();
+        const float* __restrict z = storage.zData();
+
+        const float rebuild_threshold = (skin > 0.0f) ? (skin * 0.5f) : (cutoff * 0.5f);
+        const float thresh2 = rebuild_threshold * rebuild_threshold;
+
+        for (size_t i = 0; i < N; ++i)
+        {
+            glm::vec3 d = u.minImageVec(glm::vec3(x[i], y[i], z[i]) - glm::vec3(old_x[i], old_y[i], old_z[i]));
+            if (glm::dot(d, d) > thresh2)
+                return true;
+        }
+
         return false;
     }
 }; // core

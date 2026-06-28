@@ -44,7 +44,7 @@ namespace constants
 
 #define GRID_REBUILD 20
 #define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
-#define THERMOSTAT_INTERVAL 200
+#define THERMOSTAT_INTERVAL 50
 #define BAROSTAT_INTERVAL 50
 
 #define BOND_K 34000.f        // Harmonic force constant

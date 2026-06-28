@@ -13,16 +13,17 @@ namespace sim
         float dy = y[j] - y[i];
         float dz = z[j] - z[i];
         float dr2 = dx*dx + dy*dy + dz*dz;
-
-        if (dr2 > LENNARD_CUTOFF*LENNARD_CUTOFF || dr2 < std::numeric_limits<float>::epsilon())
-            return glm::vec3{0.f};
-
+        
         float sigma_i   = ljParams[i*2];
         float epsilon_i = ljParams[i*2 + 1];
         float sigma_j   = ljParams[j*2];
         float epsilon_j = ljParams[j*2 + 1];
-
+        
         float sigma = 0.5f * (sigma_i + sigma_j);
+        
+        if (dr2 > (sigma * sigma) * 2.5f || dr2 < std::numeric_limits<float>::epsilon())
+            return glm::vec3{0.f};
+
         float epsilon = sqrtf(epsilon_i * epsilon_j);
 
         float inv_r2 = 1.f / dr2;
@@ -48,16 +49,16 @@ namespace sim
         float dz = z[i] - z[j];
         float r2 = dx*dx + dy*dy + dz*dz;
         float r  = std::sqrt(r2);
-
-        if (r > LENNARD_CUTOFF) return 0.0f;
-
+        
         float sigma_i   = ljParams[i*2];
         float epsilon_i = ljParams[i*2 + 1];
         float sigma_j   = ljParams[j*2];
         float epsilon_j = ljParams[j*2 + 1];
-
+        
         float sigma = 0.5f * (sigma_i + sigma_j);
         float epsilon = sqrtf(epsilon_i * epsilon_j);
+        
+        if (r > sigma * 2.5f) return 0.0f;
 
         float sr6 = std::pow(sigma / r, 6);
         float sr12 = sr6 * sr6;
