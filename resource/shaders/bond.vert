@@ -5,8 +5,6 @@ layout(location = 1) in vec4  a_centerB;
 layout(location = 2) in vec4  a_colorA;
 layout(location = 3) in vec4  a_colorB;
 layout(location = 4) in float a_radius;
-layout(location = 5) in float a_radiusA; // unused
-layout(location = 6) in float a_radiusB; // unused
 
 uniform mat4 u_view;
 uniform mat4 u_proj;

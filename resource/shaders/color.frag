@@ -109,6 +109,6 @@ void main()
     float edgeFade = pow(1.0 - abs(dot(viewDir, hit_normal)), 2.0);
     fragColor.rgb = mix(fragColor.rgb, vec3(0.0), edgeFade * 0.1);
         
-    float gamma = 1.2;
+    float gamma = 1.5;
     fragColor.rgb = pow(fragColor.rgb, vec3(1.0/gamma));
 }

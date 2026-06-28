@@ -35,7 +35,8 @@ namespace sim
     private:
         core::window_t &window;
 
-        GLuint box_vao, box_vbo, color_vao, color_vbo, bond_vao, bond_vbo, arrow_vao, arrow_vbo;
+        GLuint box_vao, box_vbo, color_vao, color_vbo, bond_vao, bond_vbo, 
+               arrow_vao, arrow_vbo, hyperballs_vao = 0, hyperballs_vbo;
         std::unordered_map<std::string, core::glProgram> programs;
 
         struct AtomInstance 
@@ -53,8 +54,18 @@ namespace sim
             glm::vec4 colorA{1.0f};
             glm::vec4 colorB{1.0f};
             alignas(16) float radius = 0.0f;
-            alignas(16) float radiusA = 0.5f;
-            alignas(16) float radiusB = 0.5f;
+        };
+
+        struct SphereInstance 
+        {
+            glm::vec4 centerRadius{0.f}; // xyz = center, w = radius
+            glm::vec4 color{1.f};
+        };
+
+        struct RayMarchInstance
+        {
+            std::vector<SphereInstance> spheres{};
+            alignas(16) float smoothFactor = 0.5f;
         };
 
         struct ArrowInstance
@@ -79,6 +90,7 @@ namespace sim
 
         void bindColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindBond(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
+        void bindRayMarch(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
         void bindArrow(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info);
 
         // Others

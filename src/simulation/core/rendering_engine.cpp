@@ -78,14 +78,6 @@ namespace sim
         glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radius));
         glVertexAttribDivisor(4, 1);
-
-        glEnableVertexAttribArray(5);
-        glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radiusA));
-        glVertexAttribDivisor(5, 1);
-
-        glEnableVertexAttribArray(6);
-        glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(BondInstance), (void *)offsetof(BondInstance, radiusB));
-        glVertexAttribDivisor(6, 1);
         
         glGenVertexArrays(1, &arrow_vao);
         glGenBuffers(1, &arrow_vbo);
@@ -107,6 +99,13 @@ namespace sim
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(ArrowInstance), (void *)offsetof(ArrowInstance, radius));
         glVertexAttribDivisor(3, 1);
+
+        glGenBuffers(1, &hyperballs_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, hyperballs_vbo);
+        glGenVertexArrays(1, &hyperballs_vao);
+        glBindVertexArray(hyperballs_vao);
+
+        glBindVertexArray(0);
 
         glEnable(GL_MULTISAMPLE);
     }
@@ -174,7 +173,7 @@ namespace sim
 
     void rendering_engine::bindColor(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (info.hyperBalls || info.wireframe && !(info.lennardBall || info.licorice)) return;
+        if (info.wireframe && !(info.lennardBall || info.licorice)) return;
 
         m_atomInstances.clear();
         m_atomInstances.reserve(sim_info.atoms.size());
@@ -200,7 +199,7 @@ namespace sim
             col += col_addition;
             col.w = info.opacity;
 
-            m_atomInstances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col, i);
+            m_atomInstances.push_back(AtomInstance{glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, col, static_cast<uint32_t>(i)});
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
@@ -237,7 +236,7 @@ namespace sim
 
     void rendering_engine::bindBond(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
     {
-        if (info.spaceFilling || (!info.lennardBall && !info.licorice && !info.hyperBalls))
+        if (info.spaceFilling || (!info.lennardBall && !info.licorice))
             return;
 
         std::vector<BondInstance> instances;
@@ -282,13 +281,12 @@ namespace sim
 
             const float offsetStep = 0.08f;
 
-            if (order == 1 || info.hyperBalls) 
+            if (order == 1) 
             {
                 instances.emplace_back(
                     glm::vec4(posA, 1.0f),
                     glm::vec4(posB, 1.0f),
-                    colA, colB,
-                    bondR, radiusA, radiusB
+                    colA, colB, bondR
                 );
             }
             else
@@ -306,7 +304,7 @@ namespace sim
                     instances.emplace_back(
                         glm::vec4(offsetposA, 1.0f),
                         glm::vec4(offsetposB, 1.0f),
-                        colA, colB, bondR, radiusA, radiusB);
+                        colA, colB, bondR);
                 }
             }
         }
@@ -319,22 +317,17 @@ namespace sim
 
         glBindVertexArray(bond_vao);
 
-        auto& bond_program = info.hyperBalls ? programs["hyperballs"] : programs["bond"];
+        auto& bond_program = programs["bond"];
         bond_program.use();
 
         bond_program.setUniform("u_proj", lastProj);
         bond_program.setUniform("u_view", lastView);
         bond_program.setUniform("u_campos", cam.eye());
 
-        if (info.hyperBalls)
-            bond_program.setUniform("u_screen", glm::vec2(window.extent().width, window.extent().height));
-
         auto now = std::chrono::high_resolution_clock::now();
         float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();
         bond_program.setUniform("u_time", timeValue);
-
-        if (!info.hyperBalls)
-            bond_program.setUniform("licorice", static_cast<uint8_t>(info.licorice));
+        bond_program.setUniform("licorice", static_cast<uint8_t>(info.licorice));
 
         glEnable(GL_DEPTH_TEST);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(instances.size()));
@@ -343,6 +336,57 @@ namespace sim
         if (err != GL_NO_ERROR)
         {
             std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
+        }
+    }
+
+    void rendering_engine::bindRayMarch(const fun::rendering_info &info, const fun::rendering_simulation_info &sim_info)
+    {
+        RayMarchInstance instance{};
+        size_t N = sim_info.atoms.size();
+        instance.spheres.reserve(N);
+
+        glm::vec4 col_addition(info.color_addition.x, info.color_addition.y, info.color_addition.z, 1.0f);
+
+        for (int32_t i = 0; i < N; ++i)
+        {
+            SphereInstance sphere;
+            sphere.centerRadius = glm::vec4(sim_info.positions[i], constants::covalent_radius[sim_info.atoms[i].ZIndex]);
+            sphere.color = getAtomColor(info, sim_info, i) + col_addition;
+            instance.spheres.push_back(sphere);
+        }
+
+        GLuint sphereSSBO;
+        glGenBuffers(1, &sphereSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sphereSSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                    instance.spheres.size() * sizeof(SphereInstance),
+                    instance.spheres.data(),
+                    GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sphereSSBO);
+
+        auto& hyperballs_program = programs["hyperballs"];
+        hyperballs_program.use();
+
+        hyperballs_program.setUniform("u_count", static_cast<GLuint>(N));
+        hyperballs_program.setUniform("u_proj", lastProj);
+        hyperballs_program.setUniform("u_view", lastView);
+        hyperballs_program.setUniform("u_campos", cam.eye());
+        hyperballs_program.setUniform("u_screen", glm::vec2(window.extent().width, window.extent().height));
+        hyperballs_program.setUniform("u_smoothFactor", 0.45f);
+
+        auto now = std::chrono::high_resolution_clock::now();
+        float timeValue = std::chrono::duration<float>(now.time_since_epoch()).count();
+        hyperballs_program.setUniform("u_time", timeValue);
+
+        glBindVertexArray(hyperballs_vao);
+        glEnable(GL_DEPTH_TEST);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR)
+        {
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw raymarch: 0x" << std::hex << err << "\n";
         }
     }
 
@@ -386,7 +430,7 @@ namespace sim
         GLenum err = glGetError();
         if (err != GL_NO_ERROR)
         {
-            std::cerr << "[RENDERING ENGINE] OpenGL error after draw: 0x" << std::hex << err << "\n";
+            std::cerr << "[RENDERING ENGINE] OpenGL error after draw arrow: 0x" << std::hex << err << "\n";
         }
     }
 
@@ -541,8 +585,14 @@ namespace sim
         if (info.universeBox)
             drawBox(sim_info.box);
 
-        bindBond(info, sim_info);
-        bindColor(info, sim_info);
+        if (info.hyperBalls)
+            bindRayMarch(info, sim_info);
+        else
+        {
+            bindBond(info, sim_info);
+            bindColor(info, sim_info);
+        }
+
         bindArrow(info, sim_info);
 
         glBindVertexArray(0);
