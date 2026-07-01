@@ -14,7 +14,7 @@ namespace sim
         universe_verlet.cutoff = 12.f;
         universe_verlet.skin = VERLET_SKIN;
 
-        createComputeShaders();
+        //createComputeShaders();
     }
 
     sim_dynamics::~sim_dynamics()

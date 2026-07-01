@@ -789,10 +789,7 @@ namespace core
             if (dynamics != nullptr)
                 dynamics->destroySSBOs();
 
-            m_simulation_universe.reset();
             m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng, m_parameterTable);
-
-            dynamics.reset();
             dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
             m_rendering_eng.camera().target = sandbox_info.box / 2.f;
