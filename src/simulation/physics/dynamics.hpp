@@ -11,6 +11,10 @@
 #include "simulation/physics/fields/morse.hpp"
 #include "simulation/physics/fields/coulomb.hpp"
 
+#include "simulation/physics/stats/barostats.hpp"
+#include "simulation/physics/stats/thermostats.hpp"
+
+
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
@@ -80,7 +84,6 @@ namespace sim
         void computeExternalForces(uint32_t i);
 
         float computeDihedral(const glm::vec3 &pa, const glm::vec3 &pb, const glm::vec3 &pc, const glm::vec3 &pd);
-        float computePressure();
         void COMDrift();
 
         void computeUnbondedGPU();

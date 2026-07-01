@@ -1004,34 +1004,9 @@ namespace sim
         m_accumulated_time += m_dt * m_timescale;
     }
 
-    float sim_dynamics::computePressure()
-    {
-        auto &data = m_universe.getData();
-        auto &atomData = m_universe.getAtomData();
-        
-        if (atomData.atoms.empty())
-            return 0.f;
-
-        float kinetic = m_universe.calculateKineticEnergy();
-        glm::vec3 box = m_universe.boxSizes();
-        float volume = box.x * box.y * box.z;
-
-        size_t N = atomData.atoms.size();
-        float temperature = (2.0f / 3.0f) * kinetic / N;
-
-        const float conv_factor = 1660.53906660f;
-
-        float P_ideal = (N * temperature / volume) * conv_factor;
-        float P_virial = -total_virial / (3.0f * volume) * conv_factor;
-
-        float pressure_kPa = P_ideal + P_virial;
-
-        return pressure_kPa;
-    }
-
     void sim_dynamics::setPressure(float target_p_kpa)
     {
-        m_pressure = computePressure();
+        m_pressure = computePressure(m_universe, total_virial);
 
         if (m_step_count % BAROSTAT_INTERVAL != 0 || target_p_kpa <= 0.0f)
             return;
