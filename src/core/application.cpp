@@ -14,7 +14,8 @@
 namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
-        : window(width, height, name.c_str()), ui(app_options, window, audio, m_siminspector)
+        :  m_parameterTable({"resource/parameters/UniversalLJ.csv", "resource/parameters/UniversalMorse.csv"}), window(width, height, name.c_str()),
+          ui(app_options, window, audio, m_siminspector, m_parameterTable)
     {
         load();
         ui.set_language(app_options.lang);

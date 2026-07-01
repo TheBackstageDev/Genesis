@@ -4,7 +4,11 @@
 
 namespace sim
 {
-    constexpr float LENNARD_CUTOFF = 10.f;
+    struct LJParams
+    {
+        float sigma;
+        float epsilon;
+    };
 
     glm::vec3 computeLJforce(uint32_t i, uint32_t j,
                              const float* __restrict x,

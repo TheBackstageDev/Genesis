@@ -19,16 +19,17 @@ namespace sim
 {
     namespace fun
     {
-        universe::universe(const universe_create_info &create_info, rendering_engine &rendering_engine)
+        universe::universe(const universe_create_info &create_info, rendering_engine &rendering_engine, parameter_table& paramTable)
             : box(create_info.box), gravity(create_info.has_gravity), mag_gravity(create_info.mag_gravity),
               wall_collision(create_info.wall_collision), isothermal(create_info.isothermal),
               HMassRepartitioning(create_info.HMassRepartitioning), roof_floor_collision(create_info.roof_floor_collision),
-              log_flags(create_info.log_flags), rendering_eng(rendering_engine), m_reaction(create_info.reaction)
+              log_flags(create_info.log_flags), rendering_eng(rendering_engine), m_reaction(create_info.reaction),
+              m_parameterTable(paramTable)
         {
         }
 
-        universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine)
-            : rendering_eng(rendering_engine)
+        universe::universe(const std::filesystem::path path, rendering_engine &rendering_engine, parameter_table& paramTable)
+            : rendering_eng(rendering_engine), m_parameterTable(paramTable)
         {
             loadScene(path);
         }
@@ -95,7 +96,7 @@ namespace sim
 
             m_atomStorage.resize(atomSize);
 
-            const auto ljParams = constants::getAtomConstants(ZIndex);
+            const LJParams ljParams = m_parameterTable.lj(ZIndex);
 
             sim::atomView view{};
             view.i = atomSize - 1;
@@ -111,8 +112,8 @@ namespace sim
             view.invMass = 1.f / newAtom.mass;
             view.q = float(ZIndex - numElectron);
 
-            view.sigma = ljParams.first;            
-            view.epsilon = ljParams.second;
+            view.sigma = ljParams.sigma;            
+            view.epsilon = ljParams.epsilon;
 
             // Morse Params (Placeholder)
             view.De = 976.f;

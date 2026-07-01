@@ -4,6 +4,7 @@
 
 #include "graphics/window.hpp"
 #include "simulation/core/simulation_inspector.hpp"
+#include "simulation/physics/fields/parameter_table.hpp"
 #include "ui/UIHandler.hpp"
 #include "core/audio/audio.hpp"
 
@@ -45,7 +46,9 @@ namespace core
     
         window_t window;
         AudioEngine audio{};
-        sim::simulation_inspector m_siminspector{};
         UIHandler ui;
+        
+        sim::parameter_table m_parameterTable;
+        sim::simulation_inspector m_siminspector{};
     };
 } // namespace core

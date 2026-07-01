@@ -82,9 +82,9 @@ namespace core
         }
     }
 
-    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine &engine, sim::simulation_inspector& siminspector)
+    UIHandler::UIHandler(options &app_options, window_t &window, AudioEngine &engine, sim::simulation_inspector& siminspector, sim::parameter_table& parameterTable)
         : app_options(app_options), m_window(window), m_rendering_eng(window), m_audio_eng(engine), m_siminspector(siminspector),
-          m_scenarioHandler(compound_presets, m_simpacker, dynamics)
+          m_scenarioHandler(compound_presets, m_simpacker, dynamics), m_parameterTable(parameterTable)
     {
         write_localization_json(lang);
         std::filesystem::path path = getLocalizationFile(localization::EN_US);
@@ -160,7 +160,7 @@ namespace core
                         }
                         else
                         {
-                            m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), m_rendering_eng));
+                            m_backgroundUniverses.emplace_back(std::make_shared<sim::fun::universe>(entry.path(), m_rendering_eng, m_parameterTable));
 
                             if (std::filesystem::directory_entry(videoPath).exists())
                                 m_backgroundUniverses.back()->loadFrames(videoPath);
@@ -256,7 +256,7 @@ namespace core
         display_info.box.z = 100.f;
         display_info.wall_collision = false;
 
-        display_universe = std::make_unique<sim::fun::universe>(display_info, m_rendering_eng);
+        display_universe = std::make_unique<sim::fun::universe>(display_info, m_rendering_eng, m_parameterTable);
         auto &cam = m_rendering_eng.camera();
         cam.target = {0.f, 0.f, 0.f};
         cam.distance = 0.f;
@@ -615,7 +615,7 @@ namespace core
         ImGui::SetCursorPosX((avail_width - button_width) * 0.7f);
         if (ImGui::Button(sim_loading["button_load"].get<std::string>().c_str(), ImVec2(button_width, 40.0f)))
         {
-            m_simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng);
+            m_simulation_universe = std::make_unique<sim::fun::universe>(info.file, m_rendering_eng, m_parameterTable);
             dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
             savesSelectionOpen = false;
@@ -790,7 +790,7 @@ namespace core
                 dynamics->destroySSBOs();
 
             m_simulation_universe.reset();
-            m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng, m_parameterTable);
 
             dynamics.reset();
             dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
@@ -1025,7 +1025,7 @@ namespace core
         if (dynamics)
             dynamics->destroySSBOs();
         
-        m_simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng);
+        m_simulation_universe = std::make_unique<sim::fun::universe>(chosen_scenario.file, m_rendering_eng, m_parameterTable);
         dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
         if (!chosen_scenario.file.empty())
@@ -2518,7 +2518,7 @@ namespace core
             dynamics->destroySSBOs();
 
             m_simulation_universe.release();
-            m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng);
+            m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng, m_parameterTable);
 
             dynamics.release();
             dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());

@@ -7,6 +7,13 @@ namespace sim
     // De = bond dissociation energy
     // re = equilibrium bond length
     // a  = width parameter (controls steepness)
+    struct MorseParams
+    {
+        float De;
+        float re;
+        float a;
+        char order;
+    };
 
     glm::vec3 computeMorseForce(uint32_t i, uint32_t j,
                                 const float* __restrict x,

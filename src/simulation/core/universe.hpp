@@ -3,6 +3,7 @@
 #include "simulation/fundamental_structures.hpp"
 #include "simulation/core/rendering_engine.hpp"
 #include "simulation/core/atom_storage.hpp"
+#include "simulation/physics/fields/parameter_table.hpp"
 #include "core/graphics/shader.hpp"
 #include "core/utils/buffer.hpp"
 
@@ -89,8 +90,8 @@ namespace sim
         class universe
         {
         public:
-            universe(const universe_create_info& create_info, rendering_engine& rendering);
-            universe(std::filesystem::path scene, rendering_engine& rendering);
+            universe(const universe_create_info& create_info, rendering_engine& rendering, parameter_table& paramTable);
+            universe(std::filesystem::path scene, rendering_engine& rendering, parameter_table& paramTable);
 
             ~universe() = default;
 
@@ -343,6 +344,7 @@ namespace sim
             }
 
             atomData atomData{};
+            parameter_table& m_parameterTable;
 
             glm::vec3 box{20.f, 20.f, 20.f};
 

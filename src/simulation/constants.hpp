@@ -26,7 +26,6 @@ namespace constants
 
 #define EPSILON 0.001f
 #define FEMTOSECOND 0.001f // ps
-#define MULT_FACTOR 1.f
 #define ANGSTROM 1e20f
 #define PICOSECOND 1e24f
 
@@ -43,7 +42,7 @@ namespace constants
 #define KB 0.008314462618f // A^2 D ps^-2 K^-1
 
 #define GRID_REBUILD 20
-#define REBUILD_THRESHOLD 2.5f * MULT_FACTOR
+#define REBUILD_THRESHOLD 2.5f
 #define THERMOSTAT_INTERVAL 50
 #define BAROSTAT_INTERVAL 50
 
@@ -489,7 +488,7 @@ namespace constants
         }
     }
 
-    inline uint8_t symbolToZ(const std::string& sym)
+    inline uint8_t symbolToZ(const std::string sym)
     {
         static const std::map<std::string, uint8_t> table = {
             {"H",1},{"He",2},{"Li",3},{"Be",4},{"B",5},{"C",6},{"N",7},{"O",8},{"F",9},{"Ne",10},
@@ -945,9 +944,6 @@ namespace constants
             break; // H fallback
         }
 
-        constants.first *= MULT_FACTOR;
-        constants.second *= MULT_FACTOR;
-
         return constants;
     }
 
@@ -1237,9 +1233,6 @@ namespace constants
         }
 
         #undef BONDED
-
-        if (base != original)
-            base *= MULT_FACTOR;
 
         return base;
     }

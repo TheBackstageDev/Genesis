@@ -144,7 +144,7 @@ namespace core
     class UIHandler
     {
     public:
-        UIHandler(options& app_options, window_t& window, AudioEngine& engine, sim::simulation_inspector& siminspector);
+        UIHandler(options& app_options, window_t& window, AudioEngine& engine, sim::simulation_inspector& siminspector, sim::parameter_table& parameterTable);
 
         void set_language(localization new_lang) { lang = new_lang; write_localization_json(lang); }
         void setDeltaTime(float dt) { m_deltaTime = dt; }
@@ -317,6 +317,8 @@ namespace core
         std::unique_ptr<sim::sim_dynamics> dynamics;
         std::unique_ptr<sim::fun::universe> m_simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
+
+        sim::parameter_table& m_parameterTable;
 
         sim::rendering_engine m_rendering_eng;
         sim::reaction_engine m_reaction_eng;
