@@ -542,12 +542,12 @@ namespace sim
 
             const auto &atom = sim_info.atoms[highlight];
             float radius = info.spaceFilling
-                               ? constants::VDW_RADII[atom.ZIndex]
-                               : constants::covalent_radius[atom.ZIndex];
+                               ? constants::VDW_RADII[atom.ZIndex] * 1.2f
+                               : constants::covalent_radius[atom.ZIndex] * 1.2f;
 
             glm::vec4 color_norm(1.f, 1.f, 0.f, 0.3f);
 
-            instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[i], 1.0)), radius, color_norm);
+            instances.emplace_back(glm::vec3(glm::vec4(sim_info.positions[highlight], 1.0)), radius, color_norm);
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, color_vbo);

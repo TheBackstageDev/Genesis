@@ -28,7 +28,8 @@ int main()
     }
     catch (std::exception& e)
     {
-        std::cerr << "[MAIN] Expection: " << e.what() << "\n";
+        std::cout << "[MAIN] Exception: " << e.what() << "\n";
+        std::cerr << "[MAIN] Exception: " << e.what() << "\n";
         return EXIT_FAILURE;
     }
 

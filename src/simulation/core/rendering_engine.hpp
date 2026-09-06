@@ -36,7 +36,7 @@ namespace sim
         core::window_t &window;
 
         GLuint box_vao, box_vbo, color_vao, color_vbo, bond_vao, bond_vbo, 
-               arrow_vao, arrow_vbo, hyperballs_vao = 0, hyperballs_vbo;
+               arrow_vao, arrow_vbo, hyperballs_vao, hyperballs_vbo;
         std::unordered_map<std::string, core::glProgram> programs;
 
         struct AtomInstance 

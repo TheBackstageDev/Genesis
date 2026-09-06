@@ -115,11 +115,6 @@ namespace sim
             view.sigma = ljParams.sigma;            
             view.epsilon = ljParams.epsilon;
 
-            // Morse Params (Placeholder)
-            view.De = 976.f;
-            view.re = 1.10f;
-            view.a  = 2.3f;
-
             m_atomStorage.setAtom(view);
 
             return atomSize - 1;
@@ -144,9 +139,12 @@ namespace sim
                 atomData.atoms[idx1].bondCount += bondCount;
                 atomData.atoms[idx2].bondCount += bondCount;
             }
+
+            uint8_t Zi = atomData.atoms[idx1].ZIndex;
+            uint8_t Zj = atomData.atoms[idx2].ZIndex;
             
-            float EN1 = constants::getElectronegativity(atomData.atoms[idx1].ZIndex);
-            float EN2 = constants::getElectronegativity(atomData.atoms[idx2].ZIndex);
+            float EN1 = constants::getElectronegativity(Zi);
+            float EN2 = constants::getElectronegativity(Zj);
             float deltaEN = std::abs(EN1 - EN2);
             
             if (deltaEN > 0.1f) // Significant electronegativity difference
@@ -168,6 +166,14 @@ namespace sim
             nBond.order = static_cast<float>(type) + 0.1f;
             
             atomData.bonds.emplace_back(std::move(nBond));
+
+            auto morseData = m_parameterTable.morse(Zi, Zj, type == BondType::SINGLE ? '-' : (type == BondType::DOUBLE ? '=' : '#'));
+            m_atomStorage.aData()[idx1] = morseData.a;
+            m_atomStorage.reData()[idx1] = morseData.re;
+            m_atomStorage.DeData()[idx1] = morseData.De;
+            m_atomStorage.aData()[idx2] = morseData.a;
+            m_atomStorage.reData()[idx2] = morseData.re;
+            m_atomStorage.DeData()[idx2] = morseData.De;
         }
 
         void universe::updateAngles(int32_t idx1)

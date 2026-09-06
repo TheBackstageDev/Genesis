@@ -197,6 +197,12 @@ namespace sim
                 m_Arrows.clear();
             }
 
+            void clearHighlights()
+            {
+                m_highlightedAtoms.clear();
+                m_highlightedBonds.clear();
+            }
+
             void highlightAtom(uint32_t index) { m_highlightedAtoms.emplace_back(index); }
             void highlightBond(uint32_t index1, uint32_t index2) { m_highlightedBonds.emplace_back(index1, index2); }
             void createArrow(glm::vec3 from, glm::vec3 to) { m_Arrows.emplace_back(from, to); }
@@ -306,7 +312,11 @@ namespace sim
                 return dr;
             }
 
+            parameter_table& getParameterTable() { return m_parameterTable; }
+
             void boundCheck(uint32_t i);
+
+            void createGrapheneSheet(glm::vec3 center, float width, float height, int density = 20);
         private:
 
             // Energies

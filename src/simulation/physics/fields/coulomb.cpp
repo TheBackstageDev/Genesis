@@ -4,15 +4,11 @@ namespace sim
 {
     glm::vec3 sim::computeCoulombForce(
         uint32_t i, uint32_t j,
-        const float* __restrict x,
-        const float* __restrict y,
-        const float* __restrict z,
+        const float& dx,
+        const float& dy,
+        const float& dz,
         const float* __restrict q)
     {
-        float dx = x[j] - x[i];
-        float dy = y[j] - y[i];
-        float dz = z[j] - z[i];
-
         float dr2 = dx*dx + dy*dy + dz*dz;
 
         if (dr2 < std::numeric_limits<float>::epsilon() || dr2 > COULOMB_CUTOFF * COULOMB_CUTOFF)

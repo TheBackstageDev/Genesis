@@ -46,7 +46,7 @@ namespace core
     
         window_t window;
         AudioEngine audio{};
-        UIHandler ui;
+        std::unique_ptr<UIHandler> ui;
         
         sim::parameter_table m_parameterTable;
         sim::simulation_inspector m_siminspector{};

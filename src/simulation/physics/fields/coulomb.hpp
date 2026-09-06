@@ -9,8 +9,8 @@ namespace sim
 
     glm::vec3 computeCoulombForce(
         uint32_t i, uint32_t j,
-        const float* __restrict x,
-        const float* __restrict y,
-        const float* __restrict z,
+        const float& dx,
+        const float& dy,
+        const float& dz,
         const float* __restrict q);
 } // namespace sim

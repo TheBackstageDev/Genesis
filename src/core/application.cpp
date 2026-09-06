@@ -14,17 +14,18 @@
 namespace core
 {
     application::application(int32_t height, int32_t width, const std::string name)
-        :  m_parameterTable({"resource/parameters/UniversalLJ.csv", "resource/parameters/UniversalMorse.csv"}), window(width, height, name.c_str()),
-          ui(app_options, window, audio, m_siminspector, m_parameterTable)
+        :  m_parameterTable({"resource/parameters/UniversalLJ.csv", "resource/parameters/UniversalMorse.csv", "resource/parameters/UniversalTersoff.csv"}), window(width, height, name.c_str())
     {
+        ui = std::make_unique<UIHandler>(app_options, window, audio, m_siminspector, m_parameterTable);
+
         load();
-        ui.set_language(app_options.lang);
-        ui.setApplicationStateCallback([&](application_state newState)
+        ui->set_language(app_options.lang);
+        ui->setApplicationStateCallback([&](application_state newState)
         {
             current_state = newState;
         });
         
-        ui.setGetApplicationStateCallback([&]()
+        ui->setGetApplicationStateCallback([&]()
         {
             return current_state;
         });
@@ -61,13 +62,13 @@ namespace core
         ImFont* bold_big  = io.Fonts->AddFontFromFileTTF("resource/fonts/Orbitron-Bold.ttf", size * 2.f, nullptr, ranges.Data);
         ImFont* black  = io.Fonts->AddFontFromFileTTF("resource/fonts/Orbitron-Black.ttf", size, nullptr, ranges.Data);
 
-        ui.set_regular_font(regular);
-        ui.set_regular_font_small(regular_small);
-        ui.set_regular_big_font(regular_big);
-        ui.set_medium_font(medium);
-        ui.set_bold_font(bold);
-        ui.set_bold_big_font(bold_big);
-        ui.set_black_font(black);
+        ui->set_regular_font(regular);
+        ui->set_regular_font_small(regular_small);
+        ui->set_regular_big_font(regular_big);
+        ui->set_medium_font(medium);
+        ui->set_bold_font(bold);
+        ui->set_bold_big_font(bold_big);
+        ui->set_black_font(black);
 
         io.Fonts->Build();
 
@@ -147,7 +148,7 @@ namespace core
                     {
                         std::lock_guard<std::mutex> lock(simMutex);
 
-                        auto& dynamics = ui.getDynamics();
+                        auto& dynamics = ui->getDynamics();
                         if (dynamics && current_state == application_state::APP_STATE_SIMULATION &&
                             !dynamics->isPaused())
                         {
@@ -164,7 +165,7 @@ namespace core
 
                             static int32_t frameCounter = 0;
                             if (++frameCounter % 100 == 0)
-                                ui.saveFrame();
+                                ui->saveFrame();
 
                             auto now = std::chrono::high_resolution_clock::now();
                             std::chrono::duration<double> elapsed = now - lastReportTime;
@@ -204,7 +205,7 @@ namespace core
             double currentTime = glfwGetTime();
             float deltaTime = static_cast<float>(currentTime - lastTime);
             lastTime = currentTime;
-            ui.setDeltaTime(deltaTime);
+            ui->setDeltaTime(deltaTime);
 
             glClearColor(0.05f, 0.07f, 0.15f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -221,14 +222,14 @@ namespace core
 
             if (current_state == application_state::APP_STATE_MENU)
             {
-                ui.drawMenu();        
+                ui->drawMenu();        
             }
             if (current_state == application_state::APP_STATE_SIMULATION)
             {
                 if (audio.songFinished() && app_options.background_music)
                     audio.playRandomSong();
                 
-                ui.drawUniverse();
+                ui->drawUniverse();
                 audio.stopSound("MainMenu_Music");
 
                 runUniverse();

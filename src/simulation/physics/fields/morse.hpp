@@ -23,6 +23,14 @@ namespace sim
                                 const float* __restrict re,
                                 const float* __restrict a);
 
+    glm::vec3 computeMorseForce(uint32_t i, uint32_t j,
+                                const float* __restrict x,
+                                const float* __restrict y,
+                                const float* __restrict z,
+                                const float De,
+                                const float re,
+                                const float a);
+
     float computeMorsePotential(uint32_t i, uint32_t j,
                             const float* __restrict x,
                             const float* __restrict y,

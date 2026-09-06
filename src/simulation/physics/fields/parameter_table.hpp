@@ -1,8 +1,10 @@
 #pragma once
 
 #include "common.hpp"
+
 #include "lennard_jones.hpp"
 #include "morse.hpp"
+#include "tersoff.hpp"
 
 #include <filesystem>
 
@@ -12,6 +14,7 @@ namespace sim
     {
         std::filesystem::path universalLj{};
         std::filesystem::path universalMorse{};
+        std::filesystem::path universalTersoff{};
     };
 
     class parameter_table 
@@ -21,25 +24,40 @@ namespace sim
         {
             loadLJ(info.universalLj);
             loadMorse(info.universalMorse);
+            loadTersoff(info.universalTersoff);
         }
 
         void save(const std::filesystem::path& path);
         void loadLJ(const std::filesystem::path& file);
         void loadMorse(const std::filesystem::path& file);
+        void loadTersoff(const std::filesystem::path& file);
 
-        const LJParams& lj(uint32_t atomType) const 
+        LJParams lj(uint32_t atomType) const 
         { 
             if (m_ljparams.empty() && m_customParamsLJChosen) return LJParams(2.0, 0.5);
             if (m_universalljparams.empty() && !m_customParamsLJChosen) return LJParams(2.0, 0.5);
             
-            return m_customParamsLJChosen ? m_ljparams.at(atomType) : m_universalljparams.at(atomType); 
+            if (!m_ljparams.empty() && !m_universalljparams.empty())
+            {
+                return m_customParamsLJChosen ? m_ljparams.at(atomType) : m_universalljparams.at(atomType); 
+            }
+
+            return LJParams(2.0, 0.5);
         }
         
-        const MorseParams& morse(uint32_t Zi, uint32_t Zj, char bondType) const 
+        MorseParams morse(uint32_t Zi, uint32_t Zj, char bondType) const 
         { 
             uint64_t hash = bondHash(Zi, Zj, bondType);
-            return m_morseparams.at(hash); 
+
+            if (!m_universalmorseparams.contains(hash))
+            {
+                return MorseParams(400.f, 1.6f, 1.34f);
+            }
+
+            return m_universalmorseparams.at(hash); 
         }
+
+        float* tersoffData() { return m_universaltersoffParamsFlat.data(); }
 
         void editLJ(uint32_t atomType, const LJParams& newParams)
         {
@@ -73,16 +91,17 @@ namespace sim
                 orderCode;
         }
 
-
         bool m_customParamsLJChosen = false;
         bool m_customParamsMorseChosen = false;
 
-        std::vector<LJParams> m_universalljparams;
-        std::unordered_map<uint64_t, MorseParams> m_universalmorseparams;
+        std::vector<LJParams> m_universalljparams{};
+        std::unordered_map<uint64_t, MorseParams> m_universalmorseparams{};
+        std::vector<TersoffParams> m_universaltersoffParams{};
+        std::vector<float> m_universaltersoffParamsFlat{};
 
         // Custom
-        std::vector<LJParams> m_ljparams;
-        std::unordered_map<uint64_t, MorseParams> m_morseparams;
+        std::vector<LJParams> m_ljparams{};
+        std::unordered_map<uint64_t, MorseParams> m_morseparams{};
         //std::vector<std::vector<LJParams>> m_ljpair;
     };
 } // namespace sim

@@ -28,8 +28,8 @@ namespace core
 
             cell_size = cutoff;
 
-            size_t numCells = static_cast<size_t>(gridDimensions.x) *
-                            gridDimensions.y * gridDimensions.z;
+            size_t numCells = (gridDimensions.x == 0 ? 1 : gridDimensions.x) *
+                            (gridDimensions.y == 0 ? 1 : gridDimensions.y) * (gridDimensions.z == 0 ? 1 : gridDimensions.z);
 
             std::vector<std::vector<uint32_t>> tempLists(numCells);
 
@@ -45,11 +45,13 @@ namespace core
                 int32_t iy = static_cast<int32_t>(p.y * one_over_cutoff);
                 int32_t iz = static_cast<int32_t>(p.z * one_over_cutoff);
 
-                ix = std::clamp(ix, 0, gridDimensions.x - 1);
-                iy = std::clamp(iy, 0, gridDimensions.y - 1);
-                iz = std::clamp(iz, 0, gridDimensions.z - 1);
+                ix = gridDimensions.x == 0 ? 0 : std::clamp(ix, 0, gridDimensions.x - 1);
+                iy = gridDimensions.y == 0 ? 0 : std::clamp(iy, 0, gridDimensions.y - 1);
+                iz = gridDimensions.z == 0 ? 0 : std::clamp(iz, 0, gridDimensions.z - 1);
 
                 size_t id = static_cast<size_t>(ix + gridDimensions.x * (iy + gridDimensions.y * iz));
+
+                if (tempLists.empty() || tempLists.size() < id) continue;
 
                 tempLists[id].push_back(static_cast<uint32_t>(i));
             }

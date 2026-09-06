@@ -40,7 +40,10 @@ namespace core
                             float dr2 = glm::dot(dr, dr);
 
                             if (dr2 <= cutoff2)
+                            {
                                 local_lists[i].push_back(j);
+                                local_lists[j].push_back(i);
+                            }
                         }, same_cell ? i + 1 : 0, -1);
                     }
                 });

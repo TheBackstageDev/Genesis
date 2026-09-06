@@ -44,7 +44,6 @@ namespace core
                 std::cerr << "[AudioEngine] Failed to preload sound: " << filePath
                           << " (name: " << name << ")"
                           << " | Error code: " << result << "\n";
-                throw std::runtime_error("Failed to preload sound: " + filePath);
             }
 
             if (name.find("Song") != std::string::npos)

@@ -357,57 +357,128 @@ namespace sim
         }
     };
 
-    void organizeAngles(std::vector<def_subset> &nSubsets, const std::vector<def_atom> &nAtoms, const std::vector<def_bond> &nBonds,
-                            std::vector<dihedral_angle>& dihedral_angles, std::vector<dihedral_angle>& improper_angles, std::vector<angle>& angles, bool carborane)
+    void addAngles(uint32_t B, const std::vector<uint32_t>& neigh,
+                const std::vector<uint8_t>& Z,
+                const std::vector<BondType>& type,
+                const std::vector<def_atom>& nAtoms,
+                std::vector<angle>& angles,
+                bool carborane) 
+    {
+        for (uint32_t i = 0; i < neigh.size(); ++i) {
+            for (uint32_t j = i + 1; j < neigh.size(); ++j) {
+                angle ang;
+                ang.A = neigh[i];
+                ang.B = B;
+                ang.C = neigh[j];
+                ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type, carborane);
+                angles.emplace_back(std::move(ang));
+            }
+        }
+    }
+
+    void addImpropers(uint32_t B, const std::vector<uint32_t>& bonded3,
+                    const std::vector<def_atom>& nAtoms,
+                    std::vector<dihedral_angle>& improper_angles) 
+    {
+        if (bonded3.size() != 3 || nAtoms.size() == 4) return;
+
+        dihedral_angle imp{};
+        imp.A = bonded3[0];
+        imp.B = B;
+        imp.C = bonded3[1];
+        imp.D = bonded3[2];
+
+        imp.K           = 10.0f;
+        imp.periodicity = 2.0f;
+        imp.rad         = M_PI;
+
+        if (nAtoms[B].ZIndex == 7 || nAtoms[imp.A].ZIndex == 6 && nAtoms[imp.C].ZIndex == 6 && nAtoms[imp.D].ZIndex == 6) return;
+
+        if (nAtoms[B].aromatic)
+            imp.K = 20.0f;
+
+        improper_angles.emplace_back(std::move(imp));
+    }
+
+    void addDihedrals(uint32_t B, uint32_t C,
+                    const std::vector<uint32_t>& neigh_B,
+                    const std::vector<uint32_t>& neigh_C,
+                    const def_bond* bc_bond,
+                    const std::vector<def_atom>& nAtoms,
+                    std::vector<dihedral_angle>& dihedral_angles) 
+    {
+        for (uint32_t A : neigh_B) {
+            if (A == C) continue;
+            for (uint32_t D : neigh_C) {
+                if (D == B) continue;
+                if (nAtoms[A].ZIndex == 1 && nAtoms[D].ZIndex == 1) continue;
+                if (nAtoms[A].aromatic && nAtoms[D].aromatic) continue;
+
+                dihedral_angle dh{};
+                dh.A = A; dh.B = B; dh.C = C; dh.D = D;
+                dh.periodicity = 3;
+
+                if (bc_bond->type == BondType::DOUBLE) {
+                    dh.periodicity = 2;
+                } else if (nAtoms[B].ZIndex == 7 || nAtoms[C].ZIndex == 7) {
+                    dh.periodicity = 2;
+                }
+
+                char chi = nAtoms[B].chirality ? nAtoms[B].chirality : nAtoms[C].chirality;
+                if (chi != 0) {
+                    dh.periodicity = 1;
+                }
+
+                dihedral_angles.emplace_back(std::move(dh));
+            }
+        }
+    }
+
+    void organizeAngles(std::vector<def_subset>& nSubsets,
+                        const std::vector<def_atom>& nAtoms,
+                        const std::vector<def_bond>& nBonds,
+                        std::vector<dihedral_angle>& dihedral_angles,
+                        std::vector<dihedral_angle>& improper_angles,
+                        std::vector<angle>& angles,
+                        bool carborane) 
     {
         std::unordered_map<std::pair<uint32_t, uint32_t>, def_bond, pair_hash> bond_map;
-        for (const auto& b : nBonds) 
-        {
+        for (const auto& b : nBonds) {
             uint32_t i = b.centralAtomIdx;
             uint32_t j = b.bondingAtomIdx;
-            if (i > j) std::swap(i,j);
+            if (i > j) std::swap(i, j);
             bond_map[{i, j}] = b;
         }
 
-        for (def_subset& sub : nSubsets) 
-        {
+        for (def_subset& sub : nSubsets) {
             const uint32_t B = sub.mainAtomIdx;
-
             if (sub.connectedIdx.size() + sub.hydrogensIdx.size() < 2) continue;
-
-            std::vector<uint8_t> Z(sub.connectedIdx.size() + sub.hydrogensIdx.size());
-            std::vector<BondType> type(sub.connectedIdx.size() + sub.hydrogensIdx.size(), BondType::SINGLE);
 
             std::vector<uint32_t> neigh = sub.connectedIdx;
             neigh.insert(neigh.end(), sub.hydrogensIdx.begin(), sub.hydrogensIdx.end());
-            for (uint32_t i = 0; i < neigh.size(); ++i) 
-            {
+
+            std::vector<uint8_t> Z(neigh.size());
+            std::vector<BondType> type(neigh.size(), BondType::SINGLE);
+
+            for (uint32_t i = 0; i < neigh.size(); ++i) {
                 const uint32_t A = neigh[i];
                 Z[i] = nAtoms[A].ZIndex;
-
                 uint32_t a = B, b = A;
-                if (a > b) std::swap(a,b);
-                auto it = bond_map.find({a,b});
+                if (a > b) std::swap(a, b);
+                auto it = bond_map.find({a, b});
                 if (it != bond_map.end()) type[i] = it->second.type;
             }
 
-            for (uint32_t i = 0; i < neigh.size(); ++i) 
-            {
-                for (uint32_t j = i + 1; j < neigh.size(); ++j) 
-                {
-                    angle ang;
-                    ang.A = neigh[i];
-                    ang.B = B;
-                    ang.C = neigh[j];
-                    ang.rad = constants::getAngles(nAtoms[B].ZIndex, Z, type, carborane);
-                    angles.emplace_back(std::move(ang));
-                }
+            addAngles(B, neigh, Z, type, nAtoms, angles, carborane);
+
+            if (sub.connectedIdx.size() + sub.hydrogensIdx.size() == 3 || nAtoms[B].aromatic) {
+                std::vector<uint32_t> bonded3;
+                bonded3.insert(bonded3.end(), sub.connectedIdx.begin(), sub.connectedIdx.end());
+                bonded3.insert(bonded3.end(), sub.hydrogensIdx.begin(), sub.hydrogensIdx.end());
+                addImpropers(B, bonded3, nAtoms, improper_angles);
             }
 
-            for (uint32_t c_idx = 0; c_idx < neigh.size(); ++c_idx) 
-            {
-                const uint32_t C = neigh[c_idx];
-
+            for (uint32_t C : neigh) {
                 uint32_t a = B, b = C;
                 if (a > b) std::swap(a, b);
                 const def_bond* bc_bond = nullptr;
@@ -415,79 +486,14 @@ namespace sim
                 if (it != bond_map.end()) bc_bond = &it->second;
                 if (!bc_bond) continue;
 
-                const auto& neigh_B = neigh; 
-
                 std::vector<uint32_t> neigh_C;
-                for (const auto& bond : nBonds) 
-                {
+                for (const auto& bond : nBonds) {
                     if (bond.centralAtomIdx == C) neigh_C.push_back(bond.bondingAtomIdx);
                     else if (bond.bondingAtomIdx == C) neigh_C.push_back(bond.centralAtomIdx);
                 }
 
-                if (sub.connectedIdx.size() + sub.hydrogensIdx.size() == 3 || nAtoms[sub.mainAtomIdx].aromatic)
-                {
-                    uint32_t B = sub.mainAtomIdx;
-                    uint8_t centralZ = nAtoms[B].ZIndex;
-
-                    std::vector<uint32_t> bonded3;
-                    bonded3.reserve(3);
-
-                    for (uint32_t idx : sub.connectedIdx)   bonded3.push_back(idx);
-                    for (uint32_t idx : sub.hydrogensIdx)   bonded3.push_back(idx);
-
-                    if (bonded3.size() != 3) continue;
-
-                    dihedral_angle imp{};
-                    imp.A = bonded3[0];
-                    imp.B = B;
-                    imp.C = bonded3[1];
-                    imp.D = bonded3[2];
-
-                    imp.K           = 10.0f;
-                    imp.periodicity = 2.0f;
-                    imp.rad         = M_PI;
-
-                    if (nAtoms[B].aromatic)
-                        imp.K = 20.0f;
-
-                    improper_angles.emplace_back(std::move(imp));
-                }
-                
                 if (nAtoms[a].aromatic || nAtoms[b].aromatic) continue;
-
-                for (uint32_t A : neigh_B) 
-                {
-                    if (A == C) continue;
-
-                    for (uint32_t D : neigh_C) 
-                    {
-                        if (D == B) continue;
-                        if (nAtoms[A].ZIndex == 1 && nAtoms[D].ZIndex == 1) continue;
-                        if (nAtoms[A].aromatic && nAtoms[D].aromatic) continue;
-
-                        dihedral_angle dh{};
-                        dh.A = A; dh.B = B; dh.C = C; dh.D = D;
-
-                        dh.periodicity = 3;
-
-                        if (bc_bond->type == BondType::DOUBLE) 
-                        {
-                            dh.periodicity = 2;
-                        }
-                        else if (nAtoms[B].ZIndex == 7 || nAtoms[C].ZIndex == 7) 
-                        {
-                            dh.periodicity = 2;
-                        }
-
-                        char chi = nAtoms[B].chirality ? nAtoms[B].chirality : nAtoms[C].chirality;
-                        if (chi != 0) 
-                        {
-                            dh.periodicity = 1;
-                        }
-
-                        dihedral_angles.emplace_back(std::move(dh));
-                    }
-                }
+                addDihedrals(B, C, neigh, neigh_C, bc_bond, nAtoms, dihedral_angles);
             }
         }
     }

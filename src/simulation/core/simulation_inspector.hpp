@@ -30,6 +30,12 @@ namespace sim
         }
     };
 
+    struct tensileResult
+    {
+        float strain;
+        float stress;
+    };
+
     class simulation_inspector
     {
     public:

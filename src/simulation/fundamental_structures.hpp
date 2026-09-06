@@ -150,7 +150,6 @@ namespace sim
         struct atom
         {
             float mass;            
-            float total_BO = 0.0f;
 
             uint8_t electrons;
             uint8_t ZIndex;

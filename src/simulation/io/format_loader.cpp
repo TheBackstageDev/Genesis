@@ -86,6 +86,31 @@ namespace sim::io
             return fun::BondType::SINGLE;
         }
 
+        if (BONDED(6, 14))
+        {
+            if (distance < 1.95f) return fun::BondType::SINGLE;
+            return fun::BondType::NONE;
+        }
+
+        if (BONDED(14, 8))
+        {
+            if (distance < 1.70f) return fun::BondType::DOUBLE;   // Si=O (rare)
+            if (distance < 1.85f) return fun::BondType::SINGLE;   // Si-O
+            return fun::BondType::NONE;
+        }
+
+        if (BONDED(14, 14))
+        {
+            if (distance < 2.40f) return fun::BondType::SINGLE;
+            return fun::BondType::NONE;
+        }
+
+        if (BONDED(14, 17))
+        {
+            if (distance < 2.10f) return fun::BondType::SINGLE;
+            return fun::BondType::NONE;
+        }
+
         if (BONDED(15, 8))
         {
             if (distance < 1.51f) return fun::BondType::DOUBLE;

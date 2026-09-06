@@ -6,6 +6,8 @@
 #include <iostream>
 #include <immintrin.h>
 
+#include <fstream>
+
 namespace sim
 {
     sim_dynamics::sim_dynamics(fun::universe &u)
@@ -317,7 +319,12 @@ namespace sim
         if (universe_verlet.verlet.empty()) return {};
 
         float local_virial = 0.f;
+        
         auto &storage = m_universe.getData();
+        
+        //auto &parameterTable = m_universe.getParameterTable();
+        //auto &atomData = m_universe.getAtomData();
+
         int32_t cellID = universe_grid.cellToIndex(ix, iy, iz);
 
         float* __restrict x = storage.xData();
@@ -333,27 +340,31 @@ namespace sim
 
         for (int32_t i = atom_start; i < atom_end; ++i)
         {
-            for (uint32_t j : universe_verlet.verlet[i])
+            const std::vector<uint32_t>& neighbours = universe_verlet.verlet[i];
+
+            for (uint32_t j : neighbours)
             {
                 if (j <= i) continue;
-
-                glm::vec3 dr = glm::vec3(x[i] - x[j], y[i] - y[j], z[i] - z[j]);
-                float dr2 = glm::dot(dr, dr);
-
-                if (dr2 > CELL_CUTOFF * CELL_CUTOFF || dr2 < EPSILON)
-                    continue;
-
+                
                 if (m_universe.areBonded(i, j))
                     continue;
 
-                glm::vec3 cForce = computeCoulombForce(i, j, x, y, z, q);
-                glm::vec3 lForce = computeLJforce(i, j, x, y, z, ljParams);
-                glm::vec3 total_force = cForce + lForce;
+                float dx = x[j] - x[i];
+                float dy = y[j] - y[i];
+                float dz = z[j] - z[i];
 
+                glm::vec3 minImage = m_universe.minImageVec(glm::vec3(dx, dy, dz));
+                
+                glm::vec3 cForce = computeCoulombForce(static_cast<uint32_t>(i), j, minImage.x, minImage.y, minImage.z, q);
+                glm::vec3 lForce = computeLJforce(static_cast<uint32_t>(i), j, minImage.x, minImage.y, minImage.z, ljParams);
+                //glm::vec3 bForce = computeTersoffForce(i, j, x, y, z, parameterTable.tersoffData(), neighbours);
+                
+                glm::vec3 total_force = cForce + lForce;
+                
                 local_forces[i] += total_force;
                 local_forces[j] -= total_force;
-
-                local_virial += glm::dot(dr, total_force);
+                
+                local_virial += glm::dot(minImage, total_force);
             }
         }
    
@@ -543,6 +554,7 @@ namespace sim
 
         bool useMorse = false; // temporary toggle
 
+        std::vector<std::pair<uint32_t, uint32_t>> toBreak{};
         auto bond_func = [&](int32_t start, int32_t end, std::vector<glm::vec3> &lf,
                             const float* __restrict x,
                             const float* __restrict y,
@@ -559,7 +571,7 @@ namespace sim
                 if (len2 <= EPSILON*EPSILON || len2 > 9.0f) continue;
 
                 float len = sqrtf(len2);
-                glm::vec3 unit_dr = dr / len;
+                glm::vec3 unit_dr = dr / (len + std::numeric_limits<float>::epsilon());
 
                 if (useMorse)
                 {
@@ -613,16 +625,12 @@ namespace sim
                 const fun::angle &ang = atomData.angles[a];
                 int32_t i = ang.A, j = ang.B, k = ang.C;
 
-                float dx_ji = x[i] - x[j];
-                float dy_ji = y[i] - y[j];
-                float dz_ji = z[i] - z[j];
+                glm::vec3 ri(x[i], y[i], z[i]);
+                glm::vec3 rj(x[j], y[j], z[j]);
+                glm::vec3 rk(x[k], y[k], z[k]);
 
-                float dx_jk = x[k] - x[j];
-                float dy_jk = y[k] - y[j];
-                float dz_jk = z[k] - z[j];
-
-                glm::vec3 r_ji = univ.minImageVec(glm::vec3(dx_ji, dy_ji, dz_ji));
-                glm::vec3 r_jk = univ.minImageVec(glm::vec3(dx_jk, dy_jk, dz_jk));
+                glm::vec3 r_ji = univ.minImageVec(ri - rj);
+                glm::vec3 r_jk = univ.minImageVec(rk - rj);
 
                 float len_ji = glm::length(r_ji);
                 float len_jk = glm::length(r_jk);
@@ -631,25 +639,24 @@ namespace sim
                 glm::vec3 u_ji = r_ji / len_ji;
                 glm::vec3 u_jk = r_jk / len_jk;
 
-                float cos_theta = std::clamp(glm::dot(u_ji, u_jk), -1.0f, 1.0f);
-                float sin_theta = std::sqrt(std::max(1.0f - cos_theta * cos_theta, 0.0f));
-                if (sin_theta < 1e-6f) sin_theta = 1e-6f;
-
+                float cos_theta = glm::clamp(glm::dot(u_ji, u_jk), -1.0f, 1.0f);
                 float theta = std::acos(cos_theta);
                 float delta_theta = theta - ang.rad;
+
+                float sin_theta = std::max(std::sqrt(1.0f - cos_theta * cos_theta), 1e-6f);
 
                 glm::vec3 dtheta_dri = (cos_theta * u_ji - u_jk) / (len_ji * sin_theta);
                 glm::vec3 dtheta_drk = (cos_theta * u_jk - u_ji) / (len_jk * sin_theta);
 
                 float K = constants::getAngleHarmonicConstant(ang.A, ang.B, ang.C);
 
-                glm::vec3 F_i = -K * delta_theta * dtheta_dri;
-                glm::vec3 F_k = -K * delta_theta * dtheta_drk;
-                glm::vec3 F_j = -F_i - F_k;
+                glm::vec3 Fi = -K * delta_theta * dtheta_dri;
+                glm::vec3 Fk = -K * delta_theta * dtheta_drk;
+                glm::vec3 Fj = -(Fi + Fk);
 
-                lf[i] += F_i;
-                lf[j] += F_j;
-                lf[k] += F_k;
+                lf[i] += Fi;
+                lf[j] += Fj;
+                lf[k] += Fk;
             }
         };
 
@@ -675,27 +682,36 @@ namespace sim
                 glm::vec3 pd(x[da.D], y[da.D], z[da.D]);
 
                 float phi = computeDihedral(pa, pb, pc, pd);
-                float diff = phi - da.rad;
-                while (diff > M_PI)  diff -= 2.0f * M_PI;
-                while (diff < -M_PI) diff += 2.0f * M_PI;
-
                 float torque_mag = da.K * da.periodicity * std::sin(da.periodicity * phi - da.rad);
 
                 glm::vec3 b1 = pb - pa;
                 glm::vec3 b2 = pc - pb;
                 glm::vec3 b3 = pd - pc;
 
-                glm::vec3 n1 = glm::normalize(glm::cross(b1, b2));
-                glm::vec3 n2 = glm::normalize(glm::cross(b2, b3));
-                glm::vec3 u2 = glm::normalize(b2);
+                glm::vec3 n1 = glm::cross(b1, b2);
+                glm::vec3 n2 = glm::cross(b2, b3);
 
-                glm::vec3 fA = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
-                glm::vec3 fD = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
+                float len_b2 = glm::length(b2);
+                if (len_b2 < EPSILON) continue;
 
-                lf[da.A] += -fA;
-                lf[da.D] += -fD;
-                lf[da.B] += fA;
-                lf[da.C] += fD;
+                glm::vec3 u2 = b2 / len_b2;
+
+                glm::vec3 fA = (torque_mag / (glm::length(b1) + EPSILON)) * glm::cross(n1, u2);
+                glm::vec3 fD = (torque_mag / (glm::length(b3) + EPSILON)) * glm::cross(u2, n2);
+
+                glm::vec3 fB = -fA - 0.5f * fD;
+                glm::vec3 fC = -fD - 0.5f * fA;
+
+                glm::vec3 netF = fA + fB + fC + fD;
+                fA -= netF * 0.25f;
+                fB -= netF * 0.25f;
+                fC -= netF * 0.25f;
+                fD -= netF * 0.25f;
+
+                lf[da.A] += fA;
+                lf[da.B] += fB;
+                lf[da.C] += fC;
+                lf[da.D] += fD;
             }
         };
 
@@ -725,7 +741,7 @@ namespace sim
                 while (diff > M_PI)  diff -= 2.0f * M_PI;
                 while (diff < -M_PI) diff += 2.0f * M_PI;
 
-                float torque_mag = imp.K * imp.periodicity * std::sin(imp.periodicity * phi - imp.rad);
+                float torque_mag = 2.0f * imp.K * diff;
 
                 glm::vec3 b1 = pb - pa;
                 glm::vec3 b2 = pc - pb;
@@ -735,8 +751,8 @@ namespace sim
                 glm::vec3 n2 = glm::normalize(glm::cross(b2, b3));
                 glm::vec3 u2 = glm::normalize(b2);
 
-                glm::vec3 fA = (torque_mag / (glm::length(b1) + 1e-6f)) * glm::cross(n1, u2);
-                glm::vec3 fD = (torque_mag / (glm::length(b3) + 1e-6f)) * glm::cross(u2, n2);
+                glm::vec3 fA = (torque_mag / (glm::length(b1) + std::numeric_limits<float>::epsilon())) * glm::cross(n1, u2);
+                glm::vec3 fD = (torque_mag / (glm::length(b3) + std::numeric_limits<float>::epsilon())) * glm::cross(u2, n2);
 
                 lf[imp.A] += -fA;
                 lf[imp.D] += -fD;
@@ -849,6 +865,12 @@ namespace sim
     {
         zeroForces();
 
+        if (m_universe.reactive())
+        {
+            m_reaction_eng.update(m_universe, universe_verlet);
+            //return;
+        }
+
         if (m_GPU)
         {
             updateSSBOs();
@@ -891,7 +913,8 @@ namespace sim
 
         for (size_t i = 0; i < N; ++i)
         {
-            if (atomData.frozen_atoms[i]) {
+            if (atomData.frozen_atoms[i]) 
+            {
                 vx[i] = vy[i] = vz[i] = 0.0f;
                 continue;
             }
@@ -907,6 +930,10 @@ namespace sim
             vz[i] += az * half_dt;
         }
 
+        // Temporary
+        size_t totalAtoms = 0;
+        float totalforce = 0.f;
+
         for (size_t i = 0; i < N; ++i)
         {
             if (atomData.frozen_atoms[i]) continue;
@@ -917,7 +944,7 @@ namespace sim
 
             univ.boundCheck(static_cast<uint32_t>(i));
         }
-
+        
         computeForces();
 
         if (m_GPU)
@@ -932,7 +959,8 @@ namespace sim
 
         for (size_t i = 0; i < N; ++i)
         {
-            if (atomData.frozen_atoms[i]) {
+            if (atomData.frozen_atoms[i]) 
+            {
                 vx[i] = vy[i] = vz[i] = 0.0f;
                 continue;
             }
@@ -985,7 +1013,7 @@ namespace sim
             float v_rms = std::sqrtf(2.0f * avgKE / mass);
         
             float displacement_per_step = v_rms * m_timescale;
-            float max_safe_steps = (0.5f * universe_verlet.skin) / (displacement_per_step + 1e-8f);
+            float max_safe_steps = (0.5f * universe_verlet.skin) / (displacement_per_step + std::numeric_limits<float>::epsilon());
 
             m_verletRebuildSteps = std::clamp(uint32_t(max_safe_steps), 10u, m_maxRebuildSteps);
         }
@@ -1025,6 +1053,8 @@ namespace sim
 
         m_universe.setBoxSize({box.x, box.y, new_box.z});
 
+        float* __restrict x = m_universe.getData().xData();
+        float* __restrict y = m_universe.getData().yData();
         float* __restrict z = m_universe.getData().zData();
         float* __restrict vx = m_universe.getData().vxData();
         float* __restrict vy = m_universe.getData().vyData();
@@ -1032,7 +1062,13 @@ namespace sim
 
         auto &data = m_universe.getData();
         auto &atomData = m_universe.getAtomData();
-        for (size_t i = 0; i < atomData.atoms.size(); ++i) z[i] *= scale;
+        for (size_t i = 0; i < atomData.atoms.size(); ++i)
+        {
+            //x[i] *= scale;
+            //y[i] *= scale;
+            z[i] *= scale;
+        }
+
         for (int32_t v = 0; v < m_universe.getData().mobileCount(); ++v)
         {
             vx[v] *= std::sqrt(scale);

@@ -789,6 +789,35 @@ namespace core
             if (dynamics != nullptr)
                 dynamics->destroySSBOs();
 
+            /* sim::fun::molecule_structure structure{};
+            sim::io::loadXYZ("resource/molecules/nanotube2.xyz", structure.atoms, structure.bonds, structure.positions);
+            sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
+            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
+
+            glm::vec3 minPos( std::numeric_limits<float>::max() );
+            glm::vec3 maxPos( std::numeric_limits<float>::lowest() );
+
+            for (const auto& pos : structure.positions) 
+            {
+                minPos.x = std::min(minPos.x, pos.x);
+                minPos.y = std::min(minPos.y, pos.y);
+                minPos.z = std::min(minPos.z, pos.z);
+
+                maxPos.x = std::max(maxPos.x, pos.x);
+                maxPos.y = std::max(maxPos.y, pos.y);
+                maxPos.z = std::max(maxPos.z, pos.z);
+            }
+
+            glm::vec3 center = 0.5f * (minPos + maxPos);
+            glm::vec3 boxSize = maxPos - minPos;
+
+            for (auto& pos : structure.positions) 
+            {
+                pos -= center;
+            }
+
+            sandbox_info.box.z = boxSize.z + 1.f; */
+
             m_simulation_universe = std::make_unique<sim::fun::universe>(sandbox_info, m_rendering_eng, m_parameterTable);
             dynamics = std::make_unique<sim::sim_dynamics>(*m_simulation_universe.get());
 
@@ -808,12 +837,7 @@ namespace core
             m_packChosen.clear();
             m_packParts.clear();
 
-            /* sim::fun::molecule_structure structure{};
-            sim::io::loadXYZ("resource/molecules/ice.xyz", structure.atoms, structure.bonds, structure.positions);
-            sim::organizeSubsets(structure.subsets, structure.atoms, structure.bonds);
-            sim::organizeAngles(structure.subsets, structure.atoms, structure.bonds, structure.dihedral_angles, structure.improper_angles, structure.angles);
-
-            m_simulation_universe->createMolecule(structure, {30, 30, 30}); */
+            //m_simulation_universe->createMolecule(structure, glm::vec3(30.f, 30.f, center.z + 1.f));
         }
 
         ImGui::SameLine();
@@ -2441,6 +2465,42 @@ namespace core
         {   
             if (m_siminspector.isRDFready())
                 m_RDFgraphs = m_siminspector.getRDFs(*m_simulation_universe.get());
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F))
+        {
+            Ray mouseRay = screenToRay(ImGui::GetMousePos(), m_window.extent(), m_rendering_eng.camera());
+            
+            auto& storage = m_simulation_universe->getData();
+            auto& atoms = m_simulation_universe->getAtomData().atoms;
+
+            const float* __restrict x = storage.xData(); 
+            const float* __restrict y = storage.yData(); 
+            const float* __restrict z = storage.zData(); 
+
+            float max_distance = std::numeric_limits<float>::infinity();
+            int32_t chosen = -1;
+
+            for (int32_t i = 0; i < storage.mobileCount(); ++i)
+            {
+                glm::vec3 position{x[i], y[i], z[i]};
+
+                std::optional<RayHit> result = raySphereIntersect(mouseRay, position, constants::VDW_RADII[atoms[i].ZIndex]);
+
+                if (result.has_value())
+                {
+                    if (result.value().distance > 0.f && result.value().distance < max_distance)
+                    {
+                        max_distance = result.value().distance;
+                        chosen = i;
+                    }
+                }
+            }
+
+            m_simulation_universe->clearHighlights();
+
+            if (chosen >= 0)
+                m_simulation_universe->highlightAtom(chosen);
         }
     }
 

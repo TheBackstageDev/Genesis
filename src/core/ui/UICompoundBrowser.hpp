@@ -6,7 +6,6 @@ namespace ui
     {
     public:
         UICompoundBrowser(/* args */);
-        ~UICompoundBrowser();
     private:
     };
 } // namespace ui

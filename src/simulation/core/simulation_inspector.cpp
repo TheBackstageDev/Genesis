@@ -317,4 +317,8 @@ namespace sim
         return totalVelocity / static_cast<float>(velocities.size()) * 100.f; // 100.f to convert from A/Ps to m/s
     }
 
+    void simulation_inspector::exportData(const std::filesystem::path where)
+    {
+    
+    }
 } // namespace sim

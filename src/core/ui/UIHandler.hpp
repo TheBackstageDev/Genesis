@@ -20,6 +20,12 @@
 #include "simulation/core/simulation_inspector.hpp"
 #include "simulation/physics/dynamics.hpp"
 
+// UI
+#include "UIEditor.hpp"
+#include "UISimulation.hpp"
+
+#include "core/utils/raycast.hpp"
+
 namespace core
 {
     enum class application_state
@@ -272,8 +278,6 @@ namespace core
 
         // Universe
 
-        Selection m_selection{};
-
         void drawUniverseUI();
 
         void drawHUD();
@@ -318,10 +322,13 @@ namespace core
         std::unique_ptr<sim::fun::universe> m_simulation_universe;
         std::unique_ptr<sim::fun::universe> display_universe;
 
+        // UI
+        //std::unique_ptr<ui::UIEditor> m_editorUI;
+        //std::unique_ptr<ui::UISimulation> m_simulationUI;
+
         sim::parameter_table& m_parameterTable;
 
         sim::rendering_engine m_rendering_eng;
-        sim::reaction_engine m_reaction_eng;
         sim::simulation_packer m_simpacker{};
         sim::simulation_inspector& m_siminspector;
         AudioEngine& m_audio_eng;

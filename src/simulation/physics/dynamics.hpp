@@ -6,6 +6,7 @@
 #include "core/utils/spatialgrid.hpp"
 #include "core/utils/verletlist.hpp"
 #include "simulation/core/universe.hpp"
+#include "simulation/chemistry/reaction_engine.hpp"
 
 #include "simulation/physics/fields/lennard_jones.hpp"
 #include "simulation/physics/fields/morse.hpp"
@@ -13,7 +14,6 @@
 
 #include "simulation/physics/stats/barostats.hpp"
 #include "simulation/physics/stats/thermostats.hpp"
-
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -108,6 +108,8 @@ namespace sim
 
         size_t m_lastBondCount = 0;
         size_t m_lastAngleCount = 0;
+
+        reaction_engine m_reaction_eng{};
 
         float gauss_random()
         {
