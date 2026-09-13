@@ -32,17 +32,13 @@ namespace sim
                         dz * invr * Fmag);
     }
 
-    glm::vec3 computeMorseForce(uint32_t i, uint32_t j,
-                                const float* __restrict x,
-                                const float* __restrict y,
-                                const float* __restrict z,
-                                const float De,
-                                const float re,
-                                const float a)
+    glm::vec3 computeMorseForce(const float& dx,
+                                const float& dy,
+                                const float& dz,
+                                const float& De,
+                                const float& re,
+                                const float& a)
     {
-        float dx = x[i] - x[j];
-        float dy = y[i] - y[j];
-        float dz = z[i] - z[j];
         float r2 = dx*dx + dy*dy + dz*dz;
         float r  = std::sqrt(r2);
 

@@ -698,9 +698,7 @@ namespace core
 
         ImGui::Separator();
 
-        const float cell_size = image_size;
-
-        int32_t columns = static_cast<int>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
+        int32_t columns = static_cast<int32_t>((ImGui::GetContentRegionAvail().x - padding) / (image_size + padding));
         columns = std::max(1, columns);
         if (ImGui::BeginTable("SavesGrid", columns, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY))
         {
@@ -765,7 +763,7 @@ namespace core
             ImGui::Checkbox(sandbox_creation["wall_collision"].get<std::string>().c_str(), &sandbox_info.wall_collision);
             ImGui::Checkbox(sandbox_creation["roof_floor_collision"].get<std::string>().c_str(), &sandbox_info.roof_floor_collision);
 
-            // ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reaction);
+            ImGui::Checkbox(sandbox_creation["reactive"].get<std::string>().c_str(), &sandbox_info.reaction);
         }
 
         if (ImGui::CollapsingHeader(sandbox_creation["header_box"].get<std::string>().c_str(), ImGuiTreeNodeFlags_DefaultOpen))

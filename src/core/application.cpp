@@ -105,10 +105,10 @@ namespace core
         simulationRunning = false;
         if (simulationThread.joinable())
             simulationThread.join();
-            
-        ImPlot::DestroyContext();
 
+        ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
@@ -257,10 +257,6 @@ namespace core
 
             glfwSwapBuffers(window);
         }
-
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
     }
 
     void application::save()

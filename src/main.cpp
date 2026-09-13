@@ -20,15 +20,13 @@ int main()
 {    
     constexpr uint32_t height = 800, width = 1000;
 
-    core::application app{height, width, "Genesis"};
-
     try 
     {
+        core::application app{height, width, "Genesis"};
         app.run();
     }
     catch (std::exception& e)
     {
-        std::cout << "[MAIN] Exception: " << e.what() << "\n";
         std::cerr << "[MAIN] Exception: " << e.what() << "\n";
         return EXIT_FAILURE;
     }
